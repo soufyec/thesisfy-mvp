@@ -60,6 +60,47 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface FeedbackRequest {
+  id: string;
+  thesisId: string;
+  studentId: string;
+  professorId: string;
+  section: string;
+  message: string;
+  status: "pending" | "reviewed" | "resolved";
+  response?: string;
+  createdAt: string;
+  respondedAt?: string;
+}
+
+export interface Meeting {
+  id: string;
+  thesisId: string;
+  studentId: string;
+  professorId: string;
+  title: string;
+  description: string;
+  proposedDate: string;
+  duration: number; // minutes
+  status: "pending" | "confirmed" | "declined" | "completed";
+  location?: string;
+  calendarLink?: string;
+  createdAt: string;
+}
+
+export interface Milestone {
+  id: string;
+  thesisId: string;
+  professorId: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  expectations: string;
+  hasFeedback: boolean;
+  status: "upcoming" | "in_progress" | "completed" | "overdue";
+  createdAt: string;
+}
+
 // Demo data
 const users: User[] = [
   {
@@ -248,6 +289,145 @@ const notifications: Notification[] = [
   },
 ];
 
+const feedbackRequests: FeedbackRequest[] = [
+  {
+    id: "fb_1",
+    thesisId: "thesis_1",
+    studentId: "usr_1",
+    professorId: "usr_4",
+    section: "Chapter 2 - Literature Review",
+    message: "I'm not sure if my coverage of traditional climate models is comprehensive enough. Could you review section 2.1 and suggest any key papers I might be missing?",
+    status: "reviewed",
+    response: "Good coverage overall. I'd suggest adding references to the IPCC AR6 models and the recent work by Schneider et al. (2023) on neural GCMs. Also consider discussing the limitations of parameterization in traditional models.",
+    createdAt: "2026-03-08T10:00:00Z",
+    respondedAt: "2026-03-09T14:30:00Z",
+  },
+  {
+    id: "fb_2",
+    thesisId: "thesis_1",
+    studentId: "usr_1",
+    professorId: "usr_4",
+    section: "Chapter 3 - Methodology",
+    message: "I've outlined my hybrid approach combining CNNs with LSTM networks. Is the architecture sound? Should I consider transformer-based alternatives?",
+    status: "pending",
+    createdAt: "2026-03-14T09:00:00Z",
+  },
+  {
+    id: "fb_3",
+    thesisId: "thesis_3",
+    studentId: "usr_3",
+    professorId: "usr_4",
+    section: "Chapitre 1 - Introduction",
+    message: "J'aimerais avoir votre avis sur la problématique de recherche. Est-elle suffisamment ciblée?",
+    status: "pending",
+    createdAt: "2026-03-12T11:00:00Z",
+  },
+];
+
+const meetings: Meeting[] = [
+  {
+    id: "meet_1",
+    thesisId: "thesis_1",
+    studentId: "usr_1",
+    professorId: "usr_4",
+    title: "Methodology Review Session",
+    description: "Discuss the hybrid ML approach and review preliminary results from the CNN-LSTM architecture.",
+    proposedDate: "2026-03-20T14:00:00Z",
+    duration: 45,
+    status: "confirmed",
+    location: "Office 312, Gates Building",
+    calendarLink: "https://calendar.google.com",
+    createdAt: "2026-03-13T08:00:00Z",
+  },
+  {
+    id: "meet_2",
+    thesisId: "thesis_1",
+    studentId: "usr_1",
+    professorId: "usr_4",
+    title: "Mid-semester Progress Check",
+    description: "General progress review and timeline adjustment for remaining chapters.",
+    proposedDate: "2026-04-05T10:00:00Z",
+    duration: 30,
+    status: "pending",
+    createdAt: "2026-03-15T09:00:00Z",
+  },
+  {
+    id: "meet_3",
+    thesisId: "thesis_3",
+    studentId: "usr_3",
+    professorId: "usr_4",
+    title: "Revue de structure de la thèse",
+    description: "Discuter de la structure globale et de l'avancement des chapitres.",
+    proposedDate: "2026-03-22T11:00:00Z",
+    duration: 60,
+    status: "pending",
+    createdAt: "2026-03-14T16:00:00Z",
+  },
+];
+
+const milestones: Milestone[] = [
+  {
+    id: "ms_1",
+    thesisId: "thesis_1",
+    professorId: "usr_4",
+    title: "Literature Review Complete",
+    description: "Complete and submit the full literature review chapter.",
+    dueDate: "2026-03-25T23:59:00Z",
+    expectations: "Minimum 30 peer-reviewed sources. Cover traditional climate models, ML applications in climate science, and hybrid approaches. Include a gap analysis showing where your research fits.",
+    hasFeedback: true,
+    status: "in_progress",
+    createdAt: "2025-10-01T00:00:00Z",
+  },
+  {
+    id: "ms_2",
+    thesisId: "thesis_1",
+    professorId: "usr_4",
+    title: "Methodology & Experimental Design",
+    description: "Define and document the complete methodology including data sources, model architecture, and evaluation metrics.",
+    dueDate: "2026-04-15T23:59:00Z",
+    expectations: "Clearly describe the CNN-LSTM architecture, training data pipeline, hyperparameter selection strategy, and baseline models for comparison. Include reproducibility details.",
+    hasFeedback: true,
+    status: "upcoming",
+    createdAt: "2025-10-01T00:00:00Z",
+  },
+  {
+    id: "ms_3",
+    thesisId: "thesis_1",
+    professorId: "usr_4",
+    title: "Experimental Results & Analysis",
+    description: "Run experiments and present results with statistical analysis.",
+    dueDate: "2026-05-15T23:59:00Z",
+    expectations: "Present results with confidence intervals. Compare against at least 3 baseline methods. Include ablation studies for key architectural decisions.",
+    hasFeedback: false,
+    status: "upcoming",
+    createdAt: "2025-10-01T00:00:00Z",
+  },
+  {
+    id: "ms_4",
+    thesisId: "thesis_1",
+    professorId: "usr_4",
+    title: "Final Draft Submission",
+    description: "Submit the complete thesis draft for final review.",
+    dueDate: "2026-06-01T23:59:00Z",
+    expectations: "Complete thesis with all chapters, properly formatted references, and abstract. Minimum 20,000 words. All figures and tables must have captions and be referenced in text.",
+    hasFeedback: true,
+    status: "upcoming",
+    createdAt: "2025-10-01T00:00:00Z",
+  },
+  {
+    id: "ms_5",
+    thesisId: "thesis_3",
+    professorId: "usr_4",
+    title: "Revue de littérature",
+    description: "Soumettre la revue de littérature complète.",
+    dueDate: "2026-03-20T23:59:00Z",
+    expectations: "Couvrir les principaux travaux sur l'IA dans l'éducation en France et à l'international. Minimum 25 sources académiques.",
+    hasFeedback: true,
+    status: "completed",
+    createdAt: "2025-09-01T00:00:00Z",
+  },
+];
+
 // Database operations
 export const db = {
   users: {
@@ -273,5 +453,28 @@ export const db = {
   notifications: {
     getByUser: (userId: string) => notifications.filter((n) => n.userId === userId),
     getUnreadCount: (userId: string) => notifications.filter((n) => n.userId === userId && !n.read).length,
+  },
+  feedback: {
+    getAll: () => feedbackRequests,
+    getByStudent: (studentId: string) => feedbackRequests.filter((f) => f.studentId === studentId),
+    getByProfessor: (professorId: string) => feedbackRequests.filter((f) => f.professorId === professorId),
+    getByThesis: (thesisId: string) => feedbackRequests.filter((f) => f.thesisId === thesisId),
+    findById: (id: string) => feedbackRequests.find((f) => f.id === id),
+    create: (fb: FeedbackRequest) => { feedbackRequests.push(fb); return fb; },
+  },
+  meetings: {
+    getAll: () => meetings,
+    getByStudent: (studentId: string) => meetings.filter((m) => m.studentId === studentId),
+    getByProfessor: (professorId: string) => meetings.filter((m) => m.professorId === professorId),
+    getByThesis: (thesisId: string) => meetings.filter((m) => m.thesisId === thesisId),
+    findById: (id: string) => meetings.find((m) => m.id === id),
+    create: (m: Meeting) => { meetings.push(m); return m; },
+  },
+  milestones: {
+    getAll: () => milestones,
+    getByThesis: (thesisId: string) => milestones.filter((m) => m.thesisId === thesisId),
+    getByProfessor: (professorId: string) => milestones.filter((m) => m.professorId === professorId),
+    findById: (id: string) => milestones.find((m) => m.id === id),
+    create: (m: Milestone) => { milestones.push(m); return m; },
   },
 };
