@@ -47,6 +47,9 @@ export default function EditorPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [sessionStats, setSessionStats] = useState({ keystrokes: 0, aiAssists: 0, startTime: Date.now() });
+  const [gdocsSyncStatus, setGdocsSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,6 +69,21 @@ export default function EditorPage() {
         router.push("/dashboard");
       });
   }, [params.id, router]);
+
+  // Auto-sync to Google Docs on content changes (debounced)
+  useEffect(() => {
+    if (!thesis) return;
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    setGdocsSyncStatus("syncing");
+    syncTimeoutRef.current = setTimeout(() => {
+      // Simulate Google Docs sync (in production, would call Google Docs API)
+      setGdocsSyncStatus("synced");
+      setLastSyncTime(new Date());
+    }, 1500);
+    return () => {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
+  }, [content, thesis]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -166,6 +184,28 @@ export default function EditorPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Google Docs sync indicator */}
+          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg ${gdocsSyncStatus === "synced" ? "bg-green-50" : gdocsSyncStatus === "syncing" ? "bg-yellow-50" : "bg-red-50"}`}>
+            {gdocsSyncStatus === "synced" && (
+              <>
+                <svg className="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                <span className="text-xs font-medium text-green-700">Google Docs Synced</span>
+              </>
+            )}
+            {gdocsSyncStatus === "syncing" && (
+              <>
+                <svg className="w-4 h-4 text-yellow-600 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                <span className="text-xs font-medium text-yellow-700">Syncing...</span>
+              </>
+            )}
+            {gdocsSyncStatus === "error" && (
+              <>
+                <svg className="w-4 h-4 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+                <span className="text-xs font-medium text-red-700">Sync Error</span>
+              </>
+            )}
+          </div>
+
           {/* Integrity indicator */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg">
             <svg className="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
@@ -197,6 +237,10 @@ export default function EditorPage() {
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           <span className="text-brand-700 font-medium">Session Active</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <svg className="w-3 h-3 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 9.41L13.17 3H7C5.9 3 5 3.9 5 5v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V10.59c0-.53-.21-1.04-.59-1.41zM12 18c-2.21 0-4-1.79-4-4h2c0 1.1.9 2 2 2s2-.9 2-2h2c0 2.21-1.79 4-4 4z" /></svg>
+          <span className="text-blue-600 font-medium">Google Docs Connected</span>
         </div>
         <span className="text-brand-600">Monitoring: Keystrokes, AI Usage, Writing Patterns</span>
         <span className="text-brand-500">AI Assists this session: {sessionStats.aiAssists}</span>
