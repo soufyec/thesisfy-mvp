@@ -47,7 +47,7 @@ export default function FeatureTogglesPage() {
   };
 
   const enabledCount = features.filter((f) => f.enabled).length;
-  const categories = [...new Set(features.map((f) => f.category))];
+  const categories = Array.from(new Set(features.map((f) => f.category)));
 
   return (
     <DashboardLayout navItems={navItems}>
