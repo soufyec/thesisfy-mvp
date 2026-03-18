@@ -661,6 +661,13 @@ export const db = {
       avgIntegrity: Math.round(theses.reduce((sum, t) => sum + t.integrityScore, 0) / theses.length),
       avgAiUsage: Math.round(theses.reduce((sum, t) => sum + t.aiUsagePercent, 0) / theses.length),
     }),
+    create: (thesis: Thesis) => { theses.push(thesis); return thesis; },
+    update: (id: string, data: Partial<Thesis>) => {
+      const thesis = theses.find((t) => t.id === id);
+      if (!thesis) return undefined;
+      Object.assign(thesis, data, { updatedAt: new Date().toISOString() });
+      return thesis;
+    },
   },
   notifications: {
     getByUser: (userId: string) => notifications.filter((n) => n.userId === userId),
@@ -692,6 +699,7 @@ export const db = {
   writingSnapshots: {
     getByThesis: (thesisId: string) => writingSnapshots.filter((s) => s.thesisId === thesisId),
     getBySession: (sessionId: string) => writingSnapshots.filter((s) => s.sessionId === sessionId),
+    create: (snapshot: WritingSnapshot) => { writingSnapshots.push(snapshot); return snapshot; },
   },
   writingReports: {
     getByThesis: (thesisId: string) => writingReports.find((r) => r.thesisId === thesisId),
@@ -700,6 +708,7 @@ export const db = {
   pasteEvents: {
     getByThesis: (thesisId: string) => pasteEvents.filter((p) => p.thesisId === thesisId),
     getBySession: (sessionId: string) => pasteEvents.filter((p) => p.sessionId === sessionId),
+    create: (event: PasteEvent) => { pasteEvents.push(event); return event; },
   },
   rubrics: {
     getAll: () => rubrics,

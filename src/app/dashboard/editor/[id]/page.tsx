@@ -67,6 +67,7 @@ export default function EditorPage() {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const headingMenuRef = useRef<HTMLDivElement>(null);
   const zoomMenuRef = useRef<HTMLDivElement>(null);
+  const pendingEventsRef = useRef<Array<{type: string; content: string; position: number; wordCount: number; metadata?: object}>>([]);
 
   useEffect(() => {
     fetch(`/api/theses/${params.id}`)
@@ -95,19 +96,16 @@ export default function EditorPage() {
 
   // Auto-save on content changes
   useEffect(() => {
-    if (!thesis) return;
+    if (!thesis || !editorRef.current) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setSavedStatus("unsaved");
     saveTimeoutRef.current = setTimeout(() => {
-      setSavedStatus("saving");
-      setTimeout(() => {
-        setSavedStatus("saved");
-      }, 800);
-    }, 2000);
+      handleSave();
+    }, 3000);
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [wordCount, thesis]);
+  }, [wordCount]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,6 +124,31 @@ export default function EditorPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Flush writing events to server every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!editorRef.current || !thesis) return;
+      const text = editorRef.current.innerText || "";
+      const wc = text.split(/\s+/).filter((w: string) => w.trim().length > 0).length;
+      if (wc !== wordCount) {
+        fetch("/api/editor/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            thesisId: params.id,
+            events: [{
+              type: "typed",
+              content: text.slice(-200),
+              position: text.length,
+              wordCount: wc,
+            }],
+          }),
+        }).catch(() => {});
+      }
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [params.id, thesis, wordCount]);
 
   function convertToHTML(content: string): string {
     return content
@@ -165,6 +188,31 @@ export default function EditorPage() {
       keystrokes: prev.keystrokes + 1,
     }));
   }, [updateWordCount]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const pastedText = e.clipboardData.getData("text/plain");
+    const pastedWordCount = pastedText.split(/\s+/).filter((w: string) => w.trim().length > 0).length;
+
+    if (pastedWordCount > 5) {
+      // Record paste event to server
+      fetch("/api/editor/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          thesisId: params.id,
+          events: [{
+            type: "pasted",
+            content: pastedText.slice(0, 500),
+            position: 0,
+            wordCount: pastedWordCount,
+            metadata: { pasteSize: pastedWordCount },
+          }],
+        }),
+      }).catch(() => {});
+    }
+
+    setSessionStats(prev => ({ ...prev, keystrokes: prev.keystrokes + pastedWordCount }));
+  }, [params.id]);
 
   const checkActiveFormats = useCallback(() => {
     const formats = new Set<string>();
@@ -225,11 +273,28 @@ export default function EditorPage() {
   );
 
   const handleSave = async () => {
+    if (!thesis || !editorRef.current) return;
     setSaving(true);
     setSavedStatus("saving");
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setSaving(false);
-    setSavedStatus("saved");
+    const content = editorRef.current.innerText || "";
+    const wc = content.split(/\s+/).filter((w: string) => w.trim().length > 0).length;
+    try {
+      const res = await fetch(`/api/theses/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editorRef.current.innerHTML, wordCount: wc }),
+      });
+      if (res.ok) {
+        setSavedStatus("saved");
+        setWordCount(wc);
+      } else {
+        setSavedStatus("unsaved");
+      }
+    } catch {
+      setSavedStatus("unsaved");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const sendChatMessage = async () => {
@@ -851,6 +916,7 @@ export default function EditorPage() {
                 suppressContentEditableWarning
                 onInput={handleEditorInput}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 onMouseUp={checkActiveFormats}
                 onKeyUp={checkActiveFormats}
                 className="gdocs-editor outline-none px-[72px] py-[72px] min-h-[1056px] text-[11pt] leading-[1.5] text-gray-900"
