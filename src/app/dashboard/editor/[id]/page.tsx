@@ -29,6 +29,26 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+interface CitationMatch {
+  paperId: number;
+  confidence: number;
+  reason: string;
+  paper: {
+    id: string;
+    title: string;
+    authors: string;
+    year: number;
+    journal: string;
+  };
+}
+
+interface CitationResult {
+  matches: CitationMatch[];
+  suggestedInlineCitation: string;
+  suggestedPosition: string;
+  selectedText: string;
+}
+
 type HeadingLevel = "p" | "h1" | "h2" | "h3";
 
 export default function EditorPage() {
@@ -62,12 +82,21 @@ export default function EditorPage() {
   const [zoomLevel, setZoomLevel] = useState(100);
   const [showZoomMenu, setShowZoomMenu] = useState(false);
 
+  // Citation detection state
+  const [citationPopup, setCitationPopup] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [citationLoading, setCitationLoading] = useState(false);
+  const [citationResult, setCitationResult] = useState<CitationResult | null>(null);
+  const [showCitationModal, setShowCitationModal] = useState(false);
+  const [citationStyle, setCitationStyle] = useState<"apa" | "mla" | "chicago">("apa");
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const headingMenuRef = useRef<HTMLDivElement>(null);
   const zoomMenuRef = useRef<HTMLDivElement>(null);
   const pendingEventsRef = useRef<Array<{type: string; content: string; position: number; wordCount: number; metadata?: object}>>([]);
+  const citationPopupRef = useRef<HTMLDivElement>(null);
+  const savedSelectionRef = useRef<Range | null>(null);
 
   useEffect(() => {
     fetch(`/api/theses/${params.id}`)
@@ -213,6 +242,106 @@ export default function EditorPage() {
 
     setSessionStats(prev => ({ ...prev, keystrokes: prev.keystrokes + pastedWordCount }));
   }, [params.id]);
+
+  // Handle text selection for citation popup
+  const handleTextSelection = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !editorRef.current) {
+      // Small delay to avoid closing popup on click inside it
+      setTimeout(() => {
+        const activeEl = document.activeElement;
+        if (!citationPopupRef.current?.contains(activeEl as Node)) {
+          setCitationPopup(null);
+        }
+      }, 200);
+      return;
+    }
+
+    const selectedText = selection.toString().trim();
+    if (selectedText.length < 10) {
+      setCitationPopup(null);
+      return;
+    }
+
+    // Check if selection is inside the editor
+    const range = selection.getRangeAt(0);
+    if (!editorRef.current.contains(range.commonAncestorContainer)) {
+      setCitationPopup(null);
+      return;
+    }
+
+    // Save the selection range for later insertion
+    savedSelectionRef.current = range.cloneRange();
+
+    const rect = range.getBoundingClientRect();
+    const editorRect = editorRef.current.getBoundingClientRect();
+
+    setCitationPopup({
+      x: rect.left + rect.width / 2 - editorRect.left,
+      y: rect.top - editorRect.top - 45,
+      text: selectedText,
+    });
+  }, []);
+
+  // Detect citation from selected text
+  const detectCitation = useCallback(async (selectedText: string) => {
+    if (!thesis) return;
+    setCitationLoading(true);
+    setShowCitationModal(true);
+    setCitationPopup(null);
+
+    try {
+      const res = await fetch("/api/citations/detect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedText,
+          thesisId: params.id,
+          citationStyle,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCitationResult(data);
+      } else {
+        setCitationResult(null);
+      }
+    } catch {
+      setCitationResult(null);
+    } finally {
+      setCitationLoading(false);
+    }
+  }, [thesis, params.id, citationStyle]);
+
+  // Insert citation into editor at the end of the selected text
+  const insertCitation = useCallback((citation: string) => {
+    if (!editorRef.current || !savedSelectionRef.current) return;
+
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    // Restore saved selection
+    selection.removeAllRanges();
+    selection.addRange(savedSelectionRef.current);
+
+    // Collapse to end of selection and insert citation
+    selection.collapseToEnd();
+
+    const citationNode = document.createTextNode(` ${citation}`);
+    const range = selection.getRangeAt(0);
+    range.insertNode(citationNode);
+
+    // Move cursor after the citation
+    range.setStartAfter(citationNode);
+    range.setEndAfter(citationNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    setShowCitationModal(false);
+    setCitationResult(null);
+    savedSelectionRef.current = null;
+    updateWordCount();
+  }, [updateWordCount]);
 
   const checkActiveFormats = useCallback(() => {
     const formats = new Set<string>();
@@ -902,7 +1031,7 @@ export default function EditorPage() {
           {/* Document page */}
           <div className="flex justify-center py-4 px-4">
             <div
-              className="bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_2px_8px_rgba(0,0,0,0.08)] rounded-sm"
+              className="bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_2px_8px_rgba(0,0,0,0.08)] rounded-sm relative"
               style={{
                 width: `${816 * (zoomLevel / 100)}px`,
                 minHeight: `${1056 * (zoomLevel / 100)}px`,
@@ -917,7 +1046,7 @@ export default function EditorPage() {
                 onInput={handleEditorInput}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
-                onMouseUp={checkActiveFormats}
+                onMouseUp={() => { checkActiveFormats(); handleTextSelection(); }}
                 onKeyUp={checkActiveFormats}
                 className="gdocs-editor outline-none px-[72px] py-[72px] min-h-[1056px] text-[11pt] leading-[1.5] text-gray-900"
                 style={{
@@ -927,6 +1056,43 @@ export default function EditorPage() {
                 }}
                 spellCheck
               />
+
+              {/* Citation popup on text selection */}
+              {citationPopup && (
+                <div
+                  ref={citationPopupRef}
+                  className="absolute z-50 animate-fade-in"
+                  style={{
+                    left: `${citationPopup.x}px`,
+                    top: `${citationPopup.y}px`,
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  <div className="bg-gray-900 text-white rounded-lg shadow-xl flex items-center gap-1 px-1 py-1">
+                    <button
+                      onClick={() => detectCitation(citationPopup.text)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-700 transition-colors text-xs font-medium"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
+                        <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
+                      </svg>
+                      Add Citation
+                    </button>
+                    <div className="w-px h-5 bg-gray-600" />
+                    <select
+                      value={citationStyle}
+                      onChange={(e) => setCitationStyle(e.target.value as "apa" | "mla" | "chicago")}
+                      className="bg-transparent text-xs text-gray-300 border-0 outline-none cursor-pointer px-2 py-1 rounded hover:bg-gray-700"
+                    >
+                      <option value="apa" className="bg-gray-900">APA</option>
+                      <option value="mla" className="bg-gray-900">MLA</option>
+                      <option value="chicago" className="bg-gray-900">Chicago</option>
+                    </select>
+                  </div>
+                  <div className="w-3 h-3 bg-gray-900 rotate-45 mx-auto -mt-1.5" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -946,6 +1112,147 @@ export default function EditorPage() {
             </div>
           </div>
         </div>
+
+        {/* ===== CITATION DETECTION MODAL ===== */}
+        {showCitationModal && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col">
+              {/* Modal header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
+                      <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Citation Detection</h3>
+                    <p className="text-[11px] text-gray-500">AI-powered citation matching</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowCitationModal(false); setCitationResult(null); }}
+                  className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal body */}
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                {citationLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <svg className="w-8 h-8 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <p className="text-sm text-gray-500">Analyzing text and matching citations...</p>
+                  </div>
+                ) : citationResult ? (
+                  <div className="space-y-4">
+                    {/* Selected text preview */}
+                    <div className="bg-gray-50 rounded-lg px-4 py-3">
+                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Selected text</p>
+                      <p className="text-xs text-gray-700 italic line-clamp-3">&ldquo;{citationResult.selectedText}&rdquo;</p>
+                    </div>
+
+                    {/* Matches */}
+                    {citationResult.matches.length > 0 ? (
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-gray-500">
+                          {citationResult.matches.length} matching paper{citationResult.matches.length !== 1 ? "s" : ""} found
+                        </p>
+                        {citationResult.matches.map((match, idx) => (
+                          <div
+                            key={idx}
+                            className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                            onClick={() => insertCitation(
+                              citationResult.suggestedInlineCitation && idx === 0
+                                ? citationResult.suggestedInlineCitation
+                                : `(${match.paper.authors.split(",")[0].trim().split(" ").pop()}${match.paper.authors.includes(",") ? " et al." : ""}, ${match.paper.year})`
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-medium text-gray-900 leading-snug">{match.paper.title}</h4>
+                                <p className="text-xs text-gray-500 mt-1">{match.paper.authors}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  {match.paper.journal}, {match.paper.year}
+                                </p>
+                                <p className="text-[11px] text-gray-500 mt-2 bg-gray-50 rounded px-2 py-1">
+                                  {match.reason}
+                                </p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                  match.confidence > 0.7 ? "bg-green-100 text-green-700" :
+                                  match.confidence > 0.4 ? "bg-yellow-100 text-yellow-700" :
+                                  "bg-gray-100 text-gray-600"
+                                }`}>
+                                  {Math.round(match.confidence * 100)}%
+                                </div>
+                                <button className="text-[10px] text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                  Insert citation
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Quick insert suggested citation */}
+                        {citationResult.suggestedInlineCitation && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                            <p className="text-[10px] font-medium text-blue-500 uppercase tracking-wider mb-1">Suggested citation</p>
+                            <div className="flex items-center justify-between gap-3">
+                              <code className="text-sm font-mono text-blue-800">{citationResult.suggestedInlineCitation}</code>
+                              <button
+                                onClick={() => insertCitation(citationResult.suggestedInlineCitation)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex-shrink-0"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M12 5v14M5 12h14" />
+                                </svg>
+                                Insert
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="M21 21l-4.35-4.35" />
+                        </svg>
+                        <p className="text-sm text-gray-500">No matching papers found</p>
+                        <p className="text-xs text-gray-400 mt-1">Try selecting a different passage or add more research papers to your thesis.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-gray-500">Something went wrong. Please try again.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal footer */}
+              <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                <p className="text-[10px] text-gray-400">Click on a paper to insert its citation</p>
+                <button
+                  onClick={() => { setShowCitationModal(false); setCitationResult(null); }}
+                  className="text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ===== AI CHAT PANEL (Claude-like) ===== */}
         {showAI && (

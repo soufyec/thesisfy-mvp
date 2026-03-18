@@ -182,6 +182,20 @@ export interface AIChatLog {
   tokensUsed: number;
 }
 
+export interface ResearchPaper {
+  id: string;
+  thesisId: string;
+  title: string;
+  authors: string;
+  year: number;
+  journal: string;
+  volume?: string;
+  pages?: string;
+  doi?: string;
+  abstract?: string;
+  addedAt: string;
+}
+
 export interface FeatureToggle {
   id: string;
   name: string;
@@ -640,6 +654,87 @@ const featureToggles: FeatureToggle[] = [
   { id: "ft_9", name: "ai_chat_activity", description: "AI Chat Activity Report — Detailed logs and categorized summary of all AI interactions", category: "monitoring", enabled: true },
 ];
 
+const researchPapers: ResearchPaper[] = [
+  {
+    id: "rp_1",
+    thesisId: "thesis_1",
+    title: "Deep learning and process understanding for data-driven Earth system science",
+    authors: "Reichstein, M., Camps-Valls, G., Stevens, B., Jung, M., Denzler, J., Carvalhais, N., & Prabhat",
+    year: 2019,
+    journal: "Nature",
+    volume: "566(7743)",
+    pages: "195-204",
+    doi: "10.1038/s41586-019-0912-1",
+    abstract: "Machine learning approaches are increasingly used to extract patterns and insights from the ever-increasing stream of geospatial data, but current approaches may not be optimal when dealing with spatial and temporal richness of Earth system data.",
+    addedAt: "2025-11-01T00:00:00Z",
+  },
+  {
+    id: "rp_2",
+    thesisId: "thesis_1",
+    title: "Can deep learning beat numerical weather prediction?",
+    authors: "Schultz, M.G., Betancourt, C., Gong, B., Kleinert, F., Langguth, M., Leufen, L.H., Mozaffari, A., & Stadtler, S.",
+    year: 2021,
+    journal: "Phil. Trans. R. Soc. A",
+    volume: "379(2194)",
+    pages: "20200097",
+    doi: "10.1098/rsta.2020.0097",
+    abstract: "This paper reviews the state of the art in applying deep learning to weather prediction and asks whether data-driven approaches can outperform traditional numerical weather prediction models.",
+    addedAt: "2025-11-15T00:00:00Z",
+  },
+  {
+    id: "rp_3",
+    thesisId: "thesis_1",
+    title: "Pangu-Weather: A 3D high-resolution model for fast and accurate global weather forecast",
+    authors: "Bi, K., Xie, L., Zhang, H., Chen, X., Gu, X., & Tian, Q.",
+    year: 2023,
+    journal: "Nature",
+    volume: "619",
+    pages: "533-538",
+    doi: "10.1038/s41586-023-06185-3",
+    abstract: "We introduce Pangu-Weather, a 3D deep learning model for global weather prediction that provides fast and accurate forecasts using 3D neural networks and hierarchical temporal aggregation.",
+    addedAt: "2025-12-01T00:00:00Z",
+  },
+  {
+    id: "rp_4",
+    thesisId: "thesis_1",
+    title: "GraphCast: Learning skillful medium-range global weather forecasting",
+    authors: "Lam, R., Sanchez-Gonzalez, A., Willson, M., Wirber, P., Fortunato, M., Alet, F., Ravuri, S., Ewalds, T., et al.",
+    year: 2023,
+    journal: "Science",
+    volume: "382(6677)",
+    pages: "1416-1421",
+    doi: "10.1126/science.adi2336",
+    abstract: "GraphCast is a machine learning-based weather forecasting model that outperforms the world's best deterministic operational medium-range weather forecasting system.",
+    addedAt: "2025-12-10T00:00:00Z",
+  },
+  {
+    id: "rp_5",
+    thesisId: "thesis_1",
+    title: "Climate informatics: accelerating discovering in climate science with machine learning",
+    authors: "Monteleoni, C., Schmidt, G.A., & McQuade, S.",
+    year: 2013,
+    journal: "Computing in Science & Engineering",
+    volume: "15(5)",
+    pages: "32-40",
+    doi: "10.1109/MCSE.2013.50",
+    abstract: "This paper reviews how machine learning and data mining techniques can accelerate discovery in climate science through improved predictions and pattern recognition.",
+    addedAt: "2026-01-05T00:00:00Z",
+  },
+  {
+    id: "rp_6",
+    thesisId: "thesis_1",
+    title: "Neural General Circulation Models for Weather and Climate",
+    authors: "Schneider, T., Behera, S., Boccaletti, G., Deser, C., Emanuel, K., Ferrari, R., Leung, L.R., Lin, N., & Wills, R.C.",
+    year: 2023,
+    journal: "Nature Reviews Earth & Environment",
+    volume: "4",
+    pages: "1-14",
+    doi: "10.1038/s43017-023-00489-0",
+    abstract: "Neural GCMs combine traditional climate models with machine learning to improve parameterization of subgrid-scale processes, offering a promising path for next-generation climate models.",
+    addedAt: "2026-01-20T00:00:00Z",
+  },
+];
+
 // Database operations
 export const db = {
   users: {
@@ -726,6 +821,11 @@ export const db = {
     getByThesis: (thesisId: string) => aiChatLogs.filter((l) => l.thesisId === thesisId),
     getByStudent: (studentId: string) => aiChatLogs.filter((l) => l.studentId === studentId),
     getByCategory: (category: string) => aiChatLogs.filter((l) => l.category === category),
+  },
+  researchPapers: {
+    getByThesis: (thesisId: string) => researchPapers.filter((p) => p.thesisId === thesisId),
+    findById: (id: string) => researchPapers.find((p) => p.id === id),
+    create: (paper: ResearchPaper) => { researchPapers.push(paper); return paper; },
   },
   featureToggles: {
     getAll: () => featureToggles,
