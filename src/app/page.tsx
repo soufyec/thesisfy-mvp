@@ -147,13 +147,27 @@ function Reveal({ children, delay = 0, direction = "up", className = "" }: { chi
 
 /* ===== Data ===== */
 
-const testimonials = [
-  { name: "Sarah Chen", role: "PhD Candidate", university: "Stanford University", initials: "SC", gradient: "bg-gradient-to-br from-rose-400 to-pink-600", quote: "Thesisfy changed how I approach my dissertation. I use AI for brainstorming without any guilt — my advisor can see exactly how I use it.", rating: 5 },
-  { name: "Prof. Marcus Webb", role: "Dept. Head, Computer Science", university: "MIT", initials: "MW", gradient: "bg-gradient-to-br from-blue-400 to-indigo-600", quote: "Instead of spending hours running plagiarism checks, I see the entire writing process in real time. It's the difference between policing and mentoring.", rating: 5 },
-  { name: "Amara Okafor", role: "Master's Student", university: "University of Oxford", initials: "AO", gradient: "bg-gradient-to-br from-emerald-400 to-teal-600", quote: "The regulated AI assistant helps me structure my arguments without writing them for me. My writing has genuinely improved.", rating: 5 },
-  { name: "Dr. Elena Rossi", role: "Associate Professor, Literature", university: "Sorbonne University", initials: "ER", gradient: "bg-gradient-to-br from-amber-400 to-orange-600", quote: "The writing playback feature is revolutionary. I can see where students struggled, where they excelled. My feedback is now so much more targeted.", rating: 5 },
-  { name: "James Liu", role: "PhD Student, Bioengineering", university: "ETH Zurich", initials: "JL", gradient: "bg-gradient-to-br from-cyan-400 to-blue-600", quote: "As a non-native English speaker, the tools help me write academically without being flagged as AI-generated. Finally, a fair system.", rating: 5 },
-  { name: "Prof. David Nakamura", role: "Dean of Graduate Studies", university: "University of Toronto", initials: "DN", gradient: "bg-gradient-to-br from-violet-400 to-purple-600", quote: "Academic misconduct cases dropped 73% in the first semester. Not because students cheat less, but because the rules are finally clear.", rating: 5 },
+const socialProofAvatars = [
+  { initials: "SC", gradient: "bg-gradient-to-br from-rose-400 to-pink-600" },
+  { initials: "MW", gradient: "bg-gradient-to-br from-blue-400 to-indigo-600" },
+  { initials: "AO", gradient: "bg-gradient-to-br from-emerald-400 to-teal-600" },
+  { initials: "ER", gradient: "bg-gradient-to-br from-amber-400 to-orange-600" },
+  { initials: "JL", gradient: "bg-gradient-to-br from-cyan-400 to-blue-600" },
+];
+
+const crisisStats = [
+  { value: "2-5%", label: "Real false positive rate of AI detectors", sublabel: "Turnitin claims <1% — independent studies show otherwise", icon: "alert", source: "Stanford/Oxford Research 2024" },
+  { value: "3,750", label: "Students wrongly accused per university/year", sublabel: "Based on 75,000 submissions × 5% false positive rate", icon: "people", source: "Calculated from Turnitin's own data" },
+  { value: "2x", label: "Non-native speakers flagged more often", sublabel: "ESL students disproportionately penalized by detection algorithms", icon: "globe", source: "Stanford Digital Economy Lab" },
+  { value: "±15%", label: "Variance in detection scores for the same text", sublabel: "Run the same paper twice — different result each time", icon: "variance", source: "University of Maryland Study" },
+];
+
+const abandoningUniversities = [
+  { name: "Vanderbilt University", reason: "Banned AI detection tools after false accusations", flag: "🇺🇸" },
+  { name: "University of Cambridge", reason: "Stopped using Turnitin for AI detection", flag: "🇬🇧" },
+  { name: "Durham University", reason: "Abandoned AI detection due to bias concerns", flag: "🇬🇧" },
+  { name: "Sciences Po Paris", reason: "Shifted to process-based assessment", flag: "🇫🇷" },
+  { name: "University of Sydney", reason: "Paused AI detection after student appeals surge", flag: "🇦🇺" },
 ];
 
 const universities = [
@@ -203,15 +217,69 @@ function FeatureIcon({ name, className = "w-6 h-6" }: { name: string; className?
 /* ===== MAIN PAGE ===== */
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
   const scrollProgress = useScrollProgress();
   const parallaxOffset = useParallax(0.15);
   const mouse = useMousePosition();
 
+  // Waitlist state
+  const [waitlistData, setWaitlistData] = useState({ totalSpots: 30, spotsUsed: 23, spotsRemaining: 7, recentInstitutions: [] as { institution: string; joinedAt: string }[] });
+  const [waitlistForm, setWaitlistForm] = useState({ name: "", email: "", institution: "", role: "dean" });
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
+  const [waitlistResult, setWaitlistResult] = useState<{ position: number; referralCode: string; spotsRemaining: number } | null>(null);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistError, setWaitlistError] = useState("");
+
+  // Countdown to May 2026
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   useEffect(() => {
-    const timer = setInterval(() => setActiveTestimonial((p) => (p + 1) % testimonials.length), 5000);
+    const target = new Date("2026-05-01T00:00:00Z").getTime();
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, target - now);
+      setCountdown({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
+      });
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch waitlist data on mount
+  useEffect(() => {
+    fetch("/api/waitlist").then(r => r.json()).then(data => setWaitlistData(data)).catch(() => {});
+  }, []);
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWaitlistLoading(true);
+    setWaitlistError("");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(waitlistForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWaitlistSubmitted(true);
+        setWaitlistResult({ position: data.position, referralCode: data.referralCode, spotsRemaining: data.spotsRemaining });
+        setWaitlistData(prev => ({ ...prev, spotsUsed: data.totalSpots - data.spotsRemaining, spotsRemaining: data.spotsRemaining }));
+      } else if (data.alreadyRegistered) {
+        setWaitlistSubmitted(true);
+        setWaitlistResult({ position: data.position, referralCode: data.referralCode, spotsRemaining: data.spotsRemaining });
+      } else {
+        setWaitlistError(data.error || "Something went wrong");
+      }
+    } catch {
+      setWaitlistError("Network error. Please try again.");
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
@@ -231,10 +299,10 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Features</a>
               <a href="#impact" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Impact</a>
-              <a href="#testimonials" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Testimonials</a>
-              <a href="#offer" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">For Institutions</a>
+              <a href="#crisis" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">The Problem</a>
+              <a href="#waitlist" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Join Waitlist</a>
               <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Sign In</Link>
-              <Link href="/login" className="btn-primary text-sm !py-2 !px-5 !rounded-full">Get Started</Link>
+              <a href="#waitlist" className="btn-primary text-sm !py-2 !px-5 !rounded-full">Join Waitlist</a>
             </div>
             <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? (
@@ -247,8 +315,8 @@ export default function LandingPage() {
         </div>
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3">
-            {["Features", "Impact", "Testimonials", "For Institutions"].map((item) => (
-              <a key={item} href={`#${item.toLowerCase().replace(/ /g, "-").replace("for-", "")}`} className="block text-sm font-medium text-gray-600 py-2" onClick={() => setMobileMenuOpen(false)}>{item}</a>
+            {[{ label: "Features", href: "#features" }, { label: "Impact", href: "#impact" }, { label: "The Problem", href: "#crisis" }, { label: "Join Waitlist", href: "#waitlist" }].map((item) => (
+              <a key={item.label} href={item.href} className="block text-sm font-medium text-gray-600 py-2" onClick={() => setMobileMenuOpen(false)}>{item.label}</a>
             ))}
             <Link href="/login" className="btn-primary text-sm w-full text-center">Get Started</Link>
           </div>
@@ -292,10 +360,10 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: "0.2s" }}>
-              <Link href="/login" className="btn-primary text-base !px-8 !py-4 !rounded-full w-full sm:w-auto group shadow-xl shadow-brand-600/20">
-                Request Free Access
+              <a href="#waitlist" className="btn-primary text-base !px-8 !py-4 !rounded-full w-full sm:w-auto group shadow-xl shadow-brand-600/20">
+                Claim Your Founding Spot
                 <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
-              </Link>
+              </a>
               <a href="#comparison" className="btn-outline text-base !px-8 !py-4 !rounded-full w-full sm:w-auto">
                 See How We Compare
               </a>
@@ -304,7 +372,7 @@ export default function LandingPage() {
             {/* Social proof */}
             <div className="flex items-center justify-center gap-3 mt-10 animate-slide-up" style={{ animationDelay: "0.3s" }}>
               <div className="flex -space-x-3">
-                {testimonials.slice(0, 5).map((t, i) => (
+                {socialProofAvatars.map((t, i) => (
                   <div key={i} className={`w-9 h-9 ${t.gradient} rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white shadow-sm`}>{t.initials}</div>
                 ))}
               </div>
@@ -505,65 +573,104 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== TESTIMONIALS ===== */}
-      <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto">
+      {/* ===== THE CRISIS: DATA-DRIVEN THESIS VALIDATION ===== */}
+      <section id="crisis" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: "radial-gradient(circle, #ef4444 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+        <div className="max-w-7xl mx-auto relative">
           <Reveal>
             <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 rounded-full text-amber-600 text-xs font-semibold mb-4 uppercase tracking-widest">Testimonials</div>
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4">Loved by <span className="gradient-text">Students</span> and <span className="gradient-text">Professors</span></h2>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-100 rounded-full text-red-600 text-xs font-semibold mb-4 uppercase tracking-widest">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                The Crisis in AI Detection
+              </div>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-6">
+                AI Detectors Are <span className="text-red-500">Destroying</span>
+                <br />Academic Careers
+              </h2>
+              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                The tools designed to protect academic integrity are now the biggest threat to it. Here are the numbers that universities don&apos;t want you to see.
+              </p>
             </div>
           </Reveal>
 
-          {/* Featured */}
-          <Reveal delay={100}>
-            <div className="max-w-4xl mx-auto mb-12">
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 sm:p-10 relative overflow-hidden" key={activeTestimonial}>
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-500 to-accent-500" />
-                <div className="flex flex-col sm:flex-row gap-6 items-start">
-                  <div className={`w-16 h-16 ${testimonials[activeTestimonial].gradient} rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg flex-shrink-0`}>{testimonials[activeTestimonial].initials}</div>
-                  <div className="flex-1">
-                    <div className="flex gap-0.5 mb-3">{[...Array(5)].map((_, i) => <svg key={i} className="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}</div>
-                    <blockquote className="text-lg text-gray-700 leading-relaxed mb-4 italic">&ldquo;{testimonials[activeTestimonial].quote}&rdquo;</blockquote>
+          {/* Main stat cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+            {crisisStats.map((stat, i) => (
+              <Reveal key={stat.label} delay={i * 120}>
+                <TiltCard>
+                  <div className="bg-white rounded-2xl p-6 border border-red-100 shadow-sm hover:shadow-xl transition-all duration-300 group h-full">
+                    <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      {stat.icon === "alert" && <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>}
+                      {stat.icon === "people" && <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
+                      {stat.icon === "globe" && <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>}
+                      {stat.icon === "variance" && <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>}
+                    </div>
+                    <div className="text-3xl sm:text-4xl font-extrabold text-red-600 mb-2">{stat.value}</div>
+                    <div className="text-sm font-semibold text-gray-900 mb-1">{stat.label}</div>
+                    <div className="text-xs text-gray-500 mb-3">{stat.sublabel}</div>
+                    <div className="text-[10px] text-gray-400 italic border-t border-gray-100 pt-2">{stat.source}</div>
+                  </div>
+                </TiltCard>
+              </Reveal>
+            ))}
+          </div>
+
+          {/* Universities abandoning detection */}
+          <Reveal delay={200}>
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 sm:p-10 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-red-500/10 rounded-full blur-3xl" />
+                <div className="relative">
+                  <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                    Universities Are Already Abandoning AI Detection
+                  </h3>
+                  <p className="text-sm text-gray-400 mb-6">These institutions have publicly stopped using AI detection tools due to accuracy and bias concerns.</p>
+                  <div className="space-y-3">
+                    {abandoningUniversities.map((uni, i) => (
+                      <div key={uni.name} className="flex items-center gap-4 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                        <span className="text-2xl">{uni.flag}</span>
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm">{uni.name}</div>
+                          <div className="text-xs text-gray-400">{uni.reason}</div>
+                        </div>
+                        <svg className="w-4 h-4 text-red-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
                     <div>
-                      <div className="font-semibold text-gray-900">{testimonials[activeTestimonial].name}</div>
-                      <div className="text-sm text-gray-500">{testimonials[activeTestimonial].role} &middot; {testimonials[activeTestimonial].university}</div>
+                      <div className="text-2xl font-extrabold text-red-400">$0</div>
+                      <div className="text-xs text-gray-400">False accusations with Thesisfy</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-extrabold text-accent-400">100%</div>
+                      <div className="text-xs text-gray-400">Process-based verification</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-extrabold text-green-400">0</div>
+                      <div className="text-xs text-gray-400">Probabilistic guessing</div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-center gap-2 mt-6">
-                  {testimonials.map((_, i) => (
-                    <button key={i} onClick={() => setActiveTestimonial(i)} className={`transition-all duration-300 rounded-full ${i === activeTestimonial ? "w-8 h-2 bg-brand-500" : "w-2 h-2 bg-gray-300 hover:bg-gray-400"}`} />
-                  ))}
                 </div>
               </div>
             </div>
           </Reveal>
 
-          {/* Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <Reveal key={i} delay={i * 100}>
-                <div className={`bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-default ${i === activeTestimonial ? "ring-2 ring-brand-500/20 border-brand-200" : ""}`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={`w-10 h-10 ${t.gradient} rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm`}>{t.initials}</div>
-                    <div>
-                      <div className="font-semibold text-sm">{t.name}</div>
-                      <div className="text-xs text-gray-400">{t.university}</div>
-                    </div>
-                    <div className="ml-auto">
-                      {t.role.includes("Prof") || t.role.includes("Dean") ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 rounded-full text-[10px] font-medium text-blue-700">Faculty</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded-full text-[10px] font-medium text-green-700">Student</span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed line-clamp-4">&ldquo;{t.quote}&rdquo;</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+          {/* Thesisfy difference callout */}
+          <Reveal delay={300}>
+            <div className="max-w-3xl mx-auto mt-12 text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-full text-green-700 text-sm font-semibold mb-4">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+                The Thesisfy Difference
+              </div>
+              <p className="text-lg text-gray-700 leading-relaxed">
+                We don&apos;t guess if a text was written by AI. We <strong className="text-gray-900">record the entire writing process</strong> — every keystroke, every pause, every edit.
+                No algorithms. No probabilities. Just <strong className="text-gray-900">irrefutable evidence</strong> of how the work was created.
+              </p>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -602,80 +709,222 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== INSTITUTIONAL OFFER (replaces pricing) ===== */}
-      <section id="offer" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-brand-50 via-white to-accent-50 relative overflow-hidden">
+      {/* ===== WAITLIST — FOUNDING INSTITUTION PROGRAM ===== */}
+      <section id="waitlist" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-brand-50 via-white to-accent-50 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: "radial-gradient(circle, #4c6ef5 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-100/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-100/20 rounded-full blur-3xl" />
 
         <div className="max-w-5xl mx-auto relative">
           <Reveal>
             <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent-50 border border-accent-200 rounded-full text-accent-700 text-sm font-semibold mb-6 shadow-sm">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
-                Limited Time Offer for Institutions
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-50 border border-amber-200 rounded-full text-amber-700 text-sm font-semibold mb-6 shadow-sm">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                Founding Institution Program — By Invitation Only
               </div>
-              <h2 className="text-3xl sm:text-5xl font-extrabold mb-6">
-                <span className="gradient-text">Free for 1 Year</span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold mb-4">
+                Only <span className="text-red-500">{waitlistData.spotsRemaining}</span> Spots Left
                 <br />
-                For Your Entire Institution
+                <span className="gradient-text">Out of {waitlistData.totalSpots}</span>
               </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                We believe in our product. That&apos;s why we&apos;re offering <strong className="text-gray-800">full, unrestricted access</strong> for one year — no strings attached. See the results before you commit.
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-2">
+                We&apos;re selecting just <strong className="text-gray-900">{waitlistData.totalSpots} institutions worldwide</strong> for our founding cohort launching in May 2026. Free for the entire first year. No exceptions.
               </p>
+              <p className="text-sm text-red-500 font-medium">We cannot accept everyone. Demand far exceeds capacity.</p>
+            </div>
+          </Reveal>
+
+          {/* Countdown timer */}
+          <Reveal delay={100}>
+            <div className="flex items-center justify-center gap-3 sm:gap-6 mb-12">
+              {[
+                { val: countdown.days, label: "Days" },
+                { val: countdown.hours, label: "Hours" },
+                { val: countdown.minutes, label: "Minutes" },
+                { val: countdown.seconds, label: "Seconds" },
+              ].map((unit) => (
+                <div key={unit.label} className="text-center">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl shadow-lg border border-gray-200 flex items-center justify-center mb-2">
+                    <span className="text-2xl sm:text-3xl font-extrabold text-gray-900">{String(unit.val).padStart(2, "0")}</span>
+                  </div>
+                  <span className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider font-medium">{unit.label}</span>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+
+          {/* Progress bar */}
+          <Reveal delay={150}>
+            <div className="max-w-xl mx-auto mb-12">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-gray-600"><strong className="text-gray-900">{waitlistData.spotsUsed}</strong> of {waitlistData.totalSpots} spots claimed</span>
+                <span className="text-red-500 font-semibold">{waitlistData.spotsRemaining} remaining</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-brand-500 via-accent-500 to-red-500 transition-all duration-1000 ease-out relative"
+                  style={{ width: `${(waitlistData.spotsUsed / waitlistData.totalSpots) * 100}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                </div>
+              </div>
+              <div className="flex justify-between mt-2 text-[10px] text-gray-400">
+                <span>Feb 2026</span>
+                <span className="text-red-500 font-medium">Almost full</span>
+                <span>May 2026 Launch</span>
+              </div>
             </div>
           </Reveal>
 
           <Reveal delay={200}>
             <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-              {/* Gradient top bar */}
-              <div className="h-2 bg-gradient-to-r from-brand-500 via-accent-500 to-brand-500" />
+              <div className="h-2 bg-gradient-to-r from-brand-500 via-accent-500 to-red-500" />
 
               <div className="p-8 sm:p-12">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  {/* Left: What's included */}
+                  {/* Left: What you get */}
                   <div>
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
                       <svg className="w-5 h-5 text-accent-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                      Everything Included
+                      Founding Institution Benefits
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <p className="text-sm text-gray-500 mb-6">Reserved for the first {waitlistData.totalSpots} institutions only.</p>
+                    <div className="space-y-3">
                       {[
-                        "Unlimited theses & students",
-                        "Full analytics dashboard",
-                        "Writing process playback",
-                        "Regulated AI assistant",
-                        "Integrity scoring engine",
-                        "Professor monitoring tools",
-                        "Custom AI policies",
-                        "Paste & plagiarism detection",
-                        "Citation management tools",
-                        "SSO integration",
-                        "Priority support",
-                        "Data export & API access",
-                      ].map((feature) => (
-                        <div key={feature} className="flex items-center gap-2 text-sm text-gray-700">
-                          <svg className="w-4 h-4 text-accent-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-                          {feature}
+                        { text: "12 months completely free — $0, no credit card", highlight: true },
+                        { text: "Unlimited students and theses", highlight: false },
+                        { text: "Full platform access from day one", highlight: false },
+                        { text: "Priority AI model access", highlight: false },
+                        { text: "Dedicated onboarding & support team", highlight: false },
+                        { text: "Shape the product roadmap — founding members vote on features", highlight: true },
+                        { text: "Permanent \"Founding Institution\" badge", highlight: true },
+                        { text: "Guaranteed pricing lock for life", highlight: true },
+                      ].map((item) => (
+                        <div key={item.text} className={`flex items-start gap-2 text-sm ${item.highlight ? "text-brand-700 font-semibold" : "text-gray-700"}`}>
+                          <svg className={`w-4 h-4 flex-shrink-0 mt-0.5 ${item.highlight ? "text-accent-500" : "text-green-500"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                          {item.text}
                         </div>
                       ))}
                     </div>
+
+                    {/* Recent joiners — social proof */}
+                    {waitlistData.recentInstitutions.length > 0 && (
+                      <div className="mt-8 pt-6 border-t border-gray-100">
+                        <div className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-3">Recently Joined</div>
+                        <div className="space-y-2">
+                          {waitlistData.recentInstitutions.slice(0, 3).map((inst, i) => (
+                            <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                              <span className="font-medium">{inst.institution}</span>
+                              <span className="text-xs text-gray-400">joined {new Date(inst.joinedAt).toLocaleDateString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Right: CTA */}
-                  <div className="flex flex-col items-center justify-center text-center bg-gradient-to-br from-brand-50 to-accent-50 rounded-2xl p-8">
-                    <div className="text-6xl font-extrabold gradient-text mb-2">$0</div>
-                    <div className="text-gray-500 mb-1">for 12 months</div>
-                    <div className="text-xs text-gray-400 mb-6">No credit card. No hidden fees. Cancel anytime.</div>
+                  {/* Right: Form or Success */}
+                  <div>
+                    {!waitlistSubmitted ? (
+                      <div className="bg-gradient-to-br from-brand-50 to-accent-50 rounded-2xl p-8">
+                        <div className="text-center mb-6">
+                          <div className="text-5xl font-extrabold gradient-text mb-1">$0</div>
+                          <div className="text-sm text-gray-500">for 12 months. No strings attached.</div>
+                        </div>
 
-                    <Link href="/login" className="btn-primary w-full !py-4 !text-base !rounded-full group shadow-xl shadow-brand-600/20 mb-4">
-                      Request Institutional Access
-                      <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
-                    </Link>
+                        <form onSubmit={handleWaitlistSubmit} className="space-y-3">
+                          <input
+                            type="text"
+                            placeholder="Your full name"
+                            value={waitlistForm.name}
+                            onChange={e => setWaitlistForm(f => ({ ...f, name: e.target.value }))}
+                            className="input-field"
+                            required
+                          />
+                          <input
+                            type="email"
+                            placeholder="Institutional email"
+                            value={waitlistForm.email}
+                            onChange={e => setWaitlistForm(f => ({ ...f, email: e.target.value }))}
+                            className="input-field"
+                            required
+                          />
+                          <input
+                            type="text"
+                            placeholder="University / Institution name"
+                            value={waitlistForm.institution}
+                            onChange={e => setWaitlistForm(f => ({ ...f, institution: e.target.value }))}
+                            className="input-field"
+                            required
+                          />
+                          <select
+                            value={waitlistForm.role}
+                            onChange={e => setWaitlistForm(f => ({ ...f, role: e.target.value }))}
+                            className="input-field"
+                          >
+                            <option value="dean">Dean / Vice-Chancellor</option>
+                            <option value="professor">Professor / Department Head</option>
+                            <option value="admin">Academic Administrator</option>
+                            <option value="other">Other Decision-Maker</option>
+                          </select>
 
-                    <p className="text-xs text-gray-400">
-                      Or email us at <strong className="text-gray-600">partnerships@thesisfy.edu</strong>
-                    </p>
+                          {waitlistError && <p className="text-sm text-red-500 font-medium">{waitlistError}</p>}
 
-                    <div className="flex items-center gap-4 mt-6 pt-6 border-t border-gray-200 w-full justify-center">
+                          <button
+                            type="submit"
+                            disabled={waitlistLoading}
+                            className="btn-primary w-full !py-4 !text-base !rounded-full group shadow-xl shadow-brand-600/20 disabled:opacity-50"
+                          >
+                            {waitlistLoading ? (
+                              <span className="flex items-center gap-2">
+                                <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" /><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" /></svg>
+                                Reserving your spot...
+                              </span>
+                            ) : (
+                              <>
+                                Claim Your Spot — Only {waitlistData.spotsRemaining} Left
+                                <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+                              </>
+                            )}
+                          </button>
+                        </form>
+
+                        <p className="text-[10px] text-gray-400 text-center mt-3">No credit card required. We&apos;ll contact you within 48 hours.</p>
+                      </div>
+                    ) : (
+                      <div className="bg-gradient-to-br from-green-50 to-accent-50 rounded-2xl p-8 text-center">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-8 h-8 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">You&apos;re In!</h3>
+                        <p className="text-gray-600 mb-6">Your institution has been added to the founding program.</p>
+
+                        {waitlistResult && (
+                          <div className="space-y-4">
+                            <div className="bg-white rounded-xl p-4 border border-gray-200">
+                              <div className="text-xs text-gray-500 mb-1">Your position</div>
+                              <div className="text-4xl font-extrabold gradient-text">#{waitlistResult.position}</div>
+                              <div className="text-xs text-gray-400">of {waitlistData.totalSpots} founding institutions</div>
+                            </div>
+
+                            <div className="bg-white rounded-xl p-4 border border-gray-200">
+                              <div className="text-xs text-gray-500 mb-1">Your referral code</div>
+                              <div className="text-lg font-bold text-brand-600 font-mono">{waitlistResult.referralCode}</div>
+                              <div className="text-xs text-gray-400 mt-1">Share this with other institutions to move up the queue</div>
+                            </div>
+
+                            <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                              <div className="text-sm text-amber-800 font-medium">
+                                Only {waitlistResult.spotsRemaining} spots remaining after you. Share your referral code to help colleagues secure access before it&apos;s too late.
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4 mt-4 justify-center">
                       {["GDPR", "FERPA", "SOC 2"].map((badge) => (
                         <div key={badge} className="flex items-center gap-1 text-xs text-gray-400">
                           <FeatureIcon name="shield" className="w-3 h-3" />
@@ -683,22 +932,6 @@ export default function LandingPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                </div>
-
-                {/* Guarantee bar */}
-                <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
-                    Full feature access from day one
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
-                    Dedicated onboarding support
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
-                    No obligation to continue
                   </div>
                 </div>
               </div>
@@ -717,14 +950,14 @@ export default function LandingPage() {
               <div className="absolute top-6 right-20 hidden sm:block"><div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/30 shadow-lg animate-float-slow">MW</div></div>
               <div className="absolute bottom-8 left-12 hidden sm:block"><div className="w-8 h-8 bg-gradient-to-br from-rose-400 to-pink-600 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/30 shadow-lg animate-float-slower">SC</div></div>
               <div className="relative">
-                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to Transform Academic Integrity?</h2>
-                <p className="text-brand-100 mb-8 max-w-xl mx-auto">Join 50+ universities already using Thesisfy. Your first year is completely free.</p>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Don&apos;t Let Your Institution Miss Out</h2>
+                <p className="text-brand-100 mb-8 max-w-xl mx-auto">Only {waitlistData.spotsRemaining} founding spots remain. Secure free access for your entire institution before May 2026.</p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Link href="/login" className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-brand-700 bg-white rounded-full hover:bg-brand-50 transition-all shadow-lg group">
-                    Get Started for Free
+                  <a href="#waitlist" className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-brand-700 bg-white rounded-full hover:bg-brand-50 transition-all shadow-lg group">
+                    Join the Waitlist Now
                     <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
-                  </Link>
-                  <a href="#comparison" className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white border-2 border-white/30 rounded-full hover:bg-white/10 transition-all">Watch Demo</a>
+                  </a>
+                  <a href="#crisis" className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white border-2 border-white/30 rounded-full hover:bg-white/10 transition-all">See the Data</a>
                 </div>
               </div>
             </div>
@@ -743,7 +976,7 @@ export default function LandingPage() {
               </div>
               <p className="text-sm text-gray-500 mb-4">Academic integrity through AI regulation, not detection.</p>
               <div className="flex -space-x-2">
-                {testimonials.slice(0, 4).map((t, i) => <div key={i} className={`w-7 h-7 ${t.gradient} rounded-full flex items-center justify-center text-white text-[9px] font-bold ring-2 ring-white`}>{t.initials}</div>)}
+                {socialProofAvatars.slice(0, 4).map((t, i) => <div key={i} className={`w-7 h-7 ${t.gradient} rounded-full flex items-center justify-center text-white text-[9px] font-bold ring-2 ring-white`}>{t.initials}</div>)}
                 <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-[9px] font-bold ring-2 ring-white">+12k</div>
               </div>
             </div>
@@ -753,7 +986,7 @@ export default function LandingPage() {
                 <li><a href="#features" className="hover:text-brand-600 transition-colors">Features</a></li>
                 <li><a href="#impact" className="hover:text-brand-600 transition-colors">Impact</a></li>
                 <li><a href="#comparison" className="hover:text-brand-600 transition-colors">Compare</a></li>
-                <li><a href="#testimonials" className="hover:text-brand-600 transition-colors">Testimonials</a></li>
+                <li><a href="#crisis" className="hover:text-brand-600 transition-colors">The Problem</a></li>
               </ul>
             </div>
             <div>
