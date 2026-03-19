@@ -44,14 +44,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value;
-    if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    console.log("POST /api/theses: started");
 
+    const token = request.cookies.get("token")?.value;
+    if (!token) {
+      console.log("POST /api/theses: no token found");
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    console.log("POST /api/theses: verifying token...");
     const payload = await verifyAnyToken(token);
-    if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    if (!payload) {
+      console.log("POST /api/theses: token invalid");
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+    console.log("POST /api/theses: token valid, userId:", payload.userId);
 
     const body = await request.json();
     const { title, description, professorId } = body;
+    console.log("POST /api/theses: body parsed, title:", title);
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -59,6 +70,7 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
     const database = getDatabase();
+    console.log("POST /api/theses: creating thesis in database...");
     const thesis = await database.theses.create({
       id: `thesis_${Date.now()}`,
       title,
@@ -74,10 +86,13 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
       sessions: [],
     });
+    console.log("POST /api/theses: thesis created successfully, id:", thesis.id);
 
     return NextResponse.json({ thesis }, { status: 201 });
   } catch (err) {
-    console.error("POST /api/theses error:", err);
-    return NextResponse.json({ error: "Failed to create thesis. Please try again." }, { status: 500 });
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.error("POST /api/theses error:", error.message);
+    console.error("POST /api/theses stack:", error.stack);
+    return NextResponse.json({ error: `Failed to create thesis: ${error.message}` }, { status: 500 });
   }
 }
