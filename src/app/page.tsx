@@ -188,13 +188,6 @@ const comparisons = [
   { feature: "Professor Insight", old: "Similarity % only", neu: "Full writing process playback + analytics" },
 ];
 
-const impactMetrics = [
-  { value: "73%", label: "Reduction in misconduct cases", icon: "down" },
-  { value: "94%", label: "Average student integrity score", icon: "shield" },
-  { value: "3.2x", label: "More advisor-student interactions", icon: "people" },
-  { value: "0", label: "False accusations since launch", icon: "check" },
-];
-
 /* ===== Icons ===== */
 function FeatureIcon({ name, className = "w-6 h-6" }: { name: string; className?: string }) {
   const icons: Record<string, React.ReactNode> = {
@@ -304,7 +297,6 @@ export default function LandingPage() {
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Features</a>
-              <a href="#impact" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Impact</a>
               <a href="#crisis" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">The Problem</a>
               <a href="#waitlist" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Join Waitlist</a>
               <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors">Sign In</Link>
@@ -321,7 +313,7 @@ export default function LandingPage() {
         </div>
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3">
-            {[{ label: "Features", href: "#features" }, { label: "Impact", href: "#impact" }, { label: "The Problem", href: "#crisis" }, { label: "Join Waitlist", href: "#waitlist" }].map((item) => (
+            {[{ label: "Features", href: "#features" }, { label: "The Problem", href: "#crisis" }, { label: "Join Waitlist", href: "#waitlist" }].map((item) => (
               <a key={item.label} href={item.href} className="block text-sm font-medium text-gray-600 py-2" onClick={() => setMobileMenuOpen(false)}>{item.label}</a>
             ))}
             <Link href="/login" className="btn-primary text-sm w-full text-center">Get Started</Link>
@@ -404,16 +396,140 @@ export default function LandingPage() {
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-3">
                   <div className="lg:col-span-2 p-6 sm:p-8 border-r border-gray-100 relative">
-                    <div className="flex items-center gap-2 pb-4 mb-4 border-b border-gray-100">
-                      <div className="flex gap-1">
-                        <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs font-bold text-gray-500">B</div>
-                        <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs italic text-gray-500">I</div>
-                        <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs underline text-gray-500">U</div>
+                    {/* Google Docs-style comprehensive toolbar */}
+                    <div className="flex flex-wrap items-center gap-1 pb-4 mb-4 border-b border-gray-100 overflow-x-auto">
+                      {/* Undo / Redo */}
+                      <div className="flex gap-0.5">
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Undo">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>
+                        </div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Redo">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" /></svg>
+                        </div>
                       </div>
-                      <div className="w-px h-4 bg-gray-200" />
-                      <div className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-500">Heading 1</div>
+                      {/* Print */}
+                      <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Print">
+                        <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+                      </div>
+                      {/* Spell check */}
+                      <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Spell check">
+                        <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+                      </div>
+                      {/* Paint format */}
+                      <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Paint format">
+                        <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 3H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" /><path d="M12 11v6" /><path d="M8 17h8" /></svg>
+                      </div>
+                      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Zoom */}
+                      <div className="hidden sm:flex px-2 py-0.5 bg-gray-100 rounded text-[10px] text-gray-500 items-center gap-1 cursor-default">
+                        100%
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
+                      <div className="hidden sm:block w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Paragraph style dropdown */}
+                      <div className="hidden sm:flex px-2 py-0.5 bg-gray-100 rounded text-[10px] text-gray-500 items-center gap-1 cursor-default min-w-[70px]">
+                        Heading 1
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
+                      <div className="hidden sm:block w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Font family */}
+                      <div className="hidden md:flex px-2 py-0.5 bg-gray-100 rounded text-[10px] text-gray-500 items-center gap-1 cursor-default min-w-[60px]">
+                        Arial
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+                      </div>
+                      <div className="hidden md:block w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Font size */}
+                      <div className="flex items-center gap-0.5">
+                        <div className="w-4 h-5 hover:bg-gray-100 rounded flex items-center justify-center cursor-default">
+                          <svg className="w-2.5 h-2.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                        </div>
+                        <div className="px-1.5 py-0.5 border border-gray-200 rounded text-[10px] text-gray-600 min-w-[24px] text-center cursor-default">14</div>
+                        <div className="w-4 h-5 hover:bg-gray-100 rounded flex items-center justify-center cursor-default">
+                          <svg className="w-2.5 h-2.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                        </div>
+                      </div>
+                      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Bold, Italic, Underline, Strikethrough */}
+                      <div className="flex gap-0.5">
+                        <div className="w-6 h-6 bg-blue-50 rounded flex items-center justify-center text-[11px] font-bold text-blue-600 cursor-default" title="Bold">B</div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center text-[11px] italic text-gray-500 cursor-default" title="Italic">I</div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center text-[11px] underline text-gray-500 cursor-default" title="Underline">U</div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Strikethrough">
+                          <span className="text-[11px] text-gray-500 line-through">S</span>
+                        </div>
+                      </div>
+                      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Text color & Highlight */}
+                      <div className="flex gap-0.5">
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex flex-col items-center justify-center cursor-default" title="Text color">
+                          <span className="text-[11px] font-bold text-gray-700 leading-none">A</span>
+                          <div className="w-4 h-0.5 bg-gray-800 rounded-full -mt-px" />
+                        </div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex flex-col items-center justify-center cursor-default" title="Highlight color">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                          <div className="w-4 h-0.5 bg-yellow-400 rounded-full -mt-px" />
+                        </div>
+                      </div>
+                      <div className="hidden sm:block w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Insert link */}
+                      <div className="hidden sm:flex w-6 h-6 hover:bg-gray-100 rounded items-center justify-center cursor-default" title="Insert link">
+                        <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                      </div>
+                      {/* Add comment */}
+                      <div className="hidden sm:flex w-6 h-6 hover:bg-gray-100 rounded items-center justify-center cursor-default" title="Add comment">
+                        <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="10" y1="10" x2="14" y2="10" /></svg>
+                      </div>
+                      {/* Insert image */}
+                      <div className="hidden sm:flex w-6 h-6 hover:bg-gray-100 rounded items-center justify-center cursor-default" title="Insert image">
+                        <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                      </div>
+                      <div className="hidden sm:block w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Alignment */}
+                      <div className="hidden sm:flex gap-0.5">
+                        <div className="w-6 h-6 bg-blue-50 rounded flex items-center justify-center cursor-default" title="Align left">
+                          <svg className="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="17" y1="10" x2="3" y2="10" /><line x1="21" y1="6" x2="3" y2="6" /><line x1="17" y1="14" x2="3" y2="14" /><line x1="21" y1="18" x2="3" y2="18" /></svg>
+                        </div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Align center">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="10" x2="6" y2="10" /><line x1="21" y1="6" x2="3" y2="6" /><line x1="18" y1="14" x2="6" y2="14" /><line x1="21" y1="18" x2="3" y2="18" /></svg>
+                        </div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Align right">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="10" x2="7" y2="10" /><line x1="21" y1="6" x2="3" y2="6" /><line x1="21" y1="14" x2="7" y2="14" /><line x1="21" y1="18" x2="3" y2="18" /></svg>
+                        </div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Justify">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="10" x2="3" y2="10" /><line x1="21" y1="6" x2="3" y2="6" /><line x1="21" y1="14" x2="3" y2="14" /><line x1="21" y1="18" x2="3" y2="18" /></svg>
+                        </div>
+                      </div>
+                      <div className="hidden sm:block w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Line spacing */}
+                      <div className="hidden md:flex w-6 h-6 hover:bg-gray-100 rounded items-center justify-center cursor-default" title="Line spacing">
+                        <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="11" y2="6" /><line x1="21" y1="12" x2="11" y2="12" /><line x1="21" y1="18" x2="11" y2="18" /><polyline points="4 8 7 5 7 19 4 16" /><polyline points="4 16 7 19" /></svg>
+                      </div>
+                      {/* Lists */}
+                      <div className="hidden md:flex gap-0.5">
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Bulleted list">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><circle cx="4" cy="6" r="1" fill="currentColor" /><circle cx="4" cy="12" r="1" fill="currentColor" /><circle cx="4" cy="18" r="1" fill="currentColor" /></svg>
+                        </div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Numbered list">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" /><text x="2" y="8" fontSize="7" fill="currentColor" stroke="none" fontFamily="system-ui">1</text><text x="2" y="14" fontSize="7" fill="currentColor" stroke="none" fontFamily="system-ui">2</text><text x="2" y="20" fontSize="7" fill="currentColor" stroke="none" fontFamily="system-ui">3</text></svg>
+                        </div>
+                      </div>
+                      {/* Indent */}
+                      <div className="hidden md:flex gap-0.5">
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Decrease indent">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6" /><line x1="21" y1="12" x2="11" y2="12" /><line x1="21" y1="18" x2="11" y2="18" /><polyline points="7 15 3 12 7 9" /></svg>
+                        </div>
+                        <div className="w-6 h-6 hover:bg-gray-100 rounded flex items-center justify-center cursor-default" title="Increase indent">
+                          <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6" /><line x1="21" y1="12" x2="11" y2="12" /><line x1="21" y1="18" x2="11" y2="18" /><polyline points="3 9 7 12 3 15" /></svg>
+                        </div>
+                      </div>
+                      <div className="hidden md:block w-px h-5 bg-gray-200 mx-0.5" />
+                      {/* Clear formatting */}
+                      <div className="hidden md:flex w-6 h-6 hover:bg-gray-100 rounded items-center justify-center cursor-default" title="Clear formatting">
+                        <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7V4h16v3" /><path d="M9 20h6" /><path d="M12 4v16" /><line x1="3" y1="21" x2="21" y2="3" className="text-red-400" /></svg>
+                      </div>
+                      {/* Spacer + Auto-saving */}
                       <div className="flex-1" />
-                      <span className="flex items-center gap-1 text-xs text-green-600"><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />Auto-saving</span>
+                      <span className="flex items-center gap-1 text-xs text-green-600 whitespace-nowrap"><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />Auto-saving</span>
                     </div>
                     <h3 className="text-xl font-serif font-bold text-gray-800 mb-3">Machine Learning Applications in Climate Change Prediction</h3>
                     <TypingAnimation />
@@ -557,40 +673,6 @@ export default function LandingPage() {
           </div>
         </div>
       </Reveal>
-
-      {/* ===== IMPACT METRICS ===== */}
-      <section id="impact" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 via-gray-900 to-brand-900 text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "30px 30px" }} />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-500/10 rounded-full blur-3xl" />
-
-        <div className="max-w-7xl mx-auto relative">
-          <Reveal>
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-brand-300 text-xs font-semibold mb-4 uppercase tracking-widest">Measurable Impact</div>
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4">Real Results, <span className="text-accent-400">Not Promises</span></h2>
-              <p className="text-gray-400 max-w-2xl mx-auto">Data from our partner institutions after one year of using Thesisfy.</p>
-            </div>
-          </Reveal>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {impactMetrics.map((metric, i) => (
-              <Reveal key={metric.label} delay={i * 150} direction="scale">
-                <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 text-center hover:bg-white/10 transition-all duration-300 group">
-                  <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-gradient-to-br from-brand-400/20 to-accent-400/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    {metric.icon === "down" && <svg className="w-7 h-7 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></svg>}
-                    {metric.icon === "shield" && <FeatureIcon name="shield" className="w-7 h-7 text-brand-400" />}
-                    {metric.icon === "people" && <svg className="w-7 h-7 text-accent-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
-                    {metric.icon === "check" && <svg className="w-7 h-7 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
-                  </div>
-                  <div className="text-4xl font-extrabold mb-2 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">{metric.value}</div>
-                  <div className="text-sm text-gray-400">{metric.label}</div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ===== COMPARISON ===== */}
       <section id="comparison" className="py-24 px-4 sm:px-6 lg:px-8">
@@ -1026,7 +1108,6 @@ export default function LandingPage() {
               <h4 className="text-sm font-semibold mb-3">Product</h4>
               <ul className="space-y-2 text-sm text-gray-500">
                 <li><a href="#features" className="hover:text-brand-600 transition-colors">Features</a></li>
-                <li><a href="#impact" className="hover:text-brand-600 transition-colors">Impact</a></li>
                 <li><a href="#comparison" className="hover:text-brand-600 transition-colors">Compare</a></li>
                 <li><a href="#crisis" className="hover:text-brand-600 transition-colors">The Problem</a></li>
               </ul>
