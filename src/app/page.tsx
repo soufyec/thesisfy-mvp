@@ -156,15 +156,15 @@ const socialProofAvatars = [
 ];
 
 const crisisStats = [
-  { value: "2-5%", label: "Real false positive rate of AI detectors", sublabel: "Turnitin claims <1% — independent studies show otherwise", icon: "alert", source: "Stanford/Oxford Research 2024" },
-  { value: "3,750", label: "Students wrongly accused per university/year", sublabel: "Based on 75,000 submissions × 5% false positive rate", icon: "people", source: "Calculated from Turnitin's own data" },
+  { value: "2-5%", label: "Real false positive rate of AI detectors", sublabel: "Leading providers claim <1% — independent studies show otherwise", icon: "alert", source: "Stanford/Oxford Research 2024" },
+  { value: "3,750", label: "Students wrongly accused per university/year", sublabel: "Based on 75,000 submissions × 5% false positive rate", icon: "people", source: "Calculated from industry-reported data" },
   { value: "2x", label: "Non-native speakers flagged more often", sublabel: "ESL students disproportionately penalized by detection algorithms", icon: "globe", source: "Stanford Digital Economy Lab" },
   { value: "±15%", label: "Variance in detection scores for the same text", sublabel: "Run the same paper twice — different result each time", icon: "variance", source: "University of Maryland Study" },
 ];
 
 const abandoningUniversities = [
   { name: "Vanderbilt University", reason: "Banned AI detection tools after false accusations", flag: "🇺🇸" },
-  { name: "University of Cambridge", reason: "Stopped using Turnitin for AI detection", flag: "🇬🇧" },
+  { name: "University of Cambridge", reason: "Stopped using leading AI detection tools", flag: "🇬🇧" },
   { name: "Durham University", reason: "Abandoned AI detection due to bias concerns", flag: "🇬🇧" },
   { name: "Sciences Po Paris", reason: "Shifted to process-based assessment", flag: "🇫🇷" },
   { name: "University of Sydney", reason: "Paused AI detection after student appeals surge", flag: "🇦🇺" },
@@ -340,7 +340,7 @@ export default function LandingPage() {
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur border border-brand-100 rounded-full text-brand-700 text-sm font-medium mb-8 animate-fade-in shadow-sm">
               <FeatureIcon name="shield" className="w-4 h-4" />
-              The Anti-Turnitin for the AI Era
+              The New Standard for the AI Era
               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
             </div>
 
@@ -369,20 +369,15 @@ export default function LandingPage() {
               </a>
             </div>
 
-            {/* Social proof */}
-            <div className="flex items-center justify-center gap-3 mt-10 animate-slide-up" style={{ animationDelay: "0.3s" }}>
-              <div className="flex -space-x-3">
-                {socialProofAvatars.map((t, i) => (
-                  <div key={i} className={`w-9 h-9 ${t.gradient} rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white shadow-sm`}>{t.initials}</div>
-                ))}
-              </div>
-              <div className="text-left">
-                <div className="flex gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                  ))}
+            {/* Institutional collaboration call */}
+            <div className="mt-10 animate-slide-up max-w-2xl mx-auto" style={{ animationDelay: "0.3s" }}>
+              <div className="flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-brand-50 to-accent-50 border border-brand-100 rounded-2xl">
+                <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-accent-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                 </div>
-                <p className="text-xs text-gray-500">Trusted by <strong className="text-gray-700">12,000+</strong> students & professors</p>
+                <p className="text-sm text-gray-700 text-left">
+                  <strong className="text-brand-700">Instituciones Académicas:</strong> Tendrán el privilegio de dar forma a nuestra plataforma desde el inicio y generar un <strong className="text-gray-900">impacto directo</strong> en el futuro de la integridad académica.
+                </p>
               </div>
             </div>
           </div>
