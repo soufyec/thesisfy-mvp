@@ -170,12 +170,6 @@ const abandoningUniversities = [
   { name: "University of Sydney", reason: "Paused AI detection after student appeals surge", flag: "🇦🇺" },
 ];
 
-const universities = [
-  { name: "Stanford", color: "#8C1515" }, { name: "MIT", color: "#A31F34" }, { name: "Oxford", color: "#002147" },
-  { name: "ETH Zurich", color: "#1F407A" }, { name: "Sorbonne", color: "#1B3A6B" }, { name: "U of Toronto", color: "#002A5C" },
-  { name: "TU Munich", color: "#0065BD" }, { name: "NUS", color: "#003D7C" },
-];
-
 const features = [
   { icon: "eye", title: "Real-Time Monitoring", description: "Track every keystroke, edit, and AI interaction as it happens. Full transparency, zero surprises.", color: "from-blue-500 to-cyan-500", bg: "bg-blue-50", metric: "4,200+", metricLabel: "keystrokes/session" },
   { icon: "shield", title: "Integrity Scoring", description: "Dynamic scores based on actual writing behavior. No more false positives from probabilistic detection.", color: "from-green-500 to-emerald-500", bg: "bg-green-50", metric: "99.2%", metricLabel: "accuracy rate" },
@@ -443,25 +437,49 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== UNIVERSITY LOGOS ===== */}
-      <section className="py-10 px-4 border-y border-gray-100 bg-gray-50/50 overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-center text-xs font-medium text-gray-400 mb-6 uppercase tracking-widest">Trusted by leading universities worldwide</p>
-          <div className="relative">
-            <div className="flex gap-12 items-center justify-center flex-wrap">
-              {universities.map((uni, i) => (
-                <Reveal key={uni.name} delay={i * 80} direction="scale">
-                  <div className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-all duration-300 hover:scale-110 cursor-default">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-bold shadow-sm" style={{ backgroundColor: uni.color }}>
-                      {uni.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+      {/* ===== UNIVERSITIES ABANDONING AI DETECTION ===== */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50/50 border-y border-gray-100">
+        <Reveal delay={200}>
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 sm:p-10 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-red-500/10 rounded-full blur-3xl" />
+              <div className="relative">
+                <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                  Universities Are Already Abandoning AI Detection
+                </h3>
+                <p className="text-sm text-gray-400 mb-6">These institutions have publicly stopped using AI detection tools due to accuracy and bias concerns.</p>
+                <div className="space-y-3">
+                  {abandoningUniversities.map((uni, i) => (
+                    <div key={uni.name} className="flex items-center gap-4 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                      <span className="text-2xl">{uni.flag}</span>
+                      <div className="flex-1">
+                        <div className="font-semibold text-sm">{uni.name}</div>
+                        <div className="text-xs text-gray-400">{uni.reason}</div>
+                      </div>
+                      <svg className="w-4 h-4 text-red-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                     </div>
-                    <span className="text-sm font-medium text-gray-600 whitespace-nowrap">{uni.name}</span>
+                  ))}
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+                  <div>
+                    <div className="text-2xl font-extrabold text-red-400">$0</div>
+                    <div className="text-xs text-gray-400">False accusations with Thesisfy</div>
                   </div>
-                </Reveal>
-              ))}
+                  <div>
+                    <div className="text-2xl font-extrabold text-accent-400">100%</div>
+                    <div className="text-xs text-gray-400">Process-based verification</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-extrabold text-green-400">0</div>
+                    <div className="text-xs text-gray-400">Probabilistic guessing</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ===== FEATURES ===== */}
@@ -609,49 +627,6 @@ export default function LandingPage() {
               </Reveal>
             ))}
           </div>
-
-          {/* Universities abandoning detection */}
-          <Reveal delay={200}>
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 sm:p-10 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-red-500/10 rounded-full blur-3xl" />
-                <div className="relative">
-                  <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                    Universities Are Already Abandoning AI Detection
-                  </h3>
-                  <p className="text-sm text-gray-400 mb-6">These institutions have publicly stopped using AI detection tools due to accuracy and bias concerns.</p>
-                  <div className="space-y-3">
-                    {abandoningUniversities.map((uni, i) => (
-                      <div key={uni.name} className="flex items-center gap-4 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
-                        <span className="text-2xl">{uni.flag}</span>
-                        <div className="flex-1">
-                          <div className="font-semibold text-sm">{uni.name}</div>
-                          <div className="text-xs text-gray-400">{uni.reason}</div>
-                        </div>
-                        <svg className="w-4 h-4 text-red-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-                    <div>
-                      <div className="text-2xl font-extrabold text-red-400">$0</div>
-                      <div className="text-xs text-gray-400">False accusations with Thesisfy</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-extrabold text-accent-400">100%</div>
-                      <div className="text-xs text-gray-400">Process-based verification</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-extrabold text-green-400">0</div>
-                      <div className="text-xs text-gray-400">Probabilistic guessing</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Reveal>
 
           {/* Thesisfy difference callout */}
           <Reveal delay={300}>
