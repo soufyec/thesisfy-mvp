@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       title,
       description: description || "",
       studentId: payload.userId,
-      professorId,
+      professorId: professorId || "",
       status: "draft",
       content: "",
       wordCount: 0,
