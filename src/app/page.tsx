@@ -277,11 +277,23 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
+      {/* Announcement Bar */}
+      <div className="fixed top-0 w-full bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 z-[55] text-white text-center py-2 px-4">
+        <a href="#waitlist" className="flex items-center justify-center gap-2 text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity">
+          <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" />
+          <span>Only <strong>{waitlistData.spotsRemaining} founding spots</strong> remaining — Free for 12 months</span>
+          <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-3 py-0.5 bg-white/20 rounded-full text-xs font-semibold backdrop-blur-sm">
+            Claim yours
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+          </span>
+        </a>
+      </div>
+
       {/* Scroll Progress Bar */}
-      <div className="fixed top-0 left-0 h-0.5 bg-gradient-to-r from-brand-500 to-accent-500 z-[60] transition-all duration-150" style={{ width: `${scrollProgress}%` }} />
+      <div className="fixed top-[36px] left-0 h-0.5 bg-gradient-to-r from-brand-500 to-accent-500 z-[60] transition-all duration-150" style={{ width: `${scrollProgress}%` }} />
 
       {/* Navigation */}
-      <nav className="fixed top-0.5 w-full bg-white/80 backdrop-blur-xl z-50 border-b border-gray-100/50">
+      <nav className="fixed top-[36px] w-full bg-white/80 backdrop-blur-xl z-50 border-b border-gray-100/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
@@ -318,7 +330,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ===== HERO ===== */}
-      <section className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative min-h-[90vh] flex items-center">
+      <section className="pt-36 pb-20 px-4 sm:px-6 lg:px-8 relative min-h-[90vh] flex items-center">
         {/* Animated background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 -left-20 w-[500px] h-[500px] bg-brand-100/40 rounded-full blur-3xl animate-float-slow" style={{ transform: `translateY(${parallaxOffset * 0.5}px)` }} />
@@ -482,6 +494,18 @@ export default function LandingPage() {
         </Reveal>
       </section>
 
+      {/* ===== INLINE CTA 1 ===== */}
+      <Reveal>
+        <div className="py-10 px-4 text-center">
+          <p className="text-gray-600 mb-4 text-sm sm:text-base">Don&apos;t let your institution fall behind. Be part of the solution.</p>
+          <a href="#waitlist" className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-full text-sm font-semibold hover:bg-brand-700 transition-colors shadow-lg shadow-brand-600/20 group">
+            <FeatureIcon name="shield" className="w-4 h-4" />
+            Secure Your Founding Spot — {waitlistData.spotsRemaining} Left
+            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+          </a>
+        </div>
+      </Reveal>
+
       {/* ===== FEATURES ===== */}
       <section id="features" className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -517,6 +541,22 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ===== INLINE CTA 2 ===== */}
+      <Reveal>
+        <div className="py-12 px-4 bg-gradient-to-r from-brand-50 to-accent-50 border-y border-brand-100/50">
+          <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Ready to transform academic integrity?</h3>
+              <p className="text-sm text-gray-600">Join the founding cohort and get 12 months free.</p>
+            </div>
+            <a href="#waitlist" className="btn-primary !rounded-full !px-6 !py-3 text-sm whitespace-nowrap group shadow-lg shadow-brand-600/20">
+              Join the Waitlist
+              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+            </a>
+          </div>
+        </div>
+      </Reveal>
 
       {/* ===== IMPACT METRICS ===== */}
       <section id="impact" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 via-gray-900 to-brand-900 text-white relative overflow-hidden">
@@ -586,6 +626,23 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ===== INLINE CTA 3 ===== */}
+      <Reveal>
+        <div className="py-10 px-4 text-center">
+          <div className="max-w-2xl mx-auto bg-gray-900 rounded-2xl p-8 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-brand-500/20 rounded-full blur-3xl" />
+            <div className="relative">
+              <p className="text-lg font-semibold mb-2">See the difference?</p>
+              <p className="text-sm text-gray-400 mb-5">Your institution deserves better than probabilistic guessing.</p>
+              <a href="#waitlist" className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-900 rounded-full text-sm font-semibold hover:bg-gray-100 transition-colors group">
+                Apply for Founding Access
+                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+
       {/* ===== THE CRISIS: DATA-DRIVEN THESIS VALIDATION ===== */}
       <section id="crisis" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: "radial-gradient(circle, #ef4444 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
@@ -643,6 +700,21 @@ export default function LandingPage() {
           </Reveal>
         </div>
       </section>
+
+      {/* ===== INLINE CTA 4 ===== */}
+      <Reveal>
+        <div className="py-10 px-4 text-center">
+          <div className="inline-flex flex-col sm:flex-row items-center gap-3 px-6 py-4 bg-amber-50 border border-amber-200 rounded-2xl">
+            <div className="flex items-center gap-2 text-amber-800 text-sm font-semibold">
+              <svg className="w-5 h-5 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              Spots are filling fast — only {waitlistData.spotsRemaining} left
+            </div>
+            <a href="#waitlist" className="px-5 py-2 bg-amber-600 text-white rounded-full text-sm font-semibold hover:bg-amber-700 transition-colors whitespace-nowrap">
+              Reserve Now
+            </a>
+          </div>
+        </div>
+      </Reveal>
 
       {/* ===== HOW IT WORKS ===== */}
       <section className="py-24 px-4 sm:px-6 lg:px-8">
