@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { verifyAnyToken } from "@/lib/auth";
+import { getDatabase } from "@/lib/firestore";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const payload = verifyToken(token);
+  const payload = await verifyAnyToken(token);
   if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
   const thesisId = request.nextUrl.searchParams.get("thesisId");
   const studentId = request.nextUrl.searchParams.get("studentId");
 
+  const database = getDatabase();
   let logs;
   if (thesisId) {
-    logs = db.aiChatLogs.getByThesis(thesisId);
+    logs = await database.aiChatLogs.getByThesis(thesisId);
   } else if (studentId) {
-    logs = db.aiChatLogs.getByStudent(studentId);
+    logs = await database.aiChatLogs.getByStudent(studentId);
   } else {
-    logs = db.aiChatLogs.getAll();
+    logs = await database.aiChatLogs.getAll();
   }
 
   // Generate summary

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { verifyAnyToken } from "@/lib/auth";
+import { getDatabase } from "@/lib/firestore";
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const payload = verifyToken(token);
+  const payload = await verifyAnyToken(token);
   if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
   const body = await request.json();
@@ -16,13 +16,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "thesisId and events array are required" }, { status: 400 });
   }
 
-  const thesis = db.theses.findById(thesisId);
+  const database = getDatabase();
+  const thesis = await database.theses.findById(thesisId);
   if (!thesis) return NextResponse.json({ error: "Thesis not found" }, { status: 404 });
 
   const sessionId = `sess_${Date.now()}`;
 
   for (const event of events) {
-    const snapshot = db.writingSnapshots.create({
+    const snapshot = await database.writingSnapshots.create({
       id: `snap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       thesisId,
       sessionId,
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (event.type === "pasted") {
-      db.pasteEvents.create({
+      await database.pasteEvents.create({
         id: `pe_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         thesisId,
         sessionId,

@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
+import { isFirebaseAdminConfigured, getAdminAuth } from "./firebase-admin";
 
 const JWT_SECRET = process.env.JWT_SECRET || "thesisfy-mvp-dev-secret-key-2024";
 
@@ -10,6 +11,7 @@ export interface AuthPayload {
   role: string;
 }
 
+// Legacy JWT-based authentication (for demo/development without Firebase)
 export async function authenticateUser(email: string, password: string) {
   const user = db.users.findByEmail(email);
   if (!user) return null;
@@ -35,10 +37,45 @@ export async function authenticateUser(email: string, password: string) {
   return { user: userWithoutPassword, token };
 }
 
+// Verify token: supports both Firebase tokens and legacy JWT
 export function verifyToken(token: string): AuthPayload | null {
   try {
     return jwt.verify(token, JWT_SECRET) as AuthPayload;
   } catch {
     return null;
   }
+}
+
+// Verify Firebase ID token (async)
+export async function verifyFirebaseToken(idToken: string): Promise<AuthPayload | null> {
+  if (!isFirebaseAdminConfigured()) return null;
+
+  try {
+    const decodedToken = await getAdminAuth().verifyIdToken(idToken);
+    return {
+      userId: decodedToken.uid,
+      email: decodedToken.email || "",
+      role: (decodedToken.role as string) || "student",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Unified token verification: tries Firebase first, then JWT fallback
+export async function verifyAnyToken(token: string): Promise<AuthPayload | null> {
+  // Try Firebase token first if configured
+  if (isFirebaseAdminConfigured()) {
+    const firebasePayload = await verifyFirebaseToken(token);
+    if (firebasePayload) return firebasePayload;
+  }
+
+  // Fallback to JWT
+  return verifyToken(token);
+}
+
+// Set custom claims on a Firebase user (e.g., role)
+export async function setUserRole(uid: string, role: string): Promise<void> {
+  if (!isFirebaseAdminConfigured()) return;
+  await getAdminAuth().setCustomUserClaims(uid, { role });
 }

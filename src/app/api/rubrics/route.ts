@@ -1,36 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { verifyAnyToken } from "@/lib/auth";
+import { getDatabase } from "@/lib/firestore";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const payload = verifyToken(token);
+  const payload = await verifyAnyToken(token);
   if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
-  const user = db.users.findById(payload.userId);
+  const database = getDatabase();
+  const user = await database.users.findById(payload.userId);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const thesisId = request.nextUrl.searchParams.get("thesisId");
   if (thesisId) {
-    const rubric = db.rubrics.getByThesis(thesisId);
+    const rubric = await database.rubrics.getByThesis(thesisId);
     if (!rubric) return NextResponse.json({ error: "No rubric found" }, { status: 404 });
     return NextResponse.json({ rubric });
   }
 
-  const rubricList = user.role === "professor" ? db.rubrics.getByProfessor(user.id) : db.rubrics.getAll();
-  const enriched = rubricList.map((r) => {
-    const thesis = db.theses.findById(r.thesisId);
-    const student = thesis ? db.users.findById(thesis.studentId) : null;
+  const rubricList = user.role === "professor" ? await database.rubrics.getByProfessor(user.id) : await database.rubrics.getAll();
+  const enriched = await Promise.all(rubricList.map(async (r) => {
+    const thesis = await database.theses.findById(r.thesisId);
+    const student = thesis ? await database.users.findById(thesis.studentId) : null;
     return { ...r, thesisTitle: thesis?.title, studentName: student?.name };
-  });
+  }));
   return NextResponse.json({ rubrics: enriched });
 }
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const payload = verifyToken(token);
+  const payload = await verifyAnyToken(token);
   if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
   const body = await request.json();
@@ -39,7 +40,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const rubric = db.rubrics.create({
+  const database = getDatabase();
+  const rubric = await database.rubrics.create({
     id: `rub_${Date.now()}`,
     thesisId,
     professorId: payload.userId,

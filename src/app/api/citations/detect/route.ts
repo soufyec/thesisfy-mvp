@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { verifyAnyToken } from "@/lib/auth";
+import { getDatabase } from "@/lib/firestore";
 
 const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY;
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
@@ -8,7 +8,7 @@ const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const payload = verifyToken(token);
+  const payload = await verifyAnyToken(token);
   if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
   const body = await request.json();
@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "selectedText and thesisId are required" }, { status: 400 });
   }
 
-  const papers = db.researchPapers.getByThesis(thesisId);
+  const database = getDatabase();
+  const papers = await database.researchPapers.getByThesis(thesisId);
   if (papers.length === 0) {
     return NextResponse.json({ error: "No research papers connected to this thesis" }, { status: 404 });
   }
@@ -113,7 +114,7 @@ Only include papers with confidence > 0.3. Sort by confidence descending. Return
 
 function simulatedDetection(
   selectedText: string,
-  papers: ReturnType<typeof db.researchPapers.getByThesis>,
+  papers: Array<{ id: string; title: string; authors: string; year: number; journal: string; volume?: string; pages?: string; abstract?: string }>,
   style: string
 ) {
   const textLower = selectedText.toLowerCase();
