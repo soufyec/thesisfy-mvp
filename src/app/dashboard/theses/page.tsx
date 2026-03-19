@@ -67,6 +67,11 @@ export default function ThesesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: form.title, description: form.description }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || `Server error (${res.status}). Please try again.`);
+        return;
+      }
       const data = await res.json();
       if (data.thesis) {
         router.push(`/dashboard/editor/${data.thesis.id}`);
@@ -74,7 +79,7 @@ export default function ThesesPage() {
         setError(data.error || "Failed to create thesis");
       }
     } catch {
-      setError("Network error. Please try again.");
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setCreating(false);
     }
