@@ -15,7 +15,11 @@ function getAdminApp(): App {
   // Option 2: Use individual env vars
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  // Handle multiple escaping layers: Vercel may store \n as literal \\n or even \\\\n
+  const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+  const privateKey = rawKey
+    ? JSON.parse(rawKey.includes('"') ? rawKey : `"${rawKey}"`)
+    : undefined;
 
   if (serviceAccountPath) {
     // Dynamic import of service account JSON file
