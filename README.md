@@ -1,117 +1,89 @@
 # Thesisfy.edu MVP
 
-**Academic integrity through AI regulation, not detection. The anti-Turnitin.**
+**Academic integrity through AI regulation, not detection.** Thesisfy attributes every word of a thesis as it is written (typed, pasted, AI-assisted), lets students use the AI account they already have, and gives advisors a provenance report instead of a guessed "AI probability".
 
-Thesisfy monitors the writing process in real-time instead of trying to detect AI after submission. Students can use AI tools transparently within defined boundaries, and professors see a complete integrity profile based on actual writing behavior.
+## What's in the MVP
 
-## Tech Stack
+| Area | Highlights |
+|---|---|
+| **Google-Docs-style editor** | TipTap/ProseMirror editor with File/Edit/View/Insert/Format/Tools/Help menus, full toolbar (styles, fonts, sizes, colors, highlight, align, spacing, lists, checklists, indent, super/subscript), A4/Letter page layout with zoom, outline, comments with replies/resolve, version history with preview/restore, citations manager (APA/MLA/Chicago/IEEE/Harvard) and bibliography, find & replace, tables, images, links, page breaks, footnotes, TOC, page setup, word count, print/PDF, export to **.docx**, HTML, Markdown, text. Autosave with named versions. |
+| **Provenance tracking** | Text inserted from the assistant is marked `data-provenance="ai"`; large pastes trigger an attribution prompt (own / source / AI); pastes that match text copied from an AI site (via the extension) are attributed automatically. Toggle highlights, see the share per document, integrity score explained line by line. |
+| **AI assistant** | Streaming multi-provider assistant (Anthropic Claude via official SDK, OpenAI, Google Gemini, Mistral) with 10 pedagogical modes (ask, brainstorm, outline, critique, grammar, summarize, explain, citations, gaps, paraphrase check), policy guardrails (blocks "write it for me" in EN/ES/FR, mode allow-list, AI % limit), conversation history, insert-to-document as AI-marked text, demo mode without keys. |
+| **Bring your own AI account** | Students connect their Claude / ChatGPT / Gemini / Mistral **API key** (validated, AES-256-GCM encrypted, revocable, per-provider model choice). OAuth 2.0 + PKCE "Sign in with …" flow is implemented and activates through env vars once a provider offers third-party sign-in. |
+| **Consent-based monitoring** | Students choose scopes (AI interactions, typing rhythm, paste fingerprints, tab activity, extension activity, prompt text) within institution policy; receipts and history; withdrawal ends monitoring instantly. Sessions log counts and fingerprints, never text. |
+| **Browser extension** | `extension/` (Manifest V3): with consent and only during an active session, reports visits to chatgpt.com / claude.ai / gemini.google.com / chat.mistral.ai, SHA-256 fingerprints of copied text, and prompt submissions. Pairing via one-time code. |
+| **Mobile** | Responsive layouts with bottom navigation, touch editor toolbar, bottom-sheet AI assistant, installable PWA (manifest, service worker, offline page, icons) and a Capacitor wrapper in `mobile/` for iOS/Android. |
+| **Institution side** | Dashboard, all theses, per-thesis review page (provenance report, sessions timeline with events, AI log, flags, comments, approve / request revision), students with invites, flag resolution, persisted AI policies (limits, providers, BYOK, external tools, modes, monitoring features, consent requirement). |
 
-- **Framework**: Next.js 14 (App Router)
-- **Frontend**: React 18, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **AI Integration**: Claude API (Anthropic) with fallback to simulated responses
-- **Auth**: JWT-based with httpOnly cookies
-- **Deployment**: Vercel
-
-## Quick Start
+## Quick start
 
 ```bash
 npm install
 cp .env.example .env
-npm run dev
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Demo accounts (password in the table):
 
-## Demo Accounts
+| Role | Email | Password |
+|---|---|---|
+| Student | jane.cooper@stanford.edu | demo123 |
+| Student | marie.dupont@sorbonne.fr | demo123 |
+| Professor | prof.williams@stanford.edu | demo123 |
+| Admin | admin@stanford.edu | admin123 |
 
-| Role      | Email                        | Password |
-|-----------|------------------------------|----------|
-| Student   | jane.cooper@stanford.edu     | demo123  |
-| Student   | marie.dupont@sorbonne.fr     | demo123  |
-| Professor | prof.williams@stanford.edu   | demo123  |
-| Admin     | admin@stanford.edu           | admin123 |
+Without provider keys the assistant answers in demo mode. Add `ANTHROPIC_API_KEY` (or OpenAI/Gemini/Mistral keys) for institution-wide access, or connect a personal account from **AI Connections**.
 
-## Features
-
-### Landing Page
-- Hero section with animated stats
-- Feature showcase with 6 key differentiators
-- Turnitin vs Thesisfy comparison table
-- How it works (3-step process)
-- Pricing plans (Starter/Department/Enterprise)
-- Responsive design with mobile menu
-
-### Student Dashboard
-- Overview with thesis stats and integrity scores
-- Active thesis highlight with progress tracking
-- Full thesis list with circular progress indicators
-- Writing analytics (weekly activity, AI usage breakdown)
-- AI Assistant (Claude-powered chat with academic guardrails)
-- Thesis editor with integrated AI panel and session monitoring
-
-### Admin/Professor Dashboard
-- Institution-wide metrics (theses, integrity, students, flags)
-- AI usage distribution visualization
-- All theses overview with filtering
-- Student management with enrollment
-- Integrity flags review system
-- AI policy configuration (usage limits, permitted tools, monitoring)
-
-### AI Integration
-- Claude-powered academic writing assistant
-- System prompt enforcing academic integrity rules
-- Fallback to intelligent simulated responses when no API key
-- Context-aware responses based on thesis content
-- Transparent logging of all AI interactions
-
-## Deploy to Vercel
-
-1. Push this repository to GitHub
-2. Import the project in [Vercel](https://vercel.com)
-3. Set environment variables:
-   - `JWT_SECRET` (required)
-   - `ANTHROPIC_API_KEY` (optional, for live AI)
-4. Deploy
-
-## Environment Variables
-
-| Variable         | Required | Description                              |
-|------------------|----------|------------------------------------------|
-| JWT_SECRET       | Yes      | Secret key for JWT token signing         |
-| ANTHROPIC_API_KEY| No       | Anthropic API key for Claude integration |
-| CLAUDE_MODEL     | No       | Claude model ID (defaults to Sonnet)     |
-
-## Project Structure
+## Architecture
 
 ```
 src/
 ├── app/
-│   ├── page.tsx                    # Landing page
-│   ├── login/page.tsx              # Login page
-│   ├── dashboard/                  # Student area
-│   │   ├── page.tsx                # Student dashboard
-│   │   ├── theses/page.tsx         # Thesis list
-│   │   ├── ai-chat/page.tsx        # AI assistant chat
-│   │   ├── analytics/page.tsx      # Writing analytics
-│   │   └── editor/[id]/page.tsx    # Thesis editor
-│   ├── admin/                      # Admin/Professor area
-│   │   ├── page.tsx                # Admin dashboard
-│   │   ├── theses/page.tsx         # All theses
-│   │   ├── students/page.tsx       # Student management
-│   │   ├── flags/page.tsx          # Integrity flags
-│   │   └── policies/page.tsx       # AI policies
-│   └── api/                        # API routes
-│       ├── auth/login/route.ts
-│       ├── auth/logout/route.ts
-│       ├── auth/me/route.ts
-│       ├── theses/route.ts
-│       ├── theses/[id]/route.ts
-│       ├── stats/route.ts
-│       └── ai/chat/route.ts
+│   ├── page.tsx                     Landing
+│   ├── login, register              Auth pages
+│   ├── dashboard/                   Student: overview, theses, editor/[id], ai-chat, analytics, connections, settings
+│   ├── admin/                       Staff: overview, theses, theses/[id] (review), theses/[id]/document, students, flags, policies
+│   ├── manifest.ts                  PWA manifest
+│   └── api/
+│       ├── auth/{login,logout,me,register}
+│       ├── theses, theses/[id], theses/[id]/{versions,comments,sessions}
+│       ├── sessions/[sessionId]     Event ingestion + heartbeat/end
+│       ├── ai/chat                  SSE streaming, guardrails, logging
+│       ├── ai/connections           BYOK keys, oauth/[provider], oauth/callback
+│       ├── ai/{providers,logs,conversations}
+│       ├── monitor/{consent,pair,status,events}   Consent + extension endpoints
+│       ├── policies, flags, notifications, users, stats
 ├── components/
-│   └── DashboardLayout.tsx         # Shared dashboard layout
-└── lib/
-    ├── auth.ts                     # Authentication helpers
-    └── db.ts                       # In-memory database
+│   ├── editor/                      DocsEditor, MenuBar, Toolbar, Sidebars, Dialogs, extensions (provenance, comments, search…)
+│   ├── ai/AssistantPanel.tsx        Shared assistant UI (editor side panel + full page)
+│   ├── ConsentModal.tsx, DashboardLayout.tsx, PWARegister.tsx, ui.tsx, Markdown.tsx
+├── lib/
+│   ├── db.ts                        In-memory store (globalThis + optional DATA_FILE); swap for Postgres/Prisma
+│   ├── ai/{providers,prompts,policy,demo}.ts
+│   ├── integrity.ts                 Scoring + flag rules
+│   ├── monitor.ts                   Client session monitor (batching, fingerprints, visibility)
+│   ├── export.ts                    HTML → DOCX / Markdown / text
+│   ├── auth.ts, crypto.ts, api.ts, cors.ts, client.ts, nav.tsx
+extension/                           Chrome MV3 transparency companion
+mobile/                              Capacitor wrapper + README
 ```
+
+### How AI use is detected, with authorization
+
+1. **Inside Thesisfy**: every assistant call is logged (provider, model, mode, tokens, blocked-by-policy). Inserted text carries a provenance mark. Nothing is inferred.
+2. **Pastes**: the editor fingerprints pasted text (SHA-256 of normalized text, first 32 hex) and asks the student to attribute large pastes. The text itself is never sent for monitoring.
+3. **External chat apps**: the extension (opt-in scope) reports visits, copy fingerprints and prompt submissions **only while a session is active**. A paste whose fingerprint matches a reported copy is attributed to that tool automatically.
+4. **Consent** is granular, versioned, revocable and enforced on the server: events for scopes the student did not grant are dropped even if a client sends them.
+
+### Production notes
+
+- The store is in memory; on Vercel each cold start re-seeds the demo data. Point `db.ts` at Postgres/Prisma for persistence (all access goes through the `db` object).
+- Set `JWT_SECRET` and `ENCRYPTION_KEY`. Stored provider keys are encrypted with AES-256-GCM.
+- Claude calls use `@anthropic-ai/sdk` (default model `claude-opus-5-5`, server-side refusal fallbacks enabled); other providers use their HTTP APIs.
+- Sign-in with Claude/ChatGPT: the OAuth routes are ready; providers have not yet opened account sign-in for third-party apps, so the UI offers API-key connection today and marks sign-in as "soon".
+
+## Deploy to Vercel
+
+1. Import the repository in Vercel.
+2. Set `JWT_SECRET`, `ENCRYPTION_KEY` and optionally provider keys.
+3. Deploy. The PWA is served from the same deployment; point `mobile/capacitor.config.ts` (`THESISFY_URL`) at it for native builds.

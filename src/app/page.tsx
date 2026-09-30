@@ -86,33 +86,33 @@ function XIcon({ className }: { className?: string }) {
 const features = [
   {
     icon: EyeIcon,
-    title: "Real-Time Monitoring",
-    description: "Track writing patterns, keystrokes, and AI interactions as they happen. No surprises at submission time.",
-  },
-  {
-    icon: ShieldIcon,
-    title: "Integrity Scoring",
-    description: "Dynamic integrity scores based on writing behavior, not post-hoc AI detection that produces false positives.",
+    title: "Provenance, not detection",
+    description: "Every word is attributed as you write: typed, pasted or AI-assisted. Advisors see a provenance report instead of a guessed \"AI probability\".",
   },
   {
     icon: PenIcon,
-    title: "Regulated AI Assistance",
-    description: "Students can use AI tools transparently within defined boundaries. AI usage is logged, not banned.",
+    title: "Google-Docs-style editor",
+    description: "Menus, toolbar, comments, version history, citations, find & replace, page setup and Word/PDF export. Nothing to install.",
   },
   {
-    icon: BarChartIcon,
-    title: "Analytics Dashboard",
-    description: "Detailed analytics for professors and administrators to understand writing patterns across their institution.",
+    icon: ShieldIcon,
+    title: "Bring your own AI account",
+    description: "Students connect their Claude, ChatGPT/GPT, Gemini or Mistral account and use it inside Thesisfy, logged and bounded by your policy.",
   },
   {
     icon: GlobeIcon,
-    title: "Multi-Institution Support",
-    description: "Deploy across departments or entire universities. Support for multiple languages and academic standards.",
+    title: "Transparent external AI use",
+    description: "An optional browser extension attributes text copied from chatgpt.com or claude.ai during a session, with the student's explicit consent.",
+  },
+  {
+    icon: BarChartIcon,
+    title: "Consent-first monitoring",
+    description: "Students choose what is recorded (typing rhythm, pastes, tab activity) and download a receipt. Policies set the limits; students set the scope.",
   },
   {
     icon: LockIcon,
-    title: "Privacy-First Design",
-    description: "Student data is encrypted and anonymized. GDPR and FERPA compliant by design.",
+    title: "Works on any device",
+    description: "Installable mobile app (PWA) with a touch-friendly editor and assistant, plus native iOS/Android wrappers. Keys are encrypted at rest.",
   },
 ];
 

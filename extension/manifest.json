@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Thesisfy Transparency Companion",
+  "version": "0.1.0",
+  "description": "With your consent, reports your use of external AI tools (ChatGPT, Claude, Gemini, Le Chat) to Thesisfy while a writing session is active, so your AI use is transparent instead of detected.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": [],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_icon": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" } },
+  "icons": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*", "https://claude.ai/*", "https://gemini.google.com/*", "https://chat.mistral.ai/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

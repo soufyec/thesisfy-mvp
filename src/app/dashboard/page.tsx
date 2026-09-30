@@ -2,178 +2,144 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Bot, FileText, Plug, Smartphone, Sparkles } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { ScoreRing } from "@/components/ui";
+import { useUser } from "@/components/useUser";
+import { api, statusColors, statusLabels, timeAgo } from "@/lib/client";
 
 interface Thesis {
   id: string;
   title: string;
   status: string;
   wordCount: number;
+  targetWords: number;
   aiUsagePercent: number;
   integrityScore: number;
   deadline?: string;
   updatedAt: string;
   professorName: string;
+  openFlags: number;
 }
 
-const navItems = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>,
-  },
-  {
-    label: "My Theses",
-    href: "/dashboard/theses",
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>,
-  },
-  {
-    label: "AI Assistant",
-    href: "/dashboard/ai-chat",
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
-  },
-  {
-    label: "Analytics",
-    href: "/dashboard/analytics",
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></svg>,
-  },
-];
-
-const statusColors: Record<string, string> = {
-  draft: "badge-info",
-  in_progress: "badge-warning",
-  under_review: "badge-info",
-  revision_requested: "badge-danger",
-  approved: "badge-success",
-  submitted: "badge-success",
-};
-
-const statusLabels: Record<string, string> = {
-  draft: "Draft",
-  in_progress: "In Progress",
-  under_review: "Under Review",
-  revision_requested: "Revision Needed",
-  approved: "Approved",
-  submitted: "Submitted",
-};
+interface Stats {
+  totalWords: number;
+  avgIntegrity: number;
+  avgAiUsage: number;
+  totalSessions: number;
+  aiInteractions: number;
+  provenance: { human: number; paste: number; ai: number };
+  weekly: { day: string; words: number; ai: number }[];
+  connectedProviders?: string[];
+}
 
 export default function StudentDashboard() {
+  const { user, policy, consent } = useUser();
   const [theses, setTheses] = useState<Thesis[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/theses")
-      .then((res) => res.json())
-      .then((data) => {
-        setTheses(data.theses || []);
-        setLoading(false);
+    Promise.all([api<{ theses: Thesis[] }>("/api/theses"), api<{ stats: Stats }>("/api/stats")])
+      .then(([t, s]) => {
+        setTheses(t.theses);
+        setStats(s.stats);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const activeThesis = theses.find((t) => t.status === "in_progress");
+  const active = theses.find((t) => t.status === "in_progress") || theses[0];
+  const total = stats ? Math.max(1, stats.provenance.human + stats.provenance.paste + stats.provenance.ai) : 1;
 
   return (
-    <DashboardLayout navItems={navItems}>
-      <div className="animate-fade-in">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold">Welcome back!</h1>
-          <p className="text-gray-500 mt-1">Here&apos;s an overview of your academic work.</p>
+    <DashboardLayout>
+      <div className="animate-fade-in max-w-6xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">Welcome back{user ? `, ${user.name.split(" ")[0]}` : ""}!</h1>
+          <p className="text-gray-500 mt-1">Here&apos;s where your writing stands.</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="card p-5">
-            <div className="text-sm text-gray-500 mb-1">Total Theses</div>
-            <div className="text-2xl font-bold">{theses.length}</div>
-          </div>
-          <div className="card p-5">
-            <div className="text-sm text-gray-500 mb-1">Avg. Integrity Score</div>
-            <div className="text-2xl font-bold text-green-600">
-              {theses.length > 0 ? Math.round(theses.reduce((s, t) => s + t.integrityScore, 0) / theses.length) : 0}%
-            </div>
-          </div>
-          <div className="card p-5">
-            <div className="text-sm text-gray-500 mb-1">AI Usage (Avg)</div>
-            <div className="text-2xl font-bold text-blue-600">
-              {theses.length > 0 ? Math.round(theses.reduce((s, t) => s + t.aiUsagePercent, 0) / theses.length) : 0}%
-            </div>
-          </div>
-          <div className="card p-5">
-            <div className="text-sm text-gray-500 mb-1">Total Words</div>
-            <div className="text-2xl font-bold">
-              {theses.reduce((s, t) => s + t.wordCount, 0).toLocaleString()}
-            </div>
-          </div>
+        {policy?.requireConsent && !consent && (
+          <Link href="/dashboard/settings" className="block mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-900">
+            <strong>Set your monitoring choices</strong> before your next writing session: {policy.university} requires transparent AI logging. Review what is (and isn&apos;t) recorded →
+          </Link>
+        )}
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">Total words</div><div className="text-xl sm:text-2xl font-bold">{(stats?.totalWords || 0).toLocaleString()}</div></div>
+          <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">Integrity score</div><div className="text-xl sm:text-2xl font-bold text-green-600">{stats?.avgIntegrity ?? "–"}%</div></div>
+          <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">AI-assisted</div><div className="text-xl sm:text-2xl font-bold text-purple-600">{stats?.avgAiUsage ?? 0}%<span className="text-xs text-gray-400 font-normal ml-1">/ {policy?.maxAiUsagePercent ?? 25}%</span></div></div>
+          <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">AI interactions</div><div className="text-xl sm:text-2xl font-bold">{stats?.aiInteractions ?? 0}</div></div>
         </div>
 
-        {/* Active Thesis Highlight */}
-        {activeThesis && (
-          <div className="card p-6 mb-8 border-l-4 border-l-brand-500">
+        {active && (
+          <div className="card p-5 sm:p-6 mb-6 border-l-4 border-l-brand-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="text-xs font-medium text-brand-600 mb-1">Currently Working On</div>
-                <h3 className="text-lg font-semibold">{activeThesis.title}</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Advisor: {activeThesis.professorName} &middot; {activeThesis.wordCount.toLocaleString()} words
-                </p>
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-brand-600 mb-1">Currently working on</div>
+                <h3 className="text-lg font-semibold truncate">{active.title}</h3>
+                <p className="text-sm text-gray-500 mt-1">Advisor: {active.professorName} · {active.wordCount.toLocaleString()} words · updated {timeAgo(active.updatedAt)}</p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{activeThesis.integrityScore}%</div>
-                  <div className="text-xs text-gray-500">Integrity</div>
-                </div>
-                <Link href={`/dashboard/editor/${activeThesis.id}`} className="btn-primary whitespace-nowrap">
-                  Continue Writing
-                </Link>
+                <ScoreRing value={active.integrityScore} />
+                <Link href={`/dashboard/editor/${active.id}`} className="btn-primary whitespace-nowrap">Continue writing</Link>
               </div>
             </div>
-            {/* Progress bar */}
             <div className="mt-4">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Progress</span>
-                <span>{activeThesis.wordCount.toLocaleString()} / ~20,000 words</span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div
-                  className="bg-brand-500 h-2 rounded-full transition-all"
-                  style={{ width: `${Math.min((activeThesis.wordCount / 20000) * 100, 100)}%` }}
-                />
-              </div>
+              <div className="flex justify-between text-xs text-gray-500 mb-1"><span>Progress</span><span>{active.wordCount.toLocaleString()} / {active.targetWords.toLocaleString()} words</span></div>
+              <div className="w-full bg-gray-100 rounded-full h-2"><div className="bg-brand-500 h-2 rounded-full transition-all" style={{ width: `${Math.min((active.wordCount / active.targetWords) * 100, 100)}%` }} /></div>
             </div>
           </div>
         )}
 
-        {/* Theses List */}
-        <div className="card">
-          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold">Your Theses</h2>
-            <Link href="/dashboard/theses" className="text-sm text-brand-600 hover:text-brand-700 font-medium">
-              View all
-            </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="card p-5 lg:col-span-2">
+            <h2 className="font-semibold mb-4">This week</h2>
+            <div className="flex items-end gap-2 h-32">
+              {(stats?.weekly || []).map((d) => {
+                const max = Math.max(1, ...(stats?.weekly || []).map((x) => x.words));
+                return (
+                  <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full flex flex-col justify-end h-24"><div className="w-full bg-brand-500 rounded-t-md" style={{ height: `${(d.words / max) * 100}%` }} title={`${d.words} words`} /></div>
+                    <span className="text-[10px] text-gray-500">{d.day}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4">
+              <div className="text-xs text-gray-500 mb-1">Who wrote your theses</div>
+              <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100">
+                <div className="bg-green-500" style={{ width: `${((stats?.provenance.human || 0) / total) * 100}%` }} />
+                <div className="bg-amber-400" style={{ width: `${((stats?.provenance.paste || 0) / total) * 100}%` }} />
+                <div className="bg-purple-500" style={{ width: `${((stats?.provenance.ai || 0) / total) * 100}%` }} />
+              </div>
+              <div className="flex gap-3 text-[11px] text-gray-500 mt-1"><span>● You</span><span className="text-amber-500">● Pasted</span><span className="text-purple-600">● AI-assisted</span></div>
+            </div>
           </div>
-          {loading ? (
-            <div className="p-8 text-center text-gray-400">Loading...</div>
-          ) : theses.length === 0 ? (
-            <div className="p-8 text-center text-gray-400">No theses yet. Start your first one!</div>
-          ) : (
+          <div className="card p-5">
+            <h2 className="font-semibold mb-3">Quick actions</h2>
+            <div className="space-y-2">
+              <Link href="/dashboard/theses?new=1" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><FileText className="w-5 h-5 text-brand-600" />New thesis</Link>
+              <Link href="/dashboard/ai-chat" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Bot className="w-5 h-5 text-brand-600" />Ask the AI assistant</Link>
+              <Link href="/dashboard/connections" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Plug className="w-5 h-5 text-brand-600" />{stats?.connectedProviders?.length ? `Connected: ${stats.connectedProviders.join(", ")}` : "Connect Claude / ChatGPT / Gemini"}</Link>
+              <Link href="/dashboard/settings#mobile" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Smartphone className="w-5 h-5 text-brand-600" />Install on your phone</Link>
+              <Link href="/dashboard/settings#extension" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Sparkles className="w-5 h-5 text-brand-600" />Transparent AI use extension</Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between"><h2 className="font-semibold">Your theses</h2><Link href="/dashboard/theses" className="text-sm text-brand-600 font-medium">View all</Link></div>
+          {loading ? <div className="p-8 text-center text-gray-400">Loading…</div> : theses.length === 0 ? <div className="p-8 text-center text-gray-400">No theses yet. <Link href="/dashboard/theses?new=1" className="text-brand-600">Start your first one</Link>.</div> : (
             <div className="divide-y divide-gray-50">
-              {theses.map((thesis) => (
-                <Link key={thesis.id} href={`/dashboard/editor/${thesis.id}`} className="flex items-center justify-between p-5 hover:bg-gray-50 transition-colors">
+              {theses.map((t) => (
+                <Link key={t.id} href={`/dashboard/editor/${t.id}`} className="flex items-center justify-between p-4 sm:p-5 hover:bg-gray-50 transition-colors">
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-medium text-sm truncate">{thesis.title}</h3>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className={statusColors[thesis.status]}>{statusLabels[thesis.status]}</span>
-                      <span className="text-xs text-gray-400">{thesis.wordCount.toLocaleString()} words</span>
-                    </div>
+                    <h3 className="font-medium text-sm truncate">{t.title}</h3>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap"><span className={statusColors[t.status]}>{statusLabels[t.status]}</span><span className="text-xs text-gray-400">{t.wordCount.toLocaleString()} words</span>{t.openFlags > 0 && <span className="badge-warning">{t.openFlags} notice{t.openFlags > 1 ? "s" : ""}</span>}</div>
                   </div>
-                  <div className="flex items-center gap-6 ml-4">
-                    <div className="text-right hidden sm:block">
-                      <div className="text-sm font-semibold text-green-600">{thesis.integrityScore}%</div>
-                      <div className="text-xs text-gray-400">Integrity</div>
-                    </div>
-                    <svg className="w-5 h-5 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
-                  </div>
+                  <div className="flex items-center gap-4 ml-4"><div className="text-right hidden sm:block"><div className="text-sm font-semibold text-green-600">{t.integrityScore}%</div><div className="text-xs text-gray-400">Integrity</div></div></div>
                 </Link>
               ))}
             </div>

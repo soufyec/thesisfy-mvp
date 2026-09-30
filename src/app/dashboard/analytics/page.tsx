@@ -2,151 +2,113 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useUser } from "@/components/useUser";
+import { api, timeAgo } from "@/lib/client";
 
-const navItems = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>,
-  },
-  {
-    label: "My Theses",
-    href: "/dashboard/theses",
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>,
-  },
-  {
-    label: "AI Assistant",
-    href: "/dashboard/ai-chat",
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
-  },
-  {
-    label: "Analytics",
-    href: "/dashboard/analytics",
-    icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></svg>,
-  },
-];
+interface Stats {
+  totalWords: number;
+  avgIntegrity: number;
+  avgAiUsage: number;
+  totalSessions: number;
+  aiInteractions: number;
+  aiByMode: Record<string, number>;
+  aiByProvider: Record<string, number>;
+  provenance: { human: number; paste: number; ai: number };
+  weekly: { day: string; words: number; ai: number; minutes: number }[];
+  openFlags: number;
+}
 
-const weeklyData = [
-  { day: "Mon", words: 320, ai: 2 },
-  { day: "Tue", words: 450, ai: 3 },
-  { day: "Wed", words: 180, ai: 1 },
-  { day: "Thu", words: 560, ai: 5 },
-  { day: "Fri", words: 390, ai: 2 },
-  { day: "Sat", words: 210, ai: 0 },
-  { day: "Sun", words: 480, ai: 4 },
-];
-
-const maxWords = Math.max(...weeklyData.map((d) => d.words));
+interface Interaction {
+  id: string;
+  provider: string;
+  model: string;
+  mode: string;
+  source: string;
+  promptPreview: string;
+  insertedWords: number;
+  blockedByPolicy: boolean;
+  timestamp: string;
+  thesisTitle?: string;
+}
 
 export default function AnalyticsPage() {
-  const [theses, setTheses] = useState<Array<{ id: string; title: string; wordCount: number; integrityScore: number; aiUsagePercent: number }>>([]);
+  const { policy } = useUser();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [logs, setLogs] = useState<Interaction[]>([]);
 
   useEffect(() => {
-    fetch("/api/theses")
-      .then((res) => res.json())
-      .then((data) => setTheses(data.theses || []))
-      .catch(() => {});
+    api<{ stats: Stats }>("/api/stats").then((d) => setStats(d.stats)).catch(() => {});
+    api<{ interactions: Interaction[] }>("/api/ai/logs").then((d) => setLogs(d.interactions)).catch(() => {});
   }, []);
 
-  const totalWords = theses.reduce((s, t) => s + t.wordCount, 0);
-  const avgIntegrity = theses.length > 0 ? Math.round(theses.reduce((s, t) => s + t.integrityScore, 0) / theses.length) : 0;
-  const avgAI = theses.length > 0 ? Math.round(theses.reduce((s, t) => s + t.aiUsagePercent, 0) / theses.length) : 0;
+  const total = stats ? Math.max(1, stats.provenance.human + stats.provenance.paste + stats.provenance.ai) : 1;
+  const maxWords = Math.max(1, ...(stats?.weekly || []).map((d) => d.words));
+  const modes = Object.entries(stats?.aiByMode || {}).sort((a, b) => b[1] - a[1]);
+  const modeTotal = Math.max(1, modes.reduce((a, [, n]) => a + n, 0));
 
   return (
-    <DashboardLayout navItems={navItems}>
-      <div className="animate-fade-in">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold">Writing Analytics</h1>
-          <p className="text-gray-500 mt-1">Track your writing patterns and AI usage over time.</p>
+    <DashboardLayout>
+      <div className="animate-fade-in max-w-6xl">
+        <div className="mb-6"><h1 className="text-2xl font-bold">Writing analytics</h1><p className="text-gray-500 mt-1 text-sm">Your writing patterns and AI usage, exactly as your advisor sees them.</p></div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">Total words</div><div className="text-xl sm:text-2xl font-bold">{(stats?.totalWords || 0).toLocaleString()}</div></div>
+          <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">Integrity</div><div className="text-xl sm:text-2xl font-bold text-green-600">{stats?.avgIntegrity ?? 0}%</div><div className="text-xs text-gray-400 mt-1">{stats?.openFlags || 0} open notices</div></div>
+          <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">AI-assisted</div><div className="text-xl sm:text-2xl font-bold text-purple-600">{stats?.avgAiUsage ?? 0}%</div><div className="text-xs text-gray-400 mt-1">limit {policy?.maxAiUsagePercent ?? 25}%</div></div>
+          <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">Writing sessions</div><div className="text-xl sm:text-2xl font-bold">{stats?.totalSessions ?? 0}</div><div className="text-xs text-gray-400 mt-1">{stats?.aiInteractions ?? 0} AI interactions</div></div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="card p-5">
-            <div className="text-sm text-gray-500 mb-1">Total Words Written</div>
-            <div className="text-2xl font-bold">{totalWords.toLocaleString()}</div>
-            <div className="text-xs text-green-600 mt-1">+12% vs last month</div>
-          </div>
-          <div className="card p-5">
-            <div className="text-sm text-gray-500 mb-1">Integrity Score</div>
-            <div className="text-2xl font-bold text-green-600">{avgIntegrity}%</div>
-            <div className="text-xs text-green-600 mt-1">Excellent standing</div>
-          </div>
-          <div className="card p-5">
-            <div className="text-sm text-gray-500 mb-1">AI Usage</div>
-            <div className="text-2xl font-bold text-blue-600">{avgAI}%</div>
-            <div className="text-xs text-gray-500 mt-1">Within acceptable range</div>
-          </div>
-          <div className="card p-5">
-            <div className="text-sm text-gray-500 mb-1">Writing Sessions</div>
-            <div className="text-2xl font-bold">24</div>
-            <div className="text-xs text-gray-500 mt-1">This month</div>
-          </div>
-        </div>
-
-        {/* Weekly Writing Activity */}
-        <div className="card p-6 mb-6">
-          <h2 className="font-semibold mb-6">Weekly Writing Activity</h2>
-          <div className="flex items-end gap-3 h-48">
-            {weeklyData.map((d) => (
-              <div key={d.day} className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full flex flex-col items-center justify-end h-36">
-                  <div className="text-xs text-gray-400 mb-1">{d.words}</div>
-                  <div
-                    className="w-full bg-brand-500 rounded-t-md transition-all hover:bg-brand-600"
-                    style={{ height: `${(d.words / maxWords) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs text-gray-500">{d.day}</span>
+        <div className="card p-5 sm:p-6 mb-6">
+          <h2 className="font-semibold mb-4">Last 7 days</h2>
+          <div className="flex items-end gap-2 sm:gap-3 h-44">
+            {(stats?.weekly || []).map((d) => (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full flex flex-col items-center justify-end h-32"><div className="text-[10px] text-gray-400 mb-1">{d.words || ""}</div><div className="w-full bg-brand-500 rounded-t-md hover:bg-brand-600 transition-all" style={{ height: `${(d.words / maxWords) * 100}%` }} title={`${d.words} words, ${d.ai} AI assists, ${d.minutes} min`} /></div>
+                <span className="text-[11px] text-gray-500">{d.day}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* AI Usage Breakdown */}
-          <div className="card p-6">
-            <h2 className="font-semibold mb-4">AI Usage Breakdown</h2>
-            <div className="space-y-4">
-              {[
-                { label: "Brainstorming", percent: 35, color: "bg-brand-500" },
-                { label: "Grammar & Style", percent: 28, color: "bg-accent-500" },
-                { label: "Structure Help", percent: 22, color: "bg-blue-500" },
-                { label: "Research Guidance", percent: 15, color: "bg-purple-500" },
-              ].map((item) => (
-                <div key={item.label}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">{item.label}</span>
-                    <span className="font-medium">{item.percent}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div className={`${item.color} h-2 rounded-full`} style={{ width: `${item.percent}%` }} />
-                  </div>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="card p-5 sm:p-6">
+            <h2 className="font-semibold mb-4">Who wrote your text</h2>
+            <div className="flex h-4 rounded-full overflow-hidden bg-gray-100 mb-3">
+              <div className="bg-green-500" style={{ width: `${((stats?.provenance.human || 0) / total) * 100}%` }} />
+              <div className="bg-amber-400" style={{ width: `${((stats?.provenance.paste || 0) / total) * 100}%` }} />
+              <div className="bg-purple-500" style={{ width: `${((stats?.provenance.ai || 0) / total) * 100}%` }} />
+            </div>
+            <div className="space-y-2 text-sm">
+              {[["You typed", stats?.provenance.human, "bg-green-500"], ["Pasted (unattributed or quoted)", stats?.provenance.paste, "bg-amber-400"], ["AI-assisted (inserted from an AI tool)", stats?.provenance.ai, "bg-purple-500"]].map(([l, v, c]) => (
+                <div key={String(l)} className="flex items-center gap-2"><span className={`w-2.5 h-2.5 rounded-full ${c}`} /><span className="flex-1 text-gray-600">{l}</span><span className="font-medium">{Number(v || 0).toLocaleString()} w · {Math.round((Number(v || 0) / total) * 100)}%</span></div>
               ))}
             </div>
           </div>
-
-          {/* Integrity Timeline */}
-          <div className="card p-6">
-            <h2 className="font-semibold mb-4">Integrity Score Timeline</h2>
+          <div className="card p-5 sm:p-6">
+            <h2 className="font-semibold mb-4">How you use AI</h2>
+            {modes.length === 0 && <div className="text-sm text-gray-400">No AI interactions yet.</div>}
             <div className="space-y-3">
-              {[
-                { date: "Mar 14", score: 94, event: "Session completed - 450 words" },
-                { date: "Mar 12", score: 93, event: "Style flag resolved" },
-                { date: "Mar 10", score: 91, event: "Minor style inconsistency detected" },
-                { date: "Mar 8", score: 92, event: "Session completed - 380 words" },
-                { date: "Mar 5", score: 90, event: "New section started" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="text-xs text-gray-400 w-16 flex-shrink-0">{item.date}</div>
-                  <div className={`w-10 h-6 rounded flex items-center justify-center text-xs font-bold ${item.score >= 90 ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>
-                    {item.score}
-                  </div>
-                  <div className="text-sm text-gray-600">{item.event}</div>
-                </div>
+              {modes.map(([m, n]) => (
+                <div key={m}><div className="flex justify-between text-sm mb-1"><span className="text-gray-600 capitalize">{m.replace("_", " ")}</span><span className="font-medium">{n}</span></div><div className="w-full bg-gray-100 rounded-full h-2"><div className="bg-brand-500 h-2 rounded-full" style={{ width: `${(n / modeTotal) * 100}%` }} /></div></div>
               ))}
             </div>
+            {stats && Object.keys(stats.aiByProvider).length > 0 && <div className="mt-4 text-xs text-gray-500">Providers: {Object.entries(stats.aiByProvider).map(([p, n]) => `${p} (${n})`).join(" · ")}</div>}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="p-5 border-b border-gray-100"><h2 className="font-semibold">AI interaction log</h2><p className="text-xs text-gray-400 mt-0.5">Every assistant request, plus external AI use reported by your extension. This is what your advisor sees.</p></div>
+          <div className="divide-y divide-gray-50">
+            {logs.length === 0 && <div className="p-8 text-center text-sm text-gray-400">No interactions logged yet.</div>}
+            {logs.slice(0, 40).map((i) => (
+              <div key={i.id} className="p-4 flex items-start gap-3 text-sm">
+                <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${i.blockedByPolicy ? "bg-red-500" : i.source === "extension" ? "bg-amber-400" : "bg-brand-500"}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap"><span className="font-medium capitalize">{i.mode.replace("_", " ")}</span><span className="text-xs text-gray-400">{i.provider} · {i.model}</span>{i.source === "extension" && <span className="badge-warning !text-[10px]">external</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">blocked</span>}{i.insertedWords > 0 && <span className="badge-info !text-[10px]">{i.insertedWords} words inserted</span>}</div>
+                  <div className="text-gray-600 truncate">{i.promptPreview}</div>
+                  <div className="text-[11px] text-gray-400">{i.thesisTitle ? `${i.thesisTitle} · ` : ""}{timeAgo(i.timestamp)}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

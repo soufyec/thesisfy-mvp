@@ -101,3 +101,113 @@
 .animate-slide-up {
   animation: slideUp 0.6s ease-out;
 }
+
+/* ---------- Utilities ---------- */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* ---------- Docs-style editor ---------- */
+.docs-workspace {
+  --page-width: 21cm;
+  --page-min-height: 29.7cm;
+  --page-margin: 2.54cm;
+  --doc-zoom: 1;
+  background: #f1f3f4;
+}
+.docs-workspace.landscape { --page-width: 29.7cm; --page-min-height: 21cm; }
+.docs-workspace.letter { --page-width: 21.59cm; --page-min-height: 27.94cm; }
+.docs-workspace.letter.landscape { --page-width: 27.94cm; --page-min-height: 21.59cm; }
+
+.docs-page {
+  width: var(--page-width);
+  min-height: var(--page-min-height);
+  max-width: 100%;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+  padding: var(--page-margin);
+  transform-origin: top center;
+  zoom: var(--doc-zoom);
+}
+@media (max-width: 767px) {
+  .docs-page { padding: 1.25rem 1rem; min-height: calc(100vh - 12rem); box-shadow: none; }
+}
+
+.ProseMirror {
+  outline: none;
+  font-family: var(--doc-font, Georgia, "Times New Roman", serif);
+  font-size: 12pt;
+  line-height: var(--doc-line-height, 1.5);
+  color: #202124;
+  min-height: 20cm;
+}
+.ProseMirror > * + * { margin-top: 0.6em; }
+.ProseMirror h1 { font-size: 24pt; font-weight: 700; margin-top: 1.2em; line-height: 1.25; }
+.ProseMirror h2 { font-size: 18pt; font-weight: 700; margin-top: 1.1em; line-height: 1.3; }
+.ProseMirror h3 { font-size: 14pt; font-weight: 700; margin-top: 1em; }
+.ProseMirror h4 { font-size: 12pt; font-weight: 700; }
+.ProseMirror p { margin: 0; }
+.ProseMirror ul, .ProseMirror ol { padding-left: 1.6em; }
+.ProseMirror ul { list-style: disc; }
+.ProseMirror ol { list-style: decimal; }
+.ProseMirror li > p { margin: 0; }
+.ProseMirror blockquote { border-left: 3px solid #d0d7de; margin-left: 0; padding-left: 1em; color: #444; }
+.ProseMirror pre { background: #0d1117; color: #e6edf3; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10pt; padding: 0.75em 1em; border-radius: 6px; white-space: pre-wrap; }
+.ProseMirror code { background: #f3f4f6; padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.92em; }
+.ProseMirror pre code { background: none; padding: 0; }
+.ProseMirror hr { border: none; border-top: 1px solid #c4c7c5; margin: 1.2em 0; }
+.ProseMirror a { color: #1a73e8; text-decoration: underline; }
+.ProseMirror img { max-width: 100%; height: auto; display: block; margin: 0.5em auto; }
+.ProseMirror img.ProseMirror-selectednode { outline: 3px solid #a8c7fa; }
+.ProseMirror mark { background: #fff59d; padding: 0 0.05em; }
+.ProseMirror table { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 0.8em 0; overflow: hidden; }
+.ProseMirror td, .ProseMirror th { border: 1px solid #bfbfbf; padding: 4px 8px; vertical-align: top; position: relative; min-width: 3em; }
+.ProseMirror th { background: #f3f4f6; font-weight: 600; text-align: left; }
+.ProseMirror .selectedCell::after { content: ""; position: absolute; inset: 0; background: rgba(26, 115, 232, 0.12); pointer-events: none; }
+.ProseMirror .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #a8c7fa; pointer-events: none; }
+.ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0.2em; }
+.ProseMirror ul[data-type="taskList"] li { display: flex; gap: 0.5em; align-items: flex-start; }
+.ProseMirror ul[data-type="taskList"] li > label { flex: 0 0 auto; margin-top: 0.25em; }
+.ProseMirror ul[data-type="taskList"] li > div { flex: 1; }
+.ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #9aa0a6; float: left; pointer-events: none; height: 0; }
+.ProseMirror .page-break { position: relative; height: 0; border-top: 2px dashed #c4c7c5; margin: 1.5em 0; user-select: none; }
+.ProseMirror .page-break-label { position: absolute; top: -0.7em; left: 50%; transform: translateX(-50%); background: #fff; color: #9aa0a6; font-size: 9pt; font-family: Inter, sans-serif; padding: 0 0.5em; }
+.ProseMirror .page-break.ProseMirror-selectednode { border-color: #1a73e8; }
+
+/* Provenance (shown when the student toggles "Show provenance") */
+.show-provenance .prov-ai { background: rgba(124, 58, 237, 0.13); border-bottom: 2px solid rgba(124, 58, 237, 0.55); }
+.show-provenance .prov-paste { background: rgba(245, 158, 11, 0.16); border-bottom: 2px solid rgba(245, 158, 11, 0.6); }
+.prov { border-bottom: 1px dotted rgba(0, 0, 0, 0.25); }
+
+/* Comments */
+.thesisfy-comment { background: rgba(251, 188, 4, 0.28); border-bottom: 2px solid rgba(251, 188, 4, 0.8); cursor: pointer; }
+.thesisfy-comment.active-comment { background: rgba(251, 188, 4, 0.55); }
+
+/* Search */
+.search-hit { background: rgba(255, 213, 79, 0.6); }
+.search-hit-current { background: #ff9632; color: #fff; }
+
+/* Menu bar */
+.docs-menu-item { @apply px-2 py-1 text-[13px] rounded hover:bg-gray-100 text-gray-700; }
+.docs-menu { @apply absolute left-0 top-full mt-0.5 bg-white rounded-lg shadow-xl border border-gray-100 py-1 min-w-[220px] z-50 text-[13px] text-gray-800; }
+.docs-menu button, .docs-menu label { @apply w-full text-left px-3 py-1.5 hover:bg-gray-100 flex items-center justify-between gap-6 disabled:opacity-40 disabled:hover:bg-transparent; }
+.docs-menu .sep { @apply my-1 border-t border-gray-100; }
+.docs-menu kbd { @apply text-[11px] text-gray-400 font-sans; }
+
+/* Toolbar */
+.tb-btn { @apply h-8 min-w-8 px-1.5 inline-flex items-center justify-center rounded text-gray-700 hover:bg-gray-200/70 disabled:opacity-30 disabled:hover:bg-transparent; }
+.tb-btn.active { @apply bg-brand-100 text-brand-700; }
+.tb-select { @apply h-8 text-[13px] bg-transparent border border-transparent hover:bg-gray-200/70 rounded px-1.5 focus:outline-none focus:border-gray-300 cursor-pointer; }
+.tb-sep { @apply w-px h-5 bg-gray-300 mx-1 flex-shrink-0; }
+
+/* Print */
+@media print {
+  body * { visibility: hidden; }
+  .docs-workspace, .docs-workspace * { visibility: visible; }
+  .docs-workspace { position: absolute; inset: 0; background: #fff !important; }
+  .docs-page { box-shadow: none; margin: 0; width: auto; min-height: 0; zoom: 1; padding: 0; }
+  .show-provenance .prov-ai, .show-provenance .prov-paste, .thesisfy-comment { background: none !important; border-bottom: none !important; }
+  .page-break { page-break-after: always; border: none !important; }
+  .page-break-label { display: none; }
+  @page { margin: var(--page-margin, 2.54cm); }
+}

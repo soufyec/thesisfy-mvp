@@ -1,170 +1,176 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { AIMode, db, Provider } from "@/lib/db";
+import { canAccessThesis } from "@/lib/auth";
+import { error, requireUser } from "@/lib/api";
+import { buildSystemPrompt, MODES } from "@/lib/ai/prompts";
+import { checkPolicy, detectLang } from "@/lib/ai/policy";
+import { demoResponse } from "@/lib/ai/demo";
+import { ChatMessage, resolveProvider, streamCompletion } from "@/lib/ai/providers";
 
-const CLAUDE_API_KEY = process.env.ANTHROPIC_API_KEY;
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const SYSTEM_PROMPT = `You are Thesisfy AI, an academic writing assistant powered by Claude. Your role is to help students with their thesis writing while maintaining academic integrity.
-
-Rules you MUST follow:
-1. NEVER write entire sections or paragraphs for students. Instead, help them develop their own ideas.
-2. You can help with: brainstorming, outlining, explaining concepts, improving grammar, suggesting structure, finding logical gaps, and providing feedback on drafts.
-3. You CANNOT: write original content, generate full paragraphs to be copied, or do the student's research for them.
-4. Always encourage critical thinking and original analysis.
-5. When asked to "write this for me", redirect to helping them structure their own thoughts.
-6. Be supportive, pedagogical, and constructive.
-7. Reference academic writing best practices.
-8. Help with citations format (APA, MLA, Chicago, etc.) when asked.
-
-You are transparent about being AI. All interactions are logged as part of Thesisfy's integrity monitoring system. This transparency is a feature, not a limitation.`;
-
-export async function POST(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
-  if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
-  const payload = verifyToken(token);
-  if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-
-  try {
-    const { messages, thesisContext } = await request.json();
-
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "Messages are required" }, { status: 400 });
-    }
-
-    // If no API key, use a simulated response for demo
-    if (!CLAUDE_API_KEY) {
-      return simulatedResponse(messages);
-    }
-
-    // Real Claude API call
-    const systemMessage = thesisContext
-      ? `${SYSTEM_PROMPT}\n\nCurrent thesis context:\nTitle: ${thesisContext.title}\nCurrent section: ${thesisContext.currentSection || "Not specified"}\nWord count: ${thesisContext.wordCount || 0}`
-      : SYSTEM_PROMPT;
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: 1024,
-        system: systemMessage,
-        messages: messages.map((m: { role: string; content: string }) => ({
-          role: m.role,
-          content: m.content,
-        })),
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Claude API error:", errorData);
-      return simulatedResponse(messages);
-    }
-
-    const data = await response.json();
-    const assistantMessage = data.content[0]?.text || "I apologize, I couldn't generate a response.";
-
-    return NextResponse.json({
-      message: assistantMessage,
-      usage: {
-        inputTokens: data.usage?.input_tokens || 0,
-        outputTokens: data.usage?.output_tokens || 0,
-      },
-    });
-  } catch (error) {
-    console.error("AI chat error:", error);
-    return simulatedResponse([]);
-  }
+interface Body {
+  messages: ChatMessage[];
+  mode?: AIMode;
+  thesisId?: string;
+  sessionId?: string;
+  provider?: Provider | null;
+  conversationId?: string;
+  selection?: string;
+  stream?: boolean;
 }
 
-function simulatedResponse(messages: { role: string; content: string }[]) {
-  const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || "";
+export async function POST(request: NextRequest) {
+  const r = requireUser(request);
+  if ("response" in r) return r.response;
+  const user = r.user;
+  const body = (await request.json().catch(() => null)) as Body | null;
+  if (!body || !Array.isArray(body.messages) || !body.messages.length) return error("messages are required");
 
-  let response = "";
+  const mode: AIMode = MODES.some((m) => m.id === body.mode) ? (body.mode as AIMode) : "chat";
+  const policy = db.policies.get(user.university);
+  const consent = db.consents.latest(user.id);
+  if (user.role === "student" && policy.requireConsent && !consent?.scopes.aiInteractions) {
+    return NextResponse.json({ error: "Please review and accept the monitoring consent before using the assistant.", code: "consent_required" }, { status: 428 });
+  }
+  const thesis = body.thesisId ? canAccessThesis(user, body.thesisId) : null;
+  if (body.thesisId && !thesis) return error("Thesis not found", 404);
 
-  if (lastMessage.includes("write") && (lastMessage.includes("for me") || lastMessage.includes("paragraph") || lastMessage.includes("section"))) {
-    response = `I appreciate you reaching out! However, as your academic integrity assistant, I can't write content directly for you. Instead, let me help you develop your ideas:
+  const messages: ChatMessage[] = body.messages
+    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-30)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 20000) }));
+  if (body.selection && messages.length) {
+    const last = messages[messages.length - 1];
+    last.content = `Selected passage from my thesis:\n"""\n${body.selection.slice(0, 12000)}\n"""\n\n${last.content}`;
+  }
+  const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+  const lang = user.preferences.language !== "en" ? user.preferences.language : detectLang(lastUser);
 
-1. **What's your main argument?** Let's start by clarifying your thesis statement for this section.
-2. **What evidence do you have?** We can organize your research into a logical flow.
-3. **Structure suggestion:** I can help you create an outline that guides your writing.
+  // Conversation persistence
+  let conversation = body.conversationId ? db.conversations.findById(body.conversationId) : undefined;
+  if (conversation && conversation.userId !== user.id) conversation = undefined;
+  if (!conversation) conversation = db.conversations.create(user.id, thesis?.id, lastUser.slice(0, 60) || "New conversation");
+  db.conversations.append(conversation.id, { role: "user", content: lastUser, mode });
 
-Would you like to start with any of these approaches? Remember, the goal is to strengthen YOUR voice and ideas.`;
-  } else if (lastMessage.includes("outline") || lastMessage.includes("structure")) {
-    response = `Great question about structure! Here's a common approach for academic thesis sections:
+  const cfg = resolveProvider(user, policy, body.provider || null);
+  const meta = { provider: cfg.provider, model: cfg.model, source: cfg.source, label: cfg.label, mode, conversationId: conversation.id, demo: cfg.provider === "demo", lang };
 
-**Recommended Section Structure:**
-1. **Opening statement** - Introduce the topic and its relevance (2-3 sentences)
-2. **Context/Background** - Situate your argument within existing literature
-3. **Your argument/analysis** - Present your original contribution
-4. **Evidence & support** - Back up your claims with data/citations
-5. **Transition** - Connect to the next section
+  const finish = (text: string, usage: { inputTokens: number; outputTokens: number }, blocked: boolean) => {
+    const interaction = db.interactions.create({
+      userId: user.id,
+      thesisId: thesis?.id,
+      sessionId: body.sessionId,
+      provider: cfg.provider,
+      model: cfg.model,
+      mode,
+      source: "thesisfy",
+      connectionId: cfg.connectionId,
+      promptPreview: lastUser.slice(0, 200),
+      responsePreview: text.slice(0, 200),
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      insertedWords: 0,
+      blockedByPolicy: blocked,
+    });
+    db.conversations.append(conversation!.id, { role: "assistant", content: text, mode, provider: cfg.provider, model: cfg.model });
+    if (body.sessionId) db.sessions.addEvent(body.sessionId, "ai_prompt", { mode, provider: cfg.provider, model: cfg.model, blocked, promptPreview: lastUser.slice(0, 120), interactionId: interaction.id });
+    if (cfg.connectionId) db.connections.update(cfg.connectionId, { lastUsedAt: new Date().toISOString() });
+    return interaction.id;
+  };
 
-**Tips:**
-- Each paragraph should have one clear idea
-- Use topic sentences to guide your reader
-- Ensure logical flow between paragraphs
-
-Would you like me to help you outline a specific section of your thesis?`;
-  } else if (lastMessage.includes("citation") || lastMessage.includes("reference") || lastMessage.includes("apa") || lastMessage.includes("mla")) {
-    response = `I'd be happy to help with citations! Here are the main formats:
-
-**APA 7th Edition (most common in sciences):**
-- In-text: (Author, Year, p. X)
-- Reference: Author, A. A. (Year). *Title of work*. Publisher.
-
-**MLA 9th Edition (humanities):**
-- In-text: (Author Page)
-- Works Cited: Author. "Title." *Source*, vol., no., Year, pp.
-
-**Chicago (history, arts):**
-- Footnote style or Author-Date style available
-
-Which citation style does your university require? I can help you format specific references.`;
-  } else if (lastMessage.includes("hello") || lastMessage.includes("hi") || lastMessage.includes("hola")) {
-    response = `Hello! I'm Thesisfy AI, your academic writing assistant. I'm here to help you with your thesis work while maintaining academic integrity.
-
-I can help you with:
-- **Brainstorming** ideas and arguments
-- **Structuring** your thesis sections
-- **Reviewing** your drafts for clarity and logic
-- **Citation** formatting (APA, MLA, Chicago)
-- **Improving** grammar and academic tone
-- **Identifying** logical gaps in your arguments
-
-What would you like to work on today?`;
-  } else if (lastMessage.includes("grammar") || lastMessage.includes("review") || lastMessage.includes("feedback")) {
-    response = `I'd love to help review your writing! Please share the paragraph or section you'd like feedback on, and I'll provide:
-
-1. **Clarity check** - Is your meaning clear?
-2. **Academic tone** - Is the language appropriate?
-3. **Grammar & syntax** - Any errors to fix?
-4. **Logical flow** - Does the argument progress well?
-5. **Suggestions** - Ways to strengthen your writing
-
-Just paste the text you'd like me to review!`;
-  } else {
-    response = `That's an interesting question! Let me help you think through this.
-
-When approaching academic writing, consider:
-
-1. **Clarity of argument** - What specific claim are you making?
-2. **Evidence base** - What research supports your position?
-3. **Critical analysis** - How does this connect to broader themes in your field?
-
-Could you share more about the specific aspect of your thesis you're working on? The more context you provide, the better I can assist you in developing your own arguments and analysis.
-
-Remember: I'm here to guide your thinking, not to think for you. That's what makes your thesis genuinely yours!`;
+  // Policy guardrails run before any provider call.
+  const check = checkPolicy(policy, mode, lastUser, lang);
+  if (!check.allowed) {
+    const text = check.message!;
+    const interactionId = finish(text, { inputTokens: 0, outputTokens: 0 }, true);
+    if (body.stream === false) return NextResponse.json({ message: text, blocked: true, reason: check.reason, meta, interactionId });
+    return sse(async (send) => {
+      send("meta", { ...meta, blocked: true, reason: check.reason });
+      for (const chunk of chunkText(text)) {
+        send("delta", { text: chunk });
+        await new Promise((res) => setTimeout(res, 12));
+      }
+      send("done", { interactionId, usage: { inputTokens: 0, outputTokens: 0 }, blocked: true });
+    });
   }
 
-  return NextResponse.json({
-    message: response,
-    usage: { inputTokens: 0, outputTokens: 0 },
-    demo: true,
+  const system = buildSystemPrompt({ mode, policy, thesis, studentName: user.name, provider: cfg.label });
+
+  if (cfg.provider === "demo") {
+    const text = demoResponse(mode, messages, lang);
+    const interactionId = finish(text, { inputTokens: 0, outputTokens: 0 }, false);
+    if (body.stream === false) return NextResponse.json({ message: text, meta, interactionId, usage: { inputTokens: 0, outputTokens: 0 } });
+    return sse(async (send) => {
+      send("meta", meta);
+      for (const chunk of chunkText(text)) {
+        send("delta", { text: chunk });
+        await new Promise((res) => setTimeout(res, 15));
+      }
+      send("done", { interactionId, usage: { inputTokens: 0, outputTokens: 0 } });
+    });
+  }
+
+  if (body.stream === false) {
+    let text = "";
+    let usage = { inputTokens: 0, outputTokens: 0 };
+    let err: string | undefined;
+    for await (const chunk of streamCompletion(cfg, system, messages)) {
+      if (chunk.type === "delta") text += chunk.text;
+      else if (chunk.type === "usage") usage = { inputTokens: chunk.inputTokens, outputTokens: chunk.outputTokens };
+      else if (chunk.type === "error") err = chunk.message;
+    }
+    if (err && !text) return NextResponse.json({ error: err, meta }, { status: 502 });
+    const interactionId = finish(text, usage, false);
+    return NextResponse.json({ message: text, meta, interactionId, usage });
+  }
+
+  return sse(async (send) => {
+    send("meta", meta);
+    let text = "";
+    let usage = { inputTokens: 0, outputTokens: 0 };
+    for await (const chunk of streamCompletion(cfg, system, messages)) {
+      if (chunk.type === "delta") {
+        text += chunk.text;
+        send("delta", { text: chunk.text });
+      } else if (chunk.type === "usage") usage = { inputTokens: chunk.inputTokens, outputTokens: chunk.outputTokens };
+      else if (chunk.type === "error") send("error", { message: chunk.message, code: chunk.code });
+    }
+    const interactionId = text ? finish(text, usage, false) : undefined;
+    send("done", { interactionId, usage });
   });
+}
+
+function chunkText(text: string, size = 24) {
+  const out: string[] = [];
+  for (let i = 0; i < text.length; i += size) out.push(text.slice(i, i + size));
+  return out;
+}
+
+function sse(run: (send: (event: string, data: unknown) => void) => Promise<void>) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          /* stream closed */
+        }
+      };
+      try {
+        await run(send);
+      } catch (e) {
+        send("error", { message: (e as Error).message || "Unexpected error" });
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
+      }
+    },
+  });
+  return new Response(stream, { headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" } });
 }

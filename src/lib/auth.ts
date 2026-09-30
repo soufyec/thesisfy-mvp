@@ -1,20 +1,25 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { db } from "./db";
+import { NextRequest } from "next/server";
+import { db, publicUser, Role, User } from "./db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "thesisfy-mvp-dev-secret-key-2024";
 
 export interface AuthPayload {
   userId: string;
   email: string;
-  role: string;
+  role: Role;
+}
+
+export function signToken(user: User) {
+  return jwt.sign({ userId: user.id, email: user.email, role: user.role } as AuthPayload, JWT_SECRET, { expiresIn: "7d" });
 }
 
 export async function authenticateUser(email: string, password: string) {
   const user = db.users.findByEmail(email);
   if (!user) return null;
 
-  // For demo: accept demo passwords directly
+  // Demo accounts accept their documented passwords.
   const demoPasswords: Record<string, string> = {
     "jane.cooper@stanford.edu": "demo123",
     "admin@stanford.edu": "admin123",
@@ -22,17 +27,31 @@ export async function authenticateUser(email: string, password: string) {
     "prof.williams@stanford.edu": "demo123",
   };
 
-  const isValid = demoPasswords[email] === password || await bcrypt.compare(password, user.password);
+  const isValid = demoPasswords[user.email] === password || (await bcrypt.compare(password, user.password));
   if (!isValid) return null;
 
-  const token = jwt.sign(
-    { userId: user.id, email: user.email, role: user.role } as AuthPayload,
-    JWT_SECRET,
-    { expiresIn: "7d" }
-  );
+  db.users.touch(user.id);
+  return { user: publicUser(user), token: signToken(user) };
+}
 
-  const { password: _, ...userWithoutPassword } = user;
-  return { user: userWithoutPassword, token };
+export async function registerUser(data: { email: string; password: string; name: string; university: string; role?: Role }) {
+  if (db.users.findByEmail(data.email)) return { error: "An account with this email already exists" };
+  if (data.password.length < 6) return { error: "Password must be at least 6 characters" };
+  const hashed = await bcrypt.hash(data.password, 10);
+  const user = db.users.create({
+    email: data.email.toLowerCase(),
+    password: hashed,
+    name: data.name,
+    role: data.role || "student",
+    university: data.university,
+    avatar: data.name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase(),
+  });
+  return { user: publicUser(user), token: signToken(user) };
 }
 
 export function verifyToken(token: string): AuthPayload | null {
@@ -41,4 +60,37 @@ export function verifyToken(token: string): AuthPayload | null {
   } catch {
     return null;
   }
+}
+
+/** Resolves the current user from the auth cookie or an Authorization: Bearer header (mobile / extension clients). */
+export function getSessionUser(request: NextRequest): User | null {
+  const header = request.headers.get("authorization");
+  const bearer = header?.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : undefined;
+  const token = bearer || request.cookies.get("token")?.value;
+  if (!token) return null;
+  if (token.startsWith("ext_")) {
+    const ext = db.pairing.findToken(token);
+    if (!ext) return null;
+    db.pairing.touch(token);
+    return db.users.findById(ext.userId) || null;
+  }
+  const payload = verifyToken(token);
+  if (!payload) return null;
+  const user = db.users.findById(payload.userId) || null;
+  if (user) db.users.touch(user.id);
+  return user;
+}
+
+export function isStaff(user: User) {
+  return user.role === "admin" || user.role === "professor";
+}
+
+/** Can this user read/write the thesis? Students own theirs; professors their advisees; admins their university. */
+export function canAccessThesis(user: User, thesisId: string) {
+  const thesis = db.theses.findById(thesisId);
+  if (!thesis) return null;
+  if (user.role === "student" && thesis.studentId === user.id) return thesis;
+  if (user.role === "professor" && (thesis.professorId === user.id || db.users.findById(thesis.studentId)?.university === user.university)) return thesis;
+  if (user.role === "admin" && db.users.findById(thesis.studentId)?.university === user.university) return thesis;
+  return null;
 }
