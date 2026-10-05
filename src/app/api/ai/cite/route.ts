@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
 import { CitationCandidate, extractDoi, extractIsbn, lookupDoi, lookupIsbn, lookupUrl, searchCrossref } from "@/lib/citations";
-import { resolveProvider, streamCompletion } from "@/lib/ai/providers";
+import { costOf, resolveProvider, streamCompletion } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,11 +57,15 @@ export async function POST(request: NextRequest) {
   // AI fallback: structure a pasted reference or an incomplete web page. Never used to invent a source.
   const needsAi = (query && !isUrl && !doi && !isbn && /\(\d{4}\)|\d{4}\./.test(query) && query.length > 40) || (isUrl && (!candidates.length || !candidates[0].authors || !candidates[0].year));
   let aiUsed = false;
+  let citeUsage = { inputTokens: 0, outputTokens: 0 };
   const cfg = resolveProvider(user, policy, null);
   if (needsAi && cfg.provider !== "demo") {
     const input = isUrl ? `URL: ${finalUrl || query}\nPage text excerpt:\n${pageText || ""}` : `Reference text:\n${query}`;
     let text = "";
-    for await (const chunk of streamCompletion(cfg, AI_SYSTEM, [{ role: "user", content: input }], 800)) if (chunk.type === "delta") text += chunk.text;
+    for await (const chunk of streamCompletion(cfg, AI_SYSTEM, [{ role: "user", content: input }], 800)) {
+      if (chunk.type === "delta") text += chunk.text;
+      else if (chunk.type === "usage") citeUsage = { inputTokens: chunk.inputTokens, outputTokens: chunk.outputTokens };
+    }
     const jsonText = text.match(/\{[\s\S]*\}/)?.[0];
     if (jsonText) {
       try {
@@ -107,10 +111,13 @@ export async function POST(request: NextRequest) {
     source: "thesisfy",
     promptPreview: (query || selection).slice(0, 200),
     responsePreview: candidates[0] ? `${candidates[0].authors} (${candidates[0].year}). ${candidates[0].title}`.slice(0, 200) : "no results",
-    inputTokens: 0,
-    outputTokens: 0,
+    inputTokens: aiUsed ? citeUsage.inputTokens : 0,
+    outputTokens: aiUsed ? citeUsage.outputTokens : 0,
     insertedWords: 0,
     blockedByPolicy: false,
+    billedTo: aiUsed ? cfg.billedTo : "none",
+    costUsd: aiUsed ? costOf(cfg, citeUsage) : 0,
+    institutionModelId: aiUsed ? cfg.institutionModel?.id : undefined,
   });
 
   return json({ candidates: candidates.slice(0, 6), method, aiUsed, aiAvailable: cfg.provider !== "demo" });

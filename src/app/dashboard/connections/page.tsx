@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, ExternalLink, KeyRound, LogIn, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { Building2, CheckCircle2, ExternalLink, KeyRound, LogIn, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Modal, Toast } from "@/components/ui";
 import { api } from "@/lib/client";
@@ -27,6 +27,8 @@ interface Provider {
 function ConnectionsInner() {
   const params = useSearchParams();
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [institutionModels, setInstitutionModels] = useState<{ id: string; provider: string; label: string; model: string; backendName: string; region: string; isDefault: boolean; ready: boolean; color: string }[]>([]);
+  const [allowance, setAllowance] = useState<{ institutionPays: boolean; currency: string; perStudentMonthly: number; spentStudent: number; atLimit: "block" | "own_account"; exhausted: string } | null>(null);
   const [policy, setPolicy] = useState<{ allowBYOK: boolean; maxAiUsagePercent: number } | null>(null);
   const [defaultProvider, setDefaultProvider] = useState<string | null>(null);
   const [connect, setConnect] = useState<Provider | null>(null);
@@ -35,7 +37,7 @@ function ConnectionsInner() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState<{ message: string; kind?: "info" | "success" | "error" } | null>(null);
 
-  const load = useCallback(() => api<{ providers: Provider[]; policy: { allowBYOK: boolean; maxAiUsagePercent: number }; defaultProvider: string | null }>("/api/ai/providers").then((d) => { setProviders(d.providers); setPolicy(d.policy); setDefaultProvider(d.defaultProvider); }).catch(() => {}), []);
+  const load = useCallback(() => api<{ providers: Provider[]; policy: { allowBYOK: boolean; maxAiUsagePercent: number }; defaultProvider: string | null; institutionModels?: typeof institutionModels; allowance?: typeof allowance }>("/api/ai/providers").then((d) => { setProviders(d.providers); setPolicy(d.policy); setDefaultProvider(d.defaultProvider); setInstitutionModels(d.institutionModels || []); setAllowance(d.allowance || null); }).catch(() => {}), []);
   useEffect(() => {
     load();
   }, [load]);
@@ -89,7 +91,39 @@ function ConnectionsInner() {
 
   return (
     <div className="animate-fade-in max-w-4xl">
-      <div className="mb-6"><h1 className="text-2xl font-bold">AI Connections</h1><p className="text-gray-500 mt-1 text-sm">Use the AI account you already pay for, inside Thesisfy, with every interaction logged transparently.</p></div>
+      <div className="mb-6"><h1 className="text-2xl font-bold">AI Connections</h1><p className="text-gray-500 mt-1 text-sm">Use the models your university provides, or the AI account you already pay for, inside Thesisfy, with every interaction logged transparently.</p></div>
+
+      {allowance?.institutionPays && (
+        <section className="card p-5 mb-6 border-emerald-100 bg-gradient-to-br from-emerald-50/60 to-white">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="font-semibold flex items-center gap-2"><Building2 className="w-4 h-4 text-emerald-600" />Provided by your university</h2>
+              <p className="text-sm text-gray-600 mt-1">Your university pays for these models, the same way companies give staff Copilot. Nothing to set up: pick one in the assistant or leave it on Auto.</p>
+            </div>
+            {allowance.perStudentMonthly > 0 && (
+              <div className="text-sm min-w-[200px]">
+                <div className="flex justify-between text-xs text-gray-500"><span>Your allowance this month</span><span>{allowance.spentStudent.toFixed(2)} / {allowance.perStudentMonthly} {allowance.currency}</span></div>
+                <div className="h-2 rounded-full bg-gray-100 mt-1 overflow-hidden"><div className={`h-full ${allowance.exhausted !== "none" ? "bg-red-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, (allowance.spentStudent / allowance.perStudentMonthly) * 100)}%` }} /></div>
+                <div className="text-[11px] text-gray-400 mt-1">{allowance.exhausted !== "none" ? (allowance.atLimit === "block" ? "Used up: resets on the 1st." : "Used up: your own account is used until the 1st.") : allowance.atLimit === "block" ? "When it runs out, the assistant pauses until next month." : "When it runs out, your own connected account takes over."}</div>
+              </div>
+            )}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-2 mt-4">
+            {institutionModels.map((m) => (
+              <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 ${!m.ready ? "opacity-60" : ""}`}>
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold" style={{ background: m.color }}>{m.label[0]}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{m.label}{m.isDefault && <span className="ml-2 badge bg-emerald-50 text-emerald-700 !text-[10px] !py-0">default</span>}</div>
+                  <div className="text-[11px] text-gray-400 truncate">{m.backendName} · {m.region}{!m.ready && " · not configured yet"}</div>
+                </div>
+              </div>
+            ))}
+            {institutionModels.length === 0 && <div className="text-sm text-gray-500">Your university has not configured any model yet.</div>}
+          </div>
+        </section>
+      )}
+
+      <h2 className="font-semibold mb-2 text-gray-700">{allowance?.institutionPays ? "Your own accounts (optional)" : "Your own accounts"}</h2>
 
       <div className="card p-4 sm:p-5 mb-6 flex gap-3">
         <ShieldCheck className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />

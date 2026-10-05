@@ -25,6 +25,27 @@ interface ProviderInfo {
   connection: { id: string; label: string; status: string; model?: string } | null;
 }
 
+interface InstitutionModelInfo {
+  id: string;
+  provider: string;
+  label: string;
+  model: string;
+  backendName: string;
+  region: string;
+  isDefault: boolean;
+  ready: boolean;
+  color: string;
+}
+
+interface AllowanceInfo {
+  institutionPays: boolean;
+  currency: string;
+  perStudentMonthly: number;
+  spentStudent: number;
+  atLimit: "block" | "own_account";
+  exhausted: "none" | "student" | "institution";
+}
+
 export interface ChatMsg {
   id: string;
   role: "user" | "assistant";
@@ -38,6 +59,8 @@ export interface ChatMsg {
   streaming?: boolean;
   error?: string;
   demo?: boolean;
+  billedTo?: string;
+  notice?: string;
   createdAt: string;
 }
 
@@ -79,6 +102,8 @@ const QUICK: Record<AIMode, string[]> = {
 export default function AssistantPanel({ thesisId, sessionId, selection, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode = "chat", initialConversationId, className = "" }: AssistantPanelProps) {
   const [modes, setModes] = useState<ModeInfo[]>([]);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [institutionModels, setInstitutionModels] = useState<InstitutionModelInfo[]>([]);
+  const [allowance, setAllowance] = useState<AllowanceInfo | null>(null);
   const [mode, setMode] = useState<AIMode>(initialMode);
   const [providerChoice, setProviderChoice] = useState<string>("auto");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -96,10 +121,12 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    api<{ providers: ProviderInfo[]; modes: ModeInfo[]; defaultProvider: string | null }>("/api/ai/providers")
+    api<{ providers: ProviderInfo[]; modes: ModeInfo[]; defaultProvider: string | null; institutionModels?: InstitutionModelInfo[]; allowance?: AllowanceInfo | null }>("/api/ai/providers")
       .then((d) => {
         setProviders(d.providers);
         setModes(d.modes);
+        setInstitutionModels(d.institutionModels || []);
+        setAllowance(d.allowance || null);
       })
       .catch(() => {});
   }, []);
@@ -132,6 +159,13 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const selectionWords = selection ? countWordsInText(selection) : 0;
   const connected = providers.filter((p) => p.connection && p.connection.status === "active");
   const activeProvider = providers.find((p) => p.id === providerChoice);
+  const activeInstitution = institutionModels.find((m) => m.id === providerChoice);
+  const readyInstitution = institutionModels.filter((m) => m.ready);
+  const defaultInstitution = readyInstitution.find((m) => m.isDefault) || readyInstitution[0];
+  const allowanceUsed = allowance && allowance.perStudentMonthly > 0 ? Math.min(100, Math.round((allowance.spentStudent / allowance.perStudentMonthly) * 100)) : null;
+  const autoLabel = allowance?.institutionPays && defaultInstitution && allowance.exhausted === "none" ? `${defaultInstitution.label} · paid by your university` : connected[0] ? `Your ${connected[0].product} account` : "Institution assistant";
+  const chipLabel = providerChoice === "auto" ? "Auto" : activeInstitution ? activeInstitution.label.split(" (")[0] : activeProvider?.product.split(" ")[0];
+  const chipColor = activeInstitution?.color || activeProvider?.color || "#5c7cfa";
 
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
@@ -160,10 +194,14 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         {
           onMeta: (meta) => {
             if (meta.conversationId) setConversationId(String(meta.conversationId));
-            update({ provider: String(meta.provider), model: String(meta.model), label: String(meta.label), blocked: !!meta.blocked, demo: !!meta.demo });
+            update({ provider: String(meta.provider), model: String(meta.model), label: String(meta.label), blocked: !!meta.blocked, demo: !!meta.demo, billedTo: meta.billedTo ? String(meta.billedTo) : undefined, notice: meta.notice ? String(meta.notice) : undefined });
+            if (meta.billedTo === "institution") setAllowance((a) => (a ? { ...a } : a));
           },
           onDelta: (t) => setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: m.content + t } : m))),
-          onDone: (d) => update({ streaming: false, interactionId: d.interactionId }),
+          onDone: (d) => {
+            update({ streaming: false, interactionId: d.interactionId });
+            if (allowance) api<{ allowance?: AllowanceInfo | null }>("/api/ai/providers").then((x) => setAllowance(x.allowance || null)).catch(() => {});
+          },
           onError: (e) => update({ streaming: false, error: e.message }),
         },
         controller.signal
@@ -233,19 +271,36 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold leading-tight">Thesisfy AI</div>
-          <div className="text-[11px] text-gray-400 truncate">{providerChoice === "auto" ? (connected[0] ? `Your ${connected[0].product} account` : "Institution assistant") : activeProvider?.connection?.label || activeProvider?.product} · logged for integrity</div>
+          <div className="text-[11px] text-gray-400 truncate">{providerChoice === "auto" ? autoLabel : activeInstitution ? `${activeInstitution.label} · paid by your university` : activeProvider?.connection?.label || activeProvider?.product} · logged for integrity</div>
         </div>
         <div className="relative">
           <button onClick={() => setProviderOpen((o) => !o)} className="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center gap-1" title="Choose AI provider">
-            <span className="w-2 h-2 rounded-full" style={{ background: activeProvider?.color || "#5c7cfa" }} />
-            {providerChoice === "auto" ? "Auto" : activeProvider?.product.split(" ")[0]}
+            <span className="w-2 h-2 rounded-full" style={{ background: chipColor }} />
+            {chipLabel}
             <ChevronDown className="w-3 h-3" />
           </button>
           {providerOpen && (
             <div className="absolute right-0 mt-1 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 py-1 text-sm">
               <button onClick={() => { setProviderChoice("auto"); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${providerChoice === "auto" ? "text-brand-600 font-medium" : ""}`}>
-                Auto (your account first)
+                Auto {allowance?.institutionPays && readyInstitution.length ? "(university models first)" : "(your account first)"}
               </button>
+              {allowance?.institutionPays && institutionModels.length > 0 && (
+                <>
+                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">Paid by your university</div>
+                  {allowanceUsed !== null && <div className="px-3 pb-1 text-[11px] text-gray-500">{allowance.spentStudent.toFixed(2)} / {allowance.perStudentMonthly} {allowance.currency} used this month</div>}
+                  {allowanceUsed !== null && (
+                    <div className="mx-3 mb-1 h-1 rounded-full bg-gray-100 overflow-hidden"><div className={`h-full ${allowanceUsed >= 100 ? "bg-red-500" : allowanceUsed >= 80 ? "bg-amber-400" : "bg-brand-500"}`} style={{ width: `${allowanceUsed}%` }} /></div>
+                  )}
+                  {institutionModels.map((m) => (
+                    <button key={m.id} disabled={!m.ready || allowance.exhausted !== "none"} onClick={() => { setProviderChoice(m.id); setProviderOpen(false); }} title={`${m.backendName} · ${m.region}`} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === m.id ? "text-brand-600 font-medium" : ""}`}>
+                      <span className="w-2 h-2 rounded-full" style={{ background: m.color }} />
+                      <span className="flex-1 truncate">{m.label}</span>
+                      <span className="text-[10px] text-gray-400">{!m.ready ? "not configured" : allowance.exhausted !== "none" ? "allowance used" : m.region}</span>
+                    </button>
+                  ))}
+                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">Your own accounts</div>
+                </>
+              )}
               {providers.map((p) => (
                 <button key={p.id} disabled={!p.allowedByPolicy} onClick={() => { setProviderChoice(p.id); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === p.id ? "text-brand-600 font-medium" : ""}`}>
                   <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
@@ -326,8 +381,11 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                 {m.model && <span>· {m.model}</span>}
                 {m.blocked && <span className="badge-danger !text-[10px] !py-0">blocked by policy</span>}
                 {m.demo && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">demo</span>}
+                {m.billedTo === "institution" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px] !py-0">paid by university</span>}
+                {m.billedTo === "student" && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">your account</span>}
               </div>
             )}
+            {m.role === "assistant" && m.notice && !m.error && <div className="mb-1 text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1">{m.notice}</div>}
             <div className={`text-sm leading-relaxed rounded-xl px-3 py-2 ${m.role === "user" ? "bg-brand-600 text-white rounded-br-sm whitespace-pre-wrap" : m.blocked ? "bg-amber-50 border border-amber-100 rounded-bl-sm" : "bg-gray-50 rounded-bl-sm"}`}>
               {m.role === "user" ? m.content : <Markdown text={m.content || (m.streaming ? "…" : "")} />}
               {m.error && <div className="mt-2 text-xs text-red-600">{m.error}</div>}

@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, Bot, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, BookOpen, Bot, CreditCard, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users } from "lucide-react";
 
 export interface NavItem {
   label: string;
@@ -25,5 +25,6 @@ export const adminNav: NavItem[] = [
   { label: "Students", href: "/admin/students", icon: <Users className={cls} />, mobile: true },
   { label: "Integrity Flags", href: "/admin/flags", icon: <Flag className={cls} />, mobile: true },
   { label: "AI Policies", href: "/admin/policies", icon: <ShieldCheck className={cls} /> },
+  { label: "AI access & billing", href: "/admin/ai-access", icon: <CreditCard className={cls} /> },
   { label: "Research databases", href: "/admin/library", icon: <Library className={cls} /> },
 ];

@@ -226,6 +226,9 @@ export interface AIInteraction {
   insertedWords: number;
   blockedByPolicy: boolean;
   timestamp: string;
+  billedTo?: "institution" | "student" | "none"; // who pays the provider for this request
+  costUsd?: number; // provider list cost at the model's configured prices
+  institutionModelId?: string;
 }
 
 export interface Conversation {
@@ -315,6 +318,52 @@ export interface LibrarySettings {
   updatedAt: string;
 }
 
+/**
+ * Where an institution-provided model runs, which decides who invoices the university:
+ * - thesisfy: Thesisfy's own provider contracts, passed through on the Thesisfy invoice
+ * - anthropic / openai / mistral / google: the university's own API account with that provider
+ * - azure_openai: GPT (or other Foundry models) in the university's Microsoft Azure subscription
+ * - foundry_claude: Claude in the university's Microsoft Foundry resource (billed by Microsoft)
+ */
+export type ModelBackend = "thesisfy" | "anthropic" | "openai" | "mistral" | "google" | "azure_openai" | "foundry_claude";
+
+/** A model the institution offers to its students and pays for, like Copilot inside a company. */
+export interface InstitutionModel {
+  id: string;
+  university: string;
+  provider: Provider; // model family the student sees (Claude, GPT, Gemini, Mistral)
+  backend: ModelBackend;
+  label: string;
+  model: string; // model id, or the deployment name on Azure / Foundry
+  endpoint?: string; // Azure resource URL or Foundry resource name
+  encryptedSecret?: string; // the institution's key (not needed for the thesisfy backend)
+  secretHint?: string;
+  region: string; // shown to students, e.g. "EU (France Central)"
+  inputPrice: number; // USD per million input tokens, as the provider bills it
+  outputPrice: number; // USD per million output tokens
+  enabled: boolean;
+  isDefault: boolean; // used by "Auto"
+  lastTestedAt?: string;
+  lastError?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Who pays for AI at a university and how much. Amounts are in the institution's currency. */
+export interface AIFunding {
+  university: string;
+  institutionPays: boolean; // offer the institution's models to students
+  currency: "EUR" | "USD" | "GBP" | "CHF";
+  usdRate: number; // 1 USD in the institution's currency, used to convert provider list prices
+  monthlyBudget: number; // whole institution, 0 = no cap
+  perStudentMonthly: number; // allowance per student, 0 = no cap
+  atLimit: "block" | "own_account"; // when an allowance runs out
+  alertPercent: number; // notify admins when the budget passes this share
+  alertedMonth?: string;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
 interface Store {
   users: User[];
   theses: Thesis[];
@@ -331,6 +380,8 @@ interface Store {
   extensionTokens: ExtensionToken[];
   researchDatabases: ResearchDatabase[];
   librarySettings: LibrarySettings[];
+  institutionModels: InstitutionModel[];
+  aiFunding: AIFunding[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -601,9 +652,49 @@ function seed(): Store {
   theses[0].sessions = [sessions[0], sessions[1]];
   theses[2].sessions = [sessions[2]];
 
+  const t0 = "2026-09-01T00:00:00Z";
+  const institutionModels: InstitutionModel[] = [
+    { id: "im_stan_1", university: "Stanford University", provider: "anthropic", backend: "thesisfy", label: "Claude Sonnet 5.5", model: "claude-sonnet-5-5", region: "US", inputPrice: 2, outputPrice: 10, enabled: true, isDefault: true, createdAt: t0, updatedAt: t0 },
+    { id: "im_stan_2", university: "Stanford University", provider: "openai", backend: "azure_openai", label: "GPT-4.1 (Azure)", model: "gpt-4.1", endpoint: "https://stanford-ai.openai.azure.com", region: "US (East US 2)", inputPrice: 2, outputPrice: 8, enabled: true, isDefault: false, createdAt: t0, updatedAt: t0 },
+    { id: "im_stan_3", university: "Stanford University", provider: "anthropic", backend: "foundry_claude", label: "Claude Opus 5.5 (Microsoft Foundry)", model: "claude-opus-5-5", endpoint: "stanford-foundry", region: "US (East US 2)", inputPrice: 4, outputPrice: 20, enabled: false, isDefault: false, createdAt: t0, updatedAt: t0 },
+    { id: "im_sorb_1", university: "Sorbonne University", provider: "mistral", backend: "thesisfy", label: "Mistral Medium", model: "mistral-medium-latest", region: "EU (France)", inputPrice: 0.4, outputPrice: 2, enabled: true, isDefault: true, createdAt: t0, updatedAt: t0 },
+    { id: "im_sorb_2", university: "Sorbonne University", provider: "anthropic", backend: "foundry_claude", label: "Claude Sonnet 5.5 (Microsoft Foundry)", model: "claude-sonnet-5-5", endpoint: "sorbonne-foundry", region: "EU (Sweden Central)", inputPrice: 2, outputPrice: 10, enabled: true, isDefault: false, createdAt: t0, updatedAt: t0 },
+    { id: "im_sorb_3", university: "Sorbonne University", provider: "openai", backend: "azure_openai", label: "GPT-4.1 (Azure)", model: "gpt-4.1", endpoint: "https://sorbonne-ai.openai.azure.com", region: "EU (France Central)", inputPrice: 2, outputPrice: 8, enabled: true, isDefault: false, createdAt: t0, updatedAt: t0 },
+  ];
+  const aiFunding: AIFunding[] = [
+    { university: "Stanford University", institutionPays: true, currency: "USD", usdRate: 1, monthlyBudget: 1500, perStudentMonthly: 12, atLimit: "own_account", alertPercent: 80, updatedAt: t0, updatedBy: "usr_2" },
+    { university: "Sorbonne University", institutionPays: true, currency: "EUR", usdRate: 0.86, monthlyBudget: 900, perStudentMonthly: 8, atLimit: "block", alertPercent: 80, updatedAt: t0 },
+  ];
+  // Usage this month on institution-paid models, so the billing views have history.
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(8, 0, 0, 0);
+  const daysSoFar = Math.max(1, new Date().getUTCDate());
+  const usage: AIInteraction[] = [];
+  const plan: [string, string, number][] = [["usr_1", "im_stan_1", 34], ["usr_1", "im_stan_2", 9], ["usr_3", "im_sorb_1", 22], ["usr_3", "im_sorb_2", 7]];
+  const modes: AIMode[] = ["outline", "critique", "grammar", "explain", "brainstorm", "gaps", "chat"];
+  let n = 0;
+  for (const [userId, modelId, count] of plan) {
+    const m = institutionModels.find((x) => x.id === modelId)!;
+    for (let i = 0; i < count; i++) {
+      n++;
+      const inputTokens = 900 + ((n * 977) % 3200);
+      const outputTokens = 250 + ((n * 613) % 900);
+      const ts = new Date(monthStart.getTime() + (((n * 7919) % (daysSoFar * 24)) * 3600 * 1000) / 1).toISOString();
+      if (new Date(ts).getTime() > Date.now()) continue;
+      usage.push({
+        id: `ai_inst_${n}`, userId, thesisId: userId === "usr_1" ? "thesis_1" : "thesis_3", provider: m.provider, model: m.model, mode: modes[n % modes.length], source: "thesisfy",
+        promptPreview: "(institution model usage)", responsePreview: "", inputTokens, outputTokens, insertedWords: 0, blockedByPolicy: false, timestamp: ts,
+        billedTo: "institution", institutionModelId: m.id, costUsd: (inputTokens * m.inputPrice + outputTokens * m.outputPrice) / 1e6,
+      });
+    }
+  }
+
   return {
     users,
     theses,
+    institutionModels,
+    aiFunding,
     versions: [
       { id: "ver_1", thesisId: "thesis_1", authorId: "usr_1", content: thesis1Content, wordCount: 2847, kind: "milestone", label: "Chapter 4 draft", createdAt: "2026-03-12T11:30:00Z" },
     ],
@@ -626,6 +717,7 @@ function seed(): Store {
       { id: "ai_1", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "anthropic", model: "claude-sonnet-4-5", mode: "outline", source: "thesisfy", promptPreview: "Help me outline the discussion section", responsePreview: "A discussion section typically moves from your findings to their implications…", inputTokens: 420, outputTokens: 310, insertedWords: 0, blockedByPolicy: false, timestamp: "2026-03-12T09:20:00Z" },
       { id: "ai_2", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "anthropic", model: "claude-sonnet-4-5", mode: "grammar", source: "thesisfy", promptPreview: "Review this paragraph for clarity", responsePreview: "Two suggestions: split the second sentence and replace…", inputTokens: 380, outputTokens: 220, insertedWords: 41, blockedByPolicy: false, timestamp: "2026-03-12T11:02:00Z" },
       { id: "ai_3", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "openai", model: "chatgpt.com", mode: "chat", source: "extension", promptPreview: "(prompt text not shared — consent scope off)", responsePreview: "", inputTokens: 0, outputTokens: 0, insertedWords: 0, blockedByPolicy: false, timestamp: "2026-03-12T10:12:00Z" },
+      ...usage,
     ],
     conversations: [],
     consents: [
@@ -1193,6 +1285,57 @@ export const db = {
       Object.assign(x, patch, { university, updatedAt: now() });
       persist();
       return x;
+    },
+  },
+
+  aiAccess: {
+    models: (university: string) => load().institutionModels.filter((m) => m.university === university).sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || Number(b.enabled) - Number(a.enabled) || a.label.localeCompare(b.label)),
+    findModel: (id: string) => load().institutionModels.find((m) => m.id === id),
+    createModel: (data: Omit<InstitutionModel, "id" | "createdAt" | "updatedAt">) => {
+      const s = load();
+      const m: InstitutionModel = { ...data, id: uid("im"), createdAt: now(), updatedAt: now() };
+      if (m.isDefault) s.institutionModels.filter((x) => x.university === m.university).forEach((x) => (x.isDefault = false));
+      s.institutionModels.push(m);
+      persist();
+      return m;
+    },
+    updateModel: (id: string, patch: Partial<InstitutionModel>) => {
+      const s = load();
+      const m = s.institutionModels.find((x) => x.id === id);
+      if (!m) return null;
+      if (patch.isDefault) s.institutionModels.filter((x) => x.university === m.university).forEach((x) => (x.isDefault = false));
+      Object.assign(m, patch, { id: m.id, university: m.university, updatedAt: now() });
+      persist();
+      return m;
+    },
+    removeModel: (id: string) => {
+      const s = load();
+      s.institutionModels = s.institutionModels.filter((m) => m.id !== id);
+      persist();
+    },
+    funding: (university: string): AIFunding => {
+      const s = load();
+      let f = s.aiFunding.find((x) => x.university === university);
+      if (!f) {
+        f = { university, institutionPays: false, currency: "EUR", usdRate: 0.86, monthlyBudget: 0, perStudentMonthly: 0, atLimit: "block", alertPercent: 80, updatedAt: now() };
+        s.aiFunding.push(f);
+      }
+      return f;
+    },
+    updateFunding: (university: string, patch: Partial<AIFunding>, updatedBy?: string) => {
+      const f = db.aiAccess.funding(university);
+      Object.assign(f, patch, { university, updatedAt: now(), updatedBy: updatedBy ?? f.updatedBy });
+      persist();
+      return f;
+    },
+    /** Institution-paid interactions since the start of the current month (UTC). */
+    monthUsage: (university: string, userId?: string) => {
+      const start = new Date();
+      start.setUTCDate(1);
+      start.setUTCHours(0, 0, 0, 0);
+      const since = start.toISOString();
+      const ids = new Set(load().users.filter((u) => u.university === university).map((u) => u.id));
+      return load().interactions.filter((i) => i.billedTo === "institution" && i.timestamp >= since && ids.has(i.userId) && (!userId || i.userId === userId));
     },
   },
 

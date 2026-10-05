@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIMode, db, Provider } from "@/lib/db";
+import { maybeAlertBudget } from "@/lib/ai/funding";
 import { canAccessThesis } from "@/lib/auth";
 import { error, requireUser } from "@/lib/api";
 import { buildSystemPrompt, MODES } from "@/lib/ai/prompts";
 import { checkPolicy, detectLang } from "@/lib/ai/policy";
 import { demoResponse } from "@/lib/ai/demo";
-import { ChatMessage, resolveProvider, streamCompletion } from "@/lib/ai/providers";
+import { ChatMessage, costOf, resolveProvider, streamCompletion } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ interface Body {
   mode?: AIMode;
   thesisId?: string;
   sessionId?: string;
-  provider?: Provider | null;
+  provider?: Provider | string | null; // provider id, or an institution model id ("im_…")
   conversationId?: string;
   selection?: string;
   stream?: boolean;
@@ -54,8 +55,8 @@ export async function POST(request: NextRequest) {
   if (!conversation) conversation = db.conversations.create(user.id, thesis?.id, lastUser.slice(0, 60) || "New conversation");
   db.conversations.append(conversation.id, { role: "user", content: lastUser, mode });
 
-  const cfg = resolveProvider(user, policy, body.provider || null);
-  const meta = { provider: cfg.provider, model: cfg.model, source: cfg.source, label: cfg.label, mode, conversationId: conversation.id, demo: cfg.provider === "demo", lang };
+  const cfg = resolveProvider(user, policy, typeof body.provider === "string" ? body.provider : null);
+  const meta = { provider: cfg.provider, model: cfg.model, source: cfg.source, label: cfg.label, billedTo: cfg.billedTo, institutionModelId: cfg.institutionModel?.id, notice: cfg.notice, mode, conversationId: conversation.id, demo: cfg.provider === "demo", lang };
 
   const finish = (text: string, usage: { inputTokens: number; outputTokens: number }, blocked: boolean) => {
     const interaction = db.interactions.create({
@@ -73,10 +74,14 @@ export async function POST(request: NextRequest) {
       outputTokens: usage.outputTokens,
       insertedWords: 0,
       blockedByPolicy: blocked,
+      billedTo: cfg.billedTo,
+      costUsd: costOf(cfg, usage),
+      institutionModelId: cfg.institutionModel?.id,
     });
     db.conversations.append(conversation!.id, { role: "assistant", content: text, mode, provider: cfg.provider, model: cfg.model });
     if (body.sessionId) db.sessions.addEvent(body.sessionId, "ai_prompt", { mode, provider: cfg.provider, model: cfg.model, blocked, promptPreview: lastUser.slice(0, 120), interactionId: interaction.id });
     if (cfg.connectionId) db.connections.update(cfg.connectionId, { lastUsedAt: new Date().toISOString() });
+    if (cfg.billedTo === "institution") maybeAlertBudget(user.university);
     return interaction.id;
   };
 
@@ -99,7 +104,7 @@ export async function POST(request: NextRequest) {
   const system = buildSystemPrompt({ mode, policy, thesis, studentName: user.name, provider: cfg.label });
 
   if (cfg.provider === "demo") {
-    const text = demoResponse(mode, messages, lang);
+    const text = cfg.notice && cfg.source === "demo" && cfg.label === "Allowance used up" ? cfg.notice : demoResponse(mode, messages, lang);
     const interactionId = finish(text, { inputTokens: 0, outputTokens: 0 }, false);
     if (body.stream === false) return NextResponse.json({ message: text, meta, interactionId, usage: { inputTokens: 0, outputTokens: 0 } });
     return sse(async (send) => {

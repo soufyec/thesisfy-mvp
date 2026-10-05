@@ -34,6 +34,19 @@ Demo accounts (password in the table):
 
 Without provider keys the assistant answers in demo mode. Add `ANTHROPIC_API_KEY` (or OpenAI/Gemini/Mistral keys) for institution-wide access, or connect a personal account from **AI Connections**.
 
+### Who pays for the models
+
+Like Copilot inside a company, the university can offer models to its students and pay for them (**Admin → AI access & billing**). Each model has a backend that decides who invoices the university:
+
+| Backend | Runs on | Billed by |
+|---|---|---|
+| Thesisfy contract | Thesisfy's provider keys | Thesisfy invoice, usage at provider list price |
+| Claude in Microsoft Foundry | The university's Azure tenant (`@anthropic-ai/foundry-sdk`) | Microsoft, with the rest of the tenant |
+| Azure OpenAI | The university's Azure tenant | Microsoft |
+| Anthropic / OpenAI / Mistral / Google account | The university's own API account | That provider |
+
+Spend is metered per request from the model's configured prices; administrators set a monthly budget, a per-student allowance, what happens when it runs out (pause, or fall back to the student's own account) and an alert threshold. Students see their allowance in the assistant and in AI Connections, and may still connect a personal account, which the university never pays for.
+
 ## Architecture
 
 ```
