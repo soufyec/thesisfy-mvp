@@ -211,3 +211,8 @@
   .page-break-label { display: none; }
   @page { margin: var(--page-margin, 2.54cm); }
 }
+
+/* Quality seal ring rotation */
+@keyframes seal-spin { to { transform: rotate(360deg); } }
+.seal-spin { animation: seal-spin 60s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .seal-spin { animation: none; } }

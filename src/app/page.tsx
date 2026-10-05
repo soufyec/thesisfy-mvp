@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import QualitySeal from "@/components/QualitySeal";
 
 function ShieldIcon({ className }: { className?: string }) {
   return (
@@ -205,7 +206,8 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-4xl mx-auto">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_auto] gap-12 lg:gap-16 items-center">
+          <div className="text-center lg:text-left max-w-4xl mx-auto lg:mx-0 min-w-0">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-50 rounded-full text-brand-700 text-sm font-medium mb-8 animate-fade-in">
               <ShieldIcon className="w-4 h-4" />
               The Anti-Turnitin for the AI Era
@@ -217,12 +219,12 @@ export default function LandingPage() {
               {", "}Not Detection
             </h1>
 
-            <p className="text-lg sm:text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed animate-slide-up" style={{ animationDelay: "0.1s" }}>
+            <p className="text-lg sm:text-xl text-gray-600 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed animate-slide-up" style={{ animationDelay: "0.1s" }}>
               Stop punishing students for using AI. Start empowering them to use it responsibly.
               Thesisfy monitors the writing process, not just the output.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: "0.2s" }}>
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-slide-up" style={{ animationDelay: "0.2s" }}>
               <Link href="/login" className="btn-primary text-base !px-8 !py-4 w-full sm:w-auto">
                 Start Writing with Integrity
                 <ArrowRightIcon className="w-5 h-5 ml-2" />
@@ -231,6 +233,12 @@ export default function LandingPage() {
                 See How We Compare
               </a>
             </div>
+          </div>
+
+          {/* Quality seal */}
+          <div className="flex justify-center animate-fade-in">
+            <QualitySeal />
+          </div>
           </div>
 
           {/* Stats */}
