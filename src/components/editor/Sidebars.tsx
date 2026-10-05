@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { AlertTriangle, ArrowDown, ArrowUp, BookMarked, Check, CheckCircle2, History, MessageSquare, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, BookMarked, Check, CheckCircle2, History, MessageSquare, Plus, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { timeAgo } from "@/lib/client";
 import { CommentItem, FlagItem, formatReference, Reference, ThesisDoc, VersionItem } from "./types";
 
@@ -149,7 +149,7 @@ export function VersionsPanel({ versions, onRestore, onPreview, onCreate, onClos
 // ---------- References ----------
 const emptyRef: Reference = { id: "", type: "article", authors: "", year: "", title: "", source: "", url: "", doi: "", pages: "", volume: "", issue: "" };
 
-export function ReferencesPanel({ references, style, onChangeStyle, onAdd, onRemove, onInsertInText, onInsertBibliography, onClose, canEdit }: { references: Reference[]; style: ThesisDoc["citationStyle"]; onChangeStyle: (s: ThesisDoc["citationStyle"]) => void; onAdd: (r: Reference) => void; onRemove: (id: string) => void; onInsertInText: (r: Reference) => void; onInsertBibliography: () => void; onClose: () => void; canEdit: boolean }) {
+export function ReferencesPanel({ references, style, onChangeStyle, onAdd, onRemove, onInsertInText, onInsertBibliography, onAddWithAi, onClose, canEdit }: { references: Reference[]; style: ThesisDoc["citationStyle"]; onChangeStyle: (s: ThesisDoc["citationStyle"]) => void; onAdd: (r: Reference) => void; onRemove: (id: string) => void; onInsertInText: (r: Reference) => void; onInsertBibliography: () => void; onAddWithAi?: () => void; onClose: () => void; canEdit: boolean }) {
   const [form, setForm] = useState<Reference | null>(null);
   const sorted = useMemo(() => [...references].sort((a, b) => a.authors.localeCompare(b.authors)), [references]);
   const f = (k: keyof Reference) => ({ value: (form?.[k] as string) || "", onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...(form as Reference), [k]: e.target.value }) });
@@ -157,9 +157,16 @@ export function ReferencesPanel({ references, style, onChangeStyle, onAdd, onRem
     <PanelShell title="Citations" icon={<BookMarked className="w-4 h-4 text-gray-500" />} onClose={onClose} actions={<select value={style} onChange={(e) => onChangeStyle(e.target.value as ThesisDoc["citationStyle"])} className="text-[11px] border border-gray-200 rounded px-1 py-0.5">{["APA", "MLA", "Chicago", "IEEE", "Harvard"].map((s) => <option key={s}>{s}</option>)}</select>}>
       <div className="p-3 space-y-2">
         {canEdit && !form && (
-          <button onClick={() => setForm({ ...emptyRef, id: `ref_${Date.now()}` })} className="w-full text-xs py-2 rounded-lg border border-dashed border-gray-300 text-gray-600 hover:border-brand-400 hover:text-brand-600 flex items-center justify-center gap-1">
-            <Plus className="w-3.5 h-3.5" /> Add reference
-          </button>
+          <div className="flex gap-2">
+            {onAddWithAi && (
+              <button onClick={onAddWithAi} className="flex-1 text-xs py-2 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 flex items-center justify-center gap-1 font-medium">
+                <Sparkles className="w-3.5 h-3.5" /> Find source (DOI, URL…)
+              </button>
+            )}
+            <button onClick={() => setForm({ ...emptyRef, id: `ref_${Date.now()}` })} className="flex-1 text-xs py-2 rounded-lg border border-dashed border-gray-300 text-gray-600 hover:border-brand-400 hover:text-brand-600 flex items-center justify-center gap-1">
+              <Plus className="w-3.5 h-3.5" /> Add manually
+            </button>
+          </div>
         )}
         {form && (
           <div className="p-3 rounded-xl border border-brand-200 bg-brand-50/40 space-y-2 text-xs">
@@ -183,7 +190,7 @@ export function ReferencesPanel({ references, style, onChangeStyle, onAdd, onRem
             <div key={r.id} className="p-2.5 rounded-xl border border-gray-100 hover:border-gray-200 text-xs">
               <div className="text-gray-700" dangerouslySetInnerHTML={{ __html: fm.full }} />
               <div className="flex items-center gap-2 mt-1.5">
-                {canEdit && <button onClick={() => onInsertInText(r)} className="text-brand-600 hover:underline">Cite {fm.inText}</button>}
+                {canEdit && <button onClick={() => onInsertInText(r)} className="text-brand-600 hover:underline">Insert {fm.inText} at cursor</button>}
                 {canEdit && <button onClick={() => onRemove(r.id)} className="text-gray-300 hover:text-red-500 ml-auto"><Trash2 className="w-3.5 h-3.5" /></button>}
               </div>
             </div>

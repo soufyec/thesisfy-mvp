@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { BubbleMenu, EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { EditorState } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -24,13 +25,14 @@ import TaskItem from "@tiptap/extension-task-item";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Typography from "@tiptap/extension-typography";
-import { ArrowLeft, Bot, ChevronDown, Cloud, CloudOff, FileText, ListTree, MessageSquare, MoreVertical, Share2, ShieldCheck } from "lucide-react";
-import { CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, Search } from "./extensions";
+import { ArrowLeft, BookMarked, Bot, ChevronDown, Cloud, CloudOff, FileCheck2, FileText, Link2, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Share2, ShieldCheck, StickyNote } from "lucide-react";
+import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, Search } from "./extensions";
+import CitationDialog, { CitationInsert } from "./CitationDialog";
 import Toolbar from "./Toolbar";
 import MenuBar, { MenuAction } from "./MenuBar";
 import { CommentsPanel, FindPanel, IntegrityPanel, OutlinePanel, ReferencesPanel, VersionsPanel } from "./Sidebars";
 import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog } from "./Dialogs";
-import { CommentItem, FlagItem, formatReference, Reference, SidebarKind, ThesisDoc, VersionItem } from "./types";
+import { CommentItem, FlagItem, formatReference, Reference, SidebarKind, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { InsertMeta } from "../ai/AssistantPanel";
 import ConsentModal from "../ConsentModal";
 import { Modal, Toast } from "../ui";
@@ -48,6 +50,8 @@ interface LoadResponse {
 }
 
 const PASTE_DIALOG_MIN_WORDS = 30;
+const SUBMISSION = "submission";
+const norm = (t: string) => t.replace(/\s+/g, " ").trim();
 
 export default function DocsEditor({ thesisId, reviewMode = false }: { thesisId: string; reviewMode?: boolean }) {
   const [data, setData] = useState<LoadResponse | null>(null);
@@ -96,6 +100,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const [selectionText, setSelectionText] = useState("");
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [pendingComment, setPendingComment] = useState<{ anchorId: string; quote: string } | null>(null);
+  const [confirmPromote, setConfirmPromote] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent">(null);
   const [linkInitial, setLinkInitial] = useState("");
   const [paste, setPaste] = useState<{ words: number; text: string; html: string; matched: { provider?: string; host?: string } | null } | null>(null);
@@ -106,6 +112,25 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyRef = useRef(false);
   const lastCounts = useRef({ chars: 0, words: 0 });
+
+  // ---------- document tabs ----------
+  // "submission" is the Final submission tab (thesis.content): the only one submitted, reviewed and scored.
+  const [tabs, setTabs] = useState<ThesisTab[]>(initial.thesis.tabs || []);
+  const [activeTab, setActiveTab] = useState<string>(SUBMISSION);
+  const [tabMenu, setTabMenu] = useState<string | null>(null);
+  const [tabWords, setTabWords] = useState(0);
+  const activeTabRef = useRef<string>(SUBMISSION);
+  const tabsRef = useRef<ThesisTab[]>(tabs);
+  tabsRef.current = tabs;
+  const contentsRef = useRef<Record<string, string>>({ [SUBMISSION]: initial.thesis.content, ...Object.fromEntries((initial.thesis.tabs || []).map((t) => [t.id, t.content])) });
+  const dirtyKeys = useRef<Set<string>>(new Set());
+  const tabsMetaDirty = useRef(false);
+  const internalCopy = useRef<string>("");
+
+  // ---------- citations ----------
+  const [citeMode, setCiteMode] = useState<null | "selection" | "cursor" | "library">(null);
+  const citeRange = useRef<{ from: number; to: number }>({ from: 0, to: 0 });
+  const [citeText, setCiteText] = useState("");
   const policy = initial.policy;
 
   const notify = useCallback((message: string, kind: "info" | "success" | "error" = "info") => setToast({ message, kind }), []);
@@ -150,6 +175,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       Indent,
       PageBreak,
       Search,
+      CitedPassage,
+      CitationMark,
     ],
     content: initial.thesis.content,
     editorProps: {
@@ -162,12 +189,26 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         }
         return false;
       },
+      handleDOMEvents: {
+        copy: (view) => {
+          const { from, to } = view.state.selection;
+          internalCopy.current = norm(view.state.doc.textBetween(from, to, " "));
+          return false;
+        },
+        cut: (view) => {
+          const { from, to } = view.state.selection;
+          internalCopy.current = norm(view.state.doc.textBetween(from, to, " "));
+          return false;
+        },
+      },
       handlePaste: (view, event) => {
         if (!canEdit) return false;
         const text = event.clipboardData?.getData("text/plain") || "";
         const html = event.clipboardData?.getData("text/html") || "";
         const words = countWordsInText(text);
         if (!words) return false;
+        // Moving your own text between tabs keeps its marks (AI, pasted, citations) and needs no attribution.
+        if (internalCopy.current && norm(text) === internalCopy.current) return false;
         if (words >= PASTE_DIALOG_MIN_WORDS) {
           event.preventDefault();
           (async () => {
@@ -191,27 +232,30 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         const mod = event.ctrlKey || event.metaKey;
         if (!mod) return false;
         const k = event.key.toLowerCase();
-        if (k === "s") { event.preventDefault(); saveNow(); return true; }
+        if (k === "s") { event.preventDefault(); saveNowRef.current(); return true; }
         if (k === "h") { event.preventDefault(); setSidebar("find"); return true; }
         if (k === "k") { event.preventDefault(); openLink(); return true; }
         if (k === "p") { event.preventDefault(); window.print(); return true; }
         if (k === "m" && event.altKey) { event.preventDefault(); startComment(); return true; }
         if (k === "c" && event.shiftKey) { event.preventDefault(); setDialog("wordCount"); return true; }
         if (k === "/") { event.preventDefault(); setDialog("shortcuts"); return true; }
+        if (k === "e" && event.altKey) { event.preventDefault(); openCite(); return true; }
         return false;
       },
     },
     onUpdate: ({ editor: ed, transaction }) => {
       if (!canEdit) return;
       dirtyRef.current = true;
+      dirtyKeys.current.add(activeTabRef.current);
       setSaveState("unsaved");
       scheduleSave();
       const chars = ed.storage.characterCount.characters();
       const words = ed.storage.characterCount.words();
+      setTabWords(words);
       const isPaste = transaction.getMeta("paste") || transaction.getMeta("uiEvent") === "paste";
       if (!isPaste && !transaction.getMeta("ai-insert")) monitorRef.current?.recordTyping(chars - lastCounts.current.chars, words - lastCounts.current.words);
       lastCounts.current = { chars, words };
-      scheduleProvenance(ed);
+      if (activeTabRef.current === SUBMISSION) scheduleProvenance(ed);
     },
     onSelectionUpdate: ({ editor: ed }) => {
       const { from, to, empty } = ed.state.selection;
@@ -224,7 +268,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   editorRef.current = editor;
 
   useEffect(() => {
-    if (editor) lastCounts.current = { chars: editor.storage.characterCount.characters(), words: editor.storage.characterCount.words() };
+    if (!editor) return;
+    lastCounts.current = { chars: editor.storage.characterCount.characters(), words: editor.storage.characterCount.words() };
+    setTabWords(lastCounts.current.words);
   }, [editor]);
 
   useEffect(() => {
@@ -253,27 +299,171 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   // ---------- saving ----------
   const scheduleSave = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveNow(), 2500);
+    saveTimer.current = setTimeout(() => saveNowRef.current(), 2500);
   };
   const saveNow = useCallback(
     async (extra: Record<string, unknown> = {}) => {
       const ed = editorRef.current;
       if (!ed || !canEdit) return;
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      contentsRef.current[activeTabRef.current] = ed.getHTML();
+      const dirty = new Set(dirtyKeys.current);
+      const metaDirty = tabsMetaDirty.current;
+      const payload: Record<string, unknown> = { sessionId: sessionId || undefined, ...extra };
+      const tabsDirty = metaDirty || Array.from(dirty).some((k) => k !== SUBMISSION);
+      if (dirty.has(SUBMISSION) || !tabsDirty) payload.content = contentsRef.current[SUBMISSION];
+      if (tabsDirty) payload.tabs = tabsRef.current.map((t) => ({ id: t.id, title: t.title, content: contentsRef.current[t.id] ?? t.content }));
+      dirtyKeys.current.clear();
+      tabsMetaDirty.current = false;
       setSaveState("saving");
       try {
-        const res = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}`, { method: "PUT", json: { content: ed.getHTML(), sessionId: sessionId || undefined, ...extra } });
+        const res = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}`, { method: "PUT", json: payload });
         dirtyRef.current = false;
         setThesis((t) => ({ ...t, ...res.thesis, content: t.content }));
         setLastSaved(new Date().toISOString());
         setSaveState("saved");
       } catch (e) {
+        dirty.forEach((k) => dirtyKeys.current.add(k));
+        if (metaDirty) tabsMetaDirty.current = true;
         setSaveState("error");
         notify(`Save failed: ${(e as Error).message}`, "error");
       }
     },
     [canEdit, thesisId, sessionId, notify]
   );
+  const saveNowRef = useRef(saveNow);
+  saveNowRef.current = saveNow;
+
+  // ---------- tab operations ----------
+  const loadIntoEditor = useCallback((html: string) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.commands.setContent(html || "<p></p>", false);
+    // fresh state so undo never crosses into another tab
+    const st = ed.state;
+    ed.view.updateState(EditorState.create({ doc: st.doc, plugins: st.plugins, schema: st.schema }));
+    lastCounts.current = { chars: ed.storage.characterCount.characters(), words: ed.storage.characterCount.words() };
+    setTabWords(lastCounts.current.words);
+    setSelectionText("");
+  }, []);
+
+  const switchTab = useCallback(
+    (id: string) => {
+      const ed = editorRef.current;
+      if (!ed || id === activeTabRef.current) return;
+      contentsRef.current[activeTabRef.current] = ed.getHTML();
+      activeTabRef.current = id;
+      setActiveTab(id);
+      setTabMenu(null);
+      loadIntoEditor(contentsRef.current[id] ?? "<p></p>");
+      if (id === SUBMISSION) scheduleProvenance(ed);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loadIntoEditor]
+  );
+
+  const markTabsChanged = () => {
+    tabsMetaDirty.current = true;
+    dirtyRef.current = true;
+    setSaveState("unsaved");
+    scheduleSave();
+  };
+
+  const addTab = (title = "Untitled tab", content = "<p></p>") => {
+    const id = `tab_${Date.now().toString(36)}`;
+    contentsRef.current[id] = content;
+    setTabs((ts) => [...ts, { id, title, content, updatedAt: new Date().toISOString() }]);
+    tabsRef.current = [...tabsRef.current, { id, title, content, updatedAt: new Date().toISOString() }];
+    markTabsChanged();
+    setTimeout(() => switchTab(id), 0);
+  };
+
+  const renameTab = (id: string, title: string) => {
+    setTabs((ts) => ts.map((t) => (t.id === id ? { ...t, title } : t)));
+    tabsRef.current = tabsRef.current.map((t) => (t.id === id ? { ...t, title } : t));
+    markTabsChanged();
+  };
+
+  const deleteTab = (id: string) => {
+    if (activeTabRef.current === id) switchTab(SUBMISSION);
+    setTabs((ts) => ts.filter((t) => t.id !== id));
+    tabsRef.current = tabsRef.current.filter((t) => t.id !== id);
+    delete contentsRef.current[id];
+    markTabsChanged();
+  };
+
+  const duplicateTab = (id: string) => {
+    const ed = editorRef.current;
+    if (ed) contentsRef.current[activeTabRef.current] = ed.getHTML();
+    const src = id === SUBMISSION ? { title: "Final submission" } : tabsRef.current.find((t) => t.id === id);
+    addTab(`${src?.title || "Tab"} (copy)`, contentsRef.current[id] || "<p></p>");
+  };
+
+  /** Makes a working tab the Final submission; the previous submission becomes a working tab, nothing is lost. */
+  const promoteTab = (id: string) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    contentsRef.current[activeTabRef.current] = ed.getHTML();
+    const tab = tabsRef.current.find((t) => t.id === id);
+    if (!tab) return;
+    const oldSubmission = contentsRef.current[SUBMISSION];
+    contentsRef.current[SUBMISSION] = contentsRef.current[id];
+    contentsRef.current[id] = oldSubmission;
+    renameTab(id, `Previous submission (${new Date().toLocaleDateString()})`);
+    dirtyKeys.current.add(SUBMISSION);
+    dirtyKeys.current.add(id);
+    activeTabRef.current = SUBMISSION;
+    setActiveTab(SUBMISSION);
+    loadIntoEditor(contentsRef.current[SUBMISSION]);
+    scheduleProvenance(ed);
+    saveNowRef.current({ versionKind: "manual", versionLabel: `Final submission replaced by “${tab.title}”` });
+    notify(`“${tab.title}” is now the Final submission. The previous version was kept as a tab.`, "success");
+  };
+
+  // ---------- citations ----------
+  const openCite = (mode?: "library") => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    if (mode === "library") {
+      setCiteText("");
+      setCiteMode("library");
+      return;
+    }
+    if (!canEdit) return notify("This document is read-only.", "error");
+    const { from, to, empty } = ed.state.selection;
+    citeRange.current = { from, to };
+    setCiteText(empty ? "" : ed.state.doc.textBetween(from, to, " ").slice(0, 1500));
+    setCiteMode(empty ? "cursor" : "selection");
+  };
+
+  const insertCitation = (c: CitationInsert, mode: "selection" | "cursor" | "library") => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const refs = c.isNew ? [...thesis.references, c.reference] : thesis.references.map((r) => (r.id === c.reference.id ? c.reference : r));
+    setThesis((t) => ({ ...t, references: refs }));
+    updateThesis({ references: refs });
+    if (mode === "library") {
+      notify(c.isNew ? "Reference added." : "Reference updated.", "success");
+      return;
+    }
+    const { from, to } = citeRange.current;
+    const max = ed.state.doc.content.size;
+    const a = Math.min(from, max), b = Math.min(to, max);
+    const chain = ed.chain().focus();
+    if (mode === "selection" && b > a) {
+      chain.setTextSelection({ from: a, to: b });
+      if (c.markPassage) chain.setCitedPassage(c.reference.id);
+      if (c.linkUrl) chain.setLink({ href: c.linkUrl });
+    }
+    const at = mode === "selection" ? b : a;
+    const before = at > 1 ? ed.state.doc.textBetween(at - 1, at, " ") : " ";
+    const nodes = [
+      ...(before && before !== " " ? [{ type: "text", text: " " }] : []),
+      { type: "text", text: c.inText, marks: [{ type: "citation", attrs: { refId: c.reference.id } }] },
+    ];
+    chain.insertContentAt(at, nodes).run();
+    notify(`Citation ${c.inText} inserted${c.isNew ? " and source added to your references" : ""}.`, "success");
+  };
 
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => {
@@ -395,6 +585,14 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         });
       }
     }
+    if (found === null) {
+      const other = Object.entries(contentsRef.current).find(([k, html]) => k !== activeTabRef.current && html.includes(`data-comment-id="${c.anchorId}"`));
+      if (other) {
+        switchTab(other[0]);
+        setTimeout(() => jumpToComment(c), 50);
+        return;
+      }
+    }
     if (found !== null) {
       editor.commands.setTextSelection(found + 1);
       const dom = editor.view.domAtPos(found + 1).node;
@@ -413,7 +611,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const download = async (fmt: "docx" | "html" | "md" | "txt") => {
     if (!editor) return;
     const html = editor.getHTML();
-    const name = safeFileName(thesis.title);
+    const tabTitle = activeTab === SUBMISSION ? "" : tabs.find((t) => t.id === activeTab)?.title || "";
+    const name = safeFileName(tabTitle ? `${thesis.title} - ${tabTitle}` : thesis.title);
     try {
       if (fmt === "docx") downloadBlob(`${name}.docx`, await htmlToDocx(html, { title: thesis.title, author: thesis.studentName, orientation: thesis.pageSetup.orientation, marginCm: thesis.pageSetup.margin, lineSpacing: thesis.pageSetup.lineSpacing }));
       if (fmt === "html") downloadBlob(`${name}.html`, new Blob([standaloneHtml(html, thesis.title)], { type: "text/html" }));
@@ -501,7 +700,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       pageBreak: () => c().setPageBreak().run(),
       hr: () => c().setHorizontalRule().run(),
       date: () => c().insertContent(new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })).run(),
-      citation: () => setSidebar("references"),
+      citation: () => openCite(),
       toc: insertToc,
       footnote: insertFootnote,
       bold: () => c().toggleBold().run(), italic: () => c().toggleItalic().run(), underline: () => c().toggleUnderline().run(), strike: () => c().toggleStrike().run(), superscript: () => c().toggleSuperscript().run(), subscript: () => c().toggleSubscript().run(),
@@ -518,6 +717,16 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       about: () => setDialog("about"),
     };
     map[a]?.();
+  };
+
+  const restoreSubmission = (t: ThesisDoc) => {
+    contentsRef.current[SUBMISSION] = t.content;
+    if (activeTabRef.current !== SUBMISSION) {
+      activeTabRef.current = SUBMISSION;
+      setActiveTab(SUBMISSION);
+    }
+    loadIntoEditor(t.content);
+    setThesis((x) => ({ ...x, ...t, tabs: x.tabs }));
   };
 
   const stats = useMemo(() => {
@@ -553,7 +762,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       case "versions": return (
         <VersionsPanel versions={versions} canRestore={canEdit} onClose={() => setSidebar("none")} onCreate={() => setDialog("saveVersion")}
           onPreview={async (id) => { const d = await api<{ version: { content: string; label?: string; kind: string; createdAt: string } }>(`/api/theses/${thesisId}/versions/${id}`).catch(() => null); if (d) setPreview({ id, html: d.version.content, label: d.version.label || `${d.version.kind} · ${new Date(d.version.createdAt).toLocaleString()}` }); }}
-          onRestore={async (id) => { const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${id}`, { method: "POST" }).catch((e) => { notify((e as Error).message, "error"); return null; }); if (d) { editor.commands.setContent(d.thesis.content); setThesis((t) => ({ ...t, ...d.thesis })); notify("Version restored. The previous state was saved as a version too.", "success"); loadVersions(); } }}
+          onRestore={async (id) => { const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${id}`, { method: "POST" }).catch((e) => { notify((e as Error).message, "error"); return null; }); if (d) { restoreSubmission(d.thesis); notify("Version restored into Final submission. The previous state was saved as a version too.", "success"); loadVersions(); } }}
         />
       );
       case "references": return (
@@ -563,6 +772,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           onRemove={(id) => updateThesis({ references: thesis.references.filter((r) => r.id !== id) })}
           onInsertInText={(r) => editor.chain().focus().insertContent(formatReference(r, thesis.citationStyle).inText).run()}
           onInsertBibliography={insertBibliography}
+          onAddWithAi={() => openCite("library")}
         />
       );
       case "find": return <FindPanel editor={editor} onClose={() => setSidebar("none")} canEdit={canEdit} />;
@@ -603,7 +813,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
 
       {/* Toolbar */}
       {!focus && (
-        <Toolbar editor={editor} zoom={zoom} onZoom={setZoom} onLink={openLink} onImage={() => setDialog("image")} onTable={() => setDialog("table")} onComment={startComment} onPrint={() => window.print()} spellcheck={spellcheck} onSpellcheck={setSpellcheck} compact={isMobile} />
+        <Toolbar editor={editor} zoom={zoom} onZoom={setZoom} onLink={openLink} onImage={() => setDialog("image")} onTable={() => setDialog("table")} onComment={startComment} onCite={() => openCite()} onPrint={() => window.print()} spellcheck={spellcheck} onSpellcheck={setSpellcheck} compact={isMobile} />
       )}
 
       {/* Session strip */}
@@ -621,12 +831,89 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         <div className="bg-amber-50 border-y border-amber-100 px-3 py-1 text-[11px] text-amber-800 flex-shrink-0 flex items-center gap-3"><ShieldCheck className="w-3.5 h-3.5" />Review mode: AI-assisted text is highlighted in purple, pasted text in amber. Select text to add comments.</div>
       )}
 
+      {/* Document tabs */}
+      {!focus && (
+        <div className="flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-[#f1f3f4] border-b border-gray-200 overflow-x-auto no-scrollbar flex-shrink-0" role="tablist" aria-label="Document tabs">
+          <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => switchTab(SUBMISSION)} className={`doc-tab submission ${activeTab === SUBMISSION ? "active" : ""}`} title="Only this tab is submitted, reviewed by your advisor and counted in your integrity report">
+            <FileCheck2 className="w-4 h-4 text-brand-600 flex-shrink-0" />
+            <span className="truncate">Final submission</span>
+            <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+          </button>
+          {tabs.map((t) => (
+            <div key={t.id} className="relative flex-shrink-0">
+              <button role="tab" aria-selected={activeTab === t.id} onClick={() => switchTab(t.id)} onDoubleClick={() => canEdit && setTabMenu(`rename:${t.id}`)} className={`doc-tab ${activeTab === t.id ? "active" : ""} ${activeTab === t.id && canEdit ? "pr-7" : ""}`}>
+                <StickyNote className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                {tabMenu === `rename:${t.id}` ? (
+                  <input
+                    autoFocus
+                    defaultValue={t.title}
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== t.title) renameTab(t.id, v.slice(0, 80)); setTabMenu(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setTabMenu(null); }}
+                    className="text-[13px] bg-white border border-brand-300 rounded px-1 w-36 focus:outline-none"
+                    aria-label="Tab name"
+                  />
+                ) : (
+                  <span className="truncate">{t.title}</span>
+                )}
+              </button>
+              {activeTab === t.id && canEdit && tabMenu !== `rename:${t.id}` && (
+                <button onClick={() => setTabMenu(tabMenu === t.id ? null : t.id)} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label={`Options for ${t.title}`}>
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {tabMenu === t.id && (
+                <div className="docs-menu !top-full !left-auto right-0 !min-w-[230px]" onMouseLeave={() => setTabMenu(null)}>
+                  <button onClick={() => setTabMenu(`rename:${t.id}`)}>Rename</button>
+                  <button onClick={() => { setTabMenu(null); duplicateTab(t.id); }}>Duplicate</button>
+                  <button onClick={() => { setTabMenu(null); setConfirmPromote(t.id); }}>Use as Final submission</button>
+                  <div className="sep" />
+                  <button onClick={() => { setTabMenu(null); setConfirmDelete(t.id); }} className="!text-red-600">Delete tab</button>
+                </div>
+              )}
+            </div>
+          ))}
+          {canEdit && tabs.length < 20 && (
+            <button onClick={() => addTab()} className="flex items-center gap-1 px-2 py-1.5 mb-0.5 rounded-lg text-[13px] text-gray-500 hover:bg-white/70 flex-shrink-0" aria-label="New tab">
+              <Plus className="w-4 h-4" /><span className="hidden sm:inline">New tab</span>
+            </button>
+          )}
+        </div>
+      )}
+      {activeTab !== SUBMISSION && !focus && (
+        <div className="bg-amber-50 border-b border-amber-100 px-3 py-1 text-[11px] text-amber-900 flex-shrink-0 flex items-center gap-2 flex-wrap">
+          <StickyNote className="w-3.5 h-3.5" />
+          <span>Working tab: not submitted. Only <strong>Final submission</strong> goes to your advisor and counts in your integrity report. Copy text across tabs freely; its AI and source marks travel with it.</span>
+          <button onClick={() => switchTab(SUBMISSION)} className="underline decoration-dotted ml-auto">Go to Final submission</button>
+        </div>
+      )}
+
       {/* Body */}
       <div className="flex-1 flex min-h-0">
         <main className={`flex-1 overflow-auto ${workspaceClass}`} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
           <div className="py-3 md:py-8 px-0 md:px-4 min-h-full">
             <div className="docs-page" style={{ fontFamily: undefined }}>
               <EditorContent editor={editor} spellCheck={spellcheck} />
+              <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "top" }} shouldShow={({ state }) => !state.selection.empty && !isMobile}>
+                <div className="flex items-center gap-0.5 bg-white border border-gray-200 rounded-xl shadow-lg p-1 text-[12px]">
+                  {canEdit && (
+                    <button onMouseDown={(e) => e.preventDefault()} onClick={() => openCite()} className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-emerald-50 text-emerald-800 font-medium">
+                      <BookMarked className="w-3.5 h-3.5" />Cite source
+                    </button>
+                  )}
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={startComment} className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-gray-100 text-gray-700">
+                    <MessageSquarePlus className="w-3.5 h-3.5" />Comment
+                  </button>
+                  {canEdit && (
+                    <button onMouseDown={(e) => e.preventDefault()} onClick={openLink} className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-gray-100 text-gray-700">
+                      <Link2 className="w-3.5 h-3.5" />Link
+                    </button>
+                  )}
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-brand-50 text-brand-700">
+                    <Bot className="w-3.5 h-3.5" />Ask AI
+                  </button>
+                </div>
+              </BubbleMenu>
             </div>
           </div>
         </main>
@@ -635,7 +922,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
 
       {/* Status bar */}
       <footer className="hidden md:flex items-center gap-4 px-4 py-1 border-t border-gray-100 text-[11px] text-gray-500 flex-shrink-0 bg-white">
-        <button onClick={() => setDialog("wordCount")} className="hover:text-gray-800">{thesis.wordCount.toLocaleString()} / {thesis.targetWords.toLocaleString()} words</button>
+        <button onClick={() => setDialog("wordCount")} className="hover:text-gray-800">{activeTab === SUBMISSION ? `${thesis.wordCount.toLocaleString()} / ${thesis.targetWords.toLocaleString()} words` : `${tabWords.toLocaleString()} words in this tab · Final submission ${thesis.wordCount.toLocaleString()} / ${thesis.targetWords.toLocaleString()}`}</button>
         <span>Page ~{stats.pages}</span>
         <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-purple-500" />AI {aiPct}%</span>
         <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-400" />Pasted {thesis.wordCount ? Math.round((thesis.provenance.paste / thesis.wordCount) * 100) : 0}%</span>
@@ -671,12 +958,15 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       <ShareDialog open={dialog === "share"} onClose={() => setDialog(null)} thesis={thesis} />
       <TextPromptDialog open={dialog === "rename"} onClose={() => setDialog(null)} title="Rename thesis" initial={thesis.title} onSubmit={(t) => updateThesis({ title: t }, "Renamed")} submitLabel="Rename" />
       <TextPromptDialog open={dialog === "saveVersion"} onClose={() => setDialog(null)} title="Name this version" label="e.g. Draft sent to advisor" onSubmit={async (label) => { await saveNow(); await api(`/api/theses/${thesisId}/versions`, { method: "POST", json: { label } }).catch(() => {}); notify("Version saved", "success"); loadVersions(); }} submitLabel="Save version" />
-      <ConfirmDialog open={dialog === "submit"} onClose={() => setDialog(null)} title="Submit for review" body={<>Your advisor <strong>{thesis.professorName}</strong> will be notified and will see the document, your provenance report and writing sessions. You can keep editing until they approve it.</>} confirmLabel="Submit" onConfirm={async () => { await saveNow(); updateThesis({ status: "under_review" }, "Submitted for review"); }} />
+      <ConfirmDialog open={dialog === "submit"} onClose={() => setDialog(null)} title="Submit for review" body={<>Only the <strong>Final submission</strong> tab is submitted. Your advisor <strong>{thesis.professorName}</strong> will be notified and will see it with your provenance report and writing sessions. Working tabs stay as your notes. You can keep editing until they approve it.</>} confirmLabel="Submit" onConfirm={async () => { await saveNow(); updateThesis({ status: "under_review" }, "Submitted for review"); }} />
       <ShortcutsDialog open={dialog === "shortcuts"} onClose={() => setDialog(null)} />
+      <ConfirmDialog open={!!confirmPromote} onClose={() => setConfirmPromote(null)} title="Use this tab as Final submission?" confirmLabel="Use as Final submission" body={<>“{tabs.find((t) => t.id === confirmPromote)?.title}” becomes the text your advisor reviews and the integrity report measures. The current Final submission is kept as a working tab, so nothing is lost.</>} onConfirm={() => confirmPromote && promoteTab(confirmPromote)} />
+      <ConfirmDialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Delete tab?" danger confirmLabel="Delete tab" body={<>“{tabs.find((t) => t.id === confirmDelete)?.title}” and its text will be deleted. The Final submission is not affected.</>} onConfirm={() => confirmDelete && deleteTab(confirmDelete)} />
+      <CitationDialog open={!!citeMode} onClose={() => setCiteMode(null)} selection={citeText} thesis={thesis} sessionId={sessionId} insertMode={citeMode || "cursor"} onInsert={(c) => insertCitation(c, citeMode || "cursor")} />
       <Modal open={dialog === "about"} onClose={() => setDialog(null)} title="About Thesisfy" size="sm" footer={<button onClick={() => setDialog(null)} className="btn-primary !py-2 !px-4 text-sm">Close</button>}>
         <p className="text-sm text-gray-600">Thesisfy regulates AI use while you write instead of guessing afterwards. Everything you insert from an AI tool is marked, every session is logged according to your consent, and your advisor sees a provenance report instead of a “probability of AI” score.</p>
       </Modal>
-      <VersionPreviewDialog open={!!preview} onClose={() => setPreview(null)} html={preview?.html || ""} label={preview?.label || ""} canRestore={canEdit} onRestore={async () => { if (!preview) return; const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${preview.id}`, { method: "POST" }).catch(() => null); if (d) { editor.commands.setContent(d.thesis.content); setThesis((t) => ({ ...t, ...d.thesis })); loadVersions(); } }} />
+      <VersionPreviewDialog open={!!preview} onClose={() => setPreview(null)} html={preview?.html || ""} label={preview?.label || ""} canRestore={canEdit} onRestore={async () => { if (!preview) return; const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${preview.id}`, { method: "POST" }).catch(() => null); if (d) { restoreSubmission(d.thesis); loadVersions(); } }} />
       <PasteAttributionDialog open={!!paste} words={paste?.words || 0} matched={paste?.matched || null} onDecide={decidePaste} />
       {me?.policy && (
         <ConsentModal open={dialog === "consent"} onClose={() => setDialog(null)} policy={me.policy} existing={me.consent} thesisId={thesisId} onGranted={async () => { await refreshMe(); if (!monitorRef.current) startSession(); else notify("Monitoring choices updated. They apply from your next session.", "success"); }} />

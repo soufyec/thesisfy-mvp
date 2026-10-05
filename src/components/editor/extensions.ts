@@ -372,3 +372,50 @@ export const Search = Extension.create({
     ];
   },
 });
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    citedPassage: {
+      setCitedPassage: (refId: string) => ReturnType;
+    };
+  }
+}
+
+/** Marks the passage a citation supports, so readers and advisors see exactly which text the source backs. */
+export const CitedPassage = Mark.create({
+  name: "citedPassage",
+  inclusive: false,
+  excludes: "",
+  addAttributes() {
+    return { refId: { default: null, parseHTML: (el) => el.getAttribute("data-cite-ref"), renderHTML: (a) => ({ "data-cite-ref": a.refId }) } };
+  },
+  parseHTML() {
+    return [{ tag: "span[data-cite-ref]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["span", mergeAttributes(HTMLAttributes, { class: "cited-passage" }), 0];
+  },
+  addCommands() {
+    return {
+      setCitedPassage:
+        (refId) =>
+        ({ commands }) =>
+          commands.setMark(this.name, { refId }),
+    };
+  },
+});
+
+/** The in-text citation itself, e.g. "(Reichstein et al., 2019)", linked to a reference id. */
+export const CitationMark = Mark.create({
+  name: "citation",
+  inclusive: false,
+  addAttributes() {
+    return { refId: { default: null, parseHTML: (el) => el.getAttribute("data-citation"), renderHTML: (a) => ({ "data-citation": a.refId }) } };
+  },
+  parseHTML() {
+    return [{ tag: "span[data-citation]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["span", mergeAttributes(HTMLAttributes, { class: "cite-chip" }), 0];
+  },
+});

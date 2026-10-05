@@ -19,7 +19,15 @@ export interface ThesisDoc {
   studentName: string;
   professorName: string;
   references: Reference[];
+  tabs?: ThesisTab[];
   pageSetup: { orientation: "portrait" | "landscape"; size: "A4" | "Letter"; margin: number; lineSpacing: number };
+}
+
+export interface ThesisTab {
+  id: string;
+  title: string;
+  content: string;
+  updatedAt: string;
 }
 
 export interface Reference {

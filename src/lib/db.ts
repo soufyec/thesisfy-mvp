@@ -64,7 +64,16 @@ export interface Thesis {
   updatedAt: string;
   sessions: WritingSession[];
   references: Reference[];
+  /** Working tabs (notes, drafts). The submission tab is `content`; only it is submitted, reviewed and scored. */
+  tabs: ThesisTab[];
   pageSetup: { orientation: "portrait" | "landscape"; size: "A4" | "Letter"; margin: number; lineSpacing: number };
+}
+
+export interface ThesisTab {
+  id: string;
+  title: string;
+  content: string;
+  updatedAt: string;
 }
 
 export interface Reference {
@@ -400,6 +409,20 @@ function seed(): Store {
         { id: "ref_2", type: "article", authors: "Reichstein, M., Camps-Valls, G., Stevens, B.", year: "2019", title: "Deep learning and process understanding for data-driven Earth system science", source: "Nature", volume: "566", pages: "195-204", doi: "10.1038/s41586-019-0912-1" },
       ],
       pageSetup: { orientation: "portrait", size: "A4", margin: 2.54, lineSpacing: 1.5 },
+      tabs: [
+        {
+          id: "tab_notes_1",
+          title: "Research notes",
+          content: "<h2>Research notes</h2><p>Ideas for the discussion chapter:</p><ul><li><p>Compare CNN+LSTM errors in summer vs winter months.</p></li><li><p>Ask Prof. Williams about including the 2021 heatwave as a case study.</p></li></ul><p>Sources to read: Eyring et al. (2021) on model evaluation.</p>",
+          updatedAt: "2026-03-12T10:00:00Z",
+        },
+        {
+          id: "tab_draft_1",
+          title: "Chapter 5 draft",
+          content: "<h2>5. Discussion (draft)</h2><p>The results suggest that hybrid models capture extreme events better because the correction layer learns systematic biases of the GCM.</p>",
+          updatedAt: "2026-03-13T18:20:00Z",
+        },
+      ],
       sessions: [],
     },
     {
@@ -421,6 +444,7 @@ function seed(): Store {
       updatedAt: "2026-03-01T00:00:00Z",
       references: [],
       pageSetup: { orientation: "portrait", size: "A4", margin: 2.54, lineSpacing: 1.5 },
+      tabs: [],
       sessions: [],
     },
     {
@@ -442,6 +466,7 @@ function seed(): Store {
       updatedAt: "2026-03-08T00:00:00Z",
       references: [],
       pageSetup: { orientation: "portrait", size: "A4", margin: 2.5, lineSpacing: 1.5 },
+      tabs: [],
       sessions: [],
     },
   ];
@@ -764,6 +789,7 @@ export const db = {
         updatedAt: now(),
         sessions: [],
         references: [],
+        tabs: [{ id: uid("tab"), title: "Notes", content: "<h2>Notes</h2><p></p>", updatedAt: now() }],
         pageSetup: { orientation: "portrait", size: "A4", margin: 2.54, lineSpacing: 1.5 },
       };
       load().theses.push(thesis);

@@ -155,7 +155,7 @@ export function PasteAttributionDialog({ open, words, matched, onDecide }: { ope
 }
 
 export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const rows = [["Ctrl+B / I / U", "Bold / Italic / Underline"], ["Ctrl+Shift+X", "Strikethrough"], ["Ctrl+Alt+0…4", "Normal text / Headings"], ["Ctrl+Shift+7 / 8 / 9", "Numbered / bulleted / checklist"], ["Tab / Shift+Tab", "Indent / outdent"], ["Ctrl+K", "Link"], ["Ctrl+Alt+M", "Comment"], ["Ctrl+H", "Find & replace"], ["Ctrl+S", "Save"], ["Ctrl+P", "Print"], ["Ctrl+Enter", "Page break"], ["Ctrl+Shift+C", "Word count"], ["Ctrl+/", "This dialog"], ["Ctrl+Z / Y", "Undo / redo"]];
+  const rows = [["Ctrl+B / I / U", "Bold / Italic / Underline"], ["Ctrl+Shift+X", "Strikethrough"], ["Ctrl+Alt+0…4", "Normal text / Headings"], ["Ctrl+Shift+7 / 8 / 9", "Numbered / bulleted / checklist"], ["Tab / Shift+Tab", "Indent / outdent"], ["Ctrl+K", "Link"], ["Ctrl+Alt+M", "Comment"], ["Ctrl+Alt+E", "Cite a source"], ["Ctrl+H", "Find & replace"], ["Ctrl+S", "Save"], ["Ctrl+P", "Print"], ["Ctrl+Enter", "Page break"], ["Ctrl+Shift+C", "Word count"], ["Ctrl+/", "This dialog"], ["Ctrl+Z / Y", "Undo / redo"]];
   return (
     <Modal open={open} onClose={onClose} title="Keyboard shortcuts" size="sm" footer={<button onClick={onClose} className="btn-primary !py-2 !px-4 text-sm">Close</button>}>
       <table className="w-full text-sm"><tbody>{rows.map(([k, v]) => <tr key={k} className="border-b border-gray-50"><td className="py-1.5"><kbd className="text-xs bg-gray-100 rounded px-1.5 py-0.5">{k}</kbd></td><td className="py-1.5 text-gray-600 text-right">{v}</td></tr>)}</tbody></table>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import {
-  AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, CheckSquare, ChevronDown, Highlighter, Image as ImageIcon, Indent, Italic, Link2, List, ListOrdered, MessageSquarePlus, Minus, Outdent, Plus, Printer, Redo2, RemoveFormatting, SpellCheck, Strikethrough, Subscript, Superscript, Table as TableIcon, Underline, Undo2, ZoomIn,
+  AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookMarked, CheckSquare, ChevronDown, Highlighter, Image as ImageIcon, Indent, Italic, Link2, List, ListOrdered, MessageSquarePlus, Minus, Outdent, Plus, Printer, Redo2, RemoveFormatting, SpellCheck, Strikethrough, Subscript, Superscript, Table as TableIcon, Underline, Undo2, ZoomIn,
 } from "lucide-react";
 import { COLORS, FONT_SIZES, FONTS, HIGHLIGHTS } from "./types";
 
@@ -15,6 +15,7 @@ interface Props {
   onImage: () => void;
   onTable: () => void;
   onComment: () => void;
+  onCite: () => void;
   onPrint: () => void;
   spellcheck: boolean;
   onSpellcheck: (v: boolean) => void;
@@ -53,7 +54,7 @@ function ColorPicker({ colors, value, onPick, title, icon, onClear }: { colors: 
   );
 }
 
-export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable, onComment, onPrint, spellcheck, onSpellcheck, compact }: Props) {
+export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable, onComment, onCite, onPrint, spellcheck, onSpellcheck, compact }: Props) {
   const [, force] = useState(0);
   useEffect(() => {
     const h = () => force((n) => n + 1);
@@ -133,6 +134,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
       <span className="tb-sep" />
       <Btn onClick={onLink} active={editor.isActive("link")} title="Insert link (Ctrl+K)"><Link2 className="w-4 h-4" /></Btn>
       <Btn onClick={onComment} title="Add comment (Ctrl+Alt+M)"><MessageSquarePlus className="w-4 h-4" /></Btn>
+      <Btn onClick={onCite} title="Cite a source (Ctrl+Alt+E): select the passage, find the source with AI, review and insert"><BookMarked className="w-4 h-4" /></Btn>
       <Btn onClick={onImage} title="Insert image"><ImageIcon className="w-4 h-4" /></Btn>
       <Btn onClick={onTable} title="Insert table"><TableIcon className="w-4 h-4" /></Btn>
       <span className="tb-sep" />

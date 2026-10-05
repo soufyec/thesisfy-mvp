@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
       ...t,
       content: undefined,
       sessions: undefined,
+      tabs: undefined,
+      tabCount: (t.tabs || []).length,
       sessionCount: t.sessions.length,
       openFlags: flags.filter((f) => !f.resolved).length,
       studentName: student?.name || "Unknown",

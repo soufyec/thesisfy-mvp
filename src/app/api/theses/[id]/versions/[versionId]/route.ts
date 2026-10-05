@@ -25,5 +25,5 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   db.versions.create({ thesisId: thesis.id, authorId: r.user.id, content: thesis.content, wordCount: thesis.wordCount, kind: "restore", label: "Before restore" });
   db.theses.update(thesis.id, { content: v.content });
   refreshThesisMetrics(thesis.id);
-  return json({ thesis: { ...db.theses.findById(thesis.id), sessions: undefined } });
+  return json({ thesis: { ...db.theses.findById(thesis.id), sessions: undefined, tabs: undefined } });
 }

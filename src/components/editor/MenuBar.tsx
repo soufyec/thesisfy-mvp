@@ -166,7 +166,7 @@ export default function MenuBar({ editor, onAction, state }: Props) {
         { label: "Date", action: "date", disabled: ro },
         { label: "Footnote", action: "footnote", disabled: ro },
         { sep: true, label: "" },
-        { label: "Citation…", action: "citation", disabled: ro },
+        { label: "Citation (find source with AI)…", action: "citation", shortcut: `${mod}⌥E`, disabled: ro },
         { label: "Table of contents", action: "toc", disabled: ro },
       ],
     },

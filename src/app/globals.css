@@ -216,3 +216,13 @@
 @keyframes seal-spin { to { transform: rotate(360deg); } }
 .seal-spin { animation: seal-spin 60s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .seal-spin { animation: none; } }
+
+/* Citations */
+.ProseMirror .cited-passage { background: rgba(32, 201, 151, 0.10); border-bottom: 1.5px solid rgba(12, 166, 120, 0.55); }
+.ProseMirror .cite-chip { color: #0b7a5a; }
+@media print { .ProseMirror .cited-passage { background: none; border-bottom: none; } .ProseMirror .cite-chip { color: inherit; } }
+
+/* Document tabs */
+.doc-tab { @apply flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg text-[13px] border border-b-0 border-transparent text-gray-600 hover:bg-white/70 whitespace-nowrap max-w-[220px]; }
+.doc-tab.active { @apply bg-white border-gray-200 text-gray-900 font-medium; }
+.doc-tab.submission { @apply text-brand-800; }

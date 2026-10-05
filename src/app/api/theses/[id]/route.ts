@@ -50,6 +50,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   if (typeof body.title === "string" && body.title.trim() && isOwner) patch.title = body.title.trim();
   if (typeof body.description === "string" && isOwner) patch.description = body.description;
   if (Array.isArray(body.references) && isOwner) patch.references = body.references;
+  if (Array.isArray(body.tabs) && isOwner) {
+    if (body.tabs.length > 20) return error("A thesis can have at most 20 working tabs");
+    const tabs = [];
+    for (const t of body.tabs) {
+      if (!t || typeof t.id !== "string" || typeof t.content !== "string") return error("Invalid tab");
+      if (t.content.length > 2_000_000) return error("Tab content is too large");
+      const prev = (thesis.tabs || []).find((x) => x.id === t.id);
+      tabs.push({ id: t.id.slice(0, 40), title: String(t.title || "Untitled").trim().slice(0, 80) || "Untitled", content: t.content, updatedAt: prev && prev.content === t.content && prev.title === t.title ? prev.updatedAt : new Date().toISOString() });
+    }
+    patch.tabs = tabs;
+  }
   if (body.pageSetup && typeof body.pageSetup === "object" && isOwner) patch.pageSetup = { ...thesis.pageSetup, ...body.pageSetup };
   if (body.citationStyle && isOwner) patch.citationStyle = body.citationStyle;
   if (body.targetWords && isOwner) patch.targetWords = Number(body.targetWords);
@@ -81,7 +92,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     refreshThesisMetrics(thesis.id);
   }
 
-  return json({ thesis: { ...updated, content: undefined, sessions: undefined } });
+  return json({ thesis: { ...updated, content: undefined, sessions: undefined, tabs: undefined } });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
