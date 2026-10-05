@@ -287,6 +287,34 @@ export interface ExtensionToken {
   revoked: boolean;
 }
 
+export type DatabaseAccess = "sso" | "proxy" | "vpn" | "campus" | "open" | "personal";
+
+/** A research database the university subscribes to (or recommends), shown to its students. */
+export interface ResearchDatabase {
+  id: string;
+  university: string;
+  name: string;
+  url: string; // public landing or search page
+  loginUrl?: string; // direct institutional login page, when the provider has one
+  description: string;
+  subjects: string[];
+  access: DatabaseAccess;
+  instructions?: string; // special steps, written by the library
+  featured: boolean;
+  opens: number; // click-throughs from Thesisfy (for library usage reporting)
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibrarySettings {
+  university: string;
+  proxyPrefix?: string; // e.g. EZproxy "https://login.proxy.example.edu/login?url="
+  intro?: string;
+  helpEmail?: string;
+  helpUrl?: string;
+  updatedAt: string;
+}
+
 interface Store {
   users: User[];
   theses: Thesis[];
@@ -301,6 +329,8 @@ interface Store {
   notifications: Notification[];
   pairingCodes: PairingCode[];
   extensionTokens: ExtensionToken[];
+  researchDatabases: ResearchDatabase[];
+  librarySettings: LibrarySettings[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -644,6 +674,30 @@ function seed(): Store {
     ],
     pairingCodes: [],
     extensionTokens: [],
+    librarySettings: [
+      { university: "Stanford University", intro: "Databases licensed by Stanford Libraries for your research. Sign in with your university account when a provider asks.", helpUrl: "https://library.stanford.edu/", updatedAt: "2026-09-01T00:00:00Z" },
+      { university: "Sorbonne University", intro: "Ressources documentaires accessibles avec votre compte universitaire. En cas de problème d'accès, contactez la bibliothèque.", helpUrl: "https://www.sorbonne-universite.fr/bibliotheques", updatedAt: "2026-09-01T00:00:00Z" },
+    ],
+    researchDatabases: [
+      ...[
+        { name: "Web of Science", url: "https://www.webofscience.com/", description: "Citation index across sciences, social sciences and humanities. Best for finding the most-cited work on a topic.", subjects: ["Multidisciplinary", "Citation analysis"], access: "sso", featured: true },
+        { name: "Scopus", url: "https://www.scopus.com/", description: "Abstract and citation database of peer-reviewed literature, with author and journal metrics.", subjects: ["Multidisciplinary", "Citation analysis"], access: "sso", featured: true },
+        { name: "JSTOR", url: "https://www.jstor.org/", description: "Full-text archive of journals, books and primary sources, strong in humanities and social sciences.", subjects: ["Humanities", "Social sciences"], access: "sso", featured: true },
+        { name: "IEEE Xplore", url: "https://ieeexplore.ieee.org/", description: "Journals, conference papers and standards in electrical engineering, computer science and electronics.", subjects: ["Engineering", "Computer science"], access: "sso", featured: false },
+        { name: "ScienceDirect", url: "https://www.sciencedirect.com/", description: "Elsevier journals and books in physical, life, health and social sciences.", subjects: ["Sciences", "Health"], access: "sso", featured: false },
+        { name: "ProQuest Dissertations & Theses Global", url: "https://www.proquest.com/", description: "Millions of dissertations and theses worldwide. Useful to see how others structured similar research.", subjects: ["Theses", "Multidisciplinary"], access: "proxy", featured: true, instructions: "Open it from this page so the library proxy recognises you, then sign in with your university account. If you land on a ProQuest page asking for a subscription, use the library help link." },
+        { name: "PubMed", url: "https://pubmed.ncbi.nlm.nih.gov/", description: "Biomedical and life-sciences literature from MEDLINE and life-science journals.", subjects: ["Health", "Life sciences"], access: "open", featured: false, instructions: "Searching is free. For full text, open the article's publisher link while signed in to the university, or use the library's link resolver." },
+        { name: "Google Scholar", url: "https://scholar.google.com/", description: "Broad search across scholarly literature, with citation counts.", subjects: ["Multidisciplinary"], access: "open", featured: false, instructions: "In Scholar settings → Library links, add your university so 'Find it @ library' links appear next to results you can read in full." },
+      ].map((d, i) => ({ ...d, id: `rdb_stan_${i}`, university: "Stanford University", opens: [42, 31, 27, 9, 12, 18, 5, 22][i], createdAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z" })),
+      ...[
+        { name: "Cairn.info", url: "https://shs.cairn.info/", description: "Revues et ouvrages francophones en sciences humaines et sociales.", subjects: ["Sciences humaines", "Sciences sociales"], access: "sso", featured: true, instructions: "Cliquez sur « Connexion institutionnelle », choisissez votre université dans la liste de la fédération Renater, puis connectez-vous avec vos identifiants ENT." },
+        { name: "Europresse", url: "https://nouveau.europresse.com/", description: "Presse française et internationale en texte intégral, utile pour l'actualité et l'analyse de discours.", subjects: ["Presse", "Sciences sociales"], access: "proxy", featured: true, instructions: "Accès uniquement via le lien de la bibliothèque (proxy). Ouvrez-le depuis cette page et identifiez-vous avec votre compte universitaire." },
+        { name: "JSTOR", url: "https://www.jstor.org/", description: "Archives de revues et d'ouvrages, en particulier en sciences humaines et sociales.", subjects: ["Sciences humaines", "Sciences sociales"], access: "sso", featured: false },
+        { name: "theses.fr", url: "https://theses.fr/", description: "Moteur de recherche des thèses de doctorat françaises soutenues et en préparation.", subjects: ["Thèses"], access: "open", featured: true },
+        { name: "HAL", url: "https://hal.science/", description: "Archive ouverte pluridisciplinaire des publications de la recherche française.", subjects: ["Pluridisciplinaire", "Accès ouvert"], access: "open", featured: false },
+        { name: "Persée", url: "https://www.persee.fr/", description: "Collections patrimoniales de revues scientifiques francophones numérisées.", subjects: ["Sciences humaines"], access: "open", featured: false },
+      ].map((d, i) => ({ ...d, id: `rdb_sorb_${i}`, university: "Sorbonne University", opens: [19, 11, 6, 14, 8, 3][i], createdAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z" })),
+    ] as ResearchDatabase[],
   };
 }
 
@@ -663,6 +717,10 @@ function load(): Store {
     }
   }
   g.__thesisfyStore = store || seed();
+  // fill collections added after a store was first created (hot reload / older DATA_FILE)
+  const fresh = seed();
+  const st = g.__thesisfyStore as unknown as Record<string, unknown>;
+  for (const k of Object.keys(fresh) as (keyof Store)[]) if (st[k] === undefined) st[k] = fresh[k];
   return g.__thesisfyStore;
 }
 
@@ -1093,6 +1151,48 @@ export const db = {
         .notifications.filter((n) => n.userId === userId && (!id || n.id === id))
         .forEach((n) => (n.read = true));
       persist();
+    },
+  },
+
+  library: {
+    list: (university: string) => load().researchDatabases.filter((d) => d.university === university).sort((a, b) => Number(b.featured) - Number(a.featured) || a.name.localeCompare(b.name)),
+    findById: (id: string) => load().researchDatabases.find((d) => d.id === id),
+    create: (data: Omit<ResearchDatabase, "id" | "createdAt" | "updatedAt" | "opens">) => {
+      const d: ResearchDatabase = { ...data, id: uid("rdb"), opens: 0, createdAt: now(), updatedAt: now() };
+      load().researchDatabases.push(d);
+      persist();
+      return d;
+    },
+    update: (id: string, patch: Partial<ResearchDatabase>) => {
+      const d = load().researchDatabases.find((x) => x.id === id);
+      if (!d) return null;
+      Object.assign(d, patch, { id: d.id, university: d.university, updatedAt: now() });
+      persist();
+      return d;
+    },
+    remove: (id: string) => {
+      const s = load();
+      s.researchDatabases = s.researchDatabases.filter((d) => d.id !== id);
+      persist();
+    },
+    recordOpen: (id: string) => {
+      const d = load().researchDatabases.find((x) => x.id === id);
+      if (d) {
+        d.opens += 1;
+        persist();
+      }
+    },
+    settings: (university: string): LibrarySettings => load().librarySettings.find((x) => x.university === university) || { university, updatedAt: now() },
+    updateSettings: (university: string, patch: Partial<LibrarySettings>) => {
+      const s = load();
+      let x = s.librarySettings.find((l) => l.university === university);
+      if (!x) {
+        x = { university, updatedAt: now() };
+        s.librarySettings.push(x);
+      }
+      Object.assign(x, patch, { university, updatedAt: now() });
+      persist();
+      return x;
     },
   },
 

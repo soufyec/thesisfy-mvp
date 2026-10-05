@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { AlertTriangle, ArrowDown, ArrowUp, BookMarked, Check, CheckCircle2, History, MessageSquare, Plus, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
-import { timeAgo } from "@/lib/client";
+import { AlertTriangle, ArrowDown, ArrowUp, BookMarked, Check, CheckCircle2, History, Library, MessageSquare, Plus, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import { api, timeAgo } from "@/lib/client";
+import DatabaseCard, { ResearchDb } from "../library/DatabaseCard";
 import { CommentItem, FlagItem, formatReference, Reference, ThesisDoc, VersionItem } from "./types";
 
 export function PanelShell({ title, icon, onClose, children, actions }: { title: string; icon?: React.ReactNode; onClose: () => void; children: React.ReactNode; actions?: React.ReactNode }) {
@@ -200,6 +201,7 @@ export function ReferencesPanel({ references, style, onChangeStyle, onAdd, onRem
         {references.length > 0 && canEdit && (
           <button onClick={onInsertBibliography} className="w-full text-xs py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Insert bibliography ({style})</button>
         )}
+        <UniversityDatabases />
       </div>
     </PanelShell>
   );
@@ -297,5 +299,26 @@ export function IntegrityPanel({ thesis, flags, session, maxAi, showProvenance, 
         </div>
       </div>
     </PanelShell>
+  );
+}
+
+
+/** The university's research databases, one click away while citing. */
+function UniversityDatabases() {
+  const [data, setData] = useState<{ databases: ResearchDb[]; settings: { proxyPrefix?: string }; university: string } | null>(null);
+  useEffect(() => {
+    api<{ databases: ResearchDb[]; settings: { proxyPrefix?: string }; university: string }>("/api/research-databases").then(setData).catch(() => {});
+  }, []);
+  if (!data || !data.databases.length) return null;
+  return (
+    <div className="pt-3 mt-1 border-t border-gray-100 space-y-2">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+        <Library className="w-3.5 h-3.5" />Search your university databases
+      </div>
+      {data.databases.slice(0, 6).map((d) => (
+        <DatabaseCard key={d.id} d={d} university={data.university} proxyPrefix={data.settings.proxyPrefix} compact />
+      ))}
+      <a href="/dashboard/library" target="_blank" rel="noopener noreferrer" className="block text-[11px] text-brand-600 hover:underline">All {data.databases.length} databases and access instructions →</a>
+    </div>
   );
 }

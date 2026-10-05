@@ -214,7 +214,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
         {mobileItems.map((item) => (
           <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-0.5 py-2 px-2 min-w-[56px] text-[10px] ${isActive(item.href) ? "text-brand-600" : "text-gray-500"}`}>
             {item.icon}
-            <span className="truncate max-w-[64px]">{item.label.replace("Settings & Privacy", "Settings").replace("AI Assistant", "Assistant").replace("Integrity Flags", "Flags")}</span>
+            <span className="truncate max-w-[64px]">{item.label.replace("Settings & Privacy", "Settings").replace("AI Assistant", "Assistant").replace("Integrity Flags", "Flags").replace("Research databases", "Databases")}</span>
           </Link>
         ))}
       </nav>
