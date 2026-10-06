@@ -24,6 +24,7 @@ import {
   Square,
   Trash2,
   X,
+  BookOpen,
 } from "lucide-react";
 import Markdown, { markdownToHtml } from "../Markdown";
 import { api, ApiError, countWordsInText, streamChat, timeAgo } from "@/lib/client";
@@ -206,6 +207,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [useSelection, setUseSelection] = useState(true);
+  const [useSources, setUseSources] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
   const [conversations, setConversations] = useState<{ id: string; title: string; updatedAt: string; messageCount: number }[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -324,6 +326,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           conversationId,
           provider: providerChoice === "auto" ? null : providerChoice,
           selection: workingOn ? selection : undefined,
+          useSources: useSources && !!thesisId ? true : undefined,
         },
         {
           onMeta: (meta) => {
@@ -692,6 +695,14 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
 
       {/* Composer */}
       <div className={`px-4 pt-3 pb-3.5 border-t border-gray-100 flex-shrink-0 ${column}`}>
+        {thesisId && (
+          <div className="flex items-center justify-between mb-2">
+            <button type="button" onClick={() => setUseSources((v) => !v)} aria-pressed={useSources} className={`inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-lg border ${useSources ? "bg-accent-50 border-accent-200 text-accent-800" : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"}`} title="Answer only from the sources in this thesis's library, quoting passages">
+              <BookOpen className="w-3.5 h-3.5" />Use my sources{useSources ? " · on" : ""}
+            </button>
+            {useSources && <span className="text-[11px] text-gray-400">Answers are grounded in your library and quote passages.</span>}
+          </div>
+        )}
         <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-[9px] border border-gray-200 focus-within:border-brand-400">
           <textarea
             ref={inputRef}

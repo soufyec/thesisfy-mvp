@@ -46,6 +46,21 @@ Like Copilot inside a company, the university can offer models to its students a
 
 Spend is metered per request from the model's configured prices; administrators set a monthly budget, a per-student allowance, what happens when it runs out (pause, or fall back to the student's own account) and an alert threshold. Students see their allowance in the assistant and in AI Connections, and may still connect a personal account, which the university never pays for.
 
+### AI editor features
+
+Six "thinking-with" features built from the market analysis in `reports/Editores académicos con IA.md` (each has a README next to its code):
+
+| Feature | Where | Benchmark it competes with |
+|---|---|---|
+| AI reviewer: anchored, resolvable comments with an institutional rubric | `src/components/editor/reviewer`, `/api/ai/reviewer`, `/api/policies/rubric` | Thesify Reviewer, Word Coaching |
+| Language review: inline suggestions (EN/ES/FR) with category filters; mechanical fixes stay the student's, style rewrites are marked AI | `src/components/editor/language`, `/api/language/*` (LanguageTool + model) | Writefull, Trinka, Grammarly |
+| Verified citations with supporting passage + reference checker | `src/components/editor/citations`, `/api/ai/cite-verified`, `/api/theses/[id]/references/check` | Jenni Cite, Paperpal Reference Checker |
+| Writing process: hash-chained snapshots, replay, AI-use declaration from the ledger | `src/components/editor/process`, `/api/theses/[id]/{snapshots,process,declaration}` | Turnitin Clarity, Grammarly Authorship |
+| Source library with grounded, page-anchored answers ("Use my sources" in the assistant; pastes from a source are attributed to it) | `src/components/editor/sources`, `/api/theses/[id]/sources`, `/api/ai/sources/ask` | SciSpace, Elicit |
+| Evidence check: supports / qualifies / contradicts, no aggregate score | `src/components/editor/evidence`, `/api/ai/evidence` | Consensus, Scite |
+
+Scholarly data comes from OpenAlex, Crossref, Semantic Scholar and Unpaywall (`src/lib/scholar.ts`; set `OPENALEX_MAILTO`, optionally `OPENALEX_API_KEY` and `S2_API_KEY`). The model only ever picks identifiers from retrieved candidates and must quote passages the server verifies. All features have a deterministic demo mode when no AI provider is configured.
+
 ### Research copilot
 
 With **Research copilot** enabled (Admin → AI policies), students may ask anything connected to their research on the university-provided models: literature, methods, statistics, code, planning. The history is kept and visible to the institution. Two guardrails stay on: "write it for me" requests are refused and logged as blocked, and every answer is fingerprinted sentence by sentence (SHA-256 of normalised text, never the text itself), so when a student pastes part of an answer into the thesis the editor recognises it, marks it as AI-assisted and links it to the conversation.

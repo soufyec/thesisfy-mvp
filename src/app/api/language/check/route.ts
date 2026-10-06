@@ -113,8 +113,27 @@ export async function POST(request: NextRequest) {
   let ltError: string | undefined;
   let detected: string | undefined;
 
+  // Auto-detect once, on the longest paragraph: per-paragraph detection misreads headings and table cells
+  // (a two-word heading can come back as any language). Fall back to en-US when nothing is long enough.
+  let effectiveLang = langCode;
+  const wordsOf = (parts: AnnotationItem[]) => annotationOriginal(parts).trim().split(/\s+/).filter(Boolean).length;
+  if (langCode === "auto") {
+    const longest = paragraphs.slice().sort((a, b) => wordsOf(b.parts) - wordsOf(a.parts))[0];
+    if (longest && wordsOf(longest.parts) >= 12) {
+      const probe = await checkAnnotated(longest.parts, { language: "auto", motherTongue: prefs.motherTongue, disabledRules });
+      const code = probe.language?.detectedCode || probe.language?.code;
+      if (code) {
+        const base = code.toLowerCase().split("-")[0];
+        effectiveLang = base === "es" ? "es" : base === "fr" ? "fr" : code.toLowerCase() === "en-gb" ? "en-GB" : "en-US";
+        detected = effectiveLang;
+      } else effectiveLang = "en-US";
+    } else effectiveLang = "en-US";
+  }
+
   const ltResults = await mapLimit(paragraphs, PARALLEL, async (p) => {
-    const res = await checkAnnotated(p.parts, { language: langCode, motherTongue: prefs.motherTongue, disabledRules });
+    // Very short blocks (headings, table cells, labels) are not checked: almost every hit there is noise.
+    if (wordsOf(p.parts) < 3) return [] as LTMatch[];
+    const res = await checkAnnotated(p.parts, { language: effectiveLang, motherTongue: prefs.motherTongue, disabledRules });
     if (res.error && !ltError) ltError = res.error;
     if (res.language?.code && !detected) detected = res.language.code;
     return res.matches;

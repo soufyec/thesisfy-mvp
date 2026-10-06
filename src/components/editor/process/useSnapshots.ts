@@ -13,7 +13,7 @@ export interface SnapshotPayload {
   tabId: string;
   html: string;
   wordCount: number;
-  provenance: { human: number; ai: number; paste: number };
+  provenance?: { human: number; ai: number; paste: number };
   sessionId?: string | null;
 }
 

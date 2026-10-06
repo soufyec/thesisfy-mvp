@@ -10,7 +10,8 @@ export type MenuAction =
   | "outline" | "comments" | "ai" | "provenance" | "zoom-50" | "zoom-75" | "zoom-100" | "zoom-125" | "zoom-150" | "fullscreen" | "focus"
   | "image" | "table" | "link" | "comment" | "pageBreak" | "hr" | "date" | "citation" | "toc" | "footnote"
   | "bold" | "italic" | "underline" | "strike" | "superscript" | "subscript" | "h1" | "h2" | "h3" | "h4" | "p" | "alignLeft" | "alignCenter" | "alignRight" | "alignJustify" | "ls-1" | "ls-1.15" | "ls-1.5" | "ls-2" | "bullets" | "numbers" | "checklist" | "indent" | "outdent" | "clearFormat" | "blockquote" | "codeBlock"
-  | "spellcheck" | "references" | "integrity" | "privacy" | "shortcuts" | "about" | "copilot";
+  | "spellcheck" | "references" | "integrity" | "privacy" | "shortcuts" | "about" | "copilot"
+  | "reviewer" | "language" | "cite" | "process" | "sources" | "evidence";
 
 interface Item {
   label: string;
@@ -232,11 +233,18 @@ export function buildMenus(editor: Editor, state: Props["state"]): MenuGroup[] {
         { label: "Word count", action: "wordCount", shortcut: `${mod}⇧C` },
         { sep: true, label: "" },
         { label: "AI assistant", action: "ai" },
-        { label: "Citations & references", action: "references" },
-        { label: "Integrity ledger", action: "integrity" },
-        { sep: true, label: "" },
-        { label: "Privacy & monitoring choices", action: "privacy" },
         { label: "Research copilot", action: "copilot" },
+        { label: "AI reviewer", action: "reviewer" },
+        { label: "Language review", action: "language" },
+        { sep: true, label: "" },
+        { label: "Citations & references", action: "references" },
+        { label: "Find support & check references", action: "cite" },
+        { label: "Evidence check", action: "evidence" },
+        { label: "Source library", action: "sources" },
+        { sep: true, label: "" },
+        { label: "Integrity ledger", action: "integrity" },
+        { label: "Writing process & AI declaration", action: "process" },
+        { label: "Privacy & monitoring choices", action: "privacy" },
       ],
     },
     {

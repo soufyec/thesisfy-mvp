@@ -3,6 +3,7 @@ import { db, SessionEventType } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
 import { evaluateEvent, refreshThesisMetrics } from "@/lib/integrity";
 import { passageFingerprints, textFingerprint } from "@/lib/crypto";
+import { matchPasteFingerprintsToSources } from "@/lib/sources/retrieve";
 
 const ALLOWED: SessionEventType[] = ["typing", "paste", "ai_prompt", "ai_insert", "ai_suggestion_rejected", "tab_hidden", "tab_visible", "save"];
 
@@ -40,6 +41,9 @@ export async function POST(request: NextRequest, { params }: { params: { session
       delete data.fingerprints;
       data.fingerprintCount = fps.length;
       // Text taken from the Thesisfic assistant / research copilot: recognised by the answer's sentence fingerprints.
+      // Text taken from a source in the thesis library: attributed to it (quoted), never to the student.
+      const src = matchPasteFingerprintsToSources(session.thesisId, fps);
+      if (src) data.matchedSource = { kind: "source", ...src };
       const ai = db.interactions.matchFingerprints(r.user.id, fps)[0];
       if (ai) {
         const share = fp && ai.interaction.responseFingerprints!.includes(fp) ? 1 : Math.min(1, ai.hits / Math.max(1, fps.length - 1));
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest, { params }: { params: { session
     ok: true,
     flags: created,
     session: { id: refreshed.id, keystrokes: refreshed.keystrokes, wordsWritten: refreshed.wordsWritten, aiAssists: refreshed.aiAssists, pasteEvents: refreshed.pasteEvents, tabSwitches: refreshed.tabSwitches },
-    matches: events.filter((e) => e.type === "paste").length ? refreshed.events.slice(-events.length).filter((e) => e.type === "paste" && e.data.matchedAi).map((e) => e.data) : [],
+    matches: events.filter((e) => e.type === "paste").length ? refreshed.events.slice(-events.length).filter((e) => e.type === "paste" && (e.data.matchedAi || e.data.matchedSource)).map((e) => e.data) : [],
   });
 }
 

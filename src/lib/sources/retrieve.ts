@@ -292,3 +292,45 @@ export function matchPasteToSources(thesisId: string, text: string): PasteSource
   if (!chunks.length) return null;
   return matchPasteToChunks(chunks, text, (id) => db.sources.findById(id));
 }
+
+// ---------- paste attribution by fingerprints ----------
+import { passageFingerprints } from "../crypto";
+
+const chunkFpCache = new Map<string, string[]>();
+
+/**
+ * Attribute a paste to a library source using the sentence fingerprints the editor already sends
+ * (the pasted text itself never reaches the server). A source wins when at least 60% of the
+ * pasted sentence fingerprints appear in its chunks, or 2+ sentences for short pastes.
+ */
+export function matchPasteFingerprintsToSources(thesisId: string, fps: string[]): { sourceId: string; title: string; authors?: string; year?: string; page?: number; share: number; doi?: string; url?: string } | null {
+  const wanted = new Set(fps);
+  if (!wanted.size) return null;
+  const chunks = db.sourceChunks.listByThesis(thesisId);
+  if (!chunks.length) return null;
+  const hitsBySource = new Map<string, { hits: Set<string>; page?: number; pageHits: number }>();
+  for (const c of chunks) {
+    let cf = chunkFpCache.get(c.id);
+    if (!cf) {
+      cf = passageFingerprints(c.text);
+      chunkFpCache.set(c.id, cf);
+      if (chunkFpCache.size > 5000) chunkFpCache.clear();
+    }
+    let local = 0;
+    const entry = hitsBySource.get(c.sourceId) || { hits: new Set<string>(), pageHits: 0 };
+    for (const f of cf) if (wanted.has(f)) { entry.hits.add(f); local++; }
+    if (local > entry.pageHits) { entry.pageHits = local; entry.page = c.page; }
+    hitsBySource.set(c.sourceId, entry);
+  }
+  let best: { sourceId: string; hits: number; page?: number } | null = null;
+  hitsBySource.forEach((v, sourceId) => { if (v.hits.size && (!best || v.hits.size > best.hits)) best = { sourceId, hits: v.hits.size, page: v.page }; });
+  if (!best) return null;
+  const b: { sourceId: string; hits: number; page?: number } = best;
+  // fps includes the whole-paste fingerprint plus sentence/paragraph ones; compare against the sentence count
+  const denominator = Math.max(1, wanted.size - 1);
+  const share = Math.min(1, b.hits / denominator);
+  if (share < 0.6 && b.hits < 2) return null;
+  const src = db.sources.findById(b.sourceId);
+  if (!src) return null;
+  return { sourceId: src.id, title: src.title, authors: src.authors, year: src.year, page: b.page, share: Math.round(share * 100) / 100, doi: src.doi, url: src.url };
+}

@@ -82,7 +82,7 @@ export interface FlagItem {
   resolved: boolean;
 }
 
-export type SidebarKind = "none" | "outline" | "comments" | "versions" | "references" | "find" | "ai" | "integrity";
+export type SidebarKind = "none" | "outline" | "comments" | "versions" | "references" | "find" | "ai" | "integrity" | "reviewer" | "language" | "cite" | "process" | "sources" | "evidence";
 
 export interface EditorCtx {
   editor: Editor;

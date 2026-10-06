@@ -72,6 +72,9 @@ Pendiente. Archivos: `db.ts`, `api/stats`, nuevo `admin/report/page.tsx`, `expor
 
 ---
 
+### Fase 7 · Funciones del editor IA (hecha)
+Seis funciones construidas a partir de `reports/Editores académicos con IA.md`: revisor IA anclado, revisión lingüística en línea, citas verificadas + comprobador de referencias, informe de proceso + declaración de uso de IA, biblioteca de fuentes con respuestas citadas, comprobación de evidencia. Integradas en el menú `⋯ › Tools`, el bubble menu (Support · Evidence) y el asistente ("Use my sources").
+
 ## 3. Fuera de alcance (por ahora)
 Mobile nativo (Capacitor), migración a Postgres, SSO/LMS.
 

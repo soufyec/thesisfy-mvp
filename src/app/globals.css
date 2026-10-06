@@ -258,7 +258,7 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 @media print { .prov-gutter { display: none; } }
 
 /* Bubble menu (selection) */
-.bubble-menu { @apply flex items-center gap-0.5 bg-gray-900 text-white rounded-[10px] p-1 text-[12px] whitespace-nowrap; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.4); }
+.bubble-menu { @apply flex items-center gap-0.5 bg-gray-900 text-white rounded-[10px] p-1 text-[12px] whitespace-nowrap; width: max-content; max-width: none; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.4); }
 .bubble-menu .bm-btn { @apply h-7 min-w-7 px-1.5 inline-flex items-center justify-center gap-1.5 rounded-md hover:bg-white/10; }
 .bubble-menu .bm-btn.active { @apply bg-white/20; }
 .bubble-menu .bm-sep { @apply w-px h-4 bg-white/20 mx-[3px]; }

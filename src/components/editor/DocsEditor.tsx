@@ -25,7 +25,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Typography from "@tiptap/extension-typography";
-import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, FileText, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, FileText, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck } from "lucide-react";
 import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, ProvenanceStats, Search } from "./extensions";
 import CitationDialog, { CitationInsert } from "./CitationDialog";
 import Toolbar from "./Toolbar";
@@ -36,6 +36,14 @@ import { CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, ReferencesPane
 import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, PasteMatchInfo } from "./Dialogs";
 import { CommentItem, FlagItem, formatReference, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, SidebarKind, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { InsertMeta } from "../ai/AssistantPanel";
+import { LanguageReview } from "./language/languageReview";
+import { LanguageReviewPanel } from "./language/LanguageReviewPanel";
+import ReviewerPanel from "./reviewer/ReviewerPanel";
+import CiteVerifiedPanel from "./citations/CiteVerifiedPanel";
+import ProcessPanel from "./process/ProcessPanel";
+import { recordSnapshot } from "./process/useSnapshots";
+import SourcesPanel from "./sources/SourcesPanel";
+import EvidencePanel from "./evidence/EvidencePanel";
 import ConsentModal from "../ConsentModal";
 import { IntegrityPill, Modal, Toast } from "../ui";
 import { useUser, type Consent } from "../useUser";
@@ -198,6 +206,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     immediatelyRender: false,
     editable: canEdit,
     extensions: [
+      LanguageReview,
       StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
       Underline,
       TextStyle,
@@ -274,6 +283,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           if (!matched || !editorRef.current) return;
           const ed = editorRef.current;
           const to = Math.min(from + text.length, ed.state.doc.content.size);
+          if (matched.kind === "source") {
+            const srcLabel = `${matched.authors || matched.title || "Source"}${matched.year ? ` (${matched.year})` : ""}${matched.page ? `, p. ${matched.page}` : ""}`;
+            ed.chain().setTextSelection({ from, to }).setProvenance({ source: "paste", label: srcLabel }).setTextSelection(to).run();
+            notify(`Pasted text matches ${matched.title || "a source"} in your library: marked as quoted. Add the citation.`, "info");
+            return;
+          }
           const label = matched.mode === "copilot" ? "Research copilot" : "Thesisfic assistant";
           ed.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: matched.provider, label, interactionId: matched.interactionId }).setTextSelection(to).run();
           monitorRef.current?.recordAiInsert(words, matched.provider || "assistant", matched.mode || "paste", matched.interactionId);
@@ -376,6 +391,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         setLastSaved(new Date().toISOString());
         setSaveState("saved");
         if (payload.content !== undefined) refreshLedger();
+        // Process record: a hash-chained snapshot of the tab that was saved (throttled client- and server-side).
+        const tabId = activeTabRef.current;
+        recordSnapshot(thesisId, { tabId, html: contentsRef.current[tabId] || "", wordCount: countWordsInText(ed.getText()), sessionId: sessionId || undefined });
       } catch (e) {
         dirty.forEach((k) => dirtyKeys.current.add(k));
         if (metaDirty) tabsMetaDirty.current = true;
@@ -841,6 +859,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       spellcheck: () => setSpellcheck((v) => !v),
       privacy: () => setDialog("consent"),
       copilot: () => { setSidebar("ai"); },
+      reviewer: () => setSidebar((s) => (s === "reviewer" ? "none" : "reviewer")),
+      language: () => setSidebar((s) => (s === "language" ? "none" : "language")),
+      cite: () => setSidebar((s) => (s === "cite" ? "none" : "cite")),
+      process: () => setSidebar((s) => (s === "process" ? "none" : "process")),
+      sources: () => setSidebar((s) => (s === "sources" ? "none" : "sources")),
+      evidence: () => setSidebar((s) => (s === "evidence" ? "none" : "evidence")),
       shortcuts: () => setDialog("shortcuts"),
       about: () => setDialog("about"),
     };
@@ -905,6 +929,41 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         />
       );
       case "find": return <FindPanel editor={editor} onClose={() => setSidebar("none")} canEdit={canEdit} />;
+      case "reviewer": return (
+        <ReviewerPanel editor={editor} thesisId={thesisId} sessionId={sessionId || undefined} userId={userId} selectionText={selectionText} canEdit={canEdit} onClose={() => setSidebar("none")}
+          onCommentsChanged={() => { api<{ comments: CommentItem[] }>(`/api/theses/${thesisId}/comments`).then((d) => setComments(d.comments)).catch(() => {}); if (canEdit) saveNow(); }}
+          onJumpToComment={(anchorId) => setActiveCommentId(comments.find((c) => c.anchorId === anchorId)?.id ?? anchorId)}
+        />
+      );
+      case "language": return <LanguageReviewPanel editor={editor} thesisId={thesisId} sessionId={sessionId || undefined} canEdit={canEdit} onClose={() => setSidebar("none")} />;
+      case "cite": return (
+        <CiteVerifiedPanel editor={editor} thesisId={thesisId} sessionId={sessionId || undefined} selectionText={selectionText} references={thesis.references} citationStyle={thesis.citationStyle} canEdit={canEdit} onClose={() => setSidebar("none")} onConsentRequired={() => setDialog("consent")}
+          onInsertCitation={(ref, o) => {
+            const { from, to } = editor.state.selection;
+            const hasSel = from !== to;
+            citeRange.current = { from, to };
+            insertCitation({ reference: ref, isNew: !thesis.references.some((r) => r.id === ref.id), inText: formatReference(ref, thesis.citationStyle).inText, linkUrl: o.link, markPassage: hasSel && o.markPassage }, hasSel ? "selection" : "cursor");
+          }}
+          onReferencesChanged={(refs) => { setThesis((t) => ({ ...t, references: refs })); }}
+          onAddToLibrary={(w) => { api(`/api/theses/${thesisId}/sources`, { method: "POST", json: w.doi ? { kind: "doi", value: w.doi, title: w.title } : { kind: "url", value: w.url, title: w.title } }).then(() => notify("Added to your source library.", "success")).catch((e) => notify((e as Error).message, "error")); }}
+        />
+      );
+      case "process": return (
+        <ProcessPanel thesisId={thesisId} isOwner={canEdit} sessionId={sessionId || undefined} onClose={() => setSidebar("none")} onOpenConsent={() => setDialog("consent")}
+          onInsertDeclaration={(html) => { if (activeTabRef.current !== SUBMISSION) switchTab(SUBMISSION); editor.chain().focus("end").insertContent(html).run(); saveNow(); notify("Declaration appended to Final submission.", "success"); }}
+        />
+      );
+      case "sources": return (
+        <SourcesPanel thesisId={thesisId} canEdit={canEdit} selectionText={selectionText} sessionId={sessionId || undefined} onConsentRequired={() => setDialog("consent")} onClose={() => setSidebar("none")}
+          onInsertCitation={(ref) => { const reference: Reference = { id: `ref_${Date.now().toString(36)}`, type: ref.doi ? "article" : "web", ...ref }; const { from, to } = editor.state.selection; citeRange.current = { from, to }; insertCitation({ reference, isNew: !thesis.references.some((r) => r.doi && r.doi === ref.doi), inText: formatReference(reference, thesis.citationStyle).inText, markPassage: false }, "cursor"); }}
+        />
+      );
+      case "evidence": return (
+        <EvidencePanel editor={editor} thesisId={thesisId} sessionId={sessionId || undefined} selectionText={selectionText} canEdit={canEdit} onClose={() => setSidebar("none")}
+          onFindSupport={() => setSidebar("cite")}
+          onAnchor={() => { const id = `cmt_${Date.now().toString(36)}`; editor.chain().setComment(id).run(); return id; }}
+        />
+      );
       case "integrity": return (
         <IntegrityLedger thesis={thesis} flags={flags} session={sessionStats} maxAi={policy.maxAiUsagePercent} breakdown={breakdown} showProvenance={showProvenance} onToggleProvenance={() => setShowProvenance((v) => !v)} onFix={handleFix} isOwner={isOwner} onClose={() => setSidebar("none")}
           onRespondFlag={async (id, note) => { await api(`/api/flags/${id}`, { method: "PATCH", json: { studentNote: note } }).catch(() => {}); setFlags((fs) => fs.map((f) => (f.id === id ? { ...f, description: `${f.description}\n\nStudent response: ${note}` } : f))); notify("Your response was sent to your advisor.", "success"); }}
@@ -1027,6 +1086,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
                     </>
                   )}
                   <button onMouseDown={(e) => e.preventDefault()} onClick={startComment} className="bm-btn !px-[9px]"><MessageSquarePlus className="w-[13px] h-[13px]" />Comment</button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("cite")} className="bm-btn !px-[9px]" title="Find sources that support this claim"><SearchIcon className="w-[13px] h-[13px]" />Support</button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("evidence")} className="bm-btn !px-[9px]" title="Supporting and contrasting evidence"><Scale className="w-[13px] h-[13px]" />Evidence</button>
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />Ask AI</button>
                 </div>
               </BubbleMenu>

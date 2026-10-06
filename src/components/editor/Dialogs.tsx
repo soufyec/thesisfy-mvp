@@ -135,8 +135,13 @@ export function ConfirmDialog({ open, onClose, title, body, onConfirm, confirmLa
 export type PasteDecision = "own" | "source" | "ai";
 
 export interface PasteMatchInfo {
-  kind: "assistant";
+  kind: "assistant" | "source";
   provider?: string;
+  sourceId?: string;
+  title?: string;
+  authors?: string;
+  year?: string;
+  page?: number;
   model?: string;
   mode?: string;
   interactionId?: string;
@@ -148,13 +153,19 @@ export function PasteAttributionDialog({ open, words, matched, onDecide }: { ope
   const [label, setLabel] = useState("");
   const [choice, setChoice] = useState<PasteDecision>(matched ? "ai" : "own");
   const assistant = matched?.kind === "assistant";
-  const defaultLabel = assistant ? (matched?.mode === "copilot" ? "Research copilot" : "Thesisfic assistant") : "";
-  useEffect(() => { setChoice(matched ? "ai" : "own"); setLabel(defaultLabel); }, [matched, open, defaultLabel]);
+  const fromSource = matched?.kind === "source";
+  const defaultLabel = assistant ? (matched?.mode === "copilot" ? "Research copilot" : "Thesisfic assistant") : fromSource ? `${matched?.authors || matched?.title || "Source"}${matched?.year ? ` (${matched.year})` : ""}${matched?.page ? `, p. ${matched.page}` : ""}` : "";
+  useEffect(() => { setChoice(assistant ? "ai" : fromSource ? "source" : "own"); setLabel(defaultLabel); }, [matched, open, defaultLabel, assistant, fromSource]);
   return (
     <Modal open={open} onClose={() => onDecide(choice, label)} title="Where does this text come from?" size="sm" footer={<button onClick={() => onDecide(choice, label)} className="btn-primary !py-2 !px-4 text-sm">Continue</button>}>
       {assistant && (
         <div className="mb-3 p-3 rounded-xl bg-purple-50 border border-purple-100 text-xs text-purple-800">
           {matched?.share !== undefined && matched.share < 1 ? `About ${Math.round(matched.share * 100)}% of` : "All of"} this text matches an answer from the <strong>{defaultLabel}</strong>{matched?.model ? ` (${matched.model})` : ""}{matched?.at ? `, ${new Date(matched.at).toLocaleString()}` : ""}. It will be marked as AI-assisted and linked to that conversation.
+        </div>
+      )}
+      {fromSource && (
+        <div className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-800">
+          {matched?.share !== undefined && matched.share < 1 ? `About ${Math.round(matched.share * 100)}% of` : "All of"} this text matches <strong>{matched?.title}</strong> in your source library. It will be marked as quoted from that source; remember to cite it.
         </div>
       )}
       <p className="text-sm text-gray-600 mb-3">You pasted <strong>{words} words</strong>. Attribution keeps your integrity profile honest and is visible to your advisor.</p>

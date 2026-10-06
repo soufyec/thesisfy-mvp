@@ -1,8 +1,14 @@
 "use client";
 
 export interface PasteMatch {
-  kind: "assistant";
+  kind: "assistant" | "source";
   provider?: string;
+  /** Source-library match */
+  sourceId?: string;
+  title?: string;
+  authors?: string;
+  year?: string;
+  page?: number;
   model?: string;
   mode?: string;
   interactionId?: string;
@@ -100,8 +106,8 @@ export class SessionMonitor {
     // Sent in its own request so the attribution answer cannot be lost to a concurrent timed flush.
     this.flushTyping();
     const res = await this.send([{ type: "paste", data: { words, chars: text.length, fingerprint: fp, fingerprints, attributed } }]);
-    const ev = res?.matches?.find((m) => m.fingerprint === fp) as { matchedAi?: PasteMatch } | undefined;
-    return ev?.matchedAi || null;
+    const ev = res?.matches?.find((m) => m.fingerprint === fp) as { matchedAi?: PasteMatch; matchedSource?: PasteMatch } | undefined;
+    return ev?.matchedAi || ev?.matchedSource || null;
   }
 
   recordAiInsert(words: number, provider: string, mode: string, interactionId?: string) {
