@@ -512,11 +512,11 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold leading-tight">{t("glossary.assistant")}</div>
+          <div className="text-sm font-semibold leading-tight whitespace-nowrap">{t("glossary.assistant")}</div>
           <div className="text-xs text-gray-400 truncate">{t("glossary.tagline")}</div>
         </div>
         <div className="relative flex-shrink-0">
-          <button onClick={() => setProviderOpen((o) => !o)} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1.5 max-w-[190px]" aria-label={t("assistant.provider.aria")} aria-expanded={providerOpen}>
+          <button onClick={() => setProviderOpen((o) => !o)} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1.5 max-w-[150px]" aria-label={t("assistant.provider.aria")} aria-expanded={providerOpen}>
             <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 ${chipColor ? "" : "bg-gray-400"}`} style={chipColor ? { background: chipColor } : undefined} />
             <span className="truncate">{chipText}</span>
             <ChevronDown className="w-3 h-3 flex-shrink-0" />
