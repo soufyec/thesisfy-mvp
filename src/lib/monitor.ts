@@ -1,6 +1,18 @@
 "use client";
 
-import { fingerprint } from "./client";
+export interface PasteMatch {
+  kind: "external" | "assistant";
+  provider?: string;
+  host?: string;
+  model?: string;
+  mode?: string;
+  interactionId?: string;
+  /** Share of the pasted sentences that came from the assistant (0-1). */
+  share?: number;
+  at?: string;
+}
+
+import { fingerprint, passages } from "./client";
 
 export interface ConsentScopes {
   keystrokes: boolean;
@@ -78,15 +90,22 @@ export class SessionMonitor {
     this.typing = { keystrokes: 0, words: 0, windowStart: Date.now(), lastKey: 0 };
   }
 
-  /** Paste: only size and a fingerprint leave the browser. Resolves with the server's attribution match, if any. */
-  async recordPaste(text: string, attributed = false): Promise<{ provider?: string; host?: string } | null> {
+  /**
+   * Paste: only sizes and fingerprints (whole text, paragraphs, sentences) leave the browser.
+   * Resolves with the server's attribution: a copy reported by the extension, or an answer from the Thesisfic assistant.
+   */
+  async recordPaste(text: string, attributed = false): Promise<PasteMatch | null> {
     if (!this.scopes.paste) return null;
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const fp = await fingerprint(text);
-    this.push("paste", { words, chars: text.length, fingerprint: fp, attributed });
+    const parts = passages(text);
+    const fingerprints = Array.from(new Set([fp, ...(await Promise.all(parts.map(fingerprint)))]));
+    this.push("paste", { words, chars: text.length, fingerprint: fp, fingerprints, attributed });
     const res = await this.flush();
-    const match = res?.matches?.find((m) => m.fingerprint === fp)?.matchedExternal as { provider?: string; host?: string } | undefined;
-    return match || null;
+    const ev = res?.matches?.find((m) => m.fingerprint === fp) as { matchedExternal?: { provider?: string; host?: string }; matchedAi?: PasteMatch } | undefined;
+    if (ev?.matchedAi) return ev.matchedAi;
+    if (ev?.matchedExternal) return { kind: "external", ...ev.matchedExternal };
+    return null;
   }
 
   recordAiInsert(words: number, provider: string, mode: string, interactionId?: string) {

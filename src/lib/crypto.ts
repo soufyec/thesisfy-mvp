@@ -29,3 +29,35 @@ export function textFingerprint(text: string): string {
   const norm = text.toLowerCase().replace(/\s+/g, " ").trim();
   return createHash("sha256").update(norm).digest("hex").slice(0, 32);
 }
+
+/** Split text into the units a student is likely to copy: paragraphs and sentences of at least `minWords` words. */
+export function passages(text: string, minWords = 8, max = 80): string[] {
+  const out = new Set<string>();
+  // Strip Markdown so a sentence copied from the rendered answer matches the raw one: emphasis, headings, quotes,
+  // list markers, links and inline code.
+  const clean = (t: string) =>
+    t
+      .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, "")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/[*_`#>|]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const whole = clean(text);
+  const words = (t: string) => (t ? t.split(" ").length : 0);
+  if (words(whole) >= minWords) out.add(whole);
+  for (const para of text.split(/\n+/)) {
+    const cp = clean(para);
+    if (words(cp) >= minWords) out.add(cp);
+    for (const sentence of cp.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÀÈÙÂÊÎÔÛÇ0-9"'(])/)) {
+      const cs = sentence.trim();
+      if (words(cs) >= minWords) out.add(cs);
+    }
+    if (out.size >= max) break;
+  }
+  return Array.from(out).slice(0, max);
+}
+
+/** Fingerprints of every paragraph and sentence of a text, for later matching without storing the text. */
+export function passageFingerprints(text: string): string[] {
+  return passages(text).map(textFingerprint);
+}

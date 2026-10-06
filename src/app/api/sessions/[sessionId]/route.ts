@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db, SessionEventType } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
 import { evaluateEvent, refreshThesisMetrics } from "@/lib/integrity";
-import { textFingerprint } from "@/lib/crypto";
+import { passageFingerprints, textFingerprint } from "@/lib/crypto";
 
 const ALLOWED: SessionEventType[] = ["typing", "paste", "ai_prompt", "ai_insert", "ai_suggestion_rejected", "tab_hidden", "tab_visible", "save"];
 
@@ -33,11 +33,23 @@ export async function POST(request: NextRequest, { params }: { params: { session
       // Never store pasted text. Fingerprint it and match against copies reported by the extension.
       const text = typeof data.text === "string" ? (data.text as string) : "";
       delete data.text;
-      const fp = data.fingerprint || (text ? textFingerprint(text) : undefined);
+      const fp = (data.fingerprint as string | undefined) || (text ? textFingerprint(text) : undefined);
       data.fingerprint = fp;
+      const fps = Array.isArray(data.fingerprints) ? (data.fingerprints as unknown[]).filter((f): f is string => typeof f === "string" && /^[0-9a-f]{32}$/.test(f)).slice(0, 100) : fp ? [fp] : [];
+      if (text) for (const f of passageFingerprints(text)) if (!fps.includes(f)) fps.push(f);
+      delete data.fingerprints;
+      data.fingerprintCount = fps.length;
       const cutoff = Date.now() - 30 * 60 * 1000;
-      const match = session.events.find((e) => e.type === "external_ai_copy" && e.data.fingerprint === fp && new Date(e.timestamp).getTime() > cutoff);
+      const fpSet = new Set(fps);
+      const match = session.events.find((e) => e.type === "external_ai_copy" && fpSet.has(String(e.data.fingerprint)) && new Date(e.timestamp).getTime() > cutoff);
       if (match) data.matchedExternal = { provider: match.data.provider, host: match.data.host };
+      // Text taken from the Thesisfic assistant / research copilot: recognised by the answer's sentence fingerprints.
+      const ai = db.interactions.matchFingerprints(r.user.id, fps)[0];
+      if (ai) {
+        const share = fp && ai.interaction.responseFingerprints!.includes(fp) ? 1 : Math.min(1, ai.hits / Math.max(1, fps.length - 1));
+        // One short sentence in common is not enough to attribute a long paste.
+        if (share >= 0.25 || ai.hits >= 2) data.matchedAi = { kind: "assistant", provider: ai.interaction.provider, model: ai.interaction.model, mode: ai.interaction.mode, interactionId: ai.interaction.id, share: Math.round(share * 100) / 100, at: ai.interaction.timestamp };
+      }
     }
 
     db.sessions.addEvent(session.id, ev.type, data);
@@ -49,7 +61,7 @@ export async function POST(request: NextRequest, { params }: { params: { session
     ok: true,
     flags: created,
     session: { id: refreshed.id, keystrokes: refreshed.keystrokes, wordsWritten: refreshed.wordsWritten, aiAssists: refreshed.aiAssists, pasteEvents: refreshed.pasteEvents, tabSwitches: refreshed.tabSwitches, externalAiVisits: refreshed.externalAiVisits },
-    matches: events.filter((e) => e.type === "paste").length ? refreshed.events.slice(-events.length).filter((e) => e.type === "paste" && e.data.matchedExternal).map((e) => e.data) : [],
+    matches: events.filter((e) => e.type === "paste").length ? refreshed.events.slice(-events.length).filter((e) => e.type === "paste" && (e.data.matchedExternal || e.data.matchedAi)).map((e) => e.data) : [],
   });
 }
 

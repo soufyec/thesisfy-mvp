@@ -134,17 +134,35 @@ export function ConfirmDialog({ open, onClose, title, body, onConfirm, confirmLa
 
 export type PasteDecision = "own" | "source" | "ai";
 
-export function PasteAttributionDialog({ open, words, matched, onDecide }: { open: boolean; words: number; matched: { provider?: string; host?: string } | null; onDecide: (d: PasteDecision, label?: string) => void }) {
+export interface PasteMatchInfo {
+  kind: "external" | "assistant";
+  provider?: string;
+  host?: string;
+  model?: string;
+  mode?: string;
+  interactionId?: string;
+  share?: number;
+  at?: string;
+}
+
+export function PasteAttributionDialog({ open, words, matched, onDecide }: { open: boolean; words: number; matched: PasteMatchInfo | null; onDecide: (d: PasteDecision, label?: string) => void }) {
   const [label, setLabel] = useState("");
   const [choice, setChoice] = useState<PasteDecision>(matched ? "ai" : "own");
-  useEffect(() => { setChoice(matched ? "ai" : "own"); setLabel(matched?.host ? matched.host : ""); }, [matched, open]);
+  const assistant = matched?.kind === "assistant";
+  const defaultLabel = assistant ? (matched?.mode === "copilot" ? "Research copilot" : "Thesisfic assistant") : matched?.host || "";
+  useEffect(() => { setChoice(matched ? "ai" : "own"); setLabel(defaultLabel); }, [matched, open, defaultLabel]);
   return (
     <Modal open={open} onClose={() => onDecide(choice, label)} title="Where does this text come from?" size="sm" footer={<button onClick={() => onDecide(choice, label)} className="btn-primary !py-2 !px-4 text-sm">Continue</button>}>
-      <p className="text-sm text-gray-600 mb-3">You pasted <strong>{words} words</strong>{matched ? <> that match text you copied from <strong>{matched.host || matched.provider}</strong> (reported by your extension)</> : null}. Attribution keeps your integrity profile honest and is visible to your advisor.</p>
+      {assistant && (
+        <div className="mb-3 p-3 rounded-xl bg-purple-50 border border-purple-100 text-xs text-purple-800">
+          {matched?.share !== undefined && matched.share < 1 ? `About ${Math.round(matched.share * 100)}% of` : "All of"} this text matches an answer from the <strong>{defaultLabel}</strong>{matched?.model ? ` (${matched.model})` : ""}{matched?.at ? `, ${new Date(matched.at).toLocaleString()}` : ""}. It will be marked as AI-assisted and linked to that conversation.
+        </div>
+      )}
+      <p className="text-sm text-gray-600 mb-3">You pasted <strong>{words} words</strong>{matched && !assistant ? <> that match text you copied from <strong>{matched.host || matched.provider}</strong> (reported by your extension)</> : null}. Attribution keeps your integrity profile honest and is visible to your advisor.</p>
       <div className="space-y-2">
         {([["own", "My own writing (from notes or another file)", "Counted as yours."], ["source", "Quoted or adapted from a source", "Marked as pasted; remember to cite it."], ["ai", "From an AI tool (ChatGPT, Claude, Gemini…)", "Marked as AI-assisted and counted toward your AI limit."]] as [PasteDecision, string, string][]).map(([k, t, d]) => (
-          <label key={k} className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer ${choice === k ? "border-brand-500 bg-brand-50" : "border-gray-200"}`}>
-            <input type="radio" name="paste" checked={choice === k} onChange={() => setChoice(k)} className="mt-1" />
+          <label key={k} className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer ${choice === k ? "border-brand-500 bg-brand-50" : "border-gray-200"} ${assistant && k !== "ai" ? "opacity-50" : ""}`}>
+            <input type="radio" name="paste" checked={choice === k} disabled={assistant && k !== "ai"} onChange={() => setChoice(k)} className="mt-1" />
             <div><div className="text-sm font-medium">{t}</div><div className="text-xs text-gray-500">{d}</div></div>
           </label>
         ))}

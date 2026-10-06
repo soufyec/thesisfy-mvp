@@ -31,7 +31,7 @@ import CitationDialog, { CitationInsert } from "./CitationDialog";
 import Toolbar from "./Toolbar";
 import MenuBar, { MenuAction } from "./MenuBar";
 import { CommentsPanel, FindPanel, IntegrityPanel, OutlinePanel, ReferencesPanel, VersionsPanel } from "./Sidebars";
-import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog } from "./Dialogs";
+import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, PasteMatchInfo } from "./Dialogs";
 import { CommentItem, FlagItem, formatReference, Reference, SidebarKind, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { InsertMeta } from "../ai/AssistantPanel";
 import ConsentModal from "../ConsentModal";
@@ -104,7 +104,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent">(null);
   const [linkInitial, setLinkInitial] = useState("");
-  const [paste, setPaste] = useState<{ words: number; text: string; html: string; matched: { provider?: string; host?: string } | null } | null>(null);
+  const [paste, setPaste] = useState<{ words: number; text: string; html: string; matched: PasteMatchInfo | null } | null>(null);
   const [preview, setPreview] = useState<{ id: string; html: string; label: string } | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStats, setSessionStats] = useState<Record<string, number> | null>(null);
@@ -223,8 +223,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           if (!matched || !editorRef.current) return;
           const ed = editorRef.current;
           const to = Math.min(from + text.length, ed.state.doc.content.size);
-          ed.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: matched.provider, label: matched.host }).setTextSelection(to).run();
-          notify(`Pasted text matched a copy from ${matched.host || matched.provider}: marked as AI-assisted.`, "info");
+          const assistant = matched.kind === "assistant";
+          const label = assistant ? (matched.mode === "copilot" ? "Research copilot" : "Thesisfic assistant") : matched.host;
+          ed.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: matched.provider, label, interactionId: matched.interactionId }).setTextSelection(to).run();
+          monitorRef.current?.recordAiInsert(words, matched.provider || "assistant", assistant ? matched.mode || "paste" : "paste", matched.interactionId);
+          notify(assistant ? `Pasted text came from the ${label}: marked as AI-assisted.` : `Pasted text matched a copy from ${label || matched.provider}: marked as AI-assisted.`, "info");
         });
         return false;
       },
@@ -532,8 +535,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     editor.chain().focus().insertContent(html).run();
     const to = editor.state.selection.to;
     if (decision !== "own") {
-      editor.chain().setTextSelection({ from, to }).setProvenance({ source: decision === "ai" ? "ai" : "paste", label: label || (decision === "ai" ? p.matched?.host : undefined), provider: decision === "ai" ? p.matched?.provider || label?.toLowerCase() : undefined }).setTextSelection(to).run();
-      if (decision === "ai") monitorRef.current?.recordAiInsert(p.words, p.matched?.provider || label || "external", "paste", undefined);
+      const m = p.matched;
+      editor.chain().setTextSelection({ from, to }).setProvenance({ source: decision === "ai" ? "ai" : "paste", label: label || (decision === "ai" ? m?.host : undefined), provider: decision === "ai" ? m?.provider || label?.toLowerCase() : undefined, interactionId: decision === "ai" ? m?.interactionId : undefined }).setTextSelection(to).run();
+      if (decision === "ai") monitorRef.current?.recordAiInsert(p.words, m?.provider || label || "external", m?.kind === "assistant" ? m.mode || "paste" : "paste", m?.interactionId);
     }
     monitorRef.current?.flush();
   };

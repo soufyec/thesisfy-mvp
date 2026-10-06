@@ -16,7 +16,7 @@ export interface PolicyCheck {
 }
 
 export function checkPolicy(policy: Policy, mode: AIMode, prompt: string, lang: "en" | "es" | "fr" = "en"): PolicyCheck {
-  if (!policy.allowedModes.includes(mode)) {
+  if (mode === "copilot" ? !policy.researchCopilot : !policy.allowedModes.includes(mode)) {
     return { allowed: false, reason: "mode_not_allowed", message: t(lang, "mode") };
   }
   if (policy.blockGeneration && GENERATION_PATTERNS.some((re) => re.test(prompt))) {

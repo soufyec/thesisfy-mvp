@@ -19,7 +19,8 @@ export type AIMode =
   | "explain"
   | "citations"
   | "gaps"
-  | "paraphrase_check";
+  | "paraphrase_check"
+  | "copilot";
 
 export interface User {
   id: string;
@@ -229,6 +230,8 @@ export interface AIInteraction {
   billedTo?: "institution" | "student" | "none"; // who pays the provider for this request
   costUsd?: number; // provider list cost at the model's configured prices
   institutionModelId?: string;
+  /** Fingerprints of the answer's paragraphs and sentences, so text taken from it can be recognised when pasted into a thesis. */
+  responseFingerprints?: string[];
 }
 
 export interface Conversation {
@@ -249,6 +252,12 @@ export interface Policy {
   allowExternalAi: boolean; // external AI tools allowed when reported via extension
   allowedModes: AIMode[];
   blockGeneration: boolean; // hard-block "write it for me"
+  /**
+   * Research copilot: when the institution provides the models, students may ask anything about their research,
+   * in any mode, with the history kept and visible to the institution. Writing thesis text stays blocked and
+   * any answer text pasted into the thesis is recognised and marked as AI-assisted.
+   */
+  researchCopilot: boolean;
   flagSensitivity: "low" | "medium" | "high";
   requireConsent: boolean;
   monitoring: {
@@ -736,8 +745,9 @@ function seed(): Store {
         allowBYOK: true,
         allowedProviders: ["anthropic", "openai", "google"],
         allowExternalAi: true,
-        allowedModes: ["chat", "brainstorm", "outline", "critique", "grammar", "summarize", "explain", "citations", "gaps", "paraphrase_check"],
+        allowedModes: ["chat", "brainstorm", "outline", "critique", "grammar", "summarize", "explain", "citations", "gaps", "paraphrase_check", "copilot"],
         blockGeneration: true,
+        researchCopilot: true,
         flagSensitivity: "medium",
         requireConsent: true,
         monitoring: { keystrokes: true, paste: true, aiInteractions: true, tabActivity: true, extension: true },
@@ -750,8 +760,9 @@ function seed(): Store {
         allowBYOK: true,
         allowedProviders: ["anthropic", "openai", "mistral"],
         allowExternalAi: false,
-        allowedModes: ["chat", "brainstorm", "outline", "critique", "grammar", "explain", "citations", "gaps"],
+        allowedModes: ["chat", "brainstorm", "outline", "critique", "grammar", "explain", "citations", "gaps", "copilot"],
         blockGeneration: true,
+        researchCopilot: true,
         flagSensitivity: "high",
         requireConsent: true,
         monitoring: { keystrokes: true, paste: true, aiInteractions: true, tabActivity: false, extension: true },
@@ -1164,6 +1175,17 @@ export const db = {
       persist();
       return i;
     },
+    /** The student's own recent assistant answers whose fingerprints overlap the given ones, best match first. */
+    matchFingerprints: (userId: string, fps: string[], days = 90) => {
+      if (!fps.length) return [];
+      const since = new Date(Date.now() - days * 86400000).toISOString();
+      const set = new Set(fps);
+      return load()
+        .interactions.filter((i) => i.userId === userId && i.timestamp >= since && i.responseFingerprints?.length)
+        .map((i) => ({ interaction: i, hits: i.responseFingerprints!.filter((f) => set.has(f)).length }))
+        .filter((m) => m.hits > 0)
+        .sort((a, b) => b.hits - a.hits || b.interaction.timestamp.localeCompare(a.interaction.timestamp));
+    },
   },
 
   conversations: {
@@ -1219,6 +1241,7 @@ export const db = {
         p = { ...s.policies[0], university, updatedAt: now(), updatedBy: undefined };
         s.policies.push(p);
       }
+      if (p.researchCopilot === undefined) p.researchCopilot = false;
       return p;
     },
     update: (university: string, patch: Partial<Policy>, updatedBy: string) => {

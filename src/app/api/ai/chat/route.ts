@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIMode, db, Provider } from "@/lib/db";
 import { maybeAlertBudget } from "@/lib/ai/funding";
+import { passageFingerprints } from "@/lib/crypto";
 import { canAccessThesis } from "@/lib/auth";
 import { error, requireUser } from "@/lib/api";
 import { buildSystemPrompt, MODES } from "@/lib/ai/prompts";
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
       billedTo: cfg.billedTo,
       costUsd: costOf(cfg, usage),
       institutionModelId: cfg.institutionModel?.id,
+      responseFingerprints: blocked ? [] : passageFingerprints(text),
     });
     db.conversations.append(conversation!.id, { role: "assistant", content: text, mode, provider: cfg.provider, model: cfg.model });
     if (body.sessionId) db.sessions.addEvent(body.sessionId, "ai_prompt", { mode, provider: cfg.provider, model: cfg.model, blocked, promptPreview: lastUser.slice(0, 120), interactionId: interaction.id });

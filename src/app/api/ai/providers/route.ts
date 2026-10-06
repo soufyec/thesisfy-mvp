@@ -28,5 +28,5 @@ export async function GET(request: NextRequest) {
         .filter((m) => m.enabled && policy.allowedProviders.includes(m.provider))
         .map((m) => ({ id: m.id, provider: m.provider, label: m.label, model: m.model, backend: m.backend, backendName: BACKEND_META[m.backend].name, region: m.region, isDefault: m.isDefault, ready: institutionModelReady(m), color: PROVIDER_META[m.provider].color }))
     : [];
-  return json({ institutionModels, allowance: funding.institutionPays ? allowanceFor(r.user) : null, providers, modes: MODES.filter((m) => policy.allowedModes.includes(m.id)), policy: { allowBYOK: policy.allowBYOK, allowedProviders: policy.allowedProviders, maxAiUsagePercent: policy.maxAiUsagePercent }, defaultProvider: r.user.preferences.defaultProvider || null });
+  return json({ institutionModels, allowance: funding.institutionPays ? allowanceFor(r.user) : null, providers, modes: MODES.filter((m) => (m.id === "copilot" ? policy.researchCopilot : policy.allowedModes.includes(m.id))), policy: { allowBYOK: policy.allowBYOK, allowedProviders: policy.allowedProviders, maxAiUsagePercent: policy.maxAiUsagePercent, researchCopilot: policy.researchCopilot }, defaultProvider: r.user.preferences.defaultProvider || null });
 }

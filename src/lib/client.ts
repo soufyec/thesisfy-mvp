@@ -87,6 +87,33 @@ export async function streamChat(body: Record<string, unknown>, handlers: Stream
   }
 }
 
+/** Same paragraph/sentence split as the server (lib/crypto passages), so pasted fragments match assistant answers. */
+export function passages(text: string, minWords = 8, max = 80): string[] {
+  const out = new Set<string>();
+  // Strip Markdown so a sentence copied from the rendered answer matches the raw one: emphasis, headings, quotes,
+  // list markers, links and inline code.
+  const clean = (t: string) =>
+    t
+      .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, "")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/[*_`#>|]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const whole = clean(text);
+  const words = (t: string) => (t ? t.split(" ").length : 0);
+  if (words(whole) >= minWords) out.add(whole);
+  for (const para of text.split(/\n+/)) {
+    const cp = clean(para);
+    if (words(cp) >= minWords) out.add(cp);
+    for (const sentence of cp.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÀÈÙÂÊÎÔÛÇ0-9"'(])/)) {
+      const cs = sentence.trim();
+      if (words(cs) >= minWords) out.add(cs);
+    }
+    if (out.size >= max) break;
+  }
+  return Array.from(out).slice(0, max);
+}
+
 /** Same normalisation as the server: lowercase, collapse whitespace, SHA-256, first 32 hex chars. */
 export async function fingerprint(text: string): Promise<string> {
   const norm = text.toLowerCase().replace(/\s+/g, " ").trim();

@@ -38,6 +38,7 @@ export interface Policy {
   allowExternalAi: boolean;
   allowedModes: string[];
   blockGeneration: boolean;
+  researchCopilot: boolean;
   flagSensitivity: "low" | "medium" | "high";
   requireConsent: boolean;
   monitoring: { keystrokes: boolean; paste: boolean; aiInteractions: boolean; tabActivity: boolean; extension: boolean };

@@ -47,6 +47,10 @@ Like Copilot inside a company, the university can offer models to its students a
 
 Spend is metered per request from the model's configured prices; administrators set a monthly budget, a per-student allowance, what happens when it runs out (pause, or fall back to the student's own account) and an alert threshold. Students see their allowance in the assistant and in AI Connections, and may still connect a personal account, which the university never pays for.
 
+### Research copilot
+
+With **Research copilot** enabled (Admin → AI policies), students may ask anything connected to their research on the university-provided models: literature, methods, statistics, code, planning. The history is kept and visible to the institution. Two guardrails stay on: "write it for me" requests are refused and logged as blocked, and every answer is fingerprinted sentence by sentence (SHA-256 of normalised text, never the text itself), so when a student pastes part of an answer into the thesis the editor recognises it, marks it as AI-assisted and links it to the conversation. The same mechanism attributes copies reported by the browser extension.
+
 ## Architecture
 
 ```

@@ -60,6 +60,17 @@ export default function PoliciesPage() {
             </div>
           </div>
 
+          <div className="card p-5 sm:p-6 border-emerald-100">
+            <h2 className="font-semibold mb-1">Research copilot</h2>
+            <p className="text-sm text-gray-500 mb-4">Full freedom to ask about anything connected to their research, on the models the university provides (<a href="/admin/ai-access" className="text-brand-600 underline">AI access &amp; billing</a>). The history is kept and visible to the institution. Writing thesis text stays blocked, and sentences taken from an answer into the thesis are recognised and marked as AI-assisted.</p>
+            <div className="flex items-center justify-between p-3 bg-emerald-50/60 rounded-xl"><div><div className="text-sm font-medium">Offer the research copilot to students</div><div className="text-xs text-gray-500">Adds a “Research copilot” mode to the assistant, independent of the mode list above.</div></div><Toggle checked={!!p.researchCopilot} disabled={!canEdit} onChange={(v) => setP({ ...p, researchCopilot: v })} /></div>
+            <ul className="mt-3 text-xs text-gray-500 space-y-1 list-disc pl-5">
+              <li>Any question: literature, methods, statistics, code, planning, reading strategies.</li>
+              <li>Never produces thesis text: “write my introduction” is refused and logged as blocked.</li>
+              <li>Every answer is fingerprinted sentence by sentence; pasting it into the thesis marks it as AI-assisted automatically.</li>
+            </ul>
+          </div>
+
           <div className="card p-5 sm:p-6">
             <h2 className="font-semibold mb-1">Permitted assistant modes</h2>
             <p className="text-sm text-gray-500 mb-4">Modes not selected are hidden from students.</p>

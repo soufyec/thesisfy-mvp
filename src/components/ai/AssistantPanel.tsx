@@ -5,7 +5,7 @@ import { Bot, Check, ChevronDown, Copy, FilePlus2, History, Plus, Send, Square, 
 import Markdown, { markdownToHtml } from "../Markdown";
 import { api, ApiError, countWordsInText, streamChat, timeAgo } from "@/lib/client";
 
-export type AIMode = "chat" | "brainstorm" | "outline" | "critique" | "grammar" | "summarize" | "explain" | "citations" | "gaps" | "paraphrase_check";
+export type AIMode = "chat" | "brainstorm" | "outline" | "critique" | "grammar" | "summarize" | "explain" | "citations" | "gaps" | "paraphrase_check" | "copilot";
 
 interface ModeInfo {
   id: AIMode;
@@ -97,6 +97,7 @@ const QUICK: Record<AIMode, string[]> = {
   citations: ["Format this reference in APA 7", "In-text citation for three authors", "How do I cite a dataset?"],
   gaps: ["Find gaps in the selected section", "What evidence is missing here?", "Which claims are unsupported?"],
   paraphrase_check: ["Is my paraphrase too close to the source?", "Check this passage against its source", "Is this citation adequate?"],
+  copilot: ["Which statistical test fits my design?", "Explain how to run a systematic review search", "Help me plan the next 4 weeks of my research", "What are the strongest objections to my method?"],
 };
 
 export default function AssistantPanel({ thesisId, sessionId, selection, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode = "chat", initialConversationId, className = "" }: AssistantPanelProps) {
@@ -355,13 +356,19 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         ))}
       </div>
 
+      {mode === "copilot" && (
+        <div className="px-3 py-1.5 bg-emerald-50 border-b border-emerald-100 text-[11px] text-emerald-800 flex-shrink-0">
+          <strong>Research copilot</strong>, provided by your university. Ask anything about your research. The history is kept and visible to your institution; it will not write your thesis, and sentences you copy from it into your thesis are marked as AI-assisted.
+        </div>
+      )}
+
       {/* Messages */}
       <div className={`flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0 ${isPage ? "max-w-3xl w-full mx-auto" : ""}`}>
         {messages.length === 0 && (
           <div className="text-sm text-gray-500 space-y-3 pt-2">
             <p>
               <strong>{currentMode?.label || "Ask"}</strong>
-              {currentMode?.description ? ` — ${currentMode.description.toLowerCase()}.` : "."} I help you think and revise; I never write your thesis for you.
+              {currentMode?.description ? ` — ${currentMode.description.toLowerCase()}.` : "."} {mode === "copilot" ? "Go as deep as you need; writing stays yours." : "I help you think and revise; I never write your thesis for you."}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {QUICK[mode].map((q) => (
