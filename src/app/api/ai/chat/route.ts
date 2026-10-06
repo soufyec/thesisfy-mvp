@@ -8,6 +8,7 @@ import { buildSystemPrompt, MODES } from "@/lib/ai/prompts";
 import { checkPolicy, detectLang } from "@/lib/ai/policy";
 import { demoResponse } from "@/lib/ai/demo";
 import { ChatMessage, costOf, resolveProvider, streamCompletion } from "@/lib/ai/providers";
+import { groundingBlock, retrieve } from "@/lib/sources/retrieve";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ interface Body {
   conversationId?: string;
   selection?: string;
   stream?: boolean;
+  /** Ground the answer in the thesis's source library (F5): the top passages for the last user message are prepended to the system prompt. */
+  useSources?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -57,7 +60,8 @@ export async function POST(request: NextRequest) {
   db.conversations.append(conversation.id, { role: "user", content: lastUser, mode });
 
   const cfg = resolveProvider(user, policy, typeof body.provider === "string" ? body.provider : null);
-  const meta = { provider: cfg.provider, model: cfg.model, source: cfg.source, label: cfg.label, billedTo: cfg.billedTo, institutionModelId: cfg.institutionModel?.id, notice: cfg.notice, mode, conversationId: conversation.id, demo: cfg.provider === "demo", lang };
+  const grounding = body.useSources && thesis ? retrieve(thesis.id, lastUser, 8) : null;
+  const meta = { provider: cfg.provider, model: cfg.model, source: cfg.source, label: cfg.label, billedTo: cfg.billedTo, institutionModelId: cfg.institutionModel?.id, notice: cfg.notice, mode, conversationId: conversation.id, demo: cfg.provider === "demo", lang, useSources: !!grounding, groundedPassages: grounding?.length ?? 0 };
 
   const finish = (text: string, usage: { inputTokens: number; outputTokens: number }, blocked: boolean) => {
     const interaction = db.interactions.create({
@@ -103,7 +107,8 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const system = buildSystemPrompt({ mode, policy, thesis, studentName: user.name, provider: cfg.label });
+  const base = buildSystemPrompt({ mode, policy, thesis, studentName: user.name, provider: cfg.label });
+  const system = grounding ? `${groundingBlock(grounding)}\n\n${base}` : base;
 
   if (cfg.provider === "demo") {
     const text = cfg.notice && cfg.source === "demo" && cfg.label === "Allowance used up" ? cfg.notice : demoResponse(mode, messages, lang);
