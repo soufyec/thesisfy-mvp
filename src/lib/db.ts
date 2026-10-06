@@ -119,6 +119,33 @@ export interface Comment {
   resolved: boolean;
   createdAt: string;
   replies: CommentReply[];
+  /** Set when the comment was produced by the AI reviewer on the student's request; the student remains the author of record. */
+  source?: "ai";
+  /** Reviewer category and severity, for AI reviewer comments. */
+  category?: "argument" | "evidence" | "structure" | "clarity" | "citations" | "method" | "other";
+  severity?: "low" | "medium" | "high";
+}
+
+export type SourceKind = "doi" | "url" | "pdf" | "text";
+
+/** A source in a thesis's library: metadata plus extracted text the assistant can quote from. */
+export interface ThesisSource {
+  id: string;
+  thesisId: string;
+  kind: SourceKind;
+  title: string;
+  authors?: string;
+  year?: string;
+  venue?: string;
+  doi?: string;
+  url?: string;
+  abstract?: string;
+  /** Extracted full text, capped (see sources API). Chunked on demand. */
+  text?: string;
+  pages?: number;
+  wordCount: number;
+  addedAt: string;
+  lastUsedAt?: string;
 }
 
 export type SessionEventType =
@@ -375,6 +402,7 @@ interface Store {
   institutionModels: InstitutionModel[];
   aiFunding: AIFunding[];
   leads: Lead[];
+  sources: ThesisSource[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -675,6 +703,7 @@ function seed(): Store {
     institutionModels,
     aiFunding,
     leads: [],
+    sources: [],
     versions: [
       { id: "ver_1", thesisId: "thesis_1", authorId: "usr_1", content: thesis1Content, wordCount: 2847, kind: "milestone", label: "Chapter 4 draft", createdAt: "2026-03-12T11:30:00Z" },
     ],
@@ -1272,6 +1301,29 @@ export const db = {
       Object.assign(x, patch, { university, updatedAt: now() });
       persist();
       return x;
+    },
+  },
+
+  sources: {
+    list: (thesisId: string) => load().sources.filter((s) => s.thesisId === thesisId).sort((a, b) => b.addedAt.localeCompare(a.addedAt)),
+    findById: (id: string) => load().sources.find((s) => s.id === id),
+    create: (data: Omit<ThesisSource, "id" | "addedAt">) => {
+      const s: ThesisSource = { ...data, id: uid("src"), addedAt: now() };
+      load().sources.push(s);
+      persist();
+      return s;
+    },
+    update: (id: string, patch: Partial<ThesisSource>) => {
+      const s = load().sources.find((x) => x.id === id);
+      if (!s) return null;
+      Object.assign(s, patch, { id: s.id, thesisId: s.thesisId });
+      persist();
+      return s;
+    },
+    remove: (id: string) => {
+      const st = load();
+      st.sources = st.sources.filter((s) => s.id !== id);
+      persist();
     },
   },
 
