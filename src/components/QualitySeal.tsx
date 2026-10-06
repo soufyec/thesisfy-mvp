@@ -2,7 +2,7 @@
 export const SEAL_NAME = "thesisfic.edu";
 
 export default function QualitySeal({ size = 260, className = "" }: { size?: number; className?: string }) {
-  const ring = `${SEAL_NAME.toUpperCase()} · ACADEMIC QUALITY SEAL · AI ERA STANDARD · `;
+  const ring = "ACADEMIC QUALITY SEAL · AI ERA STANDARD · ";
   return (
     <figure className={`flex flex-col items-center gap-3 ${className}`} aria-label={`${SEAL_NAME} academic quality seal`}>
       <svg width={size} height={size} viewBox="0 0 260 260" role="img" className="drop-shadow-xl">
