@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Modal, ScoreRing, Toast } from "@/components/ui";
 import { useUser } from "@/components/useUser";
 import { api, statusColors, statusLabels, timeAgo } from "@/lib/client";
+import ProcessPanel from "@/components/editor/process/ProcessPanel";
 
 interface Detail {
   thesis: { id: string; title: string; description: string; status: string; wordCount: number; targetWords: number; aiUsagePercent: number; integrityScore: number; provenance: { human: number; paste: number; ai: number }; studentName: string; professorName: string; updatedAt: string; deadline?: string; citationStyle: string; createdAt: string };
@@ -118,6 +119,11 @@ export default function AdminThesisDetail() {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="card mt-6">
+          <div className="p-5 border-b border-gray-100"><h2 className="font-semibold">Writing process</h2><p className="text-xs text-gray-400 mt-0.5">Session timeline, provenance per chapter, snapshot replay and the student&apos;s AI-use declaration. The student sees exactly the same panel.</p></div>
+          <div className="h-[720px]"><ProcessPanel thesisId={t.id} isOwner={false} embedded onClose={() => {}} /></div>
         </div>
 
         <div className="card mt-6">
