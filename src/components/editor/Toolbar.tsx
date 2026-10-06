@@ -5,6 +5,7 @@ import type { Editor } from "@tiptap/react";
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookMarked, CheckSquare, ChevronDown, Highlighter, Image as ImageIcon, Indent, Italic, Link2, List, ListOrdered, MessageSquarePlus, Minus, Outdent, Plus, Printer, Redo2, RemoveFormatting, SpellCheck, Strikethrough, Subscript, Superscript, Table as TableIcon, Underline, Undo2, ZoomIn,
 } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 import { COLORS, FONT_SIZES, FONTS, HIGHLIGHTS } from "./types";
 
 interface Props {
@@ -25,13 +26,14 @@ interface Props {
 }
 
 function ProvenanceToggle({ on, onToggle, locked }: { on: boolean; onToggle: (v: boolean) => void; locked?: boolean }) {
+  const t = useT();
   return (
-    <label className={`ml-auto pl-3 flex items-center gap-2 text-[12px] text-gray-500 flex-shrink-0 select-none ${locked ? "cursor-default" : "cursor-pointer"}`} title={locked ? "Provenance is always shown in review mode" : "Show the provenance gutter and highlights"}>
+    <label className={`ml-auto pl-3 flex items-center gap-2 text-[12px] text-gray-500 flex-shrink-0 select-none ${locked ? "cursor-default" : "cursor-pointer"}`} title={locked ? t("editor.toolbar.provenanceAlways") : t("editor.toolbar.provenanceShow")}>
       <button
         type="button"
         role="switch"
         aria-checked={on}
-        aria-label="Provenance gutter"
+        aria-label={t("glossary.provenanceGutter")}
         disabled={locked}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => onToggle(!on)}
@@ -39,7 +41,7 @@ function ProvenanceToggle({ on, onToggle, locked }: { on: boolean; onToggle: (v:
       >
         <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-[left] ${on ? "left-[14px]" : "left-0.5"}`} />
       </button>
-      Provenance
+      {t("glossary.provenance")}
     </label>
   );
 }
@@ -53,10 +55,11 @@ function Btn({ onClick, active, disabled, title, children }: { onClick: () => vo
 }
 
 function ColorPicker({ colors, value, onPick, title, icon, onClear }: { colors: string[]; value?: string; onPick: (c: string) => void; title: string; icon: React.ReactNode; onClear: () => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)} title={title} className="tb-btn flex-col !gap-0 !px-1">
+      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)} title={title} aria-label={title} className="tb-btn flex-col !gap-0 !px-1">
         {icon}
         <span className="block h-[3px] w-4 rounded-sm mt-px" style={{ background: value || "currentColor" }} />
       </button>
@@ -68,7 +71,7 @@ function ColorPicker({ colors, value, onPick, title, icon, onClear }: { colors: 
             ))}
           </div>
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { onClear(); setOpen(false); }} className="mt-2 text-xs text-gray-500 hover:text-gray-800 w-full text-left">
-            None
+            {t("editor.toolbar.colorNone")}
           </button>
         </div>
       )}
@@ -77,6 +80,7 @@ function ColorPicker({ colors, value, onPick, title, icon, onClear }: { colors: 
 }
 
 export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable, onComment, onCite, onPrint, spellcheck, onSpellcheck, compact, provenance }: Props) {
+  const t = useT();
   const [, force] = useState(0);
   useEffect(() => {
     const h = () => force((n) => n + 1);
@@ -108,15 +112,15 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
   };
 
   return (
-    <div className={`flex items-center gap-px px-2.5 h-10 bg-white border-b border-gray-200 whitespace-nowrap flex-shrink-0 ${compact ? "overflow-x-auto no-scrollbar" : "overflow-hidden"}`} role="toolbar" aria-label="Formatting">
-      <Btn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo (Ctrl+Z)"><Undo2 className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo (Ctrl+Y)"><Redo2 className="w-4 h-4" /></Btn>
-      {!compact && <Btn onClick={onPrint} title="Print (Ctrl+P)"><Printer className="w-4 h-4" /></Btn>}
-      {!compact && <Btn onClick={() => onSpellcheck(!spellcheck)} active={spellcheck} title="Spelling & grammar"><SpellCheck className="w-4 h-4" /></Btn>}
+    <div className={`flex items-center gap-px px-2.5 h-10 bg-white border-b border-gray-200 whitespace-nowrap flex-shrink-0 ${compact ? "overflow-x-auto no-scrollbar" : "overflow-hidden"}`} role="toolbar" aria-label={t("editor.toolbar.label")}>
+      <Btn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title={`${t("editor.fmt.undo")} (Ctrl+Z)`}><Undo2 className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title={`${t("editor.fmt.redo")} (Ctrl+Y)`}><Redo2 className="w-4 h-4" /></Btn>
+      {!compact && <Btn onClick={onPrint} title={`${t("editor.fmt.print")} (Ctrl+P)`}><Printer className="w-4 h-4" /></Btn>}
+      {!compact && <Btn onClick={() => onSpellcheck(!spellcheck)} active={spellcheck} title={t("editor.fmt.spelling")}><SpellCheck className="w-4 h-4" /></Btn>}
       {!compact && (
         <div className="flex items-center gap-0.5 ml-1">
           <ZoomIn className="w-4 h-4 text-gray-500" />
-          <select value={zoom} onChange={(e) => onZoom(Number(e.target.value))} className="tb-select !px-0.5 w-[62px]" title="Zoom" aria-label="Zoom">
+          <select value={zoom} onChange={(e) => onZoom(Number(e.target.value))} className="tb-select !px-0.5 w-[62px]" title={t("editor.toolbar.zoom")} aria-label={t("editor.toolbar.zoom")}>
             {[50, 75, 90, 100, 125, 150, 200].map((z) => (
               <option key={z} value={z}>{z}%</option>
             ))}
@@ -124,69 +128,69 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
         </div>
       )}
       <span className="tb-sep" />
-      <select value={style} onChange={(e) => setStyle(e.target.value)} className="tb-select w-[112px]" title="Styles" aria-label="Paragraph style">
-        <option value="p">Normal text</option>
-        <option value="h1">Title (H1)</option>
-        <option value="h2">Heading 2</option>
-        <option value="h3">Heading 3</option>
-        <option value="h4">Heading 4</option>
+      <select value={style} onChange={(e) => setStyle(e.target.value)} className="tb-select w-[112px]" title={t("editor.toolbar.styles")} aria-label={t("editor.toolbar.paragraphStyle")}>
+        <option value="p">{t("editor.fmt.normalText")}</option>
+        <option value="h1">{t("editor.fmt.title")}</option>
+        <option value="h2">{t("editor.fmt.heading2")}</option>
+        <option value="h3">{t("editor.fmt.heading3")}</option>
+        <option value="h4">{t("editor.fmt.heading4")}</option>
       </select>
       <span className="tb-sep" />
-      <select value={font} onChange={(e) => (e.target.value ? editor.chain().focus().setFontFamily(e.target.value).run() : editor.chain().focus().unsetFontFamily().run())} className="tb-select w-[104px]" title="Font" aria-label="Font">
-        <option value="">Default</option>
+      <select value={font} onChange={(e) => (e.target.value ? editor.chain().focus().setFontFamily(e.target.value).run() : editor.chain().focus().unsetFontFamily().run())} className="tb-select w-[104px]" title={t("editor.toolbar.font")} aria-label={t("editor.toolbar.font")}>
+        <option value="">{t("editor.toolbar.fontDefault")}</option>
         {FONTS.map((f) => (
           <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
         ))}
       </select>
       <span className="tb-sep" />
-      <Btn onClick={() => stepSize(-1)} title="Decrease font size"><Minus className="w-3.5 h-3.5" /></Btn>
-      <select value={size} onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}pt`).run()} className="tb-select w-[44px] text-center !px-0" title="Font size" aria-label="Font size">
+      <Btn onClick={() => stepSize(-1)} title={t("editor.toolbar.decreaseFontSize")}><Minus className="w-3.5 h-3.5" /></Btn>
+      <select value={size} onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}pt`).run()} className="tb-select w-[44px] text-center !px-0" title={t("editor.toolbar.fontSize")} aria-label={t("editor.toolbar.fontSize")}>
         {FONT_SIZES.map((s) => (
           <option key={s} value={s}>{s}</option>
         ))}
       </select>
-      <Btn onClick={() => stepSize(1)} title="Increase font size"><Plus className="w-3.5 h-3.5" /></Btn>
+      <Btn onClick={() => stepSize(1)} title={t("editor.toolbar.increaseFontSize")}><Plus className="w-3.5 h-3.5" /></Btn>
       <span className="tb-sep" />
-      <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold (Ctrl+B)"><Bold className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="Italic (Ctrl+I)"><Italic className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive("underline")} title="Underline (Ctrl+U)"><Underline className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive("strike")} title="Strikethrough"><Strikethrough className="w-4 h-4" /></Btn>
-      <ColorPicker colors={COLORS} value={color} title="Text color" icon={<span className="text-sm font-bold leading-none">A</span>} onPick={(c) => editor.chain().focus().setColor(c).run()} onClear={() => editor.chain().focus().unsetColor().run()} />
-      <ColorPicker colors={HIGHLIGHTS} value={highlight} title="Highlight color" icon={<Highlighter className="w-4 h-4" />} onPick={(c) => editor.chain().focus().setHighlight({ color: c }).run()} onClear={() => editor.chain().focus().unsetHighlight().run()} />
+      <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title={`${t("editor.fmt.bold")} (Ctrl+B)`}><Bold className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title={`${t("editor.fmt.italic")} (Ctrl+I)`}><Italic className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive("underline")} title={`${t("editor.fmt.underline")} (Ctrl+U)`}><Underline className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive("strike")} title={t("editor.fmt.strike")}><Strikethrough className="w-4 h-4" /></Btn>
+      <ColorPicker colors={COLORS} value={color} title={t("editor.toolbar.textColor")} icon={<span className="text-sm font-bold leading-none">A</span>} onPick={(c) => editor.chain().focus().setColor(c).run()} onClear={() => editor.chain().focus().unsetColor().run()} />
+      <ColorPicker colors={HIGHLIGHTS} value={highlight} title={t("editor.toolbar.highlightColor")} icon={<Highlighter className="w-4 h-4" />} onPick={(c) => editor.chain().focus().setHighlight({ color: c }).run()} onClear={() => editor.chain().focus().unsetHighlight().run()} />
       <span className="tb-sep" />
-      <Btn onClick={onLink} active={editor.isActive("link")} title="Insert link (Ctrl+K)"><Link2 className="w-4 h-4" /></Btn>
-      <Btn onClick={onComment} title="Add comment (Ctrl+Alt+M)"><MessageSquarePlus className="w-4 h-4" /></Btn>
-      <Btn onClick={onCite} title="Cite a source (Ctrl+Alt+E): select the passage, find the source with AI, review and insert"><BookMarked className="w-4 h-4" /></Btn>
-      <Btn onClick={onImage} title="Insert image"><ImageIcon className="w-4 h-4" /></Btn>
-      <Btn onClick={onTable} title="Insert table"><TableIcon className="w-4 h-4" /></Btn>
+      <Btn onClick={onLink} active={editor.isActive("link")} title={`${t("editor.toolbar.insertLink")} (Ctrl+K)`}><Link2 className="w-4 h-4" /></Btn>
+      <Btn onClick={onComment} title={`${t("editor.toolbar.addComment")} (Ctrl+Alt+M)`}><MessageSquarePlus className="w-4 h-4" /></Btn>
+      <Btn onClick={onCite} title={`${t("editor.cite")} (Ctrl+Alt+E): ${t("editor.toolbar.citeSource")}`}><BookMarked className="w-4 h-4" /></Btn>
+      <Btn onClick={onImage} title={t("editor.toolbar.insertImage")}><ImageIcon className="w-4 h-4" /></Btn>
+      <Btn onClick={onTable} title={t("editor.toolbar.insertTable")}><TableIcon className="w-4 h-4" /></Btn>
       <span className="tb-sep" />
       <div className="relative group">
-        <Btn onClick={() => {}} title="Align">
+        <Btn onClick={() => {}} title={t("editor.toolbar.align")}>
           {editor.isActive({ textAlign: "center" }) ? <AlignCenter className="w-4 h-4" /> : editor.isActive({ textAlign: "right" }) ? <AlignRight className="w-4 h-4" /> : editor.isActive({ textAlign: "justify" }) ? <AlignJustify className="w-4 h-4" /> : <AlignLeft className="w-4 h-4" />}
           <ChevronDown className="w-3 h-3 ml-0.5" />
         </Btn>
         <div className="absolute left-0 top-full hidden group-hover:flex bg-white rounded-lg shadow-xl border border-gray-100 p-1 z-50">
-          <Btn onClick={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title="Align left"><AlignLeft className="w-4 h-4" /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} title="Center"><AlignCenter className="w-4 h-4" /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })} title="Align right"><AlignRight className="w-4 h-4" /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign("justify").run()} active={editor.isActive({ textAlign: "justify" })} title="Justify"><AlignJustify className="w-4 h-4" /></Btn>
+          <Btn onClick={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title={t("editor.fmt.alignLeft")}><AlignLeft className="w-4 h-4" /></Btn>
+          <Btn onClick={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} title={t("editor.fmt.alignCenter")}><AlignCenter className="w-4 h-4" /></Btn>
+          <Btn onClick={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })} title={t("editor.fmt.alignRight")}><AlignRight className="w-4 h-4" /></Btn>
+          <Btn onClick={() => editor.chain().focus().setTextAlign("justify").run()} active={editor.isActive({ textAlign: "justify" })} title={t("editor.fmt.justify")}><AlignJustify className="w-4 h-4" /></Btn>
         </div>
       </div>
-      <select value={lineHeight} onChange={(e) => editor.chain().focus().setLineHeight(e.target.value).run()} className="tb-select w-[84px]" title="Line spacing" aria-label="Line spacing">
-        <option value="">Spacing</option>
+      <select value={lineHeight} onChange={(e) => editor.chain().focus().setLineHeight(e.target.value).run()} className="tb-select w-[84px]" title={t("editor.fmt.lineSpacing")} aria-label={t("editor.fmt.lineSpacing")}>
+        <option value="">{t("editor.toolbar.spacing")}</option>
         {["1", "1.15", "1.5", "2", "2.5"].map((v) => (
           <option key={v} value={v}>{v}</option>
         ))}
       </select>
-      <Btn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive("taskList")} title="Checklist"><CheckSquare className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bulleted list (Ctrl+Shift+8)"><List className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Numbered list (Ctrl+Shift+7)"><ListOrdered className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().outdent().run()} title="Decrease indent"><Outdent className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().indent().run()} title="Increase indent"><Indent className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive("taskList")} title={t("editor.fmt.checklist")}><CheckSquare className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title={`${t("editor.fmt.bulleted")} (Ctrl+Shift+8)`}><List className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title={`${t("editor.fmt.numbered")} (Ctrl+Shift+7)`}><ListOrdered className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().outdent().run()} title={t("editor.fmt.decreaseIndent")}><Outdent className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().indent().run()} title={t("editor.fmt.increaseIndent")}><Indent className="w-4 h-4" /></Btn>
       <span className="tb-sep" />
-      <Btn onClick={() => editor.chain().focus().toggleSuperscript().run()} active={editor.isActive("superscript")} title="Superscript"><Superscript className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().toggleSubscript().run()} active={editor.isActive("subscript")} title="Subscript"><Subscript className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Clear formatting (Ctrl+\)"><RemoveFormatting className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().toggleSuperscript().run()} active={editor.isActive("superscript")} title={t("editor.fmt.superscript")}><Superscript className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().toggleSubscript().run()} active={editor.isActive("subscript")} title={t("editor.fmt.subscript")}><Subscript className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title={`${t("editor.fmt.clear")} (Ctrl+\\)`}><RemoveFormatting className="w-4 h-4" /></Btn>
       {provenance && <ProvenanceToggle on={provenance.on} onToggle={provenance.onToggle} locked={provenance.locked} />}
     </div>
   );

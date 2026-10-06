@@ -34,7 +34,7 @@ import SessionBar from "./SessionBar";
 import ProvenanceGutter from "./ProvenanceGutter";
 import { CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, ReferencesPanel, VersionsPanel } from "./Sidebars";
 import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, PasteMatchInfo } from "./Dialogs";
-import { CommentItem, FlagItem, formatReference, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, SidebarKind, ThesisDoc, ThesisTab, VersionItem } from "./types";
+import { CommentItem, FlagItem, formatReference, formatTimeAgo, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, richText, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { InsertMeta } from "../ai/AssistantPanel";
 import { LanguageReview } from "./language/languageReview";
 import { LanguageReviewPanel } from "./language/LanguageReviewPanel";
@@ -47,7 +47,10 @@ import EvidencePanel from "./evidence/EvidencePanel";
 import ConsentModal from "../ConsentModal";
 import { IntegrityPill, Modal, Toast } from "../ui";
 import { useUser, type Consent } from "../useUser";
-import { api, ApiError, countWordsInText, statusLabels, timeAgo } from "@/lib/client";
+import { api, ApiError, countWordsInText } from "@/lib/client";
+import { useFormat, useT } from "@/lib/i18n/client";
+import { LOCALES } from "@/lib/i18n";
+import { translate, type Translate } from "@/lib/i18n/dictionary";
 import { SessionMonitor, type MonitorFlag } from "@/lib/monitor";
 import { downloadBlob, htmlToDocx, htmlToMarkdown, htmlToText, safeFileName, standaloneHtml } from "@/lib/export";
 
@@ -62,7 +65,8 @@ interface LoadResponse {
 }
 
 const GUTTER_KEY = "provenance_gutter";
-const NOTES_TAB = "Research notes";
+/** The "Research notes" tab is found by title in any language, so switching language never creates a duplicate. */
+const isNotesTitle = (title: string) => LOCALES.some((l) => translate(l, "editor.notesTab").toLowerCase() === title.trim().toLowerCase());
 
 const PASTE_DIALOG_MIN_WORDS = 30;
 const SUBMISSION = "submission";
@@ -70,6 +74,7 @@ const norm = (t: string) => t.replace(/\s+/g, " ").trim();
 
 export default function DocsEditor({ thesisId, reviewMode = false }: { thesisId: string; reviewMode?: boolean }) {
   const [data, setData] = useState<LoadResponse | null>(null);
+  const t = useT();
   const [error, setError] = useState("");
   const { user, loading } = useUser();
 
@@ -84,16 +89,24 @@ export default function DocsEditor({ thesisId, reviewMode = false }: { thesisId:
       <div className="min-h-screen flex items-center justify-center text-center p-6">
         <div>
           <div className="text-gray-500 mb-4">{error}</div>
-          <Link href="/dashboard" className="btn-primary">Back to dashboard</Link>
+          <Link href="/dashboard" className="btn-primary">{t("editor.backToDashboard")}</Link>
         </div>
       </div>
     );
-  if (!data || loading || !user) return <div className="min-h-screen bg-[#f1f3f4] flex items-center justify-center text-gray-400 text-sm">Loading document…</div>;
+  if (!data || loading || !user) return <div className="min-h-screen bg-[#f1f3f4] flex items-center justify-center text-gray-400 text-sm">{t("editor.loadingDocument")}</div>;
   return <DocsEditorInner initial={data} thesisId={thesisId} userId={user.id} userRole={user.role} reviewMode={reviewMode} />;
 }
 
 function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { initial: LoadResponse; thesisId: string; userId: string; userRole: string; reviewMode: boolean }) {
   const router = useRouter();
+  // `t` is stable and always reads the current locale, so closures captured by the editor never go stale.
+  const tLive = useT();
+  const tRef = useRef<Translate>(tLive);
+  tRef.current = tLive;
+  const t = useCallback<Translate>((key, vars) => tRef.current(key, vars), []);
+  const fmt = useFormat();
+  const finalSubmission = t("glossary.finalSubmission");
+  const aiAssisted = t("glossary.aiAssisted");
   const { me, refresh: refreshMe } = useUser();
   const [thesis, setThesis] = useState<ThesisDoc>(initial.thesis);
   const [comments, setComments] = useState<CommentItem[]>(initial.comments);
@@ -221,7 +234,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       TableRow,
       TableHeader,
       TableCell,
-      Placeholder.configure({ placeholder: "Start writing your thesis… Type / for nothing special; use the toolbar or menus." }),
+      Placeholder.configure({ placeholder: t("editor.placeholder") }),
       CharacterCount,
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -284,15 +297,15 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           const ed = editorRef.current;
           const to = Math.min(from + text.length, ed.state.doc.content.size);
           if (matched.kind === "source") {
-            const srcLabel = `${matched.authors || matched.title || "Source"}${matched.year ? ` (${matched.year})` : ""}${matched.page ? `, p. ${matched.page}` : ""}`;
+            const srcLabel = `${matched.authors || matched.title || t("editor.source")}${matched.year ? ` (${matched.year})` : ""}${matched.page ? `, p. ${matched.page}` : ""}`;
             ed.chain().setTextSelection({ from, to }).setProvenance({ source: "paste", label: srcLabel }).setTextSelection(to).run();
-            notify(`Pasted text matches ${matched.title || "a source"} in your library: marked as quoted. Add the citation.`, "info");
+            notify(t("editor.toast.pasteMatchesSource", { source: matched.title || t("editor.aSource") }), "info");
             return;
           }
-          const label = matched.mode === "copilot" ? "Research copilot" : "Thesisfic assistant";
+          const label = matched.mode === "copilot" ? t("editor.label.copilot") : t("editor.label.assistant");
           ed.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: matched.provider, label, interactionId: matched.interactionId }).setTextSelection(to).run();
           monitorRef.current?.recordAiInsert(words, matched.provider || "assistant", matched.mode || "paste", matched.interactionId);
-          notify(`Pasted text came from the ${label}: marked as AI-assisted.`, "info");
+          notify(t("editor.toast.pastedFromAssistant", { label, aiAssisted }), "info");
         });
         return false;
       },
@@ -398,10 +411,10 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         dirty.forEach((k) => dirtyKeys.current.add(k));
         if (metaDirty) tabsMetaDirty.current = true;
         setSaveState("error");
-        notify(`Save failed: ${(e as Error).message}`, "error");
+        notify(t("editor.toast.saveFailed", { message: (e as Error).message }), "error");
       }
     },
-    [canEdit, thesisId, sessionId, notify, refreshLedger]
+    [canEdit, thesisId, sessionId, notify, refreshLedger, t]
   );
   const saveNowRef = useRef(saveNow);
   saveNowRef.current = saveNow;
@@ -441,7 +454,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     scheduleSave();
   };
 
-  const addTab = (title = "Untitled tab", content = "<p></p>") => {
+  const addTab = (title = t("editor.untitledTab"), content = "<p></p>") => {
     const id = `tab_${Date.now().toString(36)}`;
     contentsRef.current[id] = content;
     setTabs((ts) => [...ts, { id, title, content, updatedAt: new Date().toISOString() }]);
@@ -467,8 +480,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const duplicateTab = (id: string) => {
     const ed = editorRef.current;
     if (ed) contentsRef.current[activeTabRef.current] = ed.getHTML();
-    const src = id === SUBMISSION ? { title: "Final submission" } : tabsRef.current.find((t) => t.id === id);
-    addTab(`${src?.title || "Tab"} (copy)`, contentsRef.current[id] || "<p></p>");
+    const src = id === SUBMISSION ? { title: finalSubmission } : tabsRef.current.find((tb) => tb.id === id);
+    addTab(t("editor.tabCopy", { title: src?.title || t("editor.tab") }), contentsRef.current[id] || "<p></p>");
   };
 
   /** Makes a working tab the Final submission; the previous submission becomes a working tab, nothing is lost. */
@@ -476,20 +489,20 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     const ed = editorRef.current;
     if (!ed) return;
     contentsRef.current[activeTabRef.current] = ed.getHTML();
-    const tab = tabsRef.current.find((t) => t.id === id);
+    const tab = tabsRef.current.find((tb) => tb.id === id);
     if (!tab) return;
     const oldSubmission = contentsRef.current[SUBMISSION];
     contentsRef.current[SUBMISSION] = contentsRef.current[id];
     contentsRef.current[id] = oldSubmission;
-    renameTab(id, `Previous submission (${new Date().toLocaleDateString()})`);
+    renameTab(id, t("editor.previousSubmission", { date: fmt.date(new Date()) }));
     dirtyKeys.current.add(SUBMISSION);
     dirtyKeys.current.add(id);
     activeTabRef.current = SUBMISSION;
     setActiveTab(SUBMISSION);
     loadIntoEditor(contentsRef.current[SUBMISSION]);
     scheduleProvenance(ed);
-    saveNowRef.current({ versionKind: "manual", versionLabel: `Final submission replaced by “${tab.title}”` });
-    notify(`“${tab.title}” is now the Final submission. The previous version was kept as a tab.`, "success");
+    saveNowRef.current({ versionKind: "manual", versionLabel: t("editor.versionLabel.replaced", { title: tab.title }) });
+    notify(t("editor.toast.promoted", { title: tab.title, finalSubmission }), "success");
   };
 
   // ---------- citations ----------
@@ -501,7 +514,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       setCiteMode("library");
       return;
     }
-    if (!canEdit) return notify("This document is read-only.", "error");
+    if (!canEdit) return notify(t("editor.toast.readOnly"), "error");
     const { from, to, empty } = ed.state.selection;
     citeRange.current = { from, to };
     setCiteText(empty ? "" : ed.state.doc.textBetween(from, to, " ").slice(0, 1500));
@@ -515,7 +528,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     setThesis((t) => ({ ...t, references: refs }));
     updateThesis({ references: refs });
     if (mode === "library") {
-      notify(c.isNew ? "Reference added." : "Reference updated.", "success");
+      notify(c.isNew ? t("editor.toast.referenceAdded") : t("editor.toast.referenceUpdated"), "success");
       return;
     }
     const { from, to } = citeRange.current;
@@ -534,7 +547,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       { type: "text", text: c.inText, marks: [{ type: "citation", attrs: { refId: c.reference.id } }] },
     ];
     chain.insertContentAt(at, nodes).run();
-    notify(`Citation ${c.inText} inserted${c.isNew ? " and source added to your references" : ""}.`, "success");
+    notify(t(c.isNew ? "editor.toast.citationInsertedNew" : "editor.toast.citationInserted", { cite: c.inText }), "success");
   };
 
   useEffect(() => {
@@ -586,7 +599,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
 
   // ---------- helpers ----------
   const insertWithProvenance = (html: string, meta: InsertMeta, replace: boolean, opts: { atEnd?: boolean; message?: string } = {}) => {
-    if (!editor || !canEdit) return notify("This document is read-only.", "error");
+    if (!editor || !canEdit) return notify(t("editor.toast.readOnly"), "error");
     if (opts.atEnd) editor.commands.focus("end");
     const chain = editor.chain().focus();
     if (replace) chain.deleteSelection();
@@ -595,21 +608,22 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     const to = editor.state.selection.to;
     editor.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: meta.provider, label: meta.model, interactionId: meta.interactionId }).setTextSelection(to).setMeta("ai-insert", true).run();
     monitorRef.current?.recordAiInsert(meta.words, meta.provider, meta.mode, meta.interactionId);
-    notify(opts.message || `${meta.words} words inserted and marked as AI-assisted (${meta.provider}).`, "success");
+    notify(opts.message || t("editor.toast.aiInserted", { words: meta.words, aiAssisted, provider: meta.provider }), "success");
   };
 
   /** "Keep as notes": the answer goes to the Research notes tab (created when missing), marked as AI-assisted. */
   const keepAsNotes = (html: string, meta: InsertMeta) => {
-    if (!canEdit) return notify("This document is read-only.", "error");
-    const message = `Kept in ${NOTES_TAB}, marked as AI-assisted. Nothing was added to the Final submission.`;
-    const existing = tabsRef.current.find((t) => t.title.trim().toLowerCase() === NOTES_TAB.toLowerCase());
+    if (!canEdit) return notify(t("editor.toast.readOnly"), "error");
+    const notesTitle = t("editor.notesTab");
+    const message = t("editor.toast.keptAsNotes", { notes: notesTitle, aiAssisted, finalSubmission });
+    const existing = tabsRef.current.find((tb) => isNotesTitle(tb.title));
     if (existing) {
       switchTab(existing.id);
       setTimeout(() => insertWithProvenance(`${html}<p></p>`, meta, false, { atEnd: true, message }), 0);
       return;
     }
-    if (tabsRef.current.length >= 20) return notify("You already have 20 tabs. Delete one to create Research notes.", "error");
-    addTab(NOTES_TAB);
+    if (tabsRef.current.length >= 20) return notify(t("editor.toast.tabLimit", { notes: notesTitle }), "error");
+    addTab(notesTitle);
     setTimeout(() => insertWithProvenance(html, meta, false, { atEnd: true, message }), 30);
   };
 
@@ -617,7 +631,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const addCommentFromAssistant = async (text: string) => {
     if (!editor) return;
     const { from, to, empty } = editor.state.selection;
-    if (empty) return notify("Select the passage the comment refers to, then try again.", "info");
+    if (empty) return notify(t("editor.toast.selectPassage"), "info");
     const quote = editor.state.doc.textBetween(from, to, " ").slice(0, 200);
     const anchorId = `cmt_${Date.now().toString(36)}`;
     if (canEdit) editor.chain().setComment(anchorId).run();
@@ -626,7 +640,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       setComments((c) => [...c, res.comment]);
       setActiveCommentId(res.comment.id);
       if (canEdit) saveNow();
-      notify("Comment added to the selected passage.", "success");
+      notify(t("editor.toast.commentAdded"), "success");
     } catch (e) {
       if (canEdit) editor.commands.unsetComment(anchorId);
       notify((e as Error).message, "error");
@@ -644,7 +658,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     if (fix === "reduce_ai") {
       setShowProvenance(true);
       setSidebar("ai");
-      notify("AI-assisted passages are highlighted. Rewrite them in your own words to lower the AI share.", "info");
+      notify(t("editor.toast.reduceAi"), "info");
       return;
     }
     if (fix === "attribute_paste") {
@@ -657,11 +671,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           const m = node.marks.find((x) => x.type.name === "provenance" && x.attrs.source === "paste" && !x.attrs.label);
           if (m) found = { from: pos, to: pos + node.nodeSize };
         });
-        if (!found) return notify("Every pasted passage already names its source.", "success");
+        if (!found) return notify(t("editor.toast.allPastesNamed"), "success");
         editor.chain().focus().setTextSelection(found).run();
         const dom = editor.view.domAtPos((found as { from: number }).from).node;
         ((dom as HTMLElement).nodeType === 1 ? (dom as HTMLElement) : (dom as Text).parentElement)?.scrollIntoView({ behavior: "smooth", block: "center" });
-        notify("Pasted passage selected. Use Cite to name its source, or rewrite it in your own words.", "info");
+        notify(t("editor.toast.pasteSelected"), "info");
       }, 0);
     }
   };
@@ -693,7 +707,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const startComment = () => {
     if (!editor) return;
     const { from, to, empty } = editor.state.selection;
-    if (empty) return notify("Select the text you want to comment on.", "info");
+    if (empty) return notify(t("editor.toast.selectText"), "info");
     const quote = editor.state.doc.textBetween(from, to, " ").slice(0, 200);
     const anchorId = `cmt_${Date.now().toString(36)}`;
     if (canEdit) editor.chain().focus().setComment(anchorId).run();
@@ -765,7 +779,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       if (fmt === "md") downloadBlob(`${name}.md`, new Blob([htmlToMarkdown(html)], { type: "text/markdown" }));
       if (fmt === "txt") downloadBlob(`${name}.txt`, new Blob([htmlToText(html)], { type: "text/plain" }));
     } catch (e) {
-      notify(`Export failed: ${(e as Error).message}`, "error");
+      notify(t("editor.toast.exportFailed", { message: (e as Error).message }), "error");
     }
   };
 
@@ -773,7 +787,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     if (!editor) return;
     const refs = [...thesis.references].sort((a, b) => a.authors.localeCompare(b.authors));
     const items = refs.map((r, i) => `<p>${thesis.citationStyle === "IEEE" ? `[${i + 1}] ` : ""}${formatReference(r, thesis.citationStyle).full}</p>`).join("");
-    editor.chain().focus().insertContent(`<h2>References</h2>${items}`).run();
+    editor.chain().focus().insertContent(`<h2>${t("editor.doc.references")}</h2>${items}`).run();
   };
 
   const insertToc = () => {
@@ -782,7 +796,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     editor.state.doc.descendants((node) => {
       if (node.type.name === "heading" && node.attrs.level > 1) items.push(`<li><p>${"&nbsp;&nbsp;".repeat(node.attrs.level - 2)}${node.textContent}</p></li>`);
     });
-    editor.chain().focus().insertContent(`<h2>Table of Contents</h2><ul>${items.join("") || "<li><p>(no headings yet)</p></li>"}</ul>`).run();
+    editor.chain().focus().insertContent(`<h2>${t("editor.doc.toc")}</h2><ul>${items.join("") || `<li><p>${t("editor.doc.noHeadings")}</p></li>`}</ul>`).run();
   };
 
   const insertFootnote = () => {
@@ -790,7 +804,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     const n = (editor.state.doc.textContent.match(/\[\d+\]/g) || []).length + 1;
     editor.chain().focus().insertContent(`<sup>[${n}]</sup>`).run();
     const end = editor.state.doc.content.size;
-    editor.chain().insertContentAt(end, `<p><sup>[${n}]</sup> Footnote text</p>`).setTextSelection(editor.state.doc.content.size - 14).run();
+    editor.chain().insertContentAt(end, `<p><sup>[${n}]</sup> ${t("editor.doc.footnoteText")}</p>`).setTextSelection(editor.state.doc.content.size - t("editor.doc.footnoteText").length - 1).run();
   };
 
   const updateThesis = async (patch: Record<string, unknown>, successMsg?: string) => {
@@ -826,8 +840,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       redo: () => c().redo().run(),
       cut: () => document.execCommand("cut"),
       copy: () => document.execCommand("copy"),
-      paste: () => navigator.clipboard?.readText().then((t) => t && c().insertContent(t).run()).catch(() => notify("Use Ctrl+V to paste.", "info")),
-      pastePlain: () => navigator.clipboard?.readText().then((t) => t && c().insertContent(t.replace(/</g, "&lt;")).run()).catch(() => notify("Use Ctrl+Shift+V to paste.", "info")),
+      paste: () => navigator.clipboard?.readText().then((t) => t && c().insertContent(t).run()).catch(() => notify(t("editor.toast.useCtrlV"), "info")),
+      pastePlain: () => navigator.clipboard?.readText().then((t) => t && c().insertContent(t.replace(/</g, "&lt;")).run()).catch(() => notify(t("editor.toast.useCtrlShiftV"), "info")),
       selectAll: () => c().selectAll().run(),
       find: () => setSidebar("find"),
       outline: () => setSidebar((s) => (s === "outline" ? "none" : "outline")),
@@ -845,7 +859,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       comment: startComment,
       pageBreak: () => c().setPageBreak().run(),
       hr: () => c().setHorizontalRule().run(),
-      date: () => c().insertContent(new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })).run(),
+      date: () => c().insertContent(fmt.date(new Date(), { year: "numeric", month: "long", day: "numeric" })).run(),
       citation: () => openCite(),
       toc: insertToc,
       footnote: insertFootnote,
@@ -894,12 +908,17 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, dialog, thesis.wordCount]);
 
+  const versionKind = (k: string) => {
+    const key = `editor.versions.kind.${k}`;
+    const l = t(key);
+    return l === key ? k : l;
+  };
   const aiPct = thesis.wordCount ? Math.round((thesis.provenance.ai / thesis.wordCount) * 100) : 0;
   const pastePct = thesis.wordCount ? Math.round((thesis.provenance.paste / thesis.wordCount) * 100) : 0;
   const ws = thesis.pageSetup;
   const workspaceClass = `docs-workspace ${ws.orientation === "landscape" ? "landscape" : ""} ${ws.size === "Letter" ? "letter" : ""} ${showProvenance ? "show-provenance" : ""}`;
 
-  if (!editor) return <div className="min-h-screen bg-[#f1f3f4] flex items-center justify-center text-gray-400 text-sm">Preparing editor…</div>;
+  if (!editor) return <div className="min-h-screen bg-[#f1f3f4] flex items-center justify-center text-gray-400 text-sm">{t("editor.preparing")}</div>;
 
   const sidebarPanel = () => {
     switch (sidebar) {
@@ -914,14 +933,14 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       );
       case "versions": return (
         <VersionsPanel versions={versions} canRestore={canEdit} onClose={() => setSidebar("none")} onCreate={() => setDialog("saveVersion")}
-          onPreview={async (id) => { const d = await api<{ version: { content: string; label?: string; kind: string; createdAt: string } }>(`/api/theses/${thesisId}/versions/${id}`).catch(() => null); if (d) setPreview({ id, html: d.version.content, label: d.version.label || `${d.version.kind} · ${new Date(d.version.createdAt).toLocaleString()}` }); }}
-          onRestore={async (id) => { const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${id}`, { method: "POST" }).catch((e) => { notify((e as Error).message, "error"); return null; }); if (d) { restoreSubmission(d.thesis); notify("Version restored into Final submission. The previous state was saved as a version too.", "success"); loadVersions(); } }}
+          onPreview={async (id) => { const d = await api<{ version: { content: string; label?: string; kind: string; createdAt: string } }>(`/api/theses/${thesisId}/versions/${id}`).catch(() => null); if (d) setPreview({ id, html: d.version.content, label: d.version.label || `${versionKind(d.version.kind)} · ${fmt.dateTime(d.version.createdAt)}` }); }}
+          onRestore={async (id) => { const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${id}`, { method: "POST" }).catch((e) => { notify((e as Error).message, "error"); return null; }); if (d) { restoreSubmission(d.thesis); notify(t("editor.toast.versionRestored", { finalSubmission }), "success"); loadVersions(); } }}
         />
       );
       case "references": return (
         <ReferencesPanel references={thesis.references} style={thesis.citationStyle} canEdit={canEdit} onClose={() => setSidebar("none")}
           onChangeStyle={(s) => updateThesis({ citationStyle: s })}
-          onAdd={(r: Reference) => updateThesis({ references: [...thesis.references, r] }, "Reference added")}
+          onAdd={(r: Reference) => updateThesis({ references: [...thesis.references, r] }, t("editor.toast.referenceAddedShort"))}
           onRemove={(id) => updateThesis({ references: thesis.references.filter((r) => r.id !== id) })}
           onInsertInText={(r) => editor.chain().focus().insertContent(formatReference(r, thesis.citationStyle).inText).run()}
           onInsertBibliography={insertBibliography}
@@ -945,12 +964,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
             insertCitation({ reference: ref, isNew: !thesis.references.some((r) => r.id === ref.id), inText: formatReference(ref, thesis.citationStyle).inText, linkUrl: o.link, markPassage: hasSel && o.markPassage }, hasSel ? "selection" : "cursor");
           }}
           onReferencesChanged={(refs) => { setThesis((t) => ({ ...t, references: refs })); }}
-          onAddToLibrary={(w) => { api(`/api/theses/${thesisId}/sources`, { method: "POST", json: w.doi ? { kind: "doi", value: w.doi, title: w.title } : { kind: "url", value: w.url, title: w.title } }).then(() => notify("Added to your source library.", "success")).catch((e) => notify((e as Error).message, "error")); }}
+          onAddToLibrary={(w) => { api(`/api/theses/${thesisId}/sources`, { method: "POST", json: w.doi ? { kind: "doi", value: w.doi, title: w.title } : { kind: "url", value: w.url, title: w.title } }).then(() => notify(t("editor.toast.sourceAdded"), "success")).catch((e) => notify((e as Error).message, "error")); }}
         />
       );
       case "process": return (
         <ProcessPanel thesisId={thesisId} isOwner={canEdit} sessionId={sessionId || undefined} onClose={() => setSidebar("none")} onOpenConsent={() => setDialog("consent")}
-          onInsertDeclaration={(html) => { if (activeTabRef.current !== SUBMISSION) switchTab(SUBMISSION); editor.chain().focus("end").insertContent(html).run(); saveNow(); notify("Declaration appended to Final submission.", "success"); }}
+          onInsertDeclaration={(html) => { if (activeTabRef.current !== SUBMISSION) switchTab(SUBMISSION); editor.chain().focus("end").insertContent(html).run(); saveNow(); notify(t("editor.toast.declarationAppended", { finalSubmission }), "success"); }}
         />
       );
       case "sources": return (
@@ -966,7 +985,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       );
       case "integrity": return (
         <IntegrityLedger thesis={thesis} flags={flags} session={sessionStats} maxAi={policy.maxAiUsagePercent} breakdown={breakdown} showProvenance={showProvenance} onToggleProvenance={() => setShowProvenance((v) => !v)} onFix={handleFix} isOwner={isOwner} onClose={() => setSidebar("none")}
-          onRespondFlag={async (id, note) => { await api(`/api/flags/${id}`, { method: "PATCH", json: { studentNote: note } }).catch(() => {}); setFlags((fs) => fs.map((f) => (f.id === id ? { ...f, description: `${f.description}\n\nStudent response: ${note}` } : f))); notify("Your response was sent to your advisor.", "success"); }}
+          onRespondFlag={async (id, note) => { await api(`/api/flags/${id}`, { method: "PATCH", json: { studentNote: note } }).catch(() => {}); setFlags((fs) => fs.map((f) => (f.id === id ? { ...f, description: `${f.description}\n\n${t("editor.studentResponse")}: ${note}` } : f))); notify(t("editor.toast.responseSent"), "success"); }}
         />
       );
       case "ai": return (
@@ -988,29 +1007,29 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     }
   };
 
-  const saveLabel = saveState === "saving" ? "Saving…" : saveState === "unsaved" ? "Unsaved changes" : saveState === "error" ? "Save failed — retrying on next change" : `Saved ${timeAgo(lastSaved)}`;
+  const saveLabel = saveState === "saving" ? t("editor.save.saving") : saveState === "unsaved" ? t("editor.save.unsavedChanges") : saveState === "error" ? t("editor.save.failedRetry") : t("editor.save.savedAgo", { ago: formatTimeAgo(lastSaved, t, (d) => fmt.date(d)) });
 
   return (
     <div className="h-[100dvh] flex flex-col bg-white overflow-hidden" style={{ ["--doc-zoom" as string]: zoom / 100, ["--page-margin" as string]: `${ws.margin}cm`, ["--doc-line-height" as string]: ws.lineSpacing }}>
       {/* Header (52px) */}
       <header className="h-[52px] flex items-center gap-2 md:gap-3 pl-2 pr-3 bg-white border-b border-gray-200 flex-shrink-0" style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(52px + env(safe-area-inset-top, 0px))" }}>
-        <Link href={userRole === "student" ? "/dashboard" : "/admin/theses"} className="w-8 h-8 inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg flex-shrink-0" aria-label="Back"><ArrowLeft className="w-[18px] h-[18px]" /></Link>
+        <Link href={userRole === "student" ? "/dashboard" : "/admin/theses"} className="w-8 h-8 inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg flex-shrink-0" aria-label={t("common.back")}><ArrowLeft className="w-[18px] h-[18px]" /></Link>
         <div className="hidden md:flex w-[30px] h-[30px] bg-brand-600 rounded-lg items-center justify-center flex-shrink-0"><FileText className="w-4 h-4 text-white" /></div>
         <div className="min-w-0 flex-1 flex items-center gap-2 md:min-w-[200px]">
-          <button onClick={() => canEdit && setDialog("rename")} className={`text-[16px] font-semibold truncate text-gray-900 ${canEdit ? "hover:bg-gray-100 rounded px-1 -mx-1" : "cursor-default"}`} title={canEdit ? `${thesis.title} · click to rename` : thesis.title}>{thesis.title}</button>
-          {!canEdit && <span className="hidden sm:inline badge bg-gray-100 text-gray-500 !text-[10px] flex-shrink-0">read-only</span>}
+          <button onClick={() => canEdit && setDialog("rename")} className={`text-[16px] font-semibold truncate text-gray-900 ${canEdit ? "hover:bg-gray-100 rounded px-1 -mx-1" : "cursor-default"}`} title={canEdit ? t("editor.header.renameHint", { title: thesis.title }) : thesis.title}>{thesis.title}</button>
+          {!canEdit && <span className="hidden sm:inline badge bg-gray-100 text-gray-500 !text-[10px] flex-shrink-0">{t("editor.readOnlyBadge")}</span>}
         </div>
         {isOwner && (
           <span className="flex items-center gap-1.5 text-[12px] text-gray-400 whitespace-nowrap flex-shrink-0" title={saveLabel}>
             {saveState === "error" ? <CloudOff className="w-3.5 h-3.5 text-red-500" /> : <span className={`w-1.5 h-1.5 rounded-full ${saveState === "saved" ? "bg-green-500" : saveState === "saving" ? "bg-gray-300 animate-pulse" : "bg-amber-400"}`} />}
-            {saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving…" : saveState === "unsaved" ? "Unsaved" : "Save failed"}
+            {saveState === "saved" ? t("editor.save.saved") : saveState === "saving" ? t("editor.save.saving") : saveState === "unsaved" ? t("editor.save.unsaved") : t("editor.save.failed")}
           </span>
         )}
         <IntegrityPill aiPct={aiPct} pastePct={pastePct} limitPct={policy.maxAiUsagePercent} score={thesis.integrityScore} onClick={() => setSidebar((x) => (x === "integrity" ? "none" : "integrity"))} className="hidden md:inline-flex flex-shrink-0" />
-        <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />AI assistant</button>
-        <button onClick={() => setDialog("share")} className="hidden md:inline-flex items-center px-3.5 py-[7px] rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 flex-shrink-0">Share</button>
+        <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />{t("glossary.aiAssistant")}</button>
+        <button onClick={() => setDialog("share")} className="hidden md:inline-flex items-center px-3.5 py-[7px] rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 flex-shrink-0">{t("editor.share")}</button>
         {!isMobile && <MenuOverflow editor={editor} onAction={onAction} state={{ showProvenance, sidebar, spellcheck, zoom, focus, canEdit }} />}
-        <button onClick={() => setMobileMenu(true)} className="md:hidden p-2 text-gray-600" aria-label="More"><MoreVertical className="w-5 h-5" /></button>
+        <button onClick={() => setMobileMenu(true)} className="md:hidden p-2 text-gray-600" aria-label={t("common.more")}><MoreVertical className="w-5 h-5" /></button>
       </header>
 
       {/* Toolbar */}
@@ -1020,48 +1039,48 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
 
       {/* Document tabs */}
       {!focus && (
-        <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-[#f1f3f4] border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label="Document tabs">
-          <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => switchTab(SUBMISSION)} className={`doc-tab submission ${activeTab === SUBMISSION ? "active" : ""}`} title="Only this tab is submitted, reviewed by your advisor and counted in your integrity report">
+        <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-[#f1f3f4] border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label={t("editor.tabs.label")}>
+          <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => switchTab(SUBMISSION)} className={`doc-tab submission ${activeTab === SUBMISSION ? "active" : ""}`} title={t("editor.tabs.submissionHint")}>
             <FileCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
-            <span className="truncate">Final submission</span>
+            <span className="truncate">{finalSubmission}</span>
             <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
           </button>
-          {tabs.map((t) => (
-            <div key={t.id} className="relative flex-shrink-0">
-              <button role="tab" aria-selected={activeTab === t.id} onClick={() => switchTab(t.id)} onDoubleClick={() => canEdit && setTabMenu(`rename:${t.id}`)} className={`doc-tab ${activeTab === t.id ? "active" : ""} ${activeTab === t.id && canEdit ? "pr-7" : ""}`}>
+          {tabs.map((tb) => (
+            <div key={tb.id} className="relative flex-shrink-0">
+              <button role="tab" aria-selected={activeTab === tb.id} onClick={() => switchTab(tb.id)} onDoubleClick={() => canEdit && setTabMenu(`rename:${tb.id}`)} className={`doc-tab ${activeTab === tb.id ? "active" : ""} ${activeTab === tb.id && canEdit ? "pr-7" : ""}`}>
                 <File className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                {tabMenu === `rename:${t.id}` ? (
+                {tabMenu === `rename:${tb.id}` ? (
                   <input
                     autoFocus
-                    defaultValue={t.title}
+                    defaultValue={tb.title}
                     onClick={(e) => e.stopPropagation()}
-                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== t.title) renameTab(t.id, v.slice(0, 80)); setTabMenu(null); }}
+                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== tb.title) renameTab(tb.id, v.slice(0, 80)); setTabMenu(null); }}
                     onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setTabMenu(null); }}
                     className="text-[13px] bg-white border border-brand-300 rounded px-1 w-36 focus:outline-none"
-                    aria-label="Tab name"
+                    aria-label={t("editor.tabs.name")}
                   />
                 ) : (
-                  <span className="truncate">{t.title}</span>
+                  <span className="truncate">{tb.title}</span>
                 )}
               </button>
-              {activeTab === t.id && canEdit && tabMenu !== `rename:${t.id}` && (
-                <button onClick={() => setTabMenu(tabMenu === t.id ? null : t.id)} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label={`Options for ${t.title}`}>
+              {activeTab === tb.id && canEdit && tabMenu !== `rename:${tb.id}` && (
+                <button onClick={() => setTabMenu(tabMenu === tb.id ? null : tb.id)} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label={t("editor.tabs.options", { title: tb.title })}>
                   <MoreHorizontal className="w-3.5 h-3.5" />
                 </button>
               )}
-              {tabMenu === t.id && (
+              {tabMenu === tb.id && (
                 <div className="docs-menu !top-full !left-auto right-0 !min-w-[230px]" onMouseLeave={() => setTabMenu(null)}>
-                  <button onClick={() => setTabMenu(`rename:${t.id}`)}>Rename</button>
-                  <button onClick={() => { setTabMenu(null); duplicateTab(t.id); }}>Duplicate</button>
-                  <button onClick={() => { setTabMenu(null); setConfirmPromote(t.id); }}>Use as Final submission</button>
+                  <button onClick={() => setTabMenu(`rename:${tb.id}`)}>{t("editor.rename")}</button>
+                  <button onClick={() => { setTabMenu(null); duplicateTab(tb.id); }}>{t("editor.tabs.duplicate")}</button>
+                  <button onClick={() => { setTabMenu(null); setConfirmPromote(tb.id); }}>{t("editor.tabs.useAsSubmission", { finalSubmission })}</button>
                   <div className="sep" />
-                  <button onClick={() => { setTabMenu(null); setConfirmDelete(t.id); }} className="!text-red-600">Delete tab</button>
+                  <button onClick={() => { setTabMenu(null); setConfirmDelete(tb.id); }} className="!text-red-600">{t("editor.tabs.delete")}</button>
                 </div>
               )}
             </div>
           ))}
           {canEdit && tabs.length < 20 && (
-            <button onClick={() => addTab()} className="flex items-center px-2 py-1.5 mb-0.5 rounded-lg text-gray-500 hover:bg-white/70 flex-shrink-0" aria-label="New tab" title="New tab">
+            <button onClick={() => addTab()} className="flex items-center px-2 py-1.5 mb-0.5 rounded-lg text-gray-500 hover:bg-white/70 flex-shrink-0" aria-label={t("editor.tabs.new")} title={t("editor.tabs.new")}>
               <Plus className="w-4 h-4" />
             </button>
           )}
@@ -1075,20 +1094,20 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
               <EditorContent editor={editor} spellCheck={spellcheck} />
               {showProvenance && !isMobile && <ProvenanceGutter editor={editor} sheetRef={sheetRef} interactions={interactions} alwaysAnnotate={reviewMode} zoom={zoom / 100} />}
               <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom" }} shouldShow={({ state }) => !state.selection.empty && !isMobile}>
-                <div className="bubble-menu" role="toolbar" aria-label="Selection">
+                <div className="bubble-menu" role="toolbar" aria-label={t("editor.bubble.label")}>
                   {canEdit && (
                     <>
-                      <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleBold().run()} className={`bm-btn font-bold ${editor.isActive("bold") ? "active" : ""}`} aria-label="Bold">B</button>
-                      <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleItalic().run()} className={`bm-btn italic font-serif text-[15px] ${editor.isActive("italic") ? "active" : ""}`} aria-label="Italic">I</button>
-                      <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleUnderline().run()} className={`bm-btn underline ${editor.isActive("underline") ? "active" : ""}`} aria-label="Underline">U</button>
+                      <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleBold().run()} className={`bm-btn font-bold ${editor.isActive("bold") ? "active" : ""}`} aria-label={t("editor.fmt.bold")}>B</button>
+                      <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleItalic().run()} className={`bm-btn italic font-serif text-[15px] ${editor.isActive("italic") ? "active" : ""}`} aria-label={t("editor.fmt.italic")}>I</button>
+                      <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleUnderline().run()} className={`bm-btn underline ${editor.isActive("underline") ? "active" : ""}`} aria-label={t("editor.fmt.underline")}>U</button>
                       <span className="bm-sep" />
-                      <button onMouseDown={(e) => e.preventDefault()} onClick={() => openCite()} className="bm-btn !px-[9px]"><BookMarked className="w-[13px] h-[13px]" />Cite</button>
+                      <button onMouseDown={(e) => e.preventDefault()} onClick={() => openCite()} className="bm-btn !px-[9px]"><BookMarked className="w-[13px] h-[13px]" />{t("editor.cite")}</button>
                     </>
                   )}
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={startComment} className="bm-btn !px-[9px]"><MessageSquarePlus className="w-[13px] h-[13px]" />Comment</button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("cite")} className="bm-btn !px-[9px]" title="Find sources that support this claim"><SearchIcon className="w-[13px] h-[13px]" />Support</button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("evidence")} className="bm-btn !px-[9px]" title="Supporting and contrasting evidence"><Scale className="w-[13px] h-[13px]" />Evidence</button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />Ask AI</button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={startComment} className="bm-btn !px-[9px]"><MessageSquarePlus className="w-[13px] h-[13px]" />{t("editor.comment")}</button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("cite")} className="bm-btn !px-[9px]" title={t("editor.bubble.supportTitle")}><SearchIcon className="w-[13px] h-[13px]" />{t("editor.support")}</button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("evidence")} className="bm-btn !px-[9px]" title={t("editor.bubble.evidenceTitle")}><Scale className="w-[13px] h-[13px]" />{t("editor.evidence")}</button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />{t("editor.askAi")}</button>
                 </div>
               </BubbleMenu>
             </div>
@@ -1104,7 +1123,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         onChange={() => setDialog("consent")}
         isOwner={isOwner}
         reviewMode={reviewMode}
-        status={statusLabels[thesis.status] || thesis.status.replace(/_/g, " ")}
+        status={statusLabel(t, thesis.status)}
         advisorName={thesis.professorName && thesis.professorName !== "Unassigned" ? thesis.professorName : undefined}
         words={activeTab === SUBMISSION ? thesis.wordCount : tabWords}
         targetWords={thesis.targetWords}
@@ -1113,16 +1132,16 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         citationStyle={thesis.citationStyle}
         zoom={zoom}
         onWordCount={() => setDialog("wordCount")}
-        workingTab={activeTab !== SUBMISSION ? { title: tabs.find((t) => t.id === activeTab)?.title || "Untitled tab", onGoToSubmission: () => switchTab(SUBMISSION) } : null}
+        workingTab={activeTab !== SUBMISSION ? { title: tabs.find((tb) => tb.id === activeTab)?.title || t("editor.untitledTab"), onGoToSubmission: () => switchTab(SUBMISSION) } : null}
       />
 
       {/* Mobile bottom action bar */}
       {isMobile && (
         <nav className="flex justify-around border-t border-gray-200 bg-white flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-          {([["ai", <Bot key="a" className="w-5 h-5" />, "AI"], ["comments", <MessageSquare key="c" className="w-5 h-5" />, "Comments"], ["outline", <ListTree key="o" className="w-5 h-5" />, "Outline"], ["integrity", <ShieldCheck key="i" className="w-5 h-5" />, "Integrity"]] as [SidebarKind, React.ReactNode, string][]).map(([k, icon, label]) => (
+          {([["ai", <Bot key="a" className="w-5 h-5" />, t("editor.mobile.ai")], ["comments", <MessageSquare key="c" className="w-5 h-5" />, t("editor.panel.comments")], ["outline", <ListTree key="o" className="w-5 h-5" />, t("editor.panel.outline")], ["integrity", <ShieldCheck key="i" className="w-5 h-5" />, t("glossary.integrity")]] as [SidebarKind, React.ReactNode, string][]).map(([k, icon, label]) => (
             <button key={k} onClick={() => setSidebar((s) => (s === k ? "none" : k))} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] ${sidebar === k ? "text-brand-600" : "text-gray-500"}`}>{icon}{label}</button>
           ))}
-          <button onClick={() => setMobileMenu(true)} className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-gray-500"><ChevronDown className="w-5 h-5" />More</button>
+          <button onClick={() => setMobileMenu(true)} className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-gray-500"><ChevronDown className="w-5 h-5" />{t("common.more")}</button>
         </nav>
       )}
       {isMobile && sidebar !== "none" && (
@@ -1130,7 +1149,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       )}
       <Modal open={mobileMenu} onClose={() => setMobileMenu(false)} title={thesis.title} size="sm">
         <div className="grid grid-cols-2 gap-2 text-sm">
-          {([["save", "Save now"], ["saveVersion", "Save named version"], ["versions", "Version history"], ["find", "Find & replace"], ["references", "Citations"], ["dl-docx", "Download .docx"], ["dl-md", "Download .md"], ["print", "Print / PDF"], ["pageSetup", "Page setup"], ["wordCount", "Document details"], ["provenance", showProvenance ? "Hide provenance" : "Show provenance"], ["share", "Share"], ["submit", "Submit for review"], ["privacy", "Privacy choices"], ["rename", "Rename"], ["shortcuts", "Shortcuts"]] as [MenuAction, string][]).map(([a, l]) => (
+          {([["save", t("editor.menu.saveNow")], ["saveVersion", t("editor.menu.saveVersion")], ["versions", t("editor.menu.versionHistory")], ["find", t("editor.mobile.find")], ["references", t("editor.panel.citations")], ["dl-docx", t("editor.mobile.dlDocx")], ["dl-md", t("editor.mobile.dlMd")], ["print", t("editor.mobile.print")], ["pageSetup", t("editor.menu.pageSetup")], ["wordCount", t("editor.menu.documentDetails")], ["provenance", showProvenance ? t("editor.mobile.hideProvenance") : t("editor.mobile.showProvenance")], ["share", t("editor.share")], ["submit", t("editor.menu.submit")], ["privacy", t("editor.mobile.privacy")], ["rename", t("editor.rename")], ["shortcuts", t("editor.mobile.shortcuts")]] as [MenuAction, string][]).map(([a, l]) => (
             <button key={a} onClick={() => { setMobileMenu(false); onAction(a); }} className="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-left">{l}</button>
           ))}
         </div>
@@ -1143,20 +1162,20 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       <PageSetupDialog open={dialog === "pageSetup"} onClose={() => setDialog(null)} value={ws} onSubmit={(v) => (canEdit ? updateThesis({ pageSetup: v }) : setThesis((t) => ({ ...t, pageSetup: v })))} />
       <WordCountDialog open={dialog === "wordCount"} onClose={() => setDialog(null)} stats={stats} thesis={thesis} />
       <ShareDialog open={dialog === "share"} onClose={() => setDialog(null)} thesis={thesis} />
-      <TextPromptDialog open={dialog === "rename"} onClose={() => setDialog(null)} title="Rename thesis" initial={thesis.title} onSubmit={(t) => updateThesis({ title: t }, "Renamed")} submitLabel="Rename" />
-      <TextPromptDialog open={dialog === "saveVersion"} onClose={() => setDialog(null)} title="Name this version" label="e.g. Draft sent to advisor" onSubmit={async (label) => { await saveNow(); await api(`/api/theses/${thesisId}/versions`, { method: "POST", json: { label } }).catch(() => {}); notify("Version saved", "success"); loadVersions(); }} submitLabel="Save version" />
-      <ConfirmDialog open={dialog === "submit"} onClose={() => setDialog(null)} title="Submit for review" body={<>Only the <strong>Final submission</strong> tab is submitted. Your advisor <strong>{thesis.professorName}</strong> will be notified and will see it with your provenance report and writing sessions. Working tabs stay as your notes. You can keep editing until they approve it.</>} confirmLabel="Submit" onConfirm={async () => { await saveNow(); updateThesis({ status: "under_review" }, "Submitted for review"); }} />
+      <TextPromptDialog open={dialog === "rename"} onClose={() => setDialog(null)} title={t("editor.dialog.renameTitle")} initial={thesis.title} onSubmit={(title) => updateThesis({ title }, t("editor.toast.renamed"))} submitLabel={t("editor.rename")} />
+      <TextPromptDialog open={dialog === "saveVersion"} onClose={() => setDialog(null)} title={t("editor.dialog.versionTitle")} label={t("editor.dialog.versionPlaceholder")} onSubmit={async (label) => { await saveNow(); await api(`/api/theses/${thesisId}/versions`, { method: "POST", json: { label } }).catch(() => {}); notify(t("editor.toast.versionSaved"), "success"); loadVersions(); }} submitLabel={t("editor.dialog.versionSubmit")} />
+      <ConfirmDialog open={dialog === "submit"} onClose={() => setDialog(null)} title={t("editor.dialog.submitTitle")} body={richText(t("editor.dialog.submitBody"), { finalSubmission: <strong>{finalSubmission}</strong>, advisor: <strong>{thesis.professorName}</strong> })} confirmLabel={t("editor.dialog.submitConfirm")} onConfirm={async () => { await saveNow(); updateThesis({ status: "under_review" }, t("editor.toast.submitted")); }} />
       <ShortcutsDialog open={dialog === "shortcuts"} onClose={() => setDialog(null)} />
-      <ConfirmDialog open={!!confirmPromote} onClose={() => setConfirmPromote(null)} title="Use this tab as Final submission?" confirmLabel="Use as Final submission" body={<>“{tabs.find((t) => t.id === confirmPromote)?.title}” becomes the text your advisor reviews and the integrity report measures. The current Final submission is kept as a working tab, so nothing is lost.</>} onConfirm={() => confirmPromote && promoteTab(confirmPromote)} />
-      <ConfirmDialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Delete tab?" danger confirmLabel="Delete tab" body={<>“{tabs.find((t) => t.id === confirmDelete)?.title}” and its text will be deleted. The Final submission is not affected.</>} onConfirm={() => confirmDelete && deleteTab(confirmDelete)} />
+      <ConfirmDialog open={!!confirmPromote} onClose={() => setConfirmPromote(null)} title={t("editor.dialog.promoteTitle", { finalSubmission })} confirmLabel={t("editor.tabs.useAsSubmission", { finalSubmission })} body={t("editor.dialog.promoteBody", { title: tabs.find((tb) => tb.id === confirmPromote)?.title || "", finalSubmission })} onConfirm={() => confirmPromote && promoteTab(confirmPromote)} />
+      <ConfirmDialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title={t("editor.dialog.deleteTitle")} danger confirmLabel={t("editor.tabs.delete")} body={t("editor.dialog.deleteBody", { title: tabs.find((tb) => tb.id === confirmDelete)?.title || "", finalSubmission })} onConfirm={() => confirmDelete && deleteTab(confirmDelete)} />
       <CitationDialog open={!!citeMode} onClose={() => setCiteMode(null)} selection={citeText} thesis={thesis} sessionId={sessionId} insertMode={citeMode || "cursor"} onInsert={(c) => insertCitation(c, citeMode || "cursor")} />
-      <Modal open={dialog === "about"} onClose={() => setDialog(null)} title="About Thesisfic" size="sm" footer={<button onClick={() => setDialog(null)} className="btn-primary !py-2 !px-4 text-sm">Close</button>}>
-        <p className="text-sm text-gray-600">Thesisfic regulates AI use while you write instead of guessing afterwards. Everything you insert from an AI tool is marked, every session is logged according to your consent, and your advisor sees a provenance report instead of a “probability of AI” score.</p>
+      <Modal open={dialog === "about"} onClose={() => setDialog(null)} title={t("editor.dialog.aboutTitle")} size="sm" footer={<button onClick={() => setDialog(null)} className="btn-primary !py-2 !px-4 text-sm">{t("common.close")}</button>}>
+        <p className="text-sm text-gray-600">{t("editor.dialog.aboutBody")}</p>
       </Modal>
       <VersionPreviewDialog open={!!preview} onClose={() => setPreview(null)} html={preview?.html || ""} label={preview?.label || ""} canRestore={canEdit} onRestore={async () => { if (!preview) return; const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${preview.id}`, { method: "POST" }).catch(() => null); if (d) { restoreSubmission(d.thesis); loadVersions(); } }} />
       <PasteAttributionDialog open={!!paste} words={paste?.words || 0} matched={paste?.matched || null} onDecide={decidePaste} />
       {me?.policy && (
-        <ConsentModal open={dialog === "consent"} onClose={() => setDialog(null)} policy={me.policy} existing={me.consent} thesisId={thesisId} onGranted={async () => { await refreshMe(); if (!monitorRef.current) startSession(); else notify("Monitoring choices updated. They apply from your next session.", "success"); }} />
+        <ConsentModal open={dialog === "consent"} onClose={() => setDialog(null)} policy={me.policy} existing={me.consent} thesisId={thesisId} onGranted={async () => { await refreshMe(); if (!monitorRef.current) startSession(); else notify(t("editor.toast.monitoringUpdated"), "success"); }} />
       )}
       {toast && <Toast message={toast.message} kind={toast.kind} onClose={() => setToast(null)} />}
     </div>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Link2, Loader2, Search, Sparkles } from "lucide-react";
 import { Modal } from "../ui";
 import { api } from "@/lib/client";
+import { useT } from "@/lib/i18n/client";
 import { formatReference, Reference, ThesisDoc } from "./types";
 
 type Candidate = Omit<Reference, "id"> & { origin: "crossref" | "openlibrary" | "page" | "ai" | "library" | "manual"; verified: boolean; note?: string };
@@ -17,15 +18,6 @@ export interface CitationInsert {
 }
 
 const EMPTY: Candidate = { type: "article", authors: "", year: "", title: "", source: "", volume: "", issue: "", pages: "", doi: "", url: "", origin: "manual", verified: false };
-
-const ORIGIN_LABEL: Record<Candidate["origin"], string> = {
-  crossref: "Crossref · verified metadata",
-  openlibrary: "Open Library · verified metadata",
-  page: "Web page metadata",
-  ai: "AI suggestion · please check",
-  library: "Already in your references",
-  manual: "Manual",
-};
 
 const sameRef = (a: Partial<Reference>, b: Partial<Reference>) =>
   (!!a.doi && !!b.doi && a.doi.toLowerCase() === b.doi.toLowerCase()) || (!!a.url && !!b.url && a.url === b.url) || (!!a.title && !!b.title && a.title.trim().toLowerCase() === b.title.trim().toLowerCase());
@@ -47,6 +39,7 @@ export default function CitationDialog({
   onInsert: (c: CitationInsert) => void;
   insertMode: "selection" | "cursor" | "library";
 }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -81,7 +74,7 @@ export default function CitationDialog({
       setMeta({ aiUsed: d.aiUsed, aiAvailable: d.aiAvailable });
       setCandidates(d.candidates);
       if (d.candidates.length) choose(d.candidates[0], 0);
-      else setError(query ? "No match found. Check the DOI or URL, or fill in the fields by hand." : "No publications matched the selected text. Paste the DOI, URL or full reference of your source.");
+      else setError(query ? t("editor.cite.noMatch") : t("editor.cite.noMatchSelection"));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -128,13 +121,13 @@ export default function CitationDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title="Add citation"
+      title={t("editor.cite.title")}
       size="lg"
       footer={
         <>
-          <button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">Cancel</button>
+          <button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button>
           <button onClick={submit} disabled={!valid} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">
-            {insertMode === "library" ? (existing ? "Update reference" : "Add to references") : "Insert citation"}
+            {insertMode === "library" ? (existing ? t("editor.cite.updateReference") : t("editor.cite.addToReferences")) : t("editor.cite.insert")}
           </button>
         </>
       }
@@ -142,13 +135,13 @@ export default function CitationDialog({
       <div className="space-y-4 text-sm">
         {selection && insertMode === "selection" && (
           <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-            <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide mb-1">Passage you are citing</div>
+            <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide mb-1">{t("editor.cite.passage")}</div>
             <div className="text-gray-700 line-clamp-3">“{selection}”</div>
           </div>
         )}
 
         <div>
-          <label htmlFor="cite-query" className="block text-xs font-medium text-gray-500 mb-1">Source: DOI, ISBN, URL or the reference as you have it</label>
+          <label htmlFor="cite-query" className="block text-xs font-medium text-gray-500 mb-1">{t("editor.cite.queryLabel")}</label>
           <div className="flex gap-2">
             <input
               id="cite-query"
@@ -156,37 +149,37 @@ export default function CitationDialog({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); search(); } }}
-              placeholder="10.1038/s41586-019-0912-1 · https://… · Reichstein 2019 deep learning Earth system"
+              placeholder={t("editor.cite.queryPlaceholder")}
               className="input-field !py-2"
             />
             <button onClick={search} disabled={loading || (!query.trim() && !selection)} className="btn-primary !py-2 !px-3 text-sm whitespace-nowrap disabled:opacity-40">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : query.trim() ? <Search className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-              <span className="ml-1.5">{query.trim() ? "Find" : "Suggest sources"}</span>
+              <span className="ml-1.5">{query.trim() ? t("editor.cite.find") : t("editor.cite.suggest")}</span>
             </button>
           </div>
           <p className="text-[11px] text-gray-400 mt-1">
-            Metadata comes from bibliographic registries (Crossref, Open Library) or the page itself. The AI only structures what your source contains; it never invents references.
-            {meta && !meta.aiAvailable && " No AI account connected: registry search only."}
+            {t("editor.cite.registryNote")}
+            {meta && !meta.aiAvailable && t("editor.cite.noAiAccount")}
           </p>
           {error && <div className="mt-2 p-2.5 rounded-lg bg-amber-50 text-amber-800 text-xs">{error}</div>}
         </div>
 
         {(candidates.length > 0 || sorted.length > 0) && (
           <div className="space-y-1.5">
-            {candidates.length > 0 && <div className="text-xs font-medium text-gray-500">Results</div>}
+            {candidates.length > 0 && <div className="text-xs font-medium text-gray-500">{t("editor.cite.results")}</div>}
             {candidates.map((c, i) => (
               <label key={`${c.title}-${i}`} className={`flex gap-2 p-2.5 rounded-xl border cursor-pointer ${picked === i ? "border-brand-500 bg-brand-50/50" : "border-gray-200 hover:border-gray-300"}`}>
                 <input type="radio" name="cand" checked={picked === i} onChange={() => choose(c, i)} className="mt-1" />
                 <div className="min-w-0">
-                  <div className="font-medium text-gray-800 line-clamp-2">{c.title || "(untitled)"}</div>
+                  <div className="font-medium text-gray-800 line-clamp-2">{c.title || t("editor.cite.untitled")}</div>
                   <div className="text-xs text-gray-500 truncate">{[c.authors, c.year, c.source].filter(Boolean).join(" · ")}</div>
-                  <div className={`text-[10px] mt-0.5 inline-flex items-center gap-1 ${c.verified ? "text-emerald-700" : "text-amber-700"}`}>{c.verified && <BadgeCheck className="w-3 h-3" />}{ORIGIN_LABEL[c.origin]}</div>
+                  <div className={`text-[10px] mt-0.5 inline-flex items-center gap-1 ${c.verified ? "text-emerald-700" : "text-amber-700"}`}>{c.verified && <BadgeCheck className="w-3 h-3" />}{t(`editor.cite.origin.${c.origin}`)}</div>
                 </div>
               </label>
             ))}
             {sorted.length > 0 && (
               <div className="pt-1">
-                <label htmlFor="cite-existing" className="text-xs font-medium text-gray-500">Or reuse one of your references</label>
+                <label htmlFor="cite-existing" className="text-xs font-medium text-gray-500">{t("editor.cite.reuse")}</label>
                 <select
                   id="cite-existing"
                   value=""
@@ -196,7 +189,7 @@ export default function CitationDialog({
                   }}
                   className="input-field !py-1.5 mt-1 text-xs"
                 >
-                  <option value="">Choose a saved reference…</option>
+                  <option value="">{t("editor.cite.chooseSaved")}</option>
                   {sorted.map((r) => <option key={r.id} value={r.id}>{`${r.authors.split(",")[0]} (${r.year}) — ${r.title.slice(0, 70)}`}</option>)}
                 </select>
               </div>
@@ -206,40 +199,40 @@ export default function CitationDialog({
 
         <div className="border-t border-gray-100 pt-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-semibold text-gray-700">Review and edit before inserting</div>
+            <div className="text-xs font-semibold text-gray-700">{t("editor.cite.review")}</div>
             {form.note && <span className="text-[11px] text-amber-700">{form.note}</span>}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs">
-            <label className="col-span-2 sm:col-span-1">Type<select value={form.type} onChange={set("type")} className="input-field !py-1.5 !text-xs mt-0.5">{["article", "book", "chapter", "web", "thesis"].map((t) => <option key={t} value={t}>{t}</option>)}</select></label>
-            <label className="col-span-2 sm:col-span-4">Authors<input value={form.authors} onChange={set("authors")} placeholder="Last, F., Last, F." className="input-field !py-1.5 !text-xs mt-0.5" /></label>
-            <label className="col-span-2 sm:col-span-1">Year<input value={form.year} onChange={set("year")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
-            <label className="col-span-2 sm:col-span-6">Title<input value={form.title} onChange={set("title")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
-            <label className="col-span-2 sm:col-span-3">Journal / publisher / website<input value={form.source} onChange={set("source")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
-            <label>Volume<input value={form.volume} onChange={set("volume")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
-            <label>Issue<input value={form.issue} onChange={set("issue")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
-            <label>Pages<input value={form.pages} onChange={set("pages")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
-            <label className="col-span-2 sm:col-span-3">DOI<input value={form.doi} onChange={set("doi")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
-            <label className="col-span-2 sm:col-span-3">Link (URL)<input value={form.url} onChange={set("url")} placeholder="https://…" className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label className="col-span-2 sm:col-span-1">{t("editor.cite.type")}<select value={form.type} onChange={set("type")} className="input-field !py-1.5 !text-xs mt-0.5">{["article", "book", "chapter", "web", "thesis"].map((ty) => <option key={ty} value={ty}>{t(`editor.refs.type.${ty}`)}</option>)}</select></label>
+            <label className="col-span-2 sm:col-span-4">{t("editor.cite.authors")}<input value={form.authors} onChange={set("authors")} placeholder={t("editor.cite.authorsPlaceholder")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label className="col-span-2 sm:col-span-1">{t("editor.refs.year")}<input value={form.year} onChange={set("year")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label className="col-span-2 sm:col-span-6">{t("editor.refs.title")}<input value={form.title} onChange={set("title")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label className="col-span-2 sm:col-span-3">{t("editor.refs.sourceField")}<input value={form.source} onChange={set("source")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label>{t("editor.refs.volume")}<input value={form.volume} onChange={set("volume")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label>{t("editor.refs.issue")}<input value={form.issue} onChange={set("issue")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label>{t("editor.refs.pages")}<input value={form.pages} onChange={set("pages")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label className="col-span-2 sm:col-span-3">{t("editor.refs.doi")}<input value={form.doi} onChange={set("doi")} className="input-field !py-1.5 !text-xs mt-0.5" /></label>
+            <label className="col-span-2 sm:col-span-3">{t("editor.cite.link")}<input value={form.url} onChange={set("url")} placeholder="https://…" className="input-field !py-1.5 !text-xs mt-0.5" /></label>
           </div>
         </div>
 
         {insertMode !== "library" && (
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="space-y-2 text-xs">
-              <label className="flex items-center gap-2">Style<select value={style} onChange={(e) => setStyle(e.target.value as ThesisDoc["citationStyle"])} className="input-field !py-1 !text-xs !w-auto">{["APA", "MLA", "Chicago", "IEEE", "Harvard"].map((s) => <option key={s}>{s}</option>)}</select></label>
-              <label className="flex items-center gap-2">Page cited<input value={locator} onChange={(e) => setLocator(e.target.value)} placeholder="optional, e.g. 12" className="input-field !py-1 !text-xs !w-28" /></label>
+              <label className="flex items-center gap-2">{t("editor.cite.style")}<select value={style} onChange={(e) => setStyle(e.target.value as ThesisDoc["citationStyle"])} className="input-field !py-1 !text-xs !w-auto">{["APA", "MLA", "Chicago", "IEEE", "Harvard"].map((s) => <option key={s}>{s}</option>)}</select></label>
+              <label className="flex items-center gap-2">{t("editor.cite.pageCited")}<input value={locator} onChange={(e) => setLocator(e.target.value)} placeholder={t("editor.cite.pagePlaceholder")} className="input-field !py-1 !text-xs !w-28" /></label>
               {insertMode === "selection" && (
                 <>
-                  <label className="flex items-center gap-2"><input type="checkbox" checked={markPassage} onChange={(e) => setMarkPassage(e.target.checked)} />Highlight the cited passage</label>
-                  <label className={`flex items-center gap-2 ${linkUrl ? "" : "opacity-40"}`}><input type="checkbox" disabled={!linkUrl} checked={linkText && !!linkUrl} onChange={(e) => setLinkText(e.target.checked)} /><Link2 className="w-3.5 h-3.5" />Link the passage to the source</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={markPassage} onChange={(e) => setMarkPassage(e.target.checked)} />{t("editor.cite.highlightPassage")}</label>
+                  <label className={`flex items-center gap-2 ${linkUrl ? "" : "opacity-40"}`}><input type="checkbox" disabled={!linkUrl} checked={linkText && !!linkUrl} onChange={(e) => setLinkText(e.target.checked)} /><Link2 className="w-3.5 h-3.5" />{t("editor.cite.linkPassage")}</label>
                 </>
               )}
             </div>
             <div className="p-3 rounded-xl bg-gray-50 text-xs space-y-1.5 min-w-0">
-              <div className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Preview</div>
-              <div><span className="text-gray-400">In text:</span> <span className="font-medium text-emerald-800">{valid ? preview.inText : "—"}</span></div>
-              <div className="text-gray-700 break-words"><span className="text-gray-400">Reference list:</span> {valid ? <span dangerouslySetInnerHTML={{ __html: preview.full.replace(/<(?!\/?em>)[^>]*>/g, "") }} /> : "—"}</div>
-              {existing && <div className="text-[11px] text-brand-700">Already in your references: it will be reused.</div>}
+              <div className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">{t("editor.cite.preview")}</div>
+              <div><span className="text-gray-400">{t("editor.cite.inText")}</span> <span className="font-medium text-emerald-800">{valid ? preview.inText : "—"}</span></div>
+              <div className="text-gray-700 break-words"><span className="text-gray-400">{t("editor.cite.referenceList")}</span> {valid ? <span dangerouslySetInnerHTML={{ __html: preview.full.replace(/<(?!\/?em>)[^>]*>/g, "") }} /> : "—"}</div>
+              {existing && <div className="text-[11px] text-brand-700">{t("editor.cite.reused")}</div>}
             </div>
           </div>
         )}

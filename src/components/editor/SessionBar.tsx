@@ -2,6 +2,8 @@
 
 import { ShieldCheck, StickyNote } from "lucide-react";
 import type { ConsentScopes } from "../useUser";
+import { useFormat, useT } from "@/lib/i18n/client";
+import { richText } from "./types";
 
 interface Props {
   /** True while a writing session is recording for the owner. */
@@ -27,15 +29,15 @@ interface Props {
 }
 
 const SCOPE_WORDS: { key: keyof ConsentScopes; label: string }[] = [
-  { key: "paste", label: "pastes" },
-  { key: "aiInteractions", label: "AI use" },
-  { key: "tabActivity", label: "tab activity" },
-  { key: "keystrokes", label: "typing rhythm" },
+  { key: "paste", label: "editor.session.scope.paste" },
+  { key: "aiInteractions", label: "editor.session.scope.aiInteractions" },
+  { key: "tabActivity", label: "editor.session.scope.tabActivity" },
+  { key: "keystrokes", label: "editor.session.scope.keystrokes" },
 ];
 
-function joinList(items: string[]) {
+function joinList(items: string[], and: string) {
   if (items.length <= 1) return items.join("");
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+  return `${items.slice(0, -1).join(", ")}${and}${items[items.length - 1]}`;
 }
 
 /**
@@ -43,7 +45,10 @@ function joinList(items: string[]) {
  * terms, and the document facts an advisor glances at (status, words, page, citation style).
  */
 export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, advisorName, words, targetWords, page, pages, citationStyle, zoom, onWordCount, workingTab }: Props) {
-  const granted = scopes ? SCOPE_WORDS.filter((s) => scopes[s.key]).map((s) => s.label) : [];
+  const t = useT();
+  const fmt = useFormat();
+  const granted = scopes ? SCOPE_WORDS.filter((s) => scopes[s.key]).map((s) => t(s.label)) : [];
+  const finalSubmission = t("glossary.finalSubmission");
   const recording = sessionActive && scopes;
 
   let left: React.ReactNode;
@@ -52,20 +57,20 @@ export default function SessionBar({ sessionActive, scopes, onChange, isOwner, r
       <span className="flex items-center gap-2 min-w-0">
         <StickyNote className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
         <span className="truncate">
-          Working tab <b className="font-semibold text-gray-900">{workingTab.title}</b> · not submitted; only Final submission counts
+          {richText(t("editor.session.workingTab", { finalSubmission }), { title: <b className="font-semibold text-gray-900">{workingTab.title}</b> })}
         </span>
-        <button onClick={workingTab.onGoToSubmission} className="underline decoration-dotted hover:text-gray-900 flex-shrink-0">Go to Final submission</button>
+        <button onClick={workingTab.onGoToSubmission} className="underline decoration-dotted hover:text-gray-900 flex-shrink-0">{t("editor.session.goToSubmission", { finalSubmission })}</button>
       </span>
     );
   } else if (reviewMode && !isOwner) {
     left = (
       <span className="flex items-center gap-2 min-w-0">
         <ShieldCheck className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" />
-        <span className="truncate">Review mode · AI-assisted text in purple, quoted or pasted text in amber · select text to comment</span>
+        <span className="truncate">{t("editor.session.reviewMode")}</span>
       </span>
     );
   } else if (!isOwner) {
-    left = <span className="truncate">Read-only view</span>;
+    left = <span className="truncate">{t("editor.session.readOnlyView")}</span>;
   } else {
     left = (
       <span className="flex items-center gap-[7px] min-w-0">
@@ -74,33 +79,33 @@ export default function SessionBar({ sessionActive, scopes, onChange, isOwner, r
           {recording ? (
             granted.length ? (
               <>
-                Session recording <b className="font-semibold text-gray-900">{joinList(granted)}</b>
-                {!scopes.keystrokes && ", not keystrokes"}
+                {richText(t("editor.session.recording"), { list: <b className="font-semibold text-gray-900">{joinList(granted, t("editor.session.and"))}</b> })}
+                {!scopes.keystrokes && t("editor.session.notKeystrokes")}
               </>
             ) : (
-              <>Session active, <b className="font-semibold text-gray-900">recording nothing</b></>
+              <>{richText(t("editor.session.activeNothing"), { recordingNothing: <b className="font-semibold text-gray-900">{t("editor.session.recordingNothing")}</b> })}</>
             )
           ) : (
-            "Monitoring paused"
+            t("editor.session.paused")
           )}
           {" · "}
-          <button onClick={onChange} className="underline decoration-dotted hover:text-gray-900">change</button>
+          <button onClick={onChange} className="underline decoration-dotted hover:text-gray-900">{t("editor.session.change")}</button>
         </span>
       </span>
     );
   }
 
   return (
-    <footer className="hidden md:flex items-center gap-[18px] h-[30px] px-4 bg-white border-t border-gray-200 text-[12px] text-gray-500 flex-shrink-0 whitespace-nowrap" aria-label="Session bar">
+    <footer className="hidden md:flex items-center gap-[18px] h-[30px] px-4 bg-white border-t border-gray-200 text-[12px] text-gray-500 flex-shrink-0 whitespace-nowrap" aria-label={t("glossary.sessionBar")}>
       <div className="min-w-0 flex-1 flex">{left}</div>
       <span className="flex-shrink-0">
         {status}
-        {advisorName ? ` · Advisor: ${advisorName}` : ""}
+        {advisorName ? ` · ${t("editor.session.advisor", { name: advisorName })}` : ""}
       </span>
-      <button onClick={onWordCount} className="hover:text-gray-900 flex-shrink-0" title="Document details">
-        {words.toLocaleString()} of {targetWords.toLocaleString()} words
+      <button onClick={onWordCount} className="hover:text-gray-900 flex-shrink-0" title={t("editor.details.title")}>
+        {t("editor.session.wordsOf", { words: fmt.number(words), target: fmt.number(targetWords) })}
       </button>
-      <span className="flex-shrink-0">Page ~{page} of {pages}</span>
+      <span className="flex-shrink-0">{t("editor.session.page", { page, pages })}</span>
       <span className="flex-shrink-0">{citationStyle}</span>
       {zoom !== 100 && <span className="flex-shrink-0">{zoom}%</span>}
     </footer>

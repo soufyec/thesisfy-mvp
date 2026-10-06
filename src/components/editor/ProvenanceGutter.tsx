@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { Editor } from "@tiptap/react";
 import { provenanceStatsKey, type BlockProvenance } from "./extensions";
-import { MODE_LABELS, PROVIDER_LABELS, type InteractionLite } from "./types";
+import { useFormat, useT } from "@/lib/i18n/client";
+import { modeLabel, providerLabel, type InteractionLite } from "./types";
 
 interface Props {
   editor: Editor;
@@ -26,22 +27,14 @@ const COLOR = { human: "bg-prov-human", ai: "bg-prov-ai", paste: "bg-prov-paste"
 const NOTE_TEXT = { ai: "text-prov-ai", paste: "text-prov-paste-deep" } as const;
 const NOTE_BORDER = { ai: "border-prov-ai", paste: "border-prov-paste" } as const;
 
-function providerName(id?: string | null) {
-  if (!id) return "AI";
-  return PROVIDER_LABELS[id] || id.charAt(0).toUpperCase() + id.slice(1);
-}
-
-function shortDate(iso: string) {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-}
-
 /**
  * Provenance gutter: for every top-level block, a label (¶n · AI · Q) and a 3px bar in the left margin of the
  * sheet, coloured by the dominant source of its words, plus a right-margin note for AI-assisted and pasted blocks.
  * Positions follow the editor DOM and are recomputed on every update and resize.
  */
 export default function ProvenanceGutter({ editor, sheetRef, interactions = [], alwaysAnnotate = false, zoom = 1 }: Props) {
+  const t = useT();
+  const fmt = useFormat();
   const [placed, setPlaced] = useState<Placed[]>([]);
   const [hovered, setHovered] = useState<number | null>(null);
   const frame = useRef<number | null>(null);
@@ -118,17 +111,18 @@ export default function ProvenanceGutter({ editor, sheetRef, interactions = [], 
     };
   }, [sheetRef, placed, alwaysAnnotate, zoom]);
 
+  const wordsLabel = (n: number) => (n === 1 ? t("common.word_one") : t("common.words", { n }));
   const note = (b: Placed): { line1: string; line2: string } | null => {
     if (!b.first) return null;
     const words = b.first.source === "ai" ? b.words.ai : b.words.paste;
     if (b.first.source === "ai") {
       const ix = b.first.interactionId ? byInteraction.get(b.first.interactionId) : undefined;
-      const provider = providerName(ix?.provider || b.first.provider);
-      const mode = ix ? MODE_LABELS[ix.mode] || ix.mode : b.first.label || "AI-assisted";
-      const when = ix ? shortDate(ix.timestamp) : "";
-      return { line1: `${provider} · ${mode}`, line2: `${when ? `${when}, ` : ""}${words} words` };
+      const provider = providerLabel(t, ix?.provider || b.first.provider);
+      const mode = ix ? modeLabel(t, ix.mode) : b.first.label || t("glossary.aiAssisted");
+      const when = ix && !Number.isNaN(new Date(ix.timestamp).getTime()) ? fmt.date(ix.timestamp, { day: "numeric", month: "short" }) : "";
+      return { line1: `${provider} · ${mode}`, line2: `${when ? `${when}, ` : ""}${wordsLabel(words)}` };
     }
-    return { line1: b.first.label ? "Pasted · attributed" : "Pasted · source not given", line2: b.first.label || `${words} words` };
+    return { line1: b.first.label ? t("editor.gutter.pastedAttributed") : t("editor.gutter.pastedNoSource"), line2: b.first.label || wordsLabel(words) };
   };
 
   return (

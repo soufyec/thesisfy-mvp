@@ -1,4 +1,6 @@
+import { createElement, Fragment, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
+import type { Translate } from "@/lib/i18n/dictionary";
 
 export interface ThesisDoc {
   id: string;
@@ -141,3 +143,53 @@ export const MODE_LABELS: Record<string, string> = {
   chat: "Ask", brainstorm: "Brainstorm", outline: "Outline", critique: "Critique", grammar: "Grammar", summarize: "Summarize", explain: "Explain", citations: "Citations", gaps: "Find gaps", paraphrase_check: "Paraphrase", copilot: "Research copilot", paste: "Pasted",
 };
 export const PROVIDER_LABELS: Record<string, string> = { anthropic: "Claude", openai: "GPT", google: "Gemini", mistral: "Mistral", demo: "Demo", assistant: "AI", external: "External AI" };
+
+/** Localised assistant-mode name: the assistant area owns `assistant.mode.<id>.label`; MODE_LABELS is the English fallback. */
+export function modeLabel(t: Translate, mode: string): string {
+  if (mode === "paste") return t("editor.mode.paste");
+  const key = `assistant.mode.${mode}.label`;
+  const label = t(key);
+  return label === key ? MODE_LABELS[mode] || mode : label;
+}
+
+/** Localised provider name; brand names (Claude, GPT, Gemini, Mistral) are never translated. */
+export function providerLabel(t: Translate, id?: string | null): string {
+  if (!id) return t("editor.provider.ai");
+  if (id === "demo") return t("editor.provider.demo");
+  if (id === "assistant") return t("editor.provider.ai");
+  if (id === "external") return t("editor.provider.external");
+  return PROVIDER_LABELS[id] || id.charAt(0).toUpperCase() + id.slice(1);
+}
+
+/** Relative time ("3h ago") in the active locale; older than 30 days falls back to the localised date. */
+export function formatTimeAgo(iso: string | Date, t: Translate, date: (d: Date) => string): string {
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  const m = Math.round((Date.now() - d.getTime()) / 60000);
+  if (m < 1) return t("editor.time.justNow");
+  if (m < 60) return t("editor.time.minutesAgo", { n: m });
+  const h = Math.round(m / 60);
+  if (h < 24) return t("editor.time.hoursAgo", { n: h });
+  const days = Math.round(h / 24);
+  if (days < 30) return t("editor.time.daysAgo", { n: days });
+  return date(d);
+}
+
+/** Thesis status label in the active locale; unknown statuses fall back to the raw value without underscores. */
+export function statusLabel(t: Translate, status: string): string {
+  const key = `editor.status.${status}`;
+  const label = t(key);
+  return label === key ? status.replace(/_/g, " ") : label;
+}
+
+/** Renders a template with `{name}` slots replaced by React nodes (e.g. `<strong>`), so bold words survive translation. */
+export function richText(template: string, values: Record<string, ReactNode>): ReactNode {
+  const parts = template.split(/(\{\w+\})/);
+  return createElement(
+    Fragment,
+    null,
+    ...parts.map((part, i) => {
+      const m = /^\{(\w+)\}$/.exec(part);
+      return m && m[1] in values ? createElement(Fragment, { key: i }, values[m[1]]) : part;
+    }),
+  );
+}
