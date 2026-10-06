@@ -73,7 +73,10 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 
 ## 6. Reglas de copy
 
-- Idioma de la UI: inglés. Documentación interna: español.
+- Idiomas de la UI: inglés (base), español y francés. Documentación interna: español.
+- Ninguna cadena visible se escribe literal en un componente: pasa por `useT()` (cliente) o `getT()` (servidor) de `src/lib/i18n`. Las claves viven en `src/lib/i18n/messages/<área>.ts`, con el inglés como fuente de claves y `es`/`fr` tipados contra él (falta una traducción → error de compilación). Fechas y números con `useFormat()`.
+- Español en segunda persona informal (tú); francés con vous. Mismo tono sobrio, sin exclamaciones. Glosario obligatorio en `messages/common.ts` (`glossary.*`): Written → Escrito / Rédigé; AI-assisted → Con ayuda de IA / Assisté par IA; Quoted or pasted → Citado o pegado / Cité ou collé; Integrity ledger → Registro de integridad / Registre d'intégrité; Final submission → Entrega final / Dépôt final; Notice → Aviso / Avis. "Thesisfic AI" y "Research copilot" no se traducen.
+- Entrada por idioma: `/es`, `/fr`, `/en` (y `?lang=`) fijan la cookie `locale`; el selector `LanguageSwitcher` la cambia sin recargar y guarda `preferences.language` si hay sesión.
 - Tono: sobrio, concreto, segunda persona. Sin signos de exclamación, sin "¡Bienvenido!", sin "empower", "transform", "revolutionary".
 - Hablar de "notices", "attributed", "declared"; nunca de "detected", "caught", "suspicious", "cheating".
 - Toda acción irreversible o con coste muestra una frase de consecuencia antes del botón (principio 5).
