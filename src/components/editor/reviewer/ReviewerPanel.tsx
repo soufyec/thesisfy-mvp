@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { AlertTriangle, Check, ClipboardCheck, Crosshair, Loader2, Send, X } from "lucide-react";
-import { api, timeAgo } from "@/lib/client";
+import { api } from "@/lib/client";
+import { useFormat, useT } from "@/lib/i18n/client";
+import type { Translate } from "@/lib/i18n/dictionary";
 import { PanelShell } from "../Sidebars";
 import { anchorStatusFor, AnchorStatus, locateQuote, tokenJaccard } from "@/lib/ai/anchor";
 import type { AnchoredReviewComment, ReviewCategory, ReviewScope, ReviewSeverity } from "@/lib/ai/reviewer";
@@ -65,7 +67,9 @@ interface RunResponse {
 
 const SEVERITIES: ReviewSeverity[] = ["high", "medium", "low"];
 const SEVERITY_RANK: Record<ReviewSeverity, number> = { high: 0, medium: 1, low: 2 };
-const SEVERITY_LABEL: Record<ReviewSeverity, string> = { high: "High", medium: "Medium", low: "Low" };
+const SEVERITY_LABEL: Record<ReviewSeverity, string> = { high: "panelsReview.reviewer.severityHigh", medium: "panelsReview.reviewer.severityMedium", low: "panelsReview.reviewer.severityLow" };
+const SEVERITY_GROUP_LABEL: Record<ReviewSeverity, string> = { high: "panelsReview.reviewer.severityGroupHigh", medium: "panelsReview.reviewer.severityGroupMedium", low: "panelsReview.reviewer.severityGroupLow" };
+const SCOPE_LABEL: Record<ReviewScope, string> = { selection: "panelsReview.reviewer.scopeSelection", section: "panelsReview.reviewer.scopeSection", document: "panelsReview.reviewer.scopeDocument" };
 const SEVERITY_CLASS: Record<ReviewSeverity, string> = { high: "text-red-600", medium: "text-amber-600", low: "text-gray-500" };
 const CATEGORY_CLASS: Record<ReviewCategory, string> = {
   argument: "bg-brand-50 text-brand-700",
@@ -78,6 +82,26 @@ const CATEGORY_CLASS: Record<ReviewCategory, string> = {
 const PAGE = 5;
 const QUESTION_PREFIX = "\n\nQuestion: ";
 const sharedKey = (runId: string) => `reviewer_shared_${runId}`;
+
+/** Picks the `_one` key for a count of 1, the general key otherwise. */
+const plural = (t: Translate, key: string, n: number, vars?: Record<string, string | number>) => t(n === 1 ? `${key}_one` : key, { n, ...vars });
+
+/** Relative time in the active language (same buckets as `timeAgo` in lib/client). */
+function useTimeAgo() {
+  const t = useT();
+  const fmt = useFormat();
+  return (iso: string | Date): string => {
+    const d = typeof iso === "string" ? new Date(iso) : iso;
+    const m = Math.round((Date.now() - d.getTime()) / 60000);
+    if (m < 1) return t("panelsReview.reviewer.agoJustNow");
+    if (m < 60) return t("panelsReview.reviewer.agoMinutes", { n: m });
+    const h = Math.round(m / 60);
+    if (h < 24) return t("panelsReview.reviewer.agoHours", { n: h });
+    const days = Math.round(h / 24);
+    if (days < 30) return t("panelsReview.reviewer.agoDays", { n: days });
+    return fmt.date(d);
+  };
+}
 
 // ---------- plain text ↔ ProseMirror positions ----------
 
@@ -130,12 +154,13 @@ function rangeFor(segs: Seg[], start: number, end: number): { from: number; to: 
 }
 
 /** The section (heading block to the next heading of the same or higher level) the cursor is in. */
-function sectionRange(editor: Editor): { from: number; to: number; label: string } {
+function sectionRange(editor: Editor): { from: number; to: number; label: string; kind: "start" | "untitled" | "heading" } {
   const { doc, selection } = editor.state;
   const cursor = selection.from;
   let from = 0;
   let to = doc.content.size;
   let label = "Start of document";
+  let kind: "start" | "untitled" | "heading" = "start";
   let level = 0;
   let started = false;
   let closed = false;
@@ -144,6 +169,7 @@ function sectionRange(editor: Editor): { from: number; to: number; label: string
     if (offset <= cursor) {
       from = offset;
       label = node.textContent.trim() || "Untitled section";
+      kind = node.textContent.trim() ? "heading" : "untitled";
       level = node.attrs.level as number;
       started = true;
       closed = false;
@@ -153,7 +179,7 @@ function sectionRange(editor: Editor): { from: number; to: number; label: string
     }
   });
   if (!closed) to = doc.content.size;
-  return { from, to, label };
+  return { from, to, label, kind };
 }
 
 function markRange(editor: Editor, anchorId: string): { from: number; to: number } | null {
@@ -188,6 +214,8 @@ function toItem(editor: Editor, c: CommentRow): ReviewItem | null {
 // ---------- component ----------
 
 export default function ReviewerPanel({ editor, thesisId, sessionId, userId, selectionText, canEdit, onCommentsChanged, onJumpToComment, onClose }: ReviewerPanelProps) {
+  const t = useT();
+  const timeAgo = useTimeAgo();
   const [rubric, setRubric] = useState<RubricCriterion[]>([]);
   const [runs, setRuns] = useState<ReviewRun[]>([]);
   const [categories, setCategories] = useState<Set<ReviewCategory>>(new Set());
@@ -303,16 +331,16 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
     setError("");
     const range = scopeRange();
     if (!range || range.to <= range.from) {
-      setError(scope === "selection" ? "Select some text in the document first." : "There is no text in this scope.");
+      setError(scope === "selection" ? t("panelsReview.reviewer.errSelect") : t("panelsReview.reviewer.errNoScopeText"));
       return;
     }
     const sent = plainText(editor, range.from, range.to);
     if (!sent.text.trim()) {
-      setError("There is no text to review in this scope.");
+      setError(t("panelsReview.reviewer.errNoReviewText"));
       return;
     }
     setPhase("running");
-    setProgress("Asking the reviewer…");
+    setProgress(t("panelsReview.reviewer.progressAsking"));
     let res: RunResponse;
     try {
       res = await api<RunResponse>("/api/ai/reviewer", { method: "POST", json: { thesisId, scope, text: sent.text, sectionLabel: scope === "section" ? range.label : undefined, sessionId, categories: Array.from(categories) } });
@@ -322,7 +350,7 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
       return;
     }
     setPhase("applying");
-    setProgress(`Anchoring ${res.comments.length} comment${res.comments.length === 1 ? "" : "s"}…`);
+    setProgress(plural(t, "panelsReview.reviewer.anchoring", res.comments.length));
     const keep = { from: editor.state.selection.from, to: editor.state.selection.to };
     // The document may have changed while the request ran: re-read the range and fall back to re-locating quotes.
     const live = plainText(editor, Math.min(range.from, editor.state.doc.content.size), Math.min(range.to, editor.state.doc.content.size));
@@ -378,7 +406,7 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
       r = a ? rangeFor(whole.segs, a.start, a.end) : null;
     }
     if (!r) {
-      setError("This passage is no longer in the document.");
+      setError(t("panelsReview.reviewer.errGone"));
       return;
     }
     editor.chain().focus().setTextSelection(r).run();
@@ -397,7 +425,7 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
   const dismiss = async (it: ReviewItem, reason: string) => {
     await api("/api/ai/reviewer", { method: "PATCH", json: { thesisId, commentId: it.id, dismissedReason: reason } }).catch((e: Error) => setError(e.message));
     if (canEdit) editor.commands.unsetComment(it.anchorId);
-    setItems((xs) => xs.map((x) => (x.id === it.id ? { ...x, resolved: true, dismissedReason: reason || "No reason given" } : x)));
+    setItems((xs) => xs.map((x) => (x.id === it.id ? { ...x, resolved: true, dismissedReason: reason || t("panelsReview.reviewer.noReason") } : x)));
     setDismissing(null);
     onCommentsChanged();
   };
@@ -427,40 +455,40 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
   const latestOpen = latestRun ? open.filter((x) => x.reviewRunId === latestRun.id).length : 0;
 
   return (
-    <PanelShell title="AI reviewer" icon={<ClipboardCheck className="w-4 h-4 text-gray-500" />} onClose={onClose}>
+    <PanelShell title={t("panelsReview.reviewer.title")} icon={<ClipboardCheck className="w-4 h-4 text-gray-500" />} onClose={onClose}>
       <div className="p-3 space-y-3">
         {/* Scope */}
         <div>
-          <div className="text-[11px] font-medium text-gray-500 mb-1.5">Scope</div>
-          <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-gray-100" role="group" aria-label="Review scope">
+          <div className="text-[11px] font-medium text-gray-500 mb-1.5">{t("panelsReview.reviewer.scope")}</div>
+          <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-gray-100" role="group" aria-label={t("panelsReview.reviewer.scopeAria")}>
             {(["selection", "section", "document"] as ReviewScope[]).map((s) => {
               const disabled = s === "selection" && !selectionText;
               return (
                 <button key={s} type="button" disabled={disabled || busy} aria-pressed={scope === s} onClick={() => setScope(s)} className={`text-xs py-1.5 rounded-md ${scope === s ? "bg-white shadow-sm font-medium text-gray-900" : "text-gray-600 hover:text-gray-900"} disabled:opacity-40`}>
-                  {s === "selection" ? "Selection" : s === "section" ? "Section" : "Document"}
+                  {t(SCOPE_LABEL[s])}
                 </button>
               );
             })}
           </div>
           <div className="text-[11px] text-gray-500 mt-1.5 truncate">
-            {scope === "selection" && selectionText ? `“${selectionText.slice(0, 80)}${selectionText.length > 80 ? "…" : ""}”` : scope === "section" ? `Section: ${section.label}` : "The whole document, chunked by paragraph."}
+            {scope === "selection" && selectionText ? `“${selectionText.slice(0, 80)}${selectionText.length > 80 ? "…" : ""}”` : scope === "section" ? t("panelsReview.reviewer.scopeSectionLabel", { label: section.kind === "heading" ? section.label : t(section.kind === "start" ? "panelsReview.reviewer.sectionStart" : "panelsReview.reviewer.sectionUntitled") }) : t("panelsReview.reviewer.scopeDocumentHint")}
           </div>
         </div>
 
         {/* Rubric criteria */}
         <div>
-          <div className="text-[11px] font-medium text-gray-500 mb-1.5">Criteria</div>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Rubric criteria to review">
+          <div className="text-[11px] font-medium text-gray-500 mb-1.5">{t("panelsReview.reviewer.criteria")}</div>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("panelsReview.reviewer.criteriaAria")}>
             {rubric.map((c) => {
               const on = categories.has(c.id);
               const off = c.weight === 0;
               return (
-                <button key={c.id} type="button" disabled={off || busy} aria-pressed={on} title={off ? `${c.label}: disabled by your institution` : c.description} onClick={() => toggleCategory(c.id)} className={`text-[11px] px-2 py-1 rounded-[10px] border ${on && !off ? `${CATEGORY_CLASS[c.id]} border-transparent font-medium` : "border-gray-200 text-gray-500"} disabled:opacity-40 disabled:line-through`}>
+                <button key={c.id} type="button" disabled={off || busy} aria-pressed={on} title={off ? t("panelsReview.reviewer.criterionDisabled", { label: c.label }) : c.description} onClick={() => toggleCategory(c.id)} className={`text-[11px] px-2 py-1 rounded-[10px] border ${on && !off ? `${CATEGORY_CLASS[c.id]} border-transparent font-medium` : "border-gray-200 text-gray-500"} disabled:opacity-40 disabled:line-through`}>
                   {c.label}
                 </button>
               );
             })}
-            {!rubric.length && <span className="text-[11px] text-gray-400">Loading rubric…</span>}
+            {!rubric.length && <span className="text-[11px] text-gray-400">{t("panelsReview.reviewer.loadingRubric")}</span>}
           </div>
         </div>
 
@@ -468,10 +496,10 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
         <div>
           <button type="button" onClick={review} disabled={busy || !canEdit || !categories.size || (scope === "selection" && !selectionText)} className="btn-primary w-full flex items-center justify-center gap-2 text-sm py-2">
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ClipboardCheck className="w-4 h-4" />}
-            {busy ? progress : "Review"}
+            {busy ? progress : t("panelsReview.reviewer.review")}
           </button>
           <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
-            {canEdit ? "Creates anchored comments in this document. Your advisor is not notified until you share them. Logged as an AI interaction." : "The reviewer anchors comments in the document, so only someone who can edit it can run it."}
+            {canEdit ? t("panelsReview.reviewer.runNote") : t("panelsReview.reviewer.runNoEdit")}
           </p>
         </div>
 
@@ -479,17 +507,17 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 text-red-700 text-xs" role="alert">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
             <span className="flex-1">{error}</span>
-            <button type="button" onClick={() => setError("")} aria-label="Dismiss message" className="text-red-400 hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => setError("")} aria-label={t("panelsReview.reviewer.dismissMessageAria")} className="text-red-400 hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
           </div>
         )}
 
         {lastRun && (
           <div className="p-2.5 rounded-lg bg-gray-50 text-[11px] text-gray-600 space-y-1">
             <div>
-              <span className="font-medium text-gray-800">{lastRun.applied} comment{lastRun.applied === 1 ? "" : "s"}</span> anchored{lastRun.dropped ? `, ${lastRun.dropped} dropped by validation` : ""} · {lastRun.meta.label}
-              {lastRun.meta.billedTo === "institution" ? " · paid by your university" : lastRun.meta.billedTo === "student" ? " · your own account" : ""}
+              <span className="font-medium text-gray-800">{plural(t, "panelsReview.reviewer.commentsCount", lastRun.applied)}</span> {plural(t, "panelsReview.reviewer.anchored", lastRun.applied)}{lastRun.dropped ? plural(t, "panelsReview.reviewer.dropped", lastRun.dropped) : ""} · {lastRun.meta.label}
+              {lastRun.meta.billedTo === "institution" ? t("panelsReview.reviewer.paidByUniversity") : lastRun.meta.billedTo === "student" ? t("panelsReview.reviewer.ownAccount") : ""}
             </div>
-            {lastRun.meta.demo && <div className="text-gray-500">Demo reviewer: comments come from simple textual cues, not from a model. Connect a provider for a real review.</div>}
+            {lastRun.meta.demo && <div className="text-gray-500">{t("panelsReview.reviewer.demoNote")}</div>}
             {lastRun.meta.notice && <div className="text-amber-700">{lastRun.meta.notice}</div>}
           </div>
         )}
@@ -498,13 +526,13 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
         {latestRun && (
           <div className="flex items-center gap-2">
             {shared[latestRun.id] ? (
-              <div className="text-[11px] text-gray-500 flex items-center gap-1"><Check className="w-3.5 h-3.5 text-accent-600" />Shared with your advisor {timeAgo(shared[latestRun.id])}</div>
+              <div className="text-[11px] text-gray-500 flex items-center gap-1"><Check className="w-3.5 h-3.5 text-accent-600" />{t("panelsReview.reviewer.sharedWith", { ago: timeAgo(shared[latestRun.id]) })}</div>
             ) : (
               <div className="flex-1">
                 <button type="button" onClick={() => share(latestRun.id)} disabled={sharing || busy} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center gap-1.5 disabled:opacity-40">
-                  <Send className="w-3.5 h-3.5" />Share with advisor
+                  <Send className="w-3.5 h-3.5" />{t("panelsReview.reviewer.share")}
                 </button>
-                <div className="text-[11px] text-gray-400 mt-1">Notifies your advisor about this review ({latestOpen} open). The comments and their status are already visible in the document.</div>
+                <div className="text-[11px] text-gray-400 mt-1">{t("panelsReview.reviewer.shareNote", { n: latestOpen })}</div>
               </div>
             )}
           </div>
@@ -514,24 +542,24 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
       {/* Results */}
       <div className="border-t border-gray-100">
         <div className="flex items-center gap-2 px-3 py-2">
-          <div className="text-xs font-semibold flex-1">Open comments <span className="text-gray-400 font-normal">{open.length}</span></div>
+          <div className="text-xs font-semibold flex-1">{t("panelsReview.reviewer.openComments")} <span className="text-gray-400 font-normal">{open.length}</span></div>
           {counts.map(([s, n]) => (
-            <span key={s} className={`text-[10px] ${SEVERITY_CLASS[s]}`}>{n} {SEVERITY_LABEL[s].toLowerCase()}</span>
+            <span key={s} className={`text-[10px] ${SEVERITY_CLASS[s]}`}>{n} {t(SEVERITY_LABEL[s]).toLowerCase()}</span>
           ))}
         </div>
-        {open.length === 0 && !busy && <div className="px-3 pb-3 text-xs text-gray-400">{items.length ? "Everything is resolved." : "Pick a scope and run the reviewer. Comments stay anchored to the text they refer to."}</div>}
+        {open.length === 0 && !busy && <div className="px-3 pb-3 text-xs text-gray-400">{items.length ? t("panelsReview.reviewer.allResolved") : t("panelsReview.reviewer.emptyHint")}</div>}
         <ul className="px-3 pb-3 space-y-2">
           {shown.map((it, i) => {
             const newGroup = i === 0 || shown[i - 1].severity !== it.severity;
             return (
               <li key={it.id}>
-                {newGroup && <div className={`text-[10px] font-semibold uppercase tracking-wide mt-1 mb-1 ${SEVERITY_CLASS[it.severity]}`}>{SEVERITY_LABEL[it.severity]} severity</div>}
+                {newGroup && <div className={`text-[10px] font-semibold uppercase tracking-wide mt-1 mb-1 ${SEVERITY_CLASS[it.severity]}`}>{t(SEVERITY_GROUP_LABEL[it.severity])}</div>}
                 <article className="p-3 rounded-xl border border-gray-100 hover:border-gray-200">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-[10px] font-medium ${CATEGORY_CLASS[it.category]}`}>{rubric.find((r) => r.id === it.category)?.label || it.category}</span>
-                    <span className={`text-[10px] ${SEVERITY_CLASS[it.severity]}`}>{SEVERITY_LABEL[it.severity]}</span>
-                    {it.status === "stale" && <span className="text-[10px] px-1.5 py-0.5 rounded-[10px] bg-amber-50 text-amber-700" title="The text under this comment changed since the review">Text changed</span>}
-                    {it.status === "orphaned" && <span className="text-[10px] px-1.5 py-0.5 rounded-[10px] bg-gray-100 text-gray-500" title="The anchored passage was removed">Anchor lost</span>}
+                    <span className={`text-[10px] ${SEVERITY_CLASS[it.severity]}`}>{t(SEVERITY_LABEL[it.severity])}</span>
+                    {it.status === "stale" && <span className="text-[10px] px-1.5 py-0.5 rounded-[10px] bg-amber-50 text-amber-700" title={t("panelsReview.reviewer.textChangedTitle")}>{t("panelsReview.reviewer.textChanged")}</span>}
+                    {it.status === "orphaned" && <span className="text-[10px] px-1.5 py-0.5 rounded-[10px] bg-gray-100 text-gray-500" title={t("panelsReview.reviewer.anchorLostTitle")}>{t("panelsReview.reviewer.anchorLost")}</span>}
                     <span className="flex-1" />
                     <span className="text-[10px] text-gray-400">{timeAgo(it.createdAt)}</span>
                   </div>
@@ -546,16 +574,16 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
                         dismiss(it, dismissing.reason.trim());
                       }}
                     >
-                      <input autoFocus value={dismissing.reason} onChange={(e) => setDismissing({ id: it.id, reason: e.target.value })} placeholder="Why does this not apply?" aria-label="Reason for dismissing" maxLength={200} className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-brand-400" />
-                      <button type="submit" className="text-xs px-2.5 py-1 rounded-lg bg-gray-800 text-white">Dismiss</button>
-                      <button type="button" onClick={() => setDismissing(null)} aria-label="Cancel dismissing" className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100"><X className="w-3.5 h-3.5" /></button>
+                      <input autoFocus value={dismissing.reason} onChange={(e) => setDismissing({ id: it.id, reason: e.target.value })} placeholder={t("panelsReview.reviewer.dismissReasonPlaceholder")} aria-label={t("panelsReview.reviewer.dismissReasonAria")} maxLength={200} className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-brand-400" />
+                      <button type="submit" className="text-xs px-2.5 py-1 rounded-lg bg-gray-800 text-white">{t("panelsReview.reviewer.dismiss")}</button>
+                      <button type="button" onClick={() => setDismissing(null)} aria-label={t("panelsReview.reviewer.cancelDismissAria")} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100"><X className="w-3.5 h-3.5" /></button>
                     </form>
                   ) : (
                     <div className="mt-2 flex items-center gap-1">
-                      <button type="button" onClick={() => locate(it)} className="text-xs px-2.5 py-1 rounded-lg hover:bg-gray-100 text-gray-700 flex items-center gap-1"><Crosshair className="w-3.5 h-3.5" />Locate</button>
+                      <button type="button" onClick={() => locate(it)} className="text-xs px-2.5 py-1 rounded-lg hover:bg-gray-100 text-gray-700 flex items-center gap-1"><Crosshair className="w-3.5 h-3.5" />{t("panelsReview.reviewer.locate")}</button>
                       <span className="flex-1" />
-                      <button type="button" onClick={() => resolve(it)} className="text-xs px-2.5 py-1 rounded-lg hover:bg-accent-50 text-accent-700 flex items-center gap-1"><Check className="w-3.5 h-3.5" />Resolve</button>
-                      <button type="button" onClick={() => setDismissing({ id: it.id, reason: "" })} className="text-xs px-2.5 py-1 rounded-lg hover:bg-gray-100 text-gray-500">Dismiss</button>
+                      <button type="button" onClick={() => resolve(it)} className="text-xs px-2.5 py-1 rounded-lg hover:bg-accent-50 text-accent-700 flex items-center gap-1"><Check className="w-3.5 h-3.5" />{t("panelsReview.reviewer.resolve")}</button>
+                      <button type="button" onClick={() => setDismissing({ id: it.id, reason: "" })} className="text-xs px-2.5 py-1 rounded-lg hover:bg-gray-100 text-gray-500">{t("panelsReview.reviewer.dismiss")}</button>
                     </div>
                   )}
                 </article>
@@ -565,13 +593,13 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
         </ul>
         {open.length > visible && (
           <div className="px-3 pb-3">
-            <button type="button" onClick={() => setVisible((v) => v + PAGE)} className="w-full text-xs py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700">Show more ({open.length - visible} remaining)</button>
+            <button type="button" onClick={() => setVisible((v) => v + PAGE)} className="w-full text-xs py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700">{t("panelsReview.reviewer.showMore", { n: open.length - visible })}</button>
           </div>
         )}
         {resolved.length > 0 && (
           <div className="border-t border-gray-100 px-3 py-2">
             <button type="button" onClick={() => setShowResolved((v) => !v)} aria-expanded={showResolved} className="text-xs text-gray-500 hover:text-gray-700">
-              {showResolved ? "Hide" : "Show"} resolved and dismissed ({resolved.length})
+              {t(showResolved ? "panelsReview.reviewer.hideResolved" : "panelsReview.reviewer.showResolved", { n: resolved.length })}
             </button>
             {showResolved && (
               <ul className="mt-2 space-y-1.5">
@@ -579,7 +607,7 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
                   <li key={it.id} className="text-[11px] text-gray-500 p-2 rounded-lg bg-gray-50">
                     <span className={`px-1.5 py-0.5 rounded-[10px] mr-1 ${CATEGORY_CLASS[it.category]}`}>{rubric.find((r) => r.id === it.category)?.label || it.category}</span>
                     <span className="line-clamp-1 mt-1">{it.rationale}</span>
-                    <span className="block mt-0.5 text-gray-400">{it.dismissedReason ? `Dismissed: ${it.dismissedReason}` : "Resolved"}</span>
+                    <span className="block mt-0.5 text-gray-400">{it.dismissedReason ? t("panelsReview.reviewer.dismissedReason", { reason: it.dismissedReason }) : t("panelsReview.reviewer.resolved")}</span>
                   </li>
                 ))}
               </ul>
@@ -588,7 +616,7 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
         )}
         {runs.length > 0 && (
           <div className="border-t border-gray-100 px-3 py-2 text-[11px] text-gray-400">
-            {runs.length} review{runs.length === 1 ? "" : "s"} on this thesis · last {timeAgo(runs[0].createdAt)} ({runs[0].scope}{runs[0].scopeLabel ? `: ${runs[0].scopeLabel}` : ""}, {runs[0].model}){runs[0].userId !== userId ? " · requested by someone else" : ""}
+            {plural(t, "panelsReview.reviewer.runsSummary", runs.length, { ago: timeAgo(runs[0].createdAt), detail: `${SCOPE_LABEL[runs[0].scope] ? t(SCOPE_LABEL[runs[0].scope]).toLowerCase() : runs[0].scope}${runs[0].scopeLabel ? `: ${runs[0].scopeLabel}` : ""}, ${runs[0].model}` })}{runs[0].userId !== userId ? t("panelsReview.reviewer.requestedByOther") : ""}
           </div>
         )}
       </div>
