@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import DashboardLayout, { useTimeAgo } from "@/components/DashboardLayout";
 import { useUser } from "@/components/useUser";
 import { api } from "@/lib/client";
-import { useFormat, useT } from "@/lib/i18n/client";
+import { useFormat, useLocale, useT } from "@/lib/i18n/client";
 
 const MODE_IDS = ["chat", "brainstorm", "outline", "critique", "grammar", "summarize", "explain", "citations", "gaps", "paraphrase_check", "copilot"];
 
@@ -17,7 +17,7 @@ interface Stats {
   aiByMode: Record<string, number>;
   aiByProvider: Record<string, number>;
   provenance: { human: number; paste: number; ai: number };
-  weekly: { day: string; words: number; ai: number; minutes: number }[];
+  weekly: { day: string; date?: string; words: number; ai: number; minutes: number }[];
   openFlags: number;
 }
 
@@ -38,6 +38,7 @@ export default function AnalyticsPage() {
   const { policy } = useUser();
   const t = useT();
   const format = useFormat();
+  const { tag } = useLocale();
   const timeAgo = useTimeAgo();
   const modeLabel = (id: string) => (MODE_IDS.indexOf(id) !== -1 ? t(`assistant.mode.${id}.label`) : id.replace("_", " "));
   const [stats, setStats] = useState<Stats | null>(null);
@@ -70,7 +71,7 @@ export default function AnalyticsPage() {
             {(stats?.weekly || []).map((d) => (
               <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
                 <div className="w-full flex flex-col items-center justify-end h-32"><div className="text-[10px] text-gray-400 mb-1">{d.words || ""}</div><div className="w-full bg-brand-500 rounded-t-md hover:bg-brand-600 transition-all" style={{ height: `${(d.words / maxWords) * 100}%` }} title={t("dashboard.analytics.barTitle", { words: d.words, ai: d.ai, min: d.minutes })} /></div>
-                <span className="text-[11px] text-gray-500">{d.day}</span>
+                <span className="text-[11px] text-gray-500">{d.date ? new Date(d.date + "T12:00:00").toLocaleDateString(tag, { weekday: "short" }) : d.day}</span>
               </div>
             ))}
           </div>

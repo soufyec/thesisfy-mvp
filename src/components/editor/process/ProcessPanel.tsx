@@ -11,7 +11,7 @@ import { useFormat, useLocale, useT } from "@/lib/i18n/client";
 import type { Translate } from "@/lib/i18n/dictionary";
 import { downloadBlob, safeFileName, standaloneHtml } from "@/lib/export";
 import { PanelShell } from "../Sidebars";
-import { MODE_LABELS, PROVIDER_LABELS } from "../types";
+import { modeLabel, providerLabel } from "../types";
 import type { ChapterStats, LedgerSummary, ProcessTimeline, TimelineEvent, TimelineSegment } from "@/lib/process";
 
 export interface ProcessPanelProps {
@@ -101,8 +101,8 @@ function describe(e: TimelineEvent, t: Translate, fmt: Fmt) {
   const parts: string[] = [t(EVENT_LABELS[e.kind])];
   if (e.words !== undefined && e.kind !== "ai_prompt") parts.push(wordsLabel(t, fmt, e.words));
   if (e.kind === "paste" && e.attribution) parts.push(t(ATTRIBUTION_LABELS[e.attribution]));
-  if ((e.kind === "ai_insert" || e.kind === "ai_prompt") && e.mode) parts.push(MODE_LABELS[e.mode] || e.mode);
-  if ((e.kind === "ai_insert" || e.kind === "ai_prompt") && (e.provider || e.model)) parts.push([e.provider ? PROVIDER_LABELS[e.provider] || e.provider : null, e.model].filter(Boolean).join(" "));
+  if ((e.kind === "ai_insert" || e.kind === "ai_prompt") && e.mode) parts.push(modeLabel(t, e.mode));
+  if ((e.kind === "ai_insert" || e.kind === "ai_prompt") && (e.provider || e.model)) parts.push([e.provider ? providerLabel(t, e.provider) : null, e.model].filter(Boolean).join(" "));
   if (e.costUsd) parts.push(`${fmt.number(e.costUsd, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD`);
   if (e.blocked) parts.push(t("panelsResearch.process.declinedByPolicy"));
   if (e.kind === "version" && e.label) parts.push(e.label);
@@ -526,7 +526,7 @@ export default function ProcessPanel({ thesisId, isOwner, onClose, onOpenConsent
 
             {proposal && canEditText && (
               <div className="rounded-xl border border-prov-ai-line bg-prov-ai-soft p-2.5 space-y-2">
-                <div className="text-[11px] text-prov-ai-deep font-medium flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" />{t("panelsResearch.process.decl.proposalTitle")} · {PROVIDER_LABELS[proposal.provider] || proposal.provider} {proposal.model}{proposal.costUsd ? ` · ${proposal.costUsd.toFixed(4)} USD` : ""}</div>
+                <div className="text-[11px] text-prov-ai-deep font-medium flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" />{t("panelsResearch.process.decl.proposalTitle")} · {providerLabel(t, proposal.provider)} {proposal.model}{proposal.costUsd ? ` · ${proposal.costUsd.toFixed(4)} USD` : ""}</div>
                 {proposal.error && <div className="text-[11px] text-red-600">{proposal.error}</div>}
                 {proposal.demo && <div className="text-[11px] text-gray-600">{t("panelsResearch.process.decl.demoProposal")}</div>}
                 <div className="text-[12px] leading-relaxed text-gray-800 whitespace-pre-wrap font-serif max-h-56 overflow-y-auto bg-white rounded-lg p-2 border border-prov-ai-line">{proposal.text}</div>

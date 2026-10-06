@@ -7,7 +7,7 @@ import DashboardLayout, { useTimeAgo } from "@/components/DashboardLayout";
 import { ScoreRing } from "@/components/ui";
 import { useUser } from "@/components/useUser";
 import { api, statusColors } from "@/lib/client";
-import { useFormat, useT } from "@/lib/i18n/client";
+import { useFormat, useLocale, useT } from "@/lib/i18n/client";
 
 interface Thesis {
   id: string;
@@ -30,7 +30,7 @@ interface Stats {
   totalSessions: number;
   aiInteractions: number;
   provenance: { human: number; paste: number; ai: number };
-  weekly: { day: string; words: number; ai: number }[];
+  weekly: { day: string; date?: string; words: number; ai: number }[];
   connectedProviders?: string[];
 }
 
@@ -38,6 +38,7 @@ export default function StudentDashboard() {
   const { user, policy, consent } = useUser();
   const t = useT();
   const format = useFormat();
+  const { tag } = useLocale();
   const timeAgo = useTimeAgo();
   const words = (n: number) => (n === 1 ? t("common.word_one") : t("common.words", { n: format.number(n) }));
   const notices = (n: number) => (n === 1 ? t("dashboard.notices_one") : t("dashboard.notices", { n }));
@@ -108,7 +109,7 @@ export default function StudentDashboard() {
                 return (
                   <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
                     <div className="w-full flex flex-col justify-end h-24"><div className="w-full bg-brand-500 rounded-t-md" style={{ height: `${(d.words / max) * 100}%` }} title={words(d.words)} /></div>
-                    <span className="text-[10px] text-gray-500">{d.day}</span>
+                    <span className="text-[10px] text-gray-500">{d.date ? new Date(d.date + "T12:00:00").toLocaleDateString(tag, { weekday: "short" }) : d.day}</span>
                   </div>
                 );
               })}

@@ -118,7 +118,7 @@ export default function AdminLibraryPage() {
               <label className="text-xs text-gray-500">{t("common.name")}<input id="db-name" value={edit.form.name} onChange={f("name")} className="input-field !py-2 mt-1" placeholder="JSTOR" /></label>
               <label className="text-xs text-gray-500">{t("admin.library.howSignIn")}
                 <select id="db-access" value={edit.form.access} onChange={f("access")} className="input-field !py-2 mt-1">
-                  {(Object.keys(ACCESS_INFO) as ResearchDb["access"][]).map((k) => <option key={k} value={k}>{ACCESS_INFO[k].label}</option>)}
+                  {(Object.keys(ACCESS_INFO) as ResearchDb["access"][]).map((k) => <option key={k} value={k}>{t(`dashboard.library.access.${k}.label`)}</option>)}
                 </select>
               </label>
               <label className="text-xs text-gray-500">{t("admin.library.link")}<input id="db-url" value={edit.form.url} onChange={f("url")} className="input-field !py-2 mt-1" placeholder="https://www.jstor.org/" /></label>
@@ -126,7 +126,7 @@ export default function AdminLibraryPage() {
               <label className="text-xs text-gray-500 sm:col-span-2">{t("admin.library.shortDesc")}<input id="db-desc" value={edit.form.description} onChange={f("description")} className="input-field !py-2 mt-1" /></label>
               <label className="text-xs text-gray-500 sm:col-span-2">{t("admin.library.subjects")}<input id="db-subjects" value={edit.form.subjects} onChange={f("subjects")} className="input-field !py-2 mt-1" placeholder={t("admin.library.subjectsPlaceholder")} /></label>
               <label className="text-xs text-gray-500 sm:col-span-2">{t("admin.library.instructions")}
-                <textarea id="db-instr" value={edit.form.instructions} onChange={f("instructions")} rows={3} className="input-field mt-1" placeholder={ACCESS_INFO[edit.form.access].how(university)} />
+                <textarea id="db-instr" value={edit.form.instructions} onChange={f("instructions")} rows={3} className="input-field mt-1" placeholder={t(`dashboard.library.access.${edit.form.access}.how`, { university })} />
               </label>
             </div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={edit.form.featured} onChange={f("featured")} />{t("admin.library.featured")}</label>
