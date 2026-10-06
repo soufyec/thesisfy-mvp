@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Toggle } from "@/components/ui";
 import { useUser, type Policy } from "@/components/useUser";
 import { api } from "@/lib/client";
+import type { RubricCriterion } from "@/lib/db";
 
 const PROVIDERS = [["anthropic", "Claude (Anthropic)"], ["openai", "ChatGPT / GPT (OpenAI)"], ["google", "Gemini (Google)"], ["mistral", "Mistral / Le Chat"]];
 const MODES = [["chat", "Ask"], ["brainstorm", "Brainstorm"], ["outline", "Outline"], ["critique", "Critique"], ["grammar", "Grammar & style"], ["summarize", "Summarize"], ["explain", "Explain"], ["citations", "Citations"], ["gaps", "Find gaps"], ["paraphrase_check", "Paraphrase check"]];
@@ -95,8 +96,68 @@ export default function PoliciesPage() {
           </div>
 
           {canEdit && <button onClick={save} className="btn-primary w-full">Save policies</button>}
+
+          <ReviewerRubricCard canEdit={canEdit} />
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+/** Weights 0–3 per reviewer criterion, saved through PUT /api/policies/rubric (0 disables a criterion). */
+function ReviewerRubricCard({ canEdit }: { canEdit: boolean }) {
+  const [rubric, setRubric] = useState<RubricCriterion[] | null>(null);
+  const [isDefault, setIsDefault] = useState(true);
+  const [msg, setMsg] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api<{ rubric: RubricCriterion[]; isDefault: boolean }>("/api/policies/rubric").then((d) => { setRubric(d.rubric); setIsDefault(d.isDefault); }).catch(() => {});
+  }, []);
+
+  const submit = async (body: { rubric: RubricCriterion[] } | { reset: true }) => {
+    setSaving(true);
+    try {
+      const d = await api<{ rubric: RubricCriterion[]; isDefault: boolean }>("/api/policies/rubric", { method: "PUT", json: body });
+      setRubric(d.rubric);
+      setIsDefault(d.isDefault);
+      setMsg("Rubric saved. It applies to the next review students run.");
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setSaving(false);
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  if (!rubric) return null;
+  return (
+    <div className="card p-5 sm:p-6">
+      <h2 className="font-semibold mb-1">Reviewer rubric</h2>
+      <p className="text-sm text-gray-500 mb-4">What the AI reviewer looks for when a student asks for anchored comments on a section. Weight 3 means it looks hard, 1 only for clear problems, 0 disables the criterion. The reviewer never writes replacement text; students and advisors see the same comments.{isDefault ? " Currently the default rubric." : ""}</p>
+      {msg && <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{msg}</div>}
+      <div className="space-y-2">
+        {rubric.map((c) => (
+          <div key={c.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium">{c.label}</div>
+              <div className="text-xs text-gray-500">{c.description}</div>
+            </div>
+            <div className="flex gap-1" role="group" aria-label={`Weight for ${c.label}`}>
+              {[0, 1, 2, 3].map((w) => (
+                <button key={w} type="button" disabled={!canEdit} aria-pressed={c.weight === w} aria-label={`${c.label}: weight ${w}`} onClick={() => setRubric(rubric.map((x) => (x.id === c.id ? { ...x, weight: w } : x)))} className={`w-8 h-8 rounded-lg text-xs border ${c.weight === w ? "bg-brand-600 border-brand-600 text-white" : "border-gray-200 text-gray-600"} disabled:opacity-60`}>
+                  {w}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {canEdit && (
+        <div className="flex gap-2 mt-4">
+          <button type="button" onClick={() => submit({ rubric })} disabled={saving || !rubric.some((c) => c.weight > 0)} className="btn-primary flex-1">Save rubric</button>
+          <button type="button" onClick={() => submit({ reset: true })} disabled={saving || isDefault} className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40">Reset to default</button>
+        </div>
+      )}
+    </div>
   );
 }
