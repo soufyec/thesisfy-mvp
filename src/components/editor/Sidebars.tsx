@@ -286,7 +286,6 @@ export function IntegrityLedger({ thesis, flags, session, maxAi, breakdown, show
     <PanelShell title="Integrity ledger" icon={<ShieldCheck className="w-4 h-4 text-gray-500" />} onClose={onClose}>
       <div className="p-3 space-y-4 text-sm">
         <div>
-          <div className="text-[12px] font-semibold text-gray-500 tracking-[0.08em] uppercase mb-1">Integrity ledger</div>
           <div className="divide-y divide-gray-200 border-y border-gray-200 text-[13px]">
             <div className="flex items-center justify-between py-2">
               <span className="text-gray-700">Starting score</span>

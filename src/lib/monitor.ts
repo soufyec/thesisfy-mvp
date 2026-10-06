@@ -97,8 +97,9 @@ export class SessionMonitor {
     const fp = await fingerprint(text);
     const parts = passages(text);
     const fingerprints = Array.from(new Set([fp, ...(await Promise.all(parts.map(fingerprint)))]));
-    this.push("paste", { words, chars: text.length, fingerprint: fp, fingerprints, attributed });
-    const res = await this.flush();
+    // Sent in its own request so the attribution answer cannot be lost to a concurrent timed flush.
+    this.flushTyping();
+    const res = await this.send([{ type: "paste", data: { words, chars: text.length, fingerprint: fp, fingerprints, attributed } }]);
     const ev = res?.matches?.find((m) => m.fingerprint === fp) as { matchedAi?: PasteMatch } | undefined;
     return ev?.matchedAi || null;
   }
@@ -118,7 +119,11 @@ export class SessionMonitor {
     if (this.ended) return null;
     this.flushTyping();
     if (!this.queue.length) return null;
-    const events = this.queue.splice(0, this.queue.length);
+    return this.send(this.queue.splice(0, this.queue.length));
+  }
+
+  private async send(events: QueuedEvent[]): Promise<{ flags: MonitorFlag[]; matches?: Record<string, unknown>[]; session?: Record<string, number> } | null> {
+    if (this.ended) return null;
     try {
       const res = await fetch(`/api/sessions/${this.sessionId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ events }) });
       if (!res.ok) return null;

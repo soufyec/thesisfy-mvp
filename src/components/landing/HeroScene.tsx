@@ -179,7 +179,8 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
       // The sun sits to the right of the text column so the orbit sweeps under the headline.
       const te = textRef.current;
       const textRight = te ? te.getBoundingClientRect().right - stage.getBoundingClientRect().left : W * 0.6;
-      const cx = Math.min(W - 60, Math.max(W * 0.72, textRight + 90));
+      // Keep the student orbit (300px) and its pill inside the hero on wide screens.
+      const cx = Math.min(W - 150, Math.max(W * 0.68, textRight + 90));
       const cy = H * 0.55;
       const S = Math.max(0.6, Math.min(W / 640, H / 330));
       const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);

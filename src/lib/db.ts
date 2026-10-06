@@ -555,7 +555,7 @@ function seed(): Store {
       sessionId: "sess_2",
       type: "style_inconsistency",
       severity: "low",
-      description: "Minor style variation detected in paragraph 3 of section 2.2",
+      description: "Minor style variation in paragraph 3 of section 2.2",
       timestamp: "2026-03-10T15:23:00Z",
       resolved: true,
       resolvedBy: "usr_4",

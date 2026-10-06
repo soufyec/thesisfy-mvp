@@ -22,6 +22,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     replies: c.replies.map((rp) => ({ ...rp, authorName: db.users.findById(rp.authorId)?.name || "Unknown" })),
   }));
 
+  // Keep the stored score consistent with the ledger the client shows.
+  refreshThesisMetrics(thesis.id);
   return json({
     thesis: {
       ...thesis,

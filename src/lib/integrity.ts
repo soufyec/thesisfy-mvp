@@ -96,18 +96,9 @@ export function evaluateEvent(session: WritingSession, type: string, data: Recor
 
   if (type === "paste" && policy.monitoring.paste) {
     const words = Number(data.words || 0);
-    const matched = data.matchedAi as { mode?: string; share?: number } | undefined;
-    if (matched) {
-      created.push(
-        db.flags.create({
-          thesisId: session.thesisId,
-          sessionId: session.id,
-          type: "unattributed_ai",
-          severity: words > th.pasteWords ? "high" : "medium",
-          description: `${words} words pasted that match an answer from the ${matched.mode === "copilot" ? "Research copilot" : "Thesisfic assistant"}${matched.share && matched.share < 1 ? ` (${Math.round(matched.share * 100)}% of the sentences)` : ""}. Marked as AI-assisted; rewrite in your own words to count as yours.`,
-        })
-      );
-    } else if (words > th.pasteWords && !data.attributed) {
+    // Text recognised from an assistant answer is attributed automatically: no notice, it is already marked.
+    if (data.matchedAi) return created;
+    if (words > th.pasteWords && !data.attributed) {
       created.push(
         db.flags.create({
           thesisId: session.thesisId,

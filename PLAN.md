@@ -34,35 +34,35 @@ Diferencias respecto al handoff original, decididas después y que prevalecen:
 
 ### Fase 1 · Landing B2B
 **Archivos:** `src/app/page.tsx`, `src/components/landing/HeroScene.tsx`, `src/components/landing/HeroEditorPreview.tsx`, `src/app/login/page.tsx`.
-- [ ] Nav: Integrity model · For institutions · Pilot programme · Sign in · **Request a pilot**.
-- [ ] Hero con badge, titular (gradiente solo en "not suspicion"), párrafo, dos CTAs, tres bullets; `QualitySeal` a la derecha; escena orbital en canvas.
-- [ ] `HeroEditorPreview`: hoja con gutter e Integrity ledger, datos del seed `thesis_1`.
-- [ ] `#model` tres pilares · `#roles` tres lectores · `#pilot` formulario → `POST /api/leads`.
-- [ ] Eliminar stats inventadas, tabla Turnitin, pricing, preview oscuro.
-- [ ] Login: mismo titular, sin "Trusted by 50+ universities".
+- [x] Nav: Integrity model · For institutions · Pilot programme · Sign in · **Request a pilot**.
+- [x] Hero con badge, titular (gradiente solo en "not suspicion"), párrafo, dos CTAs, tres bullets; `QualitySeal` a la derecha; escena orbital en canvas.
+- [x] `HeroEditorPreview`: hoja con gutter e Integrity ledger, datos del seed `thesis_1`.
+- [x] `#model` tres pilares · `#roles` tres lectores · `#pilot` formulario → `POST /api/leads`.
+- [x] Eliminar stats inventadas, tabla Turnitin, pricing, preview oscuro.
+- [x] Login: mismo titular, sin "Trusted by 50+ universities".
 
 ### Fase 2 · Cromo del editor
 **Archivos:** `DocsEditor.tsx`, `Toolbar.tsx`, `MenuBar.tsx`, nuevo `SessionBar.tsx`.
-- [ ] Cabecera 52px: volver · icono · título · Saved · `IntegrityPill` · **AI assistant** · Share · `⋯` con los menús como lista.
-- [ ] Toolbar 40px blanca con todos los controles y el interruptor **Provenance**.
-- [ ] Session bar inferior 30px.
-- [ ] Bubble menu: B · I · U · Cite · Comment · **Ask AI**.
-- [ ] Mantener todos los `MenuAction` y atajos.
+- [x] Cabecera 52px: volver · icono · título · Saved · `IntegrityPill` · **AI assistant** · Share · `⋯` con los menús como lista.
+- [x] Toolbar 40px blanca con todos los controles y el interruptor **Provenance**.
+- [x] Session bar inferior 30px.
+- [x] Bubble menu: B · I · U · Cite · Comment · **Ask AI**.
+- [x] Mantener todos los `MenuAction` y atajos.
 
 ### Fase 3 · Provenance gutter e Integrity ledger
 **Archivos:** `extensions.ts`, nuevo `ProvenanceGutter.tsx`, `Sidebars.tsx`, `src/lib/integrity.ts`, `src/app/api/theses/[id]/route.ts`.
-- [ ] Plugin ProseMirror con proporción `human/ai/paste` por bloque; gutter con barra y etiqueta (¶n, AI, Q).
-- [ ] Anotación de margen derecho al hover: proveedor · modo · fecha · palabras.
-- [ ] Interruptor Provenance persistido en `localStorage.provenance_gutter`; en `reviewMode` siempre activo.
-- [ ] `computeIntegrityScore` devuelve el desglose; `IntegrityLedger` lo lista con acciones; `IntegrityPill` abre el ledger.
+- [x] Plugin ProseMirror con proporción `human/ai/paste` por bloque; gutter con barra y etiqueta (¶n, AI, Q).
+- [x] Anotación de margen derecho al hover: proveedor · modo · fecha · palabras.
+- [x] Interruptor Provenance persistido en `localStorage.provenance_gutter`; en `reviewMode` siempre activo.
+- [x] `computeIntegrityScore` devuelve el desglose; `IntegrityLedger` lo lista con acciones; `IntegrityPill` abre el ledger.
 
 ### Fase 4 · Asistente de IA
 **Archivos:** `AssistantPanel.tsx`, `src/app/dashboard/ai-chat/page.tsx`.
-- [ ] Cabecera "Thesisfic AI · Thinks with you. Never writes your thesis." + chip de proveedor + historial.
-- [ ] Modos en rejilla con icono lucide; **Research copilot** destacado en primera posición; descripción y sugerencias del modo activo.
-- [ ] Tarjeta "Working on · §n ¶m · N words" con la selección.
-- [ ] Acciones contextuales por modo (Guiding questions · Add as comment · Insert, marked as AI · Keep as notes · Replace selection).
-- [ ] **Tarjeta de coste** obligatoria antes de cualquier inserción (palabras, % actual → nuevo, quién paga; deshabilitada si supera el límite).
+- [x] Cabecera "Thesisfic AI · Thinks with you. Never writes your thesis." + chip de proveedor + historial.
+- [x] Modos en rejilla con icono lucide; **Research copilot** destacado en primera posición; descripción y sugerencias del modo activo.
+- [x] Tarjeta "Working on · §n ¶m · N words" con la selección.
+- [x] Acciones contextuales por modo (Guiding questions · Add as comment · Insert, marked as AI · Keep as notes · Replace selection).
+- [x] **Tarjeta de coste** obligatoria antes de cualquier inserción (palabras, % actual → nuevo, quién paga; deshabilitada si supera el límite).
 
 ### Fase 5 · Onboarding y consentimiento
 Pendiente de propuesta de contenido y confirmación. Archivos: `ConsentModal.tsx`, `dashboard/page.tsx`, `admin/page.tsx`, `register/page.tsx`.
@@ -76,4 +76,7 @@ Pendiente. Archivos: `db.ts`, `api/stats`, nuevo `admin/report/page.tsx`, `expor
 Mobile nativo (Capacitor), migración a Postgres, SSO/LMS.
 
 ## 4. Pendiente
-_(Lo que se encuentre fuera de la fase activa.)_
+- Fase 5 (onboarding y consentimiento) y Fase 6 (informe del piloto): no empezadas; la Fase 5 requiere confirmar antes el contenido de las tres pantallas de primer uso.
+- Rutas `/privacy` y `/contact` no existen: el pie de la landing enlaza a `#model` y `#pilot`.
+- `MenuBar` (barra horizontal antigua) sigue exportado aunque ya no se renderiza; eliminar cuando nada lo use.
+- ESLint no está instalado en el proyecto; `npm run lint` pide instalarlo.
