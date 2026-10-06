@@ -348,6 +348,16 @@ export interface AIFunding {
   updatedBy?: string;
 }
 
+/** Pilot request from the landing page. */
+export interface Lead {
+  id: string;
+  institution: string;
+  email: string;
+  role: "integrity_office" | "dean" | "library" | "other";
+  message?: string;
+  createdAt: string;
+}
+
 interface Store {
   users: User[];
   theses: Thesis[];
@@ -364,6 +374,7 @@ interface Store {
   librarySettings: LibrarySettings[];
   institutionModels: InstitutionModel[];
   aiFunding: AIFunding[];
+  leads: Lead[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -663,6 +674,7 @@ function seed(): Store {
     theses,
     institutionModels,
     aiFunding,
+    leads: [],
     versions: [
       { id: "ver_1", thesisId: "thesis_1", authorId: "usr_1", content: thesis1Content, wordCount: 2847, kind: "milestone", label: "Chapter 4 draft", createdAt: "2026-03-12T11:30:00Z" },
     ],
@@ -1260,6 +1272,16 @@ export const db = {
       Object.assign(x, patch, { university, updatedAt: now() });
       persist();
       return x;
+    },
+  },
+
+  leads: {
+    list: () => load().leads.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    create: (data: Omit<Lead, "id" | "createdAt">) => {
+      const l: Lead = { ...data, id: uid("lead"), createdAt: now() };
+      load().leads.push(l);
+      persist();
+      return l;
     },
   },
 

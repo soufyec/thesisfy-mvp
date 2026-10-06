@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#111827;background:#fff;-webkit-font-smoothing:antialiased}
+a{color:#4c6ef5;text-decoration:none}a:hover{color:#4263eb}
+*{box-sizing:border-box}
+@keyframes seal-spin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+<div data-screen-label="Landing propuesta v2" style="min-height:100vh;background:#fff;font-family:Inter,system-ui,sans-serif;color:#111827">
+  <nav style="position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);backdrop-filter:blur(16px);border-bottom:1px solid #f3f4f6">
+    <div style="max-width:1200px;margin:0 auto;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <a href="#" style="display:flex;align-items:center;gap:8px;color:#111827">
+        <span style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#4c6ef5,#20c997);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+        <span style="font-size:20px;font-weight:700">Thesisfy<span style="color:#4c6ef5">.edu</span></span>
+      </a>
+      <div style="display:flex;align-items:center;gap:28px;font-size:14px;font-weight:500">
+        <a href="#model" style="color:#4b5563">Integrity model</a>
+        <a href="#roles" style="color:#4b5563">For institutions</a>
+        <a href="#pilot" style="color:#4b5563">Pilot programme</a>
+        <a href="#" style="color:#4b5563">Sign in</a>
+        <a href="#pilot" style="padding:9px 16px;background:#4c6ef5;color:#fff;border-radius:10px;font-weight:600;box-shadow:0 8px 16px -6px rgba(76,110,245,.45)">Request a pilot</a>
+      </div>
+    </div>
+  </nav>
+
+  <section ref="{{ heroRef }}" style="padding:72px 32px 56px;position:relative;overflow:hidden">
+    <div ref="{{ stageRef }}" style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:32px;align-items:start;position:relative;min-height:520px">
+      <canvas ref="{{ canvasRef }}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;display:block;opacity:.38;pointer-events:none"></canvas>
+      <figure style="order:2;margin:-16px 0 0;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;width:104px">
+        <svg width="100" height="100" viewBox="0 0 260 260" style="filter:drop-shadow(0 10px 18px rgba(54,79,199,.28))">
+          <defs>
+            <linearGradient id="sealBase" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4c6ef5"></stop><stop offset="1" stop-color="#0ca678"></stop></linearGradient>
+            <linearGradient id="sealShine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"></stop><stop offset=".55" stop-color="#fff" stop-opacity="0"></stop></linearGradient>
+            <radialGradient id="sealInner" cx=".5" cy=".4" r=".6"><stop offset="0" stop-color="#5c7cfa"></stop><stop offset="1" stop-color="#364fc7"></stop></radialGradient>
+            <path id="sealRing2" d="M130,130 m-92,0 a92,92 0 1,1 184,0 a92,92 0 1,1 -184,0"></path>
+          </defs>
+          <g fill="url(#sealBase)">
+            <circle cx="130" cy="130" r="116"></circle>
+            <circle cx="248" cy="130" r="12"></circle><circle cx="246.2" cy="150.5" r="12"></circle><circle cx="240.9" cy="170.3" r="12"></circle><circle cx="232.2" cy="189" r="12"></circle><circle cx="220.4" cy="205.9" r="12"></circle><circle cx="205.9" cy="220.4" r="12"></circle><circle cx="189" cy="232.2" r="12"></circle><circle cx="170.3" cy="240.9" r="12"></circle><circle cx="150.5" cy="246.2" r="12"></circle><circle cx="130" cy="248" r="12"></circle><circle cx="109.5" cy="246.2" r="12"></circle><circle cx="89.7" cy="240.9" r="12"></circle><circle cx="71" cy="232.2" r="12"></circle><circle cx="54.1" cy="220.4" r="12"></circle><circle cx="39.6" cy="205.9" r="12"></circle><circle cx="27.8" cy="189" r="12"></circle><circle cx="19.1" cy="170.3" r="12"></circle><circle cx="13.8" cy="150.5" r="12"></circle><circle cx="12" cy="130" r="12"></circle><circle cx="13.8" cy="109.5" r="12"></circle><circle cx="19.1" cy="89.7" r="12"></circle><circle cx="27.8" cy="71" r="12"></circle><circle cx="39.6" cy="54.1" r="12"></circle><circle cx="54.1" cy="39.6" r="12"></circle><circle cx="71" cy="27.8" r="12"></circle><circle cx="89.7" cy="19.1" r="12"></circle><circle cx="109.5" cy="13.8" r="12"></circle><circle cx="130" cy="12" r="12"></circle><circle cx="150.5" cy="13.8" r="12"></circle><circle cx="170.3" cy="19.1" r="12"></circle><circle cx="189" cy="27.8" r="12"></circle><circle cx="205.9" cy="39.6" r="12"></circle><circle cx="220.4" cy="54.1" r="12"></circle><circle cx="232.2" cy="71" r="12"></circle><circle cx="240.9" cy="89.7" r="12"></circle><circle cx="246.2" cy="109.5" r="12"></circle>
+          </g>
+          <circle cx="130" cy="130" r="116" fill="url(#sealShine)"></circle>
+          <circle cx="130" cy="130" r="106" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2"></circle>
+          <circle cx="130" cy="130" r="101" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1"></circle>
+          <g style="transform-origin:130px 130px;animation:seal-spin 60s linear infinite"><text fill="#fff" font-size="13.5" font-weight="700" font-family="Inter, system-ui, sans-serif" letter-spacing="1.6"><textPath href="#sealRing2" startOffset="0" textLength="576" lengthAdjust="spacing">THESISFY.EDU · ACADEMIC QUALITY SEAL · AI ERA STANDARD · </textPath></text></g>
+          <circle cx="130" cy="130" r="76" fill="url(#sealInner)" stroke="#fff" stroke-opacity=".9" stroke-width="2"></circle>
+          <circle cx="130" cy="130" r="70" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1"></circle>
+          <path d="M130 86 l-28 10.5 v22 c0 20 28 35 28 35 s28-15 28-35 v-22 z" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-width="4" stroke-linejoin="round"></path>
+          <path d="M118 121 l8.5 8.5 l16 -18" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          <text x="130" y="173" text-anchor="middle" fill="#fff" font-size="14" font-weight="800" font-family="Inter, system-ui, sans-serif" letter-spacing=".3">thesisfy.edu</text>
+          <text x="130" y="188" text-anchor="middle" fill="#fff" fill-opacity=".85" font-size="8.5" font-weight="700" letter-spacing="2.4" font-family="Inter, system-ui, sans-serif">VERIFIED PROCESS</text>
+        </svg>
+        <figcaption style="text-align:center;font-size:11px;line-height:1.3;color:#6b7280"><span style="display:block;font-weight:600;color:#111827">Academic quality seal</span></figcaption>
+      </figure>
+      <div ref="{{ textRef }}" style="min-width:0;max-width:720px;order:1;position:relative;z-index:1">
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#f0f4ff;border-radius:9999px;color:#4263eb;font-size:13px;font-weight:600;margin-bottom:28px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>Academic integrity for the AI era</div>
+        <h1 style="font-size:58px;line-height:1.05;font-weight:800;letter-spacing:-.025em;margin:0 0 24px;text-wrap:pretty">Evidence of the writing process, <span style="background:linear-gradient(90deg,#4c6ef5,#20c997);-webkit-background-clip:text;background-clip:text;color:transparent">not suspicion</span> of the result.</h1>
+        <p style="font-size:19px;line-height:1.6;color:#4b5563;margin:0 0 36px;max-width:560px;text-wrap:pretty">Thesisfy attributes every sentence of a thesis as it is written: typed, quoted or AI-assisted. Advisors receive a provenance report. Students use the AI tools your policy allows, inside the editor, with their consent and under your budget.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a href="#pilot" style="display:inline-flex;align-items:center;gap:8px;padding:15px 26px;background:#4c6ef5;color:#fff;border-radius:12px;font-weight:600;font-size:16px;box-shadow:0 10px 20px -8px rgba(76,110,245,.5)">Request a pilot<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
+          <a href="#model" style="display:inline-flex;align-items:center;padding:15px 26px;background:#fff;color:#374151;border:2px solid #e5e7eb;border-radius:12px;font-weight:600;font-size:16px">Read the integrity model</a>
+        </div>
+        <div style="margin-top:36px;display:flex;gap:24px;font-size:13px;color:#6b7280;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#20c997"></span>Consent-first, GDPR by design</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#7c3aed"></span>No AI-probability guessing</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span>AI costs billed to the institution</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="max-width:1200px;margin:56px auto 0;position:relative;z-index:1">
+      <div style="position:absolute;inset:-8px;background:linear-gradient(90deg,rgba(76,110,245,.12),rgba(32,201,151,.12));border-radius:28px;filter:blur(48px)"></div>
+      <div style="position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 25px 50px -12px rgba(17,24,39,.15);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#6b7280">
+          <span style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:8px;background:#4c6ef5;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg></span><span style="font-weight:600;color:#111827">Chapter 1 · Introduction</span>· Final submission</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:9999px;background:#f0f4ff;color:#4263eb;font-weight:600"><span style="width:16px;height:16px;border-radius:50%;background:conic-gradient(#7c3aed 0 12%,#f59e0b 12% 19%,#20c997 19% 100%)"></span>AI-assisted 12% · limit 25% · Integrity 94</span>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 320px">
+          <div style="padding:28px 32px 28px 64px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.7;color:#202124;border-right:1px solid #f3f4f6;display:flex;flex-direction:column;gap:14px">
+            <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:10px;color:#9ca3af"><span>¶1</span><span style="width:3px;border-radius:2px;background:#20c997"></span></span>Climate prediction has historically relied on physically based circulation models whose accuracy is bounded by the resolution at which sub-grid processes can be represented.</p>
+            <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:10px;color:#7c3aed;font-weight:700"><span>AI</span><span style="width:3px;border-radius:2px;background:#7c3aed"></span></span><span style="background:rgba(124,58,237,.13);border-bottom:2px solid rgba(124,58,237,.55)">Recent work suggests that deep learning architectures trained on reanalysis products can learn stable emulators of atmospheric dynamics, offering large speed-ups at inference time while preserving physically plausible behaviour.</span> <span style="font-family:Inter,sans-serif;font-size:11px;color:#7c3aed;font-weight:600">Claude · Outline · 9 Mar</span></p>
+            <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:10px;color:#b45309;font-weight:700"><span>Q</span><span style="width:3px;border-radius:2px;background:#f59e0b"></span></span><span style="background:rgba(245,158,11,.16);border-bottom:2px solid rgba(245,158,11,.6)">"Hybrid modelling" describes any configuration in which a learned component is coupled to a numerical solver.</span> <span style="font-family:Inter,sans-serif;font-size:11px;color:#b45309;font-weight:600">Quoted · Reichstein 2019</span></p>
+          </div>
+          <div style="padding:20px;background:#f9fafb;display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.08em">Integrity ledger</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">Starting score</span><span style="font-weight:600">100</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">Pasted text attributed</span><span style="font-weight:600;color:#059669">−0</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">AI share 12% of 25% limit</span><span style="font-weight:600;color:#059669">−0</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">1 open notice · bulk paste 240 words</span><span style="font-weight:600;color:#d97706">−6</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;padding:8px 0"><span style="font-weight:600">Integrity</span><span style="font-weight:700;color:#059669">94</span></div>
+            <div style="font-size:12px;color:#6b7280;line-height:1.5">Every deduction maps to an action the student can take. Advisor and student see the same ledger.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:20px;padding:10px 20px;border-top:1px solid #f3f4f6;font-size:12px;color:#6b7280;background:#fff">
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:3px;border-radius:2px;background:#20c997"></span>Written by the student</span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:3px;border-radius:2px;background:#7c3aed"></span>AI-assisted, declared</span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:3px;border-radius:2px;background:#f59e0b"></span>Quoted or pasted</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="model" style="padding:80px 32px;background:#f9fafb">
+    <div style="max-width:1200px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:56px"><h2 style="font-size:36px;font-weight:700;margin:0 0 12px;letter-spacing:-.02em">Why a provenance report beats an <span style="background:linear-gradient(90deg,#4c6ef5,#20c997);-webkit-background-clip:text;background-clip:text;color:transparent">AI score</span></h2><p style="color:#4b5563;margin:0;font-size:16px;max-width:600px;margin:0 auto">Three design decisions that hold up in an appeal hearing.</p></div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+        <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="3">
+          <div style="background:#fff;border-radius:16px;border:1px solid #f3f4f6;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:28px">
+            <div style="width:44px;height:44px;border-radius:12px;background:#f0f4ff;color:#4c6ef5;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;margin-bottom:18px">{{ p.n }}</div>
+            <h3 style="font-size:17px;font-weight:600;margin:0 0 8px">{{ p.title }}</h3>
+            <p style="font-size:14px;line-height:1.65;color:#4b5563;margin:0;text-wrap:pretty">{{ p.body }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section id="roles" style="padding:80px 32px">
+    <div style="max-width:1200px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:56px"><h2 style="font-size:36px;font-weight:700;margin:0;letter-spacing:-.02em">One record, three readers</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+        <sc-for list="{{ roles }}" as="r" hint-placeholder-count="3">
+          <div style="border-radius:16px;border:1px solid #f3f4f6;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:28px;background:#fff">
+            <div style="display:inline-flex;padding:4px 10px;border-radius:9999px;background:{{ r.bg }};color:{{ r.fg }};font-size:12px;font-weight:600;margin-bottom:14px">{{ r.who }}</div>
+            <h3 style="font-size:20px;font-weight:700;margin:0 0 14px;line-height:1.3;letter-spacing:-.01em">{{ r.title }}</h3>
+            <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.55;color:#4b5563">
+              <sc-for list="{{ r.items }}" as="it" hint-placeholder-count="3"><li style="display:flex;gap:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#20c997" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:3px"><polyline points="20 6 9 17 4 12"></polyline></svg>{{ it }}</li></sc-for>
+            </ul>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section id="pilot" style="padding:40px 32px 96px">
+    <div style="max-width:1200px;margin:0 auto;background:linear-gradient(135deg,#4c6ef5,#3b5bdb);color:#fff;border-radius:24px;padding:56px;display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:48px;align-items:center">
+      <div>
+        <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#bac8ff;margin-bottom:16px">Pilot programme</div>
+        <h2 style="font-size:36px;line-height:1.15;font-weight:700;margin:0 0 16px;letter-spacing:-.02em;text-wrap:pretty">One department. One semester. A report you can take to the academic board.</h2>
+        <p style="font-size:16px;line-height:1.6;color:#dbe4ff;margin:0;max-width:520px;text-wrap:pretty">We set up your AI policy together, onboard advisors and students in a 45-minute session, and deliver an end-of-term integrity report with provenance statistics, consent records and AI spend.</p>
+      </div>
+      <div style="background:#fff;color:#111827;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:14px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25)">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;flex-direction:column;gap:6px">Institution<span style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;color:#9ca3af;background:#f9fafb;font-weight:400">University of …</span></label>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;flex-direction:column;gap:6px">Work email<span style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;color:#9ca3af;background:#f9fafb;font-weight:400">name@university.edu</span></label>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;flex-direction:column;gap:6px">Role<span style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;color:#111827;background:#f9fafb;display:flex;justify-content:space-between;font-weight:400">Integrity office / Dean / Library<span style="color:#9ca3af">▾</span></span></label>
+        <a href="#" style="margin-top:6px;padding:14px;text-align:center;background:#4c6ef5;color:#fff;border-radius:12px;font-weight:600;font-size:15px;box-shadow:0 10px 20px -8px rgba(76,110,245,.5)">Request a pilot</a>
+        <div style="font-size:12px;color:#6b7280;text-align:center">Pilots are scoped per department. No public pricing yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="border-top:1px solid #f3f4f6;padding:32px;font-size:13px;color:#6b7280">
+    <div style="max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap">
+      <span style="display:flex;align-items:center;gap:8px;color:#111827;font-weight:700;font-size:16px"><span style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,#4c6ef5,#20c997)"></span>Thesisfy<span style="color:#4c6ef5">.edu</span></span>
+      <div style="display:flex;gap:24px"><a href="#" style="color:#6b7280">Integrity model</a><a href="#" style="color:#6b7280">Data &amp; consent</a><a href="#" style="color:#6b7280">Privacy</a><a href="#" style="color:#6b7280">Contact</a></div>
+      <span>© 2026 Thesisfy.edu</span>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  canvasRef = React.createRef();
+  heroRef = React.createRef();
+  stageRef = React.createRef();
+  textRef = React.createRef();
+  mouse = { x: 0, y: 0, tx: 0, ty: 0, px: -1, py: -1 };
+  particles = Array.from({ length: 80 }, () => {
+    const u = Math.random() * Math.PI * 2, v = Math.acos(2 * Math.random() - 1), r = 430 + Math.random() * 120;
+    return { x: r * Math.sin(v) * Math.cos(u), y: r * Math.cos(v) * 0.6, z: r * Math.sin(v) * Math.sin(u), c: ["#bac8ff", "#96f2d7", "#ddd6fe"][Math.floor(Math.random() * 3)], s: 1.5 + Math.random() * 2 };
+  });
+
+  componentDidMount() {
+    const canvas = this.canvasRef.current, hero = this.heroRef.current, stage = this.stageRef.current;
+    if (!canvas || !hero || !stage) return;
+    const ctx = canvas.getContext("2d");
+    const m = this.mouse;
+    const onMove = (e) => { const r = stage.getBoundingClientRect(); m.px = e.clientX - r.left; m.py = e.clientY - r.top; const hr = hero.getBoundingClientRect(); m.tx = ((e.clientX - hr.left) / hr.width - 0.5) * 2; m.ty = ((e.clientY - hr.top) / hr.height - 0.5) * 2; };
+    const onLeave = () => { m.tx = 0; m.ty = 0; m.px = -1; m.py = -1; };
+    hero.addEventListener("pointermove", onMove);
+    hero.addEventListener("pointerleave", onLeave);
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const start = performance.now();
+    const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+    const bodies = {
+      sun: { label: "University", sub: "sets policy and budget", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 54 },
+      earth: { label: "Student", sub: "writes the thesis", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 24 },
+      moon: { label: "AI assistant", sub: "declared, never hidden", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 10 },
+      sat: { label: "Advisor", sub: "observes the process", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 8 },
+    };
+    const ORBIT = 300, MOON_R = 56, SAT_R = 84;
+    const ring = (fn, color, dash) => { ctx.beginPath(); for (let i = 0; i <= 96; i++) { const q = fn((i / 96) * Math.PI * 2); if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); } ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]); };
+    const sphere = (q, body, rr0) => {
+      const r = rr0 * q.k;
+      ctx.save(); ctx.shadowColor = body.glow; ctx.shadowBlur = r * 1.4;
+      const g = ctx.createRadialGradient(q.x - r * 0.35, q.y - r * 0.4, r * 0.1, q.x, q.y, r);
+      g.addColorStop(0, body.c0); g.addColorStop(1, body.c1);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2); ctx.stroke();
+    };
+    const pill = (q, body, dy, hover) => {
+      const fs = (hover ? 13.5 : 12.5) * Math.max(0.85, Math.min(1.1, q.k));
+      ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`; const tw = ctx.measureText(body.label).width;
+      ctx.font = `500 ${fs * 0.82}px Inter, system-ui, sans-serif`; const sw = ctx.measureText(body.sub).width;
+      const pw = Math.max(tw, sw) + fs * 1.8, ph = fs * 3.1, x = q.x - pw / 2, y = q.y + dy;
+      ctx.save(); ctx.shadowColor = "rgba(17,24,39,.14)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6; rr(x, y, pw, ph, 10); ctx.fillStyle = hover ? body.c1 : "rgba(255,255,255,.96)"; ctx.fill(); ctx.restore();
+      rr(x, y, pw, ph, 10); ctx.strokeStyle = hover ? body.c1 : "#e5e7eb"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.textBaseline = "middle"; ctx.textAlign = "center";
+      ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`; ctx.fillStyle = hover ? "#fff" : "#111827"; ctx.fillText(body.label, q.x, y + ph * 0.34);
+      ctx.font = `500 ${fs * 0.82}px Inter, system-ui, sans-serif`; ctx.fillStyle = hover ? "rgba(255,255,255,.85)" : "#6b7280"; ctx.fillText(body.sub, q.x, y + ph * 0.7);
+      ctx.textAlign = "start";
+    };
+    const draw = (now) => {
+      if (!this.canvasRef.current) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      if (!W || !H) { this.raf = requestAnimationFrame(draw); return; }
+      if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      m.x += (m.tx - m.x) * 0.05; m.y += (m.ty - m.y) * 0.05;
+      const t = (now - start) / 1000;
+      const yaw = (reduce ? 0.4 : t * 0.02) + m.x * 0.5;
+      const pitch = -0.42 + m.y * 0.2;
+      // the canvas IS the stage: centre the scene in it and scale to fit
+      const F = 900;
+      // behind the hero copy: sun sits to the right of the text column, orbit sweeps under the headline
+      const te = this.textRef.current;
+      const textRight = te ? te.getBoundingClientRect().right - stage.getBoundingClientRect().left : W * 0.6;
+      const cx = Math.min(W - 60, Math.max(W * 0.72, textRight + 90)), cy = H * 0.55;
+      const S = Math.max(0.6, Math.min(W / 640, H / 330));
+      const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const P = (x, y, z) => { const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw; const y1 = y * cp - z1 * sp, z2 = y * sp + z1 * cp; const k = F / (F + z2 + 650); return { x: cx + x1 * k * S, y: cy + y1 * k * S, k: k * S, z: z2 }; };
+      const items = [];
+      for (const p of this.particles) { const q = P(p.x, p.y, p.z); items.push({ z: q.z, bg: true, draw: () => { ctx.globalAlpha = 0.35 + q.k * 0.4; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(q.x, q.y, p.s * q.k, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; } }); }
+      // orbits
+      const ea = reduce ? 0.9 : t * 0.08, ma = reduce ? 2.1 : t * 0.38, sa = reduce ? 4.0 : t * 0.26 + 1.3;
+      const E = { x: Math.cos(ea) * ORBIT, y: 0, z: Math.sin(ea) * ORBIT };
+      const M = { x: E.x + Math.cos(ma) * MOON_R, y: Math.sin(ma) * MOON_R * 0.35, z: E.z + Math.sin(ma) * MOON_R };
+      const SA = { x: E.x + Math.cos(sa) * SAT_R * 0.55, y: Math.sin(sa) * SAT_R, z: E.z + Math.sin(sa) * SAT_R * 0.55 };
+      const qS = P(0, 0, 0), qE = P(E.x, E.y, E.z), qM = P(M.x, M.y, M.z), qA = P(SA.x, SA.y, SA.z);
+      items.push({ z: 1e4, bg: true, draw: () => ring((a) => P(Math.cos(a) * ORBIT, 0, Math.sin(a) * ORBIT), "rgba(76,110,245,.18)") });
+      items.push({ z: qE.z + 1, bg: true, draw: () => { ring((a) => P(E.x + Math.cos(a) * MOON_R, Math.sin(a) * MOON_R * 0.35, E.z + Math.sin(a) * MOON_R), "rgba(124,58,237,.3)"); ring((a) => P(E.x + Math.cos(a) * SAT_R * 0.55, Math.sin(a) * SAT_R, E.z + Math.sin(a) * SAT_R * 0.55), "rgba(76,110,245,.25)", [3, 4]); } });
+      const hov = (q, rad) => m.px >= 0 && Math.hypot(m.px - q.x, m.py - q.y) < rad;
+      const hS = hov(qS, 70), hE = hov(qE, 44), hM = hov(qM, 26), hA = hov(qA, 26);
+      items.push({ z: 1e4 - 1, bg: true, draw: () => { const r = bodies.sun.r * qS.k * 2.4; const g = ctx.createRadialGradient(qS.x, qS.y, bodies.sun.r * qS.k * 0.8, qS.x, qS.y, r); g.addColorStop(0, "rgba(116,143,252,.35)"); g.addColorStop(1, "rgba(116,143,252,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(qS.x, qS.y, r, 0, Math.PI * 2); ctx.fill(); } });
+      items.push({ z: qS.z, draw: () => { sphere(qS, bodies.sun, bodies.sun.r); const r = bodies.sun.r * qS.k; ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = Math.max(1.5, 3 * qS.k); ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(qS.x, qS.y - r * 0.5); ctx.lineTo(qS.x - r * 0.42, qS.y - r * 0.32); ctx.lineTo(qS.x - r * 0.42, qS.y + r * 0.05); ctx.bezierCurveTo(qS.x - r * 0.42, qS.y + r * 0.35, qS.x, qS.y + r * 0.52, qS.x, qS.y + r * 0.52); ctx.bezierCurveTo(qS.x, qS.y + r * 0.52, qS.x + r * 0.42, qS.y + r * 0.35, qS.x + r * 0.42, qS.y + r * 0.05); ctx.lineTo(qS.x + r * 0.42, qS.y - r * 0.32); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(qS.x - r * 0.18, qS.y + r * 0.02); ctx.lineTo(qS.x - r * 0.04, qS.y + r * 0.16); ctx.lineTo(qS.x + r * 0.2, qS.y - r * 0.12); ctx.stroke(); pill(qS, bodies.sun, r + 12, hS); } });
+      // advisor sight line to the student
+      items.push({ z: Math.min(qA.z, qE.z) - 0.5, draw: () => { ctx.strokeStyle = hA ? bodies.sat.c1 : "rgba(66,99,235,.45)"; ctx.lineWidth = 1; ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.moveTo(qA.x, qA.y); ctx.lineTo(qE.x, qE.y); ctx.stroke(); ctx.setLineDash([]); } });
+      items.push({ z: qE.z, draw: () => { sphere(qE, bodies.earth, bodies.earth.r); pill(qE, bodies.earth, bodies.earth.r * qE.k + 10, hE); } });
+      items.push({ z: qM.z, draw: () => { sphere(qM, bodies.moon, bodies.moon.r); if (hM) pill(qM, bodies.moon, bodies.moon.r * qM.k + 8, true); else { ctx.font = `600 ${11 * Math.max(0.85, qM.k)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#6d28d9"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText("AI", qM.x, qM.y + bodies.moon.r * qM.k + 4); ctx.textAlign = "start"; } } });
+      items.push({ z: qA.z, draw: () => {
+        const k = qA.k, r = bodies.sat.r * k;
+        ctx.save(); ctx.translate(qA.x, qA.y); ctx.rotate(sa * 0.5);
+        ctx.fillStyle = "#4263eb"; ctx.fillRect(-r * 2.6, -r * 0.45, r * 1.5, r * 0.9); ctx.fillRect(r * 1.1, -r * 0.45, r * 1.5, r * 0.9);
+        ctx.fillStyle = "#fff"; ctx.strokeStyle = "#4263eb"; ctx.lineWidth = 1.2; rr(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6, r * 0.3); ctx.fill(); ctx.stroke();
+        ctx.restore();
+        if (hA) pill(qA, bodies.sat, r + 10, true); else { ctx.font = `600 ${11 * Math.max(0.85, k)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#4263eb"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.textBaseline = "bottom"; ctx.fillText("Advisor", qA.x, qA.y - r * 2.2); ctx.textAlign = "start"; }
+      } });
+      items.sort((a, b) => b.z - a.z).forEach((i) => i.draw());
+      this.raf = requestAnimationFrame(draw);
+    };
+    this.raf = requestAnimationFrame(draw);
+    this.cleanup = () => { cancelAnimationFrame(this.raf); hero.removeEventListener("pointermove", onMove); hero.removeEventListener("pointerleave", onLeave); };
+  }
+  componentWillUnmount() { if (this.cleanup) this.cleanup(); }
+
+  renderVals() {
+    const pillars = [
+      { n: "01", title: "Attribution at the moment of writing", body: "Text inserted from the assistant, pasted from a source or copied from an external AI tool is marked when it enters the document. Nothing is inferred afterwards." },
+      { n: "02", title: "A ledger the student can see and fix", body: "The integrity score is a sum of visible deductions: unattributed pastes, AI share above policy, open notices. Every point maps to an action the student can take." },
+      { n: "03", title: "Consent and policy enforced on the server", body: "Students choose monitoring scopes within the institution's policy. Events outside the granted scopes are dropped even if a client sends them. Receipts are downloadable." },
+    ];
+    const roles = [
+      { who: "Integrity office", bg: "#f0f4ff", fg: "#4263eb", title: "Fewer accusations, better evidence", items: ["A policy you set once: AI share limit, permitted tools and modes, monitoring scopes.", "Provenance reports instead of probability scores in appeal hearings.", "Monthly AI spend by model and department, with budget alerts."] },
+      { who: "Advisors", bg: "#e6fcf5", fg: "#0ca678", title: "Read the process, not just the draft", items: ["Which passages were AI-assisted, pasted or written, with dates.", "Session timeline and AI log alongside the chapter you are reviewing.", "Approve, request revision or comment without leaving the document."] },
+      { who: "Students", bg: "#f5f3ff", fg: "#6d28d9", title: "Use AI openly, within the rules", items: ["Claude, GPT, Gemini or Mistral inside the editor, paid by the university or their own account.", "An assistant that outlines, critiques and corrects, but never writes the thesis.", "Clear view of their own AI share and what each insertion costs."] },
+    ];
+    return { pillars, roles, canvasRef: this.canvasRef, heroRef: this.heroRef, stageRef: this.stageRef, textRef: this.textRef };
+  }
+}
+</script>
+</body>
+</html>

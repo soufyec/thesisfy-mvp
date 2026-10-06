@@ -86,6 +86,14 @@ export interface AssistantPanelProps {
   initialConversationId?: string;
   className?: string;
   onConversationsChanged?: () => void;
+  /** Thesis numbers for the cost card shown before any AI insertion (words, AI words, policy limit, who pays). */
+  insertContext?: { wordCount: number; aiWords: number; limitPct: number; payer?: string };
+  /** Clears the "Working on" selection in the host editor. */
+  onClearSelection?: () => void;
+  /** Adds the answer as a comment anchored to the current selection. */
+  onAddComment?: (text: string) => void;
+  /** Inserts the answer into the "Research notes" tab (created if missing), marked as AI-assisted. */
+  onKeepAsNotes?: (html: string, meta: InsertMeta) => void;
 }
 
 const QUICK: Record<AIMode, string[]> = {

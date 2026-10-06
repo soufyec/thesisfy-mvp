@@ -26,7 +26,7 @@ export default function LibraryPage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-6xl space-y-6">
+      <div className="max-w-6xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Research databases</h1>
           <p className="text-gray-500 mt-1 text-sm max-w-3xl">{data?.settings.intro || `Databases your library at ${data?.university || "your university"} gives you access to. Open one and sign in with your university account.`}</p>

@@ -54,7 +54,7 @@ export default function StudentDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-6xl">
+      <div className="max-w-6xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Welcome back{user ? `, ${user.name.split(" ")[0]}` : ""}!</h1>
           <p className="text-gray-500 mt-1">Here&apos;s where your writing stands.</p>

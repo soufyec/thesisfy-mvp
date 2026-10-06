@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#111827;background:#f1f3f4;-webkit-font-smoothing:antialiased}
+a{color:#4c6ef5;text-decoration:none}a:hover{color:#4263eb}
+*{box-sizing:border-box}
+@keyframes pulse{50%{opacity:.45}}
+</style>
+</helmet>
+<div data-screen-label="Editor propuesta v2" style="height:100vh;display:flex;flex-direction:column;background:#f1f3f4;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:#111827;min-width:1440px">
+
+  <header style="height:52px;display:flex;align-items:center;gap:12px;padding:0 12px 0 8px;background:#fff;border-bottom:1px solid #e5e7eb;flex-shrink:0">
+    <a href="#" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg></a>
+    <span style="width:30px;height:30px;border-radius:8px;background:#4c6ef5;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg></span>
+    <span style="font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:200px;flex:1 1 auto" title="Machine Learning Applications in Climate Change Prediction Models">Machine Learning Applications in Climate Change Prediction Models</span>
+    <span style="font-size:12px;color:#9ca3af;display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e"></span>Saved</span>
+    <button style="display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px;border:1px solid #e5e7eb;background:#fff;border-radius:999px;font-size:13px;font-weight:600;color:#111827;font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0"><span style="width:18px;height:18px;border-radius:50%;background:conic-gradient(#7c3aed 0 12%,#f59e0b 12% 19%,#20c997 19% 100%);display:flex;align-items:center;justify-content:center"><span style="width:10px;height:10px;border-radius:50%;background:#fff"></span></span>AI 12% <span style="color:#9ca3af;font-weight:400">of 25%</span> · Integrity <span style="color:#16a34a">94</span></button>
+    <button style="display:flex;align-items:center;gap:6px;padding:7px 12px;border:0;background:{{ aiBg }};color:{{ aiFg }};border-radius:999px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap" onClick="{{ toggleAi }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>AI assistant</button>
+    <button style="padding:7px 14px;border:1px solid #e5e7eb;background:#fff;border-radius:999px;font-size:13px;font-weight:600;font-family:inherit;color:#111827;cursor:pointer">Share</button>
+    <span style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></span>
+  </header>
+
+  <div style="height:40px;display:flex;align-items:center;gap:1px;padding:0 10px;background:#fff;border-bottom:1px solid #e5e7eb;flex-shrink:0;color:#374151;white-space:nowrap;overflow:hidden" role="toolbar" aria-label="Formatting">
+    <sc-for list="{{ tb1 }}" as="b" hint-placeholder-count="4"><span title="{{ b.t }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;opacity:{{ b.o }};flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ b.d }}"></path></svg></span></sc-for>
+    <span style="display:inline-flex;align-items:center;gap:2px;margin-left:2px;color:#6b7280;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" x2="16.65" y1="21" y2="16.65"></line><line x1="11" x2="11" y1="8" y2="14"></line><line x1="8" x2="14" y1="11" y2="11"></line></svg><span style="height:30px;font-size:13px;display:inline-flex;align-items:center;padding:0 4px;color:#374151">100%</span></span>
+    <span style="width:1px;height:18px;background:#e5e7eb;margin:0 4px;flex-shrink:0"></span>
+    <span style="height:30px;display:inline-flex;align-items:center;justify-content:space-between;gap:6px;padding:0 8px;border-radius:6px;font-size:13px;width:112px;flex-shrink:0">Normal text<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+    <span style="width:1px;height:18px;background:#e5e7eb;margin:0 4px;flex-shrink:0"></span>
+    <span style="height:30px;display:inline-flex;align-items:center;justify-content:space-between;gap:6px;padding:0 8px;border-radius:6px;font-size:13px;width:104px;flex-shrink:0">Default<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+    <span style="width:1px;height:18px;background:#e5e7eb;margin:0 4px;flex-shrink:0"></span>
+    <span style="width:26px;height:30px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"></path></svg></span>
+    <span style="height:30px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;width:34px;flex-shrink:0">12</span>
+    <span style="width:26px;height:30px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+    <span style="width:1px;height:18px;background:#e5e7eb;margin:0 4px;flex-shrink:0"></span>
+    <sc-for list="{{ tb2 }}" as="b" hint-placeholder-count="4"><span title="{{ b.t }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;opacity:{{ b.o }};flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ b.d }}"></path></svg></span></sc-for>
+    <span title="Text color" style="height:30px;min-width:30px;padding:0 4px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:14px;font-weight:700;line-height:1">A</span><span style="display:block;height:3px;width:16px;border-radius:2px;background:#111827;margin-top:1px"></span></span>
+    <span title="Highlight color" style="height:30px;min-width:30px;padding:0 4px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"></path><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"></path></svg><span style="display:block;height:3px;width:16px;border-radius:2px;background:#fff59d;margin-top:1px"></span></span>
+    <span style="width:1px;height:18px;background:#e5e7eb;margin:0 4px;flex-shrink:0"></span>
+    <sc-for list="{{ tb3 }}" as="b" hint-placeholder-count="5"><span title="{{ b.t }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;opacity:{{ b.o }};flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ b.d }}"></path></svg></span></sc-for>
+    <span style="width:1px;height:18px;background:#e5e7eb;margin:0 4px;flex-shrink:0"></span>
+    <span title="Align" style="height:30px;min-width:30px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"></line><line x1="15" x2="3" y1="12" y2="12"></line><line x1="17" x2="3" y1="18" y2="18"></line></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px"><path d="m6 9 6 6 6-6"></path></svg></span>
+    <span style="height:30px;display:inline-flex;align-items:center;justify-content:space-between;gap:6px;padding:0 8px;border-radius:6px;font-size:13px;width:84px;flex-shrink:0">Spacing<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+    <sc-for list="{{ tb4 }}" as="b" hint-placeholder-count="5"><span title="{{ b.t }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;opacity:{{ b.o }};flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ b.d }}"></path></svg></span></sc-for>
+    <span style="width:1px;height:18px;background:#e5e7eb;margin:0 4px;flex-shrink:0"></span>
+    <sc-for list="{{ tb5 }}" as="b" hint-placeholder-count="3"><span title="{{ b.t }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;opacity:{{ b.o }};flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ b.d }}"></path></svg></span></sc-for>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#6b7280;cursor:pointer;flex-shrink:0;margin-left:auto;padding-left:12px" onClick="{{ toggleGutter }}"><span style="width:28px;height:16px;border-radius:999px;background:{{ gutterTrack }};position:relative;display:inline-block"><span style="position:absolute;top:2px;left:{{ gutterKnob }};width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)"></span></span>Provenance</label>
+  </div>
+
+  <div style="display:flex;align-items:flex-end;gap:4px;padding:6px 16px 0;background:#f1f3f4;border-bottom:1px solid #e5e7eb;flex-shrink:0" role="tablist" aria-label="Document tabs">
+    <span style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px 8px 0 0;font-size:13px;border:1px solid #e5e7eb;border-bottom:0;background:#fff;color:#111827;font-weight:500;white-space:nowrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4c6ef5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="m3 15 2 2 4-4"></path></svg>Final submission<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+    <span style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px 8px 0 0;font-size:13px;border:1px solid transparent;border-bottom:0;color:#4b5563;white-space:nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"></path><path d="M15 3v4a2 2 0 0 0 2 2h4"></path></svg>Research notes</span>
+    <span style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px 8px 0 0;font-size:13px;border:1px solid transparent;border-bottom:0;color:#4b5563;white-space:nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"></path><path d="M15 3v4a2 2 0 0 0 2 2h4"></path></svg>Chapter 5 draft</span>
+    <span style="display:flex;align-items:center;padding:6px 8px;color:#6b7280"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <main style="flex:1;overflow:auto;padding:28px 0 60px">
+      <div style="width:21cm;max-width:100%;margin:0 auto;background:#fff;box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15);padding:2.2cm 2.54cm 2.54cm;font-family:Georgia,'Times New Roman',serif;font-size:12pt;line-height:1.6;color:#202124">
+          <h1 style="font-size:24pt;font-weight:700;line-height:1.25;margin:0 0 .5em">Machine Learning Applications in Climate Change Prediction Models</h1>
+          <h2 style="font-size:16pt;font-weight:700;margin:.8em 0 .6em;line-height:1.3">1. Introduction</h2>
+          <p style="margin:0 0 .75em;position:relative">
+            <sc-if value="{{ showGutter }}" hint-placeholder-val="{{ true }}"><span style="position:absolute;left:-52px;top:4px;bottom:4px;display:flex;gap:6px;font-family:Inter,sans-serif;font-size:10px;color:#9ca3af"><span>¶1</span><span style="width:3px;border-radius:2px;background:#20c997"></span></span></sc-if>
+            Climate prediction has historically relied on physically based general circulation models whose accuracy is bounded by the resolution at which sub-grid processes such as cloud formation can be represented <span style="color:#0b7a5a">(Randall et al., 2007)</span>. Over the last decade, the volume of satellite and reanalysis data has grown faster than the computational budgets available to assimilate it.</p>
+          <p style="margin:0 0 .75em;position:relative">
+            <span style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:-6px;display:flex;align-items:center;gap:2px;background:#111827;color:#fff;border-radius:10px;padding:4px;box-shadow:0 8px 24px -8px rgba(0,0,0,.4);font-family:Inter,sans-serif;font-size:12px;white-space:nowrap;z-index:2">
+              <span style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;font-weight:700">B</span>
+              <span style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;font-style:italic;font-family:Georgia,serif;font-size:15px">I</span>
+              <span style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;text-decoration:underline">U</span>
+              <span style="width:1px;height:16px;background:rgba(255,255,255,.2);margin:0 3px"></span>
+              <span style="height:28px;display:inline-flex;align-items:center;gap:5px;padding:0 9px;border-radius:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v8l3-3 3 3V2"></path><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>Cite</span>
+              <span style="height:28px;display:inline-flex;align-items:center;gap:5px;padding:0 9px;border-radius:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Comment</span>
+              <span style="height:28px;display:inline-flex;align-items:center;gap:5px;padding:0 10px;border-radius:6px;background:#4c6ef5;font-weight:600"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect></svg>Ask AI</span>
+            </span>
+            <sc-if value="{{ showGutter }}" hint-placeholder-val="{{ true }}"><span style="position:absolute;left:-52px;top:4px;bottom:4px;display:flex;gap:6px;font-family:Inter,sans-serif;font-size:10px;color:#7c3aed;font-weight:700"><span>AI</span><span style="width:3px;border-radius:2px;background:#7c3aed"></span></span></sc-if>
+            This thesis asks whether data-driven models can complement, rather than replace, process-based simulation. <span style="background:rgba(124,58,237,.13);border-bottom:2px solid rgba(124,58,237,.55)">Recent work suggests that deep learning architectures trained on reanalysis products can learn stable emulators of atmospheric dynamics, offering orders-of-magnitude speed-ups at inference time while preserving physically plausible behaviour over medium-range horizons</span> <span style="color:#0b7a5a">(Reichstein et al., 2019)</span>.
+            <sc-if value="{{ showGutter }}" hint-placeholder-val="{{ true }}"><span style="position:absolute;right:-2.2cm;top:28px;width:1.9cm;font-family:Inter,sans-serif;font-size:10.5px;line-height:1.35;color:#7c3aed;border-left:2px solid #7c3aed;padding-left:8px">Claude · Outline<br><span style="color:#9ca3af">9 Mar, 48 words</span></span></sc-if>
+          </p>
+          <p style="margin:40px 0 .75em;position:relative">
+            <sc-if value="{{ showGutter }}" hint-placeholder-val="{{ true }}"><span style="position:absolute;left:-52px;top:4px;bottom:4px;display:flex;gap:6px;font-family:Inter,sans-serif;font-size:10px;color:#b45309;font-weight:700"><span>Q</span><span style="width:3px;border-radius:2px;background:#f59e0b"></span></span></sc-if>
+            <span style="background:rgba(245,158,11,.16);border-bottom:2px solid rgba(245,158,11,.6)">The term "hybrid modelling" is used here to describe any configuration in which a learned component is embedded inside, or coupled to, a numerical solver.</span> The remainder of this chapter situates the research question within the literature and states the contributions.
+            <sc-if value="{{ showGutter }}" hint-placeholder-val="{{ true }}"><span style="position:absolute;right:-2.2cm;top:2px;width:1.9cm;font-family:Inter,sans-serif;font-size:10.5px;line-height:1.35;color:#b45309;border-left:2px solid #f59e0b;padding-left:8px">Pasted · attributed<br><span style="color:#9ca3af">Reichstein 2019</span></span></sc-if>
+          </p>
+          <h3 style="font-size:13pt;font-weight:700;margin:1em 0 .5em">1.1 Research questions</h3>
+          <p style="margin:0 0 .5em;position:relative">
+            <sc-if value="{{ showGutter }}" hint-placeholder-val="{{ true }}"><span style="position:absolute;left:-52px;top:4px;bottom:4px;display:flex;gap:6px;font-family:Inter,sans-serif;font-size:10px;color:#9ca3af"><span>¶4</span><span style="width:3px;border-radius:2px;background:#20c997"></span></span></sc-if>
+            RQ1. To what extent do learned parameterisations reduce systematic bias in precipitation forecasts at 0.25° resolution?</p>
+          <p style="margin:0 0 .5em;position:relative">
+            <sc-if value="{{ showGutter }}" hint-placeholder-val="{{ true }}"><span style="position:absolute;left:-52px;top:4px;bottom:4px;display:flex;gap:6px;font-family:Inter,sans-serif;font-size:10px;color:#9ca3af"><span>¶5</span><span style="width:3px;border-radius:2px;background:#20c997"></span></span></sc-if>
+            RQ2. How does the choice of training window affect out-of-distribution robustness under warming scenarios?</p>
+      </div>
+    </main>
+
+    <sc-if value="{{ aiOpen }}" hint-placeholder-val="{{ true }}">
+    <aside style="width:400px;border-left:1px solid #e5e7eb;background:#fff;display:flex;flex-direction:column;flex-shrink:0;min-height:0">
+      <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <span style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#5c7cfa,#20c997);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg></span>
+        <div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:600">Thesisfy AI</div><div style="font-size:12px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Thinks with you. Never writes your thesis.</div></div>
+        <span style="font-size:12px;padding:4px 10px;border-radius:999px;background:#f3f4f6;display:flex;align-items:center;gap:6px;color:#374151"><span style="width:7px;height:7px;border-radius:50%;background:#d97757"></span>Claude · your account</span>
+        <span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:#6b7280"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg></span>
+      </div>
+
+      <div style="padding:12px 16px 0;flex-shrink:0">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+          <sc-for list="{{ modes }}" as="m" hint-placeholder-count="10"><span title="{{ m.description }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px 6px;border-radius:10px;border:1px solid {{ m.border }};background:{{ m.bg }};color:{{ m.fg }};font-size:11px;font-weight:500;cursor:pointer;text-align:center;line-height:1.1" onClick="{{ m.pick }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ m.icon }}"></path></svg>{{ m.label }}</span></sc-for>
+        </div>
+        <div style="font-size:12px;color:#6b7280;margin:8px 2px 0">{{ modeHint }}</div>
+      </div>
+
+      <div style="margin:12px 16px 0;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;display:flex;gap:10px;align-items:flex-start;flex-shrink:0">
+        <span style="width:3px;align-self:stretch;border-radius:2px;background:#4c6ef5"></span>
+        <div style="min-width:0;flex:1"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:3px">Working on · §1 ¶2 · 48 words</div><div style="font-family:Georgia,serif;font-size:13px;line-height:1.45;color:#374151;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">Recent work suggests that deep learning architectures trained on reanalysis products can learn stable emulators of atmospheric dynamics…</div></div>
+        <span style="font-size:12px;color:#9ca3af;cursor:pointer">✕</span>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:14px;min-height:0">
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <sc-for list="{{ quick }}" as="q" hint-placeholder-count="3"><span style="font-size:12px;padding:6px 10px;border-radius:8px;background:#f0f4ff;color:#4263eb;cursor:pointer">{{ q }}</span></sc-for>
+        </div>
+        <div style="align-self:flex-end;max-width:85%;font-size:14px;line-height:1.5;padding:9px 12px;border-radius:12px 12px 2px 12px;background:#4c6ef5;color:#fff">Is the claim about speed-ups well supported?</div>
+        <div>
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:5px;display:flex;align-items:center;gap:6px">Claude · Critique <span style="padding:1px 7px;border-radius:999px;background:#f0f4ff;color:#4263eb;font-weight:600">logged</span></div>
+          <div style="font-size:14px;line-height:1.55;padding:10px 12px;border-radius:12px 12px 12px 2px;background:#f3f4f6;color:#111827">
+            <p style="margin:0 0 8px">Not yet. It rests on one citation and two stacked hedges ("suggests", "can"). A reviewer will ask:</p>
+            <ol style="margin:0 0 8px;padding-left:18px;display:flex;flex-direction:column;gap:4px"><li><strong>Which benchmark?</strong> Name the model and horizon behind "orders-of-magnitude".</li><li><strong>Plausible by what metric?</strong> Spectral energy, conservation, skill scores?</li><li><strong>One hedge, not two.</strong></li></ol>
+            <p style="margin:0">Want three guiding questions to redraft it in your own words?</p>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;font-size:12px">
+            <span style="padding:5px 10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#4263eb;font-weight:500;cursor:pointer">Guiding questions</span>
+            <span style="padding:5px 10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#4263eb;font-weight:500;cursor:pointer">Add as comment</span>
+          </div>
+        </div>
+
+        <div style="border:1px solid #ddd6fe;background:#f5f3ff;border-radius:12px;padding:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:8px;height:8px;border-radius:50%;background:#7c3aed"></span><span style="font-size:12px;font-weight:600;color:#5b21b6">Before you insert AI text</span></div>
+          <div style="font-size:12.5px;line-height:1.5;color:#374151">Inserting this outline adds <strong>64 AI-assisted words</strong>. Your AI share goes from <strong>12% to 14%</strong> of the 25% your institution allows. It is marked in the document and visible to your advisor.</div>
+          <div style="display:flex;gap:6px;margin-top:10px;font-size:12px"><span style="padding:6px 11px;border-radius:8px;background:#7c3aed;color:#fff;font-weight:600;cursor:pointer">Insert, marked as AI</span><span style="padding:6px 11px;border-radius:8px;border:1px solid #ddd6fe;color:#5b21b6;font-weight:500;cursor:pointer">Keep as notes</span></div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px 14px;border-top:1px solid #f3f4f6;flex-shrink:0">
+        <div style="display:flex;align-items:flex-end;gap:8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:9px 12px"><span style="flex:1;font-size:14px;color:#9ca3af">{{ placeholder }}</span><span style="width:28px;height:28px;border-radius:8px;background:#4c6ef5;color:#fff;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg></span></div>
+      </div>
+    </aside>
+    </sc-if>
+  </div>
+
+  <footer style="height:30px;display:flex;align-items:center;gap:18px;padding:0 16px;background:#fff;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;flex-shrink:0">
+    <span style="display:flex;align-items:center;gap:7px"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2.4s ease-in-out infinite"></span>Session recording <strong style="font-weight:600;color:#111827">pastes and AI use</strong>, not keystrokes · <a href="#" style="text-decoration:underline dotted">change</a></span>
+    <span style="flex:1"></span>
+    <span>In progress · Advisor: Prof. Williams</span>
+    <span>3,214 of 20,000 words</span>
+    <span>Page 1 of 10</span>
+    <span>APA 7</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;aiOpen&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;showGutter&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;critique&quot;,&quot;options&quot;:[&quot;chat&quot;,&quot;brainstorm&quot;,&quot;outline&quot;,&quot;critique&quot;,&quot;grammar&quot;,&quot;summarize&quot;,&quot;explain&quot;,&quot;citations&quot;,&quot;gaps&quot;,&quot;paraphrase_check&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;AI assistant&quot;}}">
+class Component extends DCLogic {
+  state = { aiOpen: true, showGutter: true, mode: "critique" };
+  renderVals() {
+    const aiOpen = this.props.aiOpen ?? this.state.aiOpen;
+    const showGutter = this.props.showGutter ?? this.state.showGutter;
+    const mode = this.props.mode ?? this.state.mode;
+    const MODES = [
+      { id: "chat", label: "Ask", description: "Open conversation about your research", icon: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", quick: ["How do I narrow my research question?", "What makes a strong thesis statement?"] },
+      { id: "brainstorm", label: "Brainstorm", description: "Angles, questions and counter-arguments", icon: "M9 18h6 M10 22h4 M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z", quick: ["Angles on the limitations of my approach", "Counter-arguments to anticipate"] },
+      { id: "outline", label: "Outline", description: "Structure a chapter or section. Insertable, marked as AI.", icon: "M3 6h18 M3 12h12 M3 18h8", quick: ["Outline my literature review", "Structure the methodology chapter"] },
+      { id: "critique", label: "Critique", description: "Reviewer-style feedback on a passage", icon: "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z M21 21l-4.3-4.3", quick: ["Critique the selected passage", "Where is the evidence thin?", "Is my argument convincing?"] },
+      { id: "grammar", label: "Grammar", description: "Corrections to a passage you wrote. Replaces selection, marked as AI.", icon: "M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z", quick: ["Correct the grammar of the selection", "Check academic tone"] },
+      { id: "summarize", label: "Summarize", description: "Condense a source or your own section", icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h5", quick: ["Summarize this source in 5 bullets", "Key claims of the selected text"] },
+      { id: "explain", label: "Explain", description: "Explain a concept, method or paper", icon: "M22 10 12 5 2 10l10 5z M6 12v5c3 3 9 3 12 0v-5", quick: ["Explain mixed-methods triangulation", "Explain grounded theory coding"] },
+      { id: "citations", label: "Citations", description: "Format references in your citation style", icon: "M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20 M8 7h8 M8 11h6", quick: ["Format this reference in APA 7", "How do I cite a dataset?"] },
+      { id: "gaps", label: "Find gaps", description: "Logical gaps and missing evidence", icon: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 8v4 M12 16h.01", quick: ["Find gaps in the selected section", "Which claims are unsupported?"] },
+      { id: "paraphrase_check", label: "Paraphrase", description: "Is this too close to the source?", icon: "M16 3h5v5 M4 20 21 3 M21 16v5h-5 M15 15l6 6 M4 4l5 5", quick: ["Is my paraphrase too close to the source?", "Is this citation adequate?"] },
+    ];
+    const cur = MODES.find((m) => m.id === mode) || MODES[3];
+    const modes = MODES.map((m) => {
+      const a = m.id === mode;
+      return { ...m, border: a ? "#4c6ef5" : "#e5e7eb", bg: a ? "#4c6ef5" : "#fff", fg: a ? "#fff" : "#4b5563", pick: () => this.setState({ mode: m.id }) };
+    });
+    const o = (arr) => arr.map((x) => ({ o: 1, ...x }));
+    const tb1 = o([
+      { t: "Undo", d: "M3 7v6h6 M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" },
+      { t: "Redo", d: "M21 7v6h-6 M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7", o: 0.3 },
+      { t: "Print", d: "M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z" },
+      { t: "Spelling & grammar", d: "m6 16 6-12 6 12 M8 12h8 M4 21c1.1 0 1.1-1 2.3-1s1.1 1 2.3 1c1.1 0 1.1-1 2.3-1 1.1 0 1.1 1 2.3 1 1.1 0 1.1-1 2.3-1 1.1 0 1.1 1 2.3 1 1.1 0 1.1-1 2.3-1" },
+    ]);
+    const tb2 = o([
+      { t: "Bold", d: "M14 12a4 4 0 0 0 0-8H6v8 M15 20a4 4 0 0 0 0-8H6v8Z" },
+      { t: "Italic", d: "M19 4h-9 M14 20H5 M15 4 9 20" },
+      { t: "Underline", d: "M6 4v6a6 6 0 0 0 12 0V4 M4 20h16" },
+      { t: "Strikethrough", d: "M16 4H9a3 3 0 0 0-2.83 4 M14 12a4 4 0 0 1 0 8H6 M4 12h16" },
+    ]);
+    const tb3 = o([
+      { t: "Insert link", d: "M9 17H7A5 5 0 0 1 7 7h2 M15 7h2a5 5 0 1 1 0 10h-2 M8 12h8" },
+      { t: "Add comment", d: "M12 7v6 M9 10h6 M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" },
+      { t: "Cite a source", d: "M10 2v8l3-3 3 3V2 M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" },
+      { t: "Insert image", d: "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4 M21 15l-5-5L5 21" },
+      { t: "Insert table", d: "M12 3v18 M3 9h18 M3 15h18 M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" },
+    ]);
+    const tb4 = o([
+      { t: "Checklist", d: "m9 11 3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" },
+      { t: "Bulleted list", d: "M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01" },
+      { t: "Numbered list", d: "M10 6h11 M10 12h11 M10 18h11 M4 6h1v4 M4 10h2 M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" },
+      { t: "Decrease indent", d: "M7 8 3 12l4 4 M21 12H11 M21 6H11 M21 18H11" },
+      { t: "Increase indent", d: "m3 8 4 4-4 4 M21 12H11 M21 6H11 M21 18H11" },
+    ]);
+    const tb5 = o([
+      { t: "Superscript", d: "m4 19 8-8 M12 19l-8-8 M20 12h-4c0-1.5.44-2 1.5-2.5S20 8.33 20 7c0-.67-.33-1.33-1-1.5a2 2 0 0 0-2.17.5" },
+      { t: "Subscript", d: "m4 5 8 8 M12 5l-8 8 M20 19h-4c0-1.5.44-2 1.5-2.5S20 15.33 20 14c0-.67-.33-1.33-1-1.5a2 2 0 0 0-2.17.5" },
+      { t: "Clear formatting", d: "M4 7V4h16v3 M5 20h6 M13 4 8 20 M15 15l5 5 M20 15l-5 5" },
+    ]);
+    return {
+      aiOpen, showGutter, modes, modeHint: cur.description, quick: cur.quick, placeholder: `${cur.label}… (Enter to send, Shift+Enter for a new line)`, tb1, tb2, tb3, tb4, tb5,
+      aiBg: aiOpen ? "#4c6ef5" : "#f0f4ff", aiFg: aiOpen ? "#fff" : "#4263eb",
+      gutterTrack: showGutter ? "#4c6ef5" : "#d1d5db", gutterKnob: showGutter ? "14px" : "2px",
+      toggleAi: () => this.setState((s) => ({ aiOpen: !s.aiOpen })),
+      toggleGutter: () => this.setState((s) => ({ showGutter: !s.showGutter })),
+    };
+  }
+}
+</script>
+</body>
+</html>

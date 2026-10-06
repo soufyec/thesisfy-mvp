@@ -23,7 +23,7 @@ export default function FlagsPage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-5xl">
+      <div className="max-w-5xl">
         <div className="flex items-center justify-between mb-6">
           <div><h1 className="text-2xl font-bold">Integrity flags</h1><p className="text-gray-500 mt-1 text-sm">Notices raised during writing sessions. Each one is visible to the student too.</p></div>
           <div className="flex gap-2">{(["open", "all"] as const).map((f) => <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 text-xs rounded-lg font-medium capitalize ${filter === f ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"}`}>{f}</button>)}</div>

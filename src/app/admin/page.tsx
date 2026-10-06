@@ -33,7 +33,7 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-6xl">
+      <div className="max-w-6xl">
         <div className="mb-6"><h1 className="text-2xl font-bold">{user?.role === "professor" ? "Advisor dashboard" : "Institution dashboard"}</h1><p className="text-gray-500 mt-1 text-sm">{user?.university}: transparent AI use across {stats?.total ?? "…"} theses.</p></div>
         {loading ? <div className="p-12 text-center text-gray-400">Loading…</div> : (
           <>

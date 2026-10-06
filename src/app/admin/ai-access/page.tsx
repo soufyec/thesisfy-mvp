@@ -162,7 +162,7 @@ export default function AdminAIAccessPage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-6xl space-y-6">
+      <div className="max-w-6xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">AI access &amp; billing</h1>

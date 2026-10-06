@@ -57,7 +57,7 @@ function ThesesInner() {
   };
 
   return (
-    <div className="animate-fade-in max-w-5xl">
+    <div className="max-w-5xl">
       <div className="flex items-center justify-between mb-6">
         <div><h1 className="text-2xl font-bold">My Theses</h1><p className="text-gray-500 mt-1 text-sm">Manage and track all your thesis projects.</p></div>
         <button onClick={() => setOpen(true)} className="btn-primary !px-4"><Plus className="w-4 h-4 mr-1" />New thesis</button>

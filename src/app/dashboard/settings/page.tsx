@@ -57,7 +57,7 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-3xl space-y-6">
+      <div className="max-w-3xl space-y-6">
         <div><h1 className="text-2xl font-bold">Settings &amp; Privacy</h1><p className="text-gray-500 mt-1 text-sm">Your profile, what Thesisfic records, and your devices.</p></div>
 
         <section className="card p-5 sm:p-6">

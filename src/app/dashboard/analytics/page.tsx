@@ -48,7 +48,7 @@ export default function AnalyticsPage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-6xl">
+      <div className="max-w-6xl">
         <div className="mb-6"><h1 className="text-2xl font-bold">Writing analytics</h1><p className="text-gray-500 mt-1 text-sm">Your writing patterns and AI usage, exactly as your advisor sees them.</p></div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">Total words</div><div className="text-xl sm:text-2xl font-bold">{(stats?.totalWords || 0).toLocaleString()}</div></div>

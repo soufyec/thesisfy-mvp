@@ -37,7 +37,7 @@ export default function PoliciesPage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-3xl">
+      <div className="max-w-3xl">
         <div className="mb-6"><h1 className="text-2xl font-bold">AI policies</h1><p className="text-gray-500 mt-1 text-sm">{p.university} · last updated {new Date(p.updatedAt).toLocaleString()}{!canEdit && " · read-only for advisors"}</p></div>
         {saved && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{saved}</div>}
         <div className="space-y-5">

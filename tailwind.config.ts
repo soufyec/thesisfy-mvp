@@ -29,6 +29,16 @@ const config: Config = {
           800: "#099268",
           900: "#087f5b",
         },
+        // Provenance of text in a thesis: AI-assisted, quoted/pasted, written by the student.
+        prov: {
+          ai: "#7c3aed",
+          "ai-deep": "#5b21b6",
+          "ai-soft": "#f5f3ff",
+          "ai-line": "#ddd6fe",
+          paste: "#f59e0b",
+          "paste-deep": "#b45309",
+          human: "#20c997",
+        },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],

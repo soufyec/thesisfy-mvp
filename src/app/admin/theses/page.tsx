@@ -21,7 +21,7 @@ export default function AdminThesesPage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-6xl">
+      <div className="max-w-6xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div><h1 className="text-2xl font-bold">All theses</h1><p className="text-gray-500 mt-1 text-sm">Open a thesis to review provenance, sessions and AI logs.</p></div>
           <div className="flex gap-2 flex-wrap items-center">

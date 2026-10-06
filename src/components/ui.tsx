@@ -84,3 +84,31 @@ export function ScoreRing({ value, size = 56, stroke = 4 }: { value: number; siz
     </div>
   );
 }
+
+/**
+ * Integrity pill: a conic ring with the provenance split (AI · pasted · written) and the score.
+ * `variant="landing"` is the softer brand-tinted version used in the hero preview.
+ */
+export function IntegrityPill({ aiPct, pastePct, limitPct, score, onClick, variant = "header", className = "" }: { aiPct: number; pastePct: number; limitPct: number; score: number; onClick?: () => void; variant?: "header" | "landing"; className?: string }) {
+  const a = Math.max(0, Math.min(100, aiPct));
+  const p = Math.max(0, Math.min(100 - a, pastePct));
+  const ring = `conic-gradient(theme(colors.prov.ai) 0 ${a}%, theme(colors.prov.paste) ${a}% ${a + p}%, theme(colors.prov.human) ${a + p}% 100%)`;
+  const scoreColor = score >= 90 ? "text-green-600" : score >= 70 ? "text-amber-600" : "text-red-600";
+  const Tag = onClick ? "button" : "span";
+  if (variant === "landing") {
+    return (
+      <span className={`inline-flex items-center gap-2 rounded-full bg-brand-50 text-brand-700 text-[12px] font-semibold px-3 py-1.5 ${className}`}>
+        <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: ring }} aria-hidden="true" />
+        AI-assisted {a}% · limit {limitPct}% · Integrity {score}
+      </span>
+    );
+  }
+  return (
+    <Tag onClick={onClick} className={`inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white text-[13px] font-semibold text-gray-900 pl-2 pr-3 py-1.5 ${onClick ? "hover:bg-gray-50" : ""} ${className}`} aria-label={`AI-assisted ${a}% of ${limitPct}% allowed, integrity ${score}`} title="Open the integrity ledger">
+      <span className="relative w-[18px] h-[18px] rounded-full flex-shrink-0" style={{ background: ring }} aria-hidden="true">
+        <span className="absolute inset-1 rounded-full bg-white" />
+      </span>
+      <span>AI {a}% <span className="text-gray-400 font-normal">of {limitPct}%</span> · Integrity <span className={scoreColor}>{score}</span></span>
+    </Tag>
+  );
+}

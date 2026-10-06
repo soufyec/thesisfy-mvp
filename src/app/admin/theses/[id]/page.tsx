@@ -45,7 +45,7 @@ export default function AdminThesisDetail() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-6xl">
+      <div className="max-w-6xl">
         <div className="text-xs text-gray-400 mb-2"><Link href="/admin/theses" className="hover:text-brand-600">All theses</Link> / {t.studentName}</div>
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
           <div className="min-w-0"><h1 className="text-2xl font-bold">{t.title}</h1><p className="text-gray-500 mt-1 text-sm">{t.description}</p><div className="flex items-center gap-2 mt-2 flex-wrap text-xs text-gray-500"><span className={statusColors[t.status]}>{statusLabels[t.status]}</span><span>{t.studentName}</span><span>· Advisor {t.professorName}</span><span>· {t.wordCount.toLocaleString()} / {t.targetWords.toLocaleString()} words</span><span>· {t.citationStyle}</span>{t.deadline && <span>· due {new Date(t.deadline).toLocaleDateString()}</span>}<span>· updated {timeAgo(t.updatedAt)}</span></div></div>

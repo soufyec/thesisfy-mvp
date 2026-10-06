@@ -90,7 +90,7 @@ function ConnectionsInner() {
   };
 
   return (
-    <div className="animate-fade-in max-w-4xl">
+    <div className="max-w-4xl">
       <div className="mb-6"><h1 className="text-2xl font-bold">AI Connections</h1><p className="text-gray-500 mt-1 text-sm">Use the models your university provides, or the AI account you already pay for, inside Thesisfic, with every interaction logged transparently.</p></div>
 
       {allowance?.institutionPays && (

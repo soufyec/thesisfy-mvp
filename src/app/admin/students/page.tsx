@@ -35,7 +35,7 @@ export default function StudentsPage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in max-w-5xl">
+      <div className="max-w-5xl">
         <div className="flex items-center justify-between mb-6">
           <div><h1 className="text-2xl font-bold">Students</h1><p className="text-gray-500 mt-1 text-sm">Accounts, consent status and connected AI providers.</p></div>
           <button onClick={() => { setOpen(true); setCreated(null); }} className="btn-primary !px-4"><Plus className="w-4 h-4 mr-1" />Invite</button>

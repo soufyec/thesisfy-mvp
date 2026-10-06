@@ -1,17 +1,18 @@
 import { AIMode, Policy, Thesis } from "../db";
 
+/** `icon` is a lucide-react icon name; the UI maps it to the component. */
 export const MODES: { id: AIMode; label: string; description: string; icon: string; insertable: boolean }[] = [
-  { id: "chat", label: "Ask", description: "Open conversation about your research", icon: "💬", insertable: false },
-  { id: "brainstorm", label: "Brainstorm", description: "Generate angles, questions and counter-arguments", icon: "💡", insertable: false },
-  { id: "outline", label: "Outline", description: "Structure a chapter or section", icon: "🗂️", insertable: true },
-  { id: "critique", label: "Critique", description: "Reviewer-style feedback on a passage", icon: "🔍", insertable: false },
-  { id: "grammar", label: "Grammar & style", description: "Corrections to a passage you wrote", icon: "✏️", insertable: true },
-  { id: "summarize", label: "Summarize", description: "Condense a source or your own section", icon: "📝", insertable: true },
-  { id: "explain", label: "Explain", description: "Explain a concept, method or paper", icon: "🎓", insertable: false },
-  { id: "citations", label: "Citations", description: "Format references in your citation style", icon: "📚", insertable: true },
-  { id: "gaps", label: "Find gaps", description: "Logical gaps and missing evidence", icon: "🧩", insertable: false },
-  { id: "paraphrase_check", label: "Paraphrase check", description: "Is this too close to the source?", icon: "⚖️", insertable: false },
-  { id: "copilot", label: "Research copilot", description: "Ask anything about your research, provided by your university; history is kept", icon: "🧭", insertable: false },
+  { id: "chat", label: "Ask", description: "Open conversation about your research", icon: "MessageSquare", insertable: false },
+  { id: "brainstorm", label: "Brainstorm", description: "Generate angles, questions and counter-arguments", icon: "Lightbulb", insertable: false },
+  { id: "outline", label: "Outline", description: "Structure a chapter or section", icon: "List", insertable: true },
+  { id: "critique", label: "Critique", description: "Reviewer-style feedback on a passage", icon: "Search", insertable: false },
+  { id: "grammar", label: "Grammar & style", description: "Corrections to a passage you wrote", icon: "Pencil", insertable: true },
+  { id: "summarize", label: "Summarize", description: "Condense a source or your own section", icon: "FileText", insertable: true },
+  { id: "explain", label: "Explain", description: "Explain a concept, method or paper", icon: "GraduationCap", insertable: false },
+  { id: "citations", label: "Citations", description: "Format references in your citation style", icon: "BookMarked", insertable: true },
+  { id: "gaps", label: "Find gaps", description: "Logical gaps and missing evidence", icon: "CircleAlert", insertable: false },
+  { id: "paraphrase_check", label: "Paraphrase check", description: "Is this too close to the source?", icon: "Shuffle", insertable: false },
+  { id: "copilot", label: "Research copilot", description: "Ask anything about your research, provided by your university; history is kept", icon: "Compass", insertable: false },
 ];
 
 export const BASE_SYSTEM = `You are Thesisfic AI, an academic writing assistant embedded in Thesisfic.edu, a platform that regulates AI use during thesis writing instead of detecting it afterwards.
