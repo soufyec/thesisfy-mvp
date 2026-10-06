@@ -89,6 +89,15 @@ export interface Reference {
   pages?: string;
   volume?: string;
   issue?: string;
+  /** Identifiers and verification added by the citation checker (feature: verified citations). */
+  openalexId?: string;
+  s2Id?: string;
+  pmid?: string;
+  isRetracted?: boolean;
+  verification?: { status: "verified" | "unverified" | "retracted" | "mismatch"; checkedAt: string; source: "openalex" | "crossref" | "s2" | "manual"; mismatches?: string[] };
+  /** Passage that supports the claim this reference was suggested for. */
+  supportSnippet?: { text: string; workId?: string; section?: string };
+  interactionId?: string;
 }
 
 export interface ThesisVersion {
@@ -124,6 +133,100 @@ export interface Comment {
   /** Reviewer category and severity, for AI reviewer comments. */
   category?: "argument" | "evidence" | "structure" | "clarity" | "citations" | "method" | "other";
   severity?: "low" | "medium" | "high";
+  reviewRunId?: string;
+  /** Whether the anchored text still matches the quote the reviewer saw. */
+  anchorStatus?: "live" | "stale" | "orphaned";
+  /** Socratic question the reviewer attached, if any. */
+  question?: string;
+  dismissedReason?: string;
+}
+
+/** One run of the AI reviewer over a scope of the thesis. */
+export interface ReviewRun {
+  id: string;
+  thesisId: string;
+  userId: string;
+  scope: "selection" | "section" | "document";
+  scopeLabel?: string;
+  rubricVersion: string;
+  model: string;
+  provider: string;
+  costUsd: number;
+  commentCount: number;
+  createdAt: string;
+}
+
+/** Rubric criteria the institution uses for AI reviews. */
+export interface RubricCriterion {
+  id: "argument" | "evidence" | "structure" | "clarity" | "citations" | "method";
+  label: string;
+  description: string;
+  weight: number; // 0-3, 0 disables
+}
+
+/** Periodic snapshot of a thesis, hash-chained so the process record is tamper-evident. */
+export interface Snapshot {
+  id: string;
+  thesisId: string;
+  tabId: string; // "submission" or a working tab id
+  userId: string;
+  sessionId?: string;
+  wordCount: number;
+  provenance: { human: number; ai: number; paste: number };
+  /** Full HTML when `diff` is absent (first snapshot or every 20th); otherwise a unified diff against the previous snapshot. */
+  html?: string;
+  diff?: string;
+  hash: string;
+  prevHash?: string;
+  createdAt: string;
+}
+
+/** AI-use declaration generated from the ledger and signed by the student. */
+export interface Declaration {
+  id: string;
+  thesisId: string;
+  version: number;
+  text: string;
+  ledgerSummary: Record<string, unknown>;
+  signedAt?: string;
+  signedBy?: string;
+  createdAt: string;
+}
+
+/** A chunk of a source's text, retrievable by the grounded assistant. */
+export interface SourceChunk {
+  id: string;
+  sourceId: string;
+  thesisId: string;
+  index: number;
+  page?: number;
+  section?: string;
+  text: string;
+  wordCount: number;
+}
+
+/** Supporting / contrasting evidence found for a claim. */
+export interface EvidenceCheck {
+  id: string;
+  thesisId: string;
+  userId: string;
+  claimQuote: string;
+  anchorId?: string;
+  results: { workId: string; title: string; authors?: string; year?: string; doi?: string; quote: string; stance: "supports" | "qualifies" | "contradicts" | "mentions"; confidence: number; citedByCount?: number; type?: string; isRetracted?: boolean }[];
+  model: string;
+  costUsd: number;
+  createdAt: string;
+}
+
+/** Per-thesis language review preferences. */
+export interface LanguagePrefs {
+  thesisId: string;
+  language: "en-US" | "en-GB" | "es" | "fr" | "auto";
+  motherTongue?: string;
+  mutedCategories: string[];
+  mutedRules: string[];
+  dictionary: string[];
+  updatedAt: string;
 }
 
 export type SourceKind = "doi" | "url" | "pdf" | "text";
@@ -144,6 +247,9 @@ export interface ThesisSource {
   text?: string;
   pages?: number;
   wordCount: number;
+  parseStatus?: "pending" | "parsed" | "no_text" | "failed";
+  license?: string;
+  openalexId?: string;
   addedAt: string;
   lastUsedAt?: string;
 }
@@ -278,6 +384,8 @@ export interface Policy {
    * any answer text pasted into the thesis is recognised and marked as AI-assisted.
    */
   researchCopilot: boolean;
+  /** Rubric for the AI reviewer; absent = default rubric. */
+  reviewRubric?: RubricCriterion[];
   flagSensitivity: "low" | "medium" | "high";
   requireConsent: boolean;
   monitoring: {
@@ -403,6 +511,12 @@ interface Store {
   aiFunding: AIFunding[];
   leads: Lead[];
   sources: ThesisSource[];
+  sourceChunks: SourceChunk[];
+  reviewRuns: ReviewRun[];
+  snapshots: Snapshot[];
+  declarations: Declaration[];
+  evidenceChecks: EvidenceCheck[];
+  languagePrefs: LanguagePrefs[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -704,6 +818,12 @@ function seed(): Store {
     aiFunding,
     leads: [],
     sources: [],
+    sourceChunks: [],
+    reviewRuns: [],
+    snapshots: [],
+    declarations: [],
+    evidenceChecks: [],
+    languagePrefs: [],
     versions: [
       { id: "ver_1", thesisId: "thesis_1", authorId: "usr_1", content: thesis1Content, wordCount: 2847, kind: "milestone", label: "Chapter 4 draft", createdAt: "2026-03-12T11:30:00Z" },
     ],
@@ -1324,6 +1444,95 @@ export const db = {
       const st = load();
       st.sources = st.sources.filter((s) => s.id !== id);
       persist();
+    },
+  },
+
+  sourceChunks: {
+    listBySource: (sourceId: string) => load().sourceChunks.filter((c) => c.sourceId === sourceId).sort((a, b) => a.index - b.index),
+    listByThesis: (thesisId: string) => load().sourceChunks.filter((c) => c.thesisId === thesisId),
+    replaceForSource: (sourceId: string, chunks: Omit<SourceChunk, "id">[]) => {
+      const s = load();
+      s.sourceChunks = s.sourceChunks.filter((c) => c.sourceId !== sourceId);
+      const created = chunks.map((c) => ({ ...c, id: uid("chk") }));
+      s.sourceChunks.push(...created);
+      persist();
+      return created;
+    },
+    removeForSource: (sourceId: string) => {
+      const s = load();
+      s.sourceChunks = s.sourceChunks.filter((c) => c.sourceId !== sourceId);
+      persist();
+    },
+  },
+
+  reviewRuns: {
+    list: (thesisId: string) => load().reviewRuns.filter((r) => r.thesisId === thesisId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    create: (data: Omit<ReviewRun, "id" | "createdAt">) => {
+      const r: ReviewRun = { ...data, id: uid("rev"), createdAt: now() };
+      load().reviewRuns.push(r);
+      persist();
+      return r;
+    },
+  },
+
+  snapshots: {
+    list: (thesisId: string, tabId?: string) => load().snapshots.filter((s) => s.thesisId === thesisId && (!tabId || s.tabId === tabId)).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    latest: (thesisId: string, tabId: string) => load().snapshots.filter((s) => s.thesisId === thesisId && s.tabId === tabId).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0],
+    create: (data: Omit<Snapshot, "id" | "createdAt">) => {
+      const s = load();
+      const snap: Snapshot = { ...data, id: uid("snap"), createdAt: now() };
+      s.snapshots.push(snap);
+      // keep memory bounded per thesis
+      const mine = s.snapshots.filter((x) => x.thesisId === data.thesisId);
+      if (mine.length > 600) {
+        const drop = new Set(mine.slice(0, mine.length - 600).map((x) => x.id));
+        s.snapshots = s.snapshots.filter((x) => !drop.has(x.id));
+      }
+      persist();
+      return snap;
+    },
+  },
+
+  declarations: {
+    list: (thesisId: string) => load().declarations.filter((d) => d.thesisId === thesisId).sort((a, b) => b.version - a.version),
+    create: (data: Omit<Declaration, "id" | "createdAt" | "version">) => {
+      const list = load().declarations.filter((d) => d.thesisId === data.thesisId);
+      const d: Declaration = { ...data, id: uid("decl"), version: list.length + 1, createdAt: now() };
+      load().declarations.push(d);
+      persist();
+      return d;
+    },
+    update: (id: string, patch: Partial<Declaration>) => {
+      const d = load().declarations.find((x) => x.id === id);
+      if (!d) return null;
+      Object.assign(d, patch, { id: d.id, thesisId: d.thesisId });
+      persist();
+      return d;
+    },
+  },
+
+  evidenceChecks: {
+    list: (thesisId: string) => load().evidenceChecks.filter((e) => e.thesisId === thesisId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    create: (data: Omit<EvidenceCheck, "id" | "createdAt">) => {
+      const e: EvidenceCheck = { ...data, id: uid("evd"), createdAt: now() };
+      load().evidenceChecks.push(e);
+      persist();
+      return e;
+    },
+  },
+
+  languagePrefs: {
+    get: (thesisId: string): LanguagePrefs => load().languagePrefs.find((p) => p.thesisId === thesisId) || { thesisId, language: "auto", mutedCategories: [], mutedRules: [], dictionary: [], updatedAt: now() },
+    update: (thesisId: string, patch: Partial<LanguagePrefs>) => {
+      const s = load();
+      let p = s.languagePrefs.find((x) => x.thesisId === thesisId);
+      if (!p) {
+        p = { thesisId, language: "auto", mutedCategories: [], mutedRules: [], dictionary: [], updatedAt: now() };
+        s.languagePrefs.push(p);
+      }
+      Object.assign(p, patch, { thesisId, updatedAt: now() });
+      persist();
+      return p;
     },
   },
 

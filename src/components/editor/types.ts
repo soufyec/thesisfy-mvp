@@ -42,6 +42,13 @@ export interface Reference {
   pages?: string;
   volume?: string;
   issue?: string;
+  openalexId?: string;
+  s2Id?: string;
+  pmid?: string;
+  isRetracted?: boolean;
+  verification?: { status: "verified" | "unverified" | "retracted" | "mismatch"; checkedAt: string; source: "openalex" | "crossref" | "s2" | "manual"; mismatches?: string[] };
+  supportSnippet?: { text: string; workId?: string; section?: string };
+  interactionId?: string;
 }
 
 export interface CommentItem {
