@@ -2,8 +2,10 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { useT } from "@/lib/i18n/client";
 
 export function Modal({ open, onClose, title, children, size = "md", footer }: { open: boolean; onClose: () => void; title?: string; children: React.ReactNode; size?: "sm" | "md" | "lg" | "xl"; footer?: React.ReactNode }) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -19,7 +21,7 @@ export function Modal({ open, onClose, title, children, size = "md", footer }: {
         {title && (
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-base">{title}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label="Close">
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label={t("common.close")}>
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -90,6 +92,7 @@ export function ScoreRing({ value, size = 56, stroke = 4 }: { value: number; siz
  * `variant="landing"` is the softer brand-tinted version used in the hero preview.
  */
 export function IntegrityPill({ aiPct, pastePct, limitPct, score, onClick, variant = "header", className = "" }: { aiPct: number; pastePct: number; limitPct: number; score: number; onClick?: () => void; variant?: "header" | "landing"; className?: string }) {
+  const t = useT();
   const a = Math.max(0, Math.min(100, aiPct));
   const p = Math.max(0, Math.min(100 - a, pastePct));
   const ring = `conic-gradient(var(--prov-ai) 0 ${a}%, var(--prov-paste) ${a}% ${a + p}%, var(--prov-human) ${a + p}% 100%)`;
@@ -99,16 +102,16 @@ export function IntegrityPill({ aiPct, pastePct, limitPct, score, onClick, varia
     return (
       <span className={`inline-flex items-center gap-2 rounded-full bg-brand-50 text-brand-700 text-[12px] font-semibold px-3 py-1.5 ${className}`}>
         <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: ring }} aria-hidden="true" />
-        AI-assisted {a}% · limit {limitPct}% · Integrity {score}
+        {t("ui.integrityPill.landing", { ai: a, limit: limitPct, score })}
       </span>
     );
   }
   return (
-    <Tag onClick={onClick} className={`inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white text-[13px] font-semibold text-gray-900 pl-2 pr-3 py-1.5 ${onClick ? "hover:bg-gray-50" : ""} ${className}`} aria-label={`AI-assisted ${a}% of ${limitPct}% allowed, integrity ${score}`} title="Open the integrity ledger">
+    <Tag onClick={onClick} className={`inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white text-[13px] font-semibold text-gray-900 pl-2 pr-3 py-1.5 ${onClick ? "hover:bg-gray-50" : ""} ${className}`} aria-label={t("ui.integrityPill.aria", { ai: a, limit: limitPct, score })} title={t("ui.integrityPill.title")}>
       <span className="relative w-[18px] h-[18px] rounded-full flex-shrink-0" style={{ background: ring }} aria-hidden="true">
         <span className="absolute inset-1 rounded-full bg-white" />
       </span>
-      <span>AI {a}% <span className="text-gray-400 font-normal">of {limitPct}%</span> · Integrity <span className={scoreColor}>{score}</span></span>
+      <span>{t("ui.integrityPill.aiShare", { ai: a })} <span className="text-gray-400 font-normal">{t("ui.integrityPill.ofLimit", { limit: limitPct })}</span> · {t("glossary.integrity")} <span className={scoreColor}>{score}</span></span>
     </Tag>
   );
 }

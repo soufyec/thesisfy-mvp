@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useT } from "@/lib/i18n/client";
 
 /**
  * Orbital scene drawn behind the hero copy: the University (sun) at the centre,
@@ -17,10 +18,10 @@ type Body = { label: string; sub: string; c0: string; c1: string; glow: string; 
 type Item = { z: number; draw: () => void };
 
 const BODIES: Record<"sun" | "earth" | "moon" | "sat", Body> = {
-  sun: { label: "University", sub: "sets policy and budget", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 54 }, // brand-400 → brand-900
-  earth: { label: "Student", sub: "writes the thesis", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 24 }, // accent-300 → accent-700
-  moon: { label: "AI assistant", sub: "declared, never hidden", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 10 }, // prov.ai range
-  sat: { label: "Advisor", sub: "observes the process", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 8 }, // brand-300 → brand-700
+  sun: { label: "landing.scene.university", sub: "landing.scene.universitySub", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 54 }, // brand-400 → brand-900
+  earth: { label: "landing.scene.student", sub: "landing.scene.studentSub", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 24 }, // accent-300 → accent-700
+  moon: { label: "glossary.aiAssistant", sub: "landing.scene.assistantSub", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 10 }, // prov.ai range
+  sat: { label: "landing.scene.advisor", sub: "landing.scene.advisorSub", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 8 }, // brand-300 → brand-700
 };
 
 const ORBIT = 300;
@@ -50,6 +51,7 @@ function makeParticles(): Particle[] {
 
 export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObject<HTMLElement>; textRef: React.RefObject<HTMLElement> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const tr = useT();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -129,9 +131,9 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
     const pill = (q: Projected, body: Body, dy: number, hover: boolean) => {
       const fs = (hover ? 13.5 : 12.5) * Math.max(0.85, Math.min(1.1, q.k));
       ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
-      const tw = ctx.measureText(body.label).width;
+      const tw = ctx.measureText(tr(body.label)).width;
       ctx.font = `500 ${fs * 0.82}px Inter, system-ui, sans-serif`;
-      const sw = ctx.measureText(body.sub).width;
+      const sw = ctx.measureText(tr(body.sub)).width;
       const pw = Math.max(tw, sw) + fs * 1.8;
       const ph = fs * 3.1;
       const x = q.x - pw / 2;
@@ -152,10 +154,10 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
       ctx.textAlign = "center";
       ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
       ctx.fillStyle = hover ? "#fff" : "#111827"; // gray-900
-      ctx.fillText(body.label, q.x, y + ph * 0.34);
+      ctx.fillText(tr(body.label), q.x, y + ph * 0.34);
       ctx.font = `500 ${fs * 0.82}px Inter, system-ui, sans-serif`;
       ctx.fillStyle = hover ? "rgba(255,255,255,.85)" : "#6b7280"; // gray-500
-      ctx.fillText(body.sub, q.x, y + ph * 0.7);
+      ctx.fillText(tr(body.sub), q.x, y + ph * 0.7);
       ctx.textAlign = "start";
     };
 
@@ -303,7 +305,7 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
             ctx.fillStyle = "#6d28d9";
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
-            ctx.fillText("AI", qM.x, qM.y + BODIES.moon.r * qM.k + 4);
+            ctx.fillText(tr("landing.scene.aiShort"), qM.x, qM.y + BODIES.moon.r * qM.k + 4);
             ctx.textAlign = "start";
           }
         },
@@ -334,7 +336,7 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
             ctx.fillStyle = "#4263eb";
             ctx.textAlign = "center";
             ctx.textBaseline = "bottom";
-            ctx.fillText("Advisor", qA.x, qA.y - r * 2.2);
+            ctx.fillText(tr("landing.scene.advisor"), qA.x, qA.y - r * 2.2);
             ctx.textAlign = "start";
           }
         },
@@ -388,7 +390,7 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
       hero.removeEventListener("pointermove", onMove);
       hero.removeEventListener("pointerleave", onLeave);
     };
-  }, [heroRef, textRef]);
+  }, [heroRef, textRef, tr]);
 
   return <canvas ref={canvasRef} aria-hidden="true" className="hidden md:block absolute inset-0 w-full h-full opacity-[.38] pointer-events-none" />;
 }

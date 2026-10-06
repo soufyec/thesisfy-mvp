@@ -30,8 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang={locale}>
       <body>
-        <LocaleProvider locale={locale}>{children}</LocaleProvider>
-        <PWARegister />
+        <LocaleProvider locale={locale}>
+          {children}
+          <PWARegister />
+        </LocaleProvider>
       </body>
     </html>
   );

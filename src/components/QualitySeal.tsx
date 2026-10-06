@@ -1,12 +1,19 @@
+"use client";
+
+import { useT } from "@/lib/i18n/client";
+
 // Quality seal shown on the landing page. Change SEAL_NAME to rebrand the seal in one place.
 export const SEAL_NAME = "thesisfic.edu";
 
 export default function QualitySeal({ size = 260, className = "" }: { size?: number; className?: string }) {
+  const t = useT();
+  // The ring and the "verified process" arc are the seal's brand marking and stay in English in every locale.
   const ring = "ACADEMIC QUALITY SEAL · AI ERA STANDARD · ";
+  const sealLabel = t("landing.seal.aria", { name: SEAL_NAME });
   return (
-    <figure className={`flex flex-col items-center gap-3 ${className}`} aria-label={`${SEAL_NAME} academic quality seal`}>
+    <figure className={`flex flex-col items-center gap-3 ${className}`} aria-label={sealLabel}>
       <svg width={size} height={size} viewBox="0 0 260 260" role="img" className="drop-shadow-xl">
-        <title>{`${SEAL_NAME} academic quality seal`}</title>
+        <title>{sealLabel}</title>
         <defs>
           <linearGradient id="seal-fill" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#364fc7" />
@@ -45,8 +52,8 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
         </text>
       </svg>
       <figcaption className="text-center max-w-[16rem]">
-        <span className="block text-sm font-semibold text-gray-900">Academic quality seal</span>
-        <span className="block text-xs text-gray-500 mt-0.5">Awarded to theses written in a regulated, transparent process: every AI contribution declared, every source attributed.</span>
+        <span className="block text-sm font-semibold text-gray-900">{t("glossary.qualitySeal")}</span>
+        <span className="block text-xs text-gray-500 mt-0.5">{t("landing.seal.description")}</span>
       </figcaption>
     </figure>
   );
