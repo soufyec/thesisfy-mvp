@@ -262,3 +262,14 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 .bubble-menu .bm-btn { @apply h-7 min-w-7 px-1.5 inline-flex items-center justify-center gap-1.5 rounded-md hover:bg-white/10; }
 .bubble-menu .bm-btn.active { @apply bg-white/20; }
 .bubble-menu .bm-sep { @apply w-px h-4 bg-white/20 mx-[3px]; }
+
+/* Language review */
+.ProseMirror .lr { cursor: pointer; text-decoration-skip-ink: none; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+.ProseMirror .lr-spelling { text-decoration-line: underline; text-decoration-style: wavy; text-decoration-color: theme("colors.red.600"); }
+.ProseMirror .lr-grammar { text-decoration-line: underline; text-decoration-style: wavy; text-decoration-color: theme("colors.brand.600"); }
+.ProseMirror .lr-punctuation { border-bottom: 2px solid theme("colors.amber.600"); }
+.ProseMirror .lr-style { border-bottom: 2px solid theme("colors.prov.ai / 70%"); }
+.ProseMirror .lr-consistency { border-bottom: 2px dotted theme("colors.gray.500"); }
+.ProseMirror .lr-active { background: theme("colors.brand.100 / 60%"); border-radius: 2px; }
+.ProseMirror .lr-style.lr-active { background: theme("colors.prov.ai-soft"); }
+@media print { .ProseMirror .lr { text-decoration: none; border-bottom: none; background: none; } }
