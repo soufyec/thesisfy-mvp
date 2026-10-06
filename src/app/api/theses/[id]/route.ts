@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db, ThesisStatus } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
-import { refreshThesisMetrics } from "@/lib/integrity";
+import { integrityBreakdown, refreshThesisMetrics } from "@/lib/integrity";
 
 const STATUSES: ThesisStatus[] = ["draft", "in_progress", "under_review", "revision_requested", "approved", "submitted"];
 
@@ -14,6 +14,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
   const student = db.users.findById(thesis.studentId);
   const professor = thesis.professorId ? db.users.findById(thesis.professorId) : null;
+  const policy = db.policies.get(student?.university || r.user.university);
+  const flags = db.flags.listByThesis(thesis.id);
   const comments = db.comments.list(thesis.id).map((c) => ({
     ...c,
     authorName: db.users.findById(c.authorId)?.name || "Unknown",
@@ -28,10 +30,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       university: student?.university,
     },
     comments,
-    flags: db.flags.listByThesis(thesis.id),
+    flags,
     versionCount: db.versions.list(thesis.id).length,
-    policy: db.policies.get(student?.university || r.user.university),
+    policy,
     interactions: db.interactions.listByThesis(thesis.id).slice(0, 50),
+    integrityBreakdown: integrityBreakdown(thesis, policy, flags),
   });
 }
 

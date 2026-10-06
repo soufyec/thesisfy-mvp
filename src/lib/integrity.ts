@@ -1,26 +1,73 @@
 import { db, IntegrityFlag, Policy, Thesis, WritingSession } from "./db";
 
+export type IntegrityFix = "attribute_paste" | "reduce_ai" | "open_notice" | "none";
+
+export interface IntegrityLine {
+  reason: string;
+  /** Points deducted from the starting score. 0 for a row that costs nothing; negative only for the floor adjustment. */
+  points: number;
+  fix?: IntegrityFix;
+  noticeId?: string;
+}
+
+export interface IntegrityBreakdown {
+  score: number;
+  starting: 100;
+  lines: IntegrityLine[];
+}
+
+const NOTICE_LABELS: Record<IntegrityFlag["type"], string> = {
+  bulk_paste: "bulk paste",
+  unattributed_ai: "AI text pasted without attribution",
+  policy_limit: "AI share above the limit",
+  rapid_typing: "typing burst",
+  ai_generation: "AI generation request",
+  style_inconsistency: "style change",
+};
+
+function noticeReason(f: IntegrityFlag) {
+  const words = f.description.match(/(\d[\d,]*)\s+words/);
+  return `Open notice · ${NOTICE_LABELS[f.type] || f.type.replace(/_/g, " ")}${words ? ` (${words[1]} words)` : ""}`;
+}
+
 /**
- * Integrity score = 100 minus penalties. It is transparent by design: every
- * deduction maps to something the student can see and fix (attribute a paste,
- * stay under the AI limit, resolve a flag).
+ * Integrity ledger: the score is 100 minus a list of visible deductions. Every row maps to something the
+ * student can see and fix (attribute a paste, stay under the AI limit, answer a notice). Rows are listed
+ * even when they cost 0 points, and `100 - sum(points) === score` always holds.
  */
-export function computeIntegrityScore(thesis: Thesis, policy: Policy, flags: IntegrityFlag[]): number {
-  let score = 100;
+export function integrityBreakdown(thesis: Thesis, policy: Policy, flags: IntegrityFlag[]): IntegrityBreakdown {
   const words = Math.max(1, thesis.wordCount);
   const aiPct = (thesis.provenance.ai / words) * 100;
   const pastePct = (thesis.provenance.paste / words) * 100;
+  const lines: IntegrityLine[] = [];
 
-  // AI usage beyond the institution limit costs 1 point per percent over.
-  if (aiPct > policy.maxAiUsagePercent) score -= Math.min(30, Math.round(aiPct - policy.maxAiUsagePercent));
-  // Unattributed pasted text costs 0.5 point per percent (max 20).
-  score -= Math.min(20, Math.round(pastePct * 0.5));
-  // Open flags.
+  // AI usage beyond the institution limit costs 1 point per percent over (max 30).
+  const aiPoints = aiPct > policy.maxAiUsagePercent ? Math.min(30, Math.round(aiPct - policy.maxAiUsagePercent)) : 0;
+  lines.push({ reason: `AI share ${Math.round(aiPct)}% of ${policy.maxAiUsagePercent}% limit`, points: aiPoints, fix: aiPoints > 0 ? "reduce_ai" : "none" });
+
+  // Pasted text costs 0.5 point per percent of the document (max 20).
+  const pastePoints = Math.min(20, Math.round(pastePct * 0.5));
+  lines.push({ reason: `Pasted text attributed (${Math.round(pastePct)}% of the document)`, points: pastePoints, fix: pastePoints > 0 ? "attribute_paste" : "none" });
+
+  // Open notices.
   for (const f of flags) {
     if (f.resolved) continue;
-    score -= f.severity === "high" ? 8 : f.severity === "medium" ? 4 : 1;
+    lines.push({ reason: noticeReason(f), points: f.severity === "high" ? 8 : f.severity === "medium" ? 4 : 1, fix: "open_notice", noticeId: f.id });
   }
-  return Math.max(0, Math.min(100, score));
+
+  const raw = 100 - lines.reduce((a, l) => a + l.points, 0);
+  if (raw < 0) lines.push({ reason: "The score does not go below 0", points: raw, fix: "none" });
+  const score = Math.max(0, Math.min(100, raw));
+  return { score, starting: 100, lines };
+}
+
+/**
+ * Integrity score = 100 minus penalties. It is transparent by design: every
+ * deduction maps to something the student can see and fix (attribute a paste,
+ * stay under the AI limit, resolve a notice). See `integrityBreakdown` for the rows.
+ */
+export function computeIntegrityScore(thesis: Thesis, policy: Policy, flags: IntegrityFlag[]): number {
+  return integrityBreakdown(thesis, policy, flags).score;
 }
 
 export function refreshThesisMetrics(thesisId: string) {

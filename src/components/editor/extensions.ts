@@ -419,3 +419,79 @@ export const CitationMark = Mark.create({
     return ["span", mergeAttributes(HTMLAttributes, { class: "cite-chip" }), 0];
   },
 });
+
+// ---------- Provenance statistics per top-level block (feeds the provenance gutter) ----------
+
+export type ProvenanceSource = "human" | "ai" | "paste";
+
+export interface BlockProvenance {
+  /** 1-based number among the blocks that carry text (headings excluded), shown as ¶n in the gutter. */
+  index: number;
+  /** Document position of the top-level block (use `editor.view.nodeDOM(pos)` for its DOM). */
+  pos: number;
+  nodeType: string;
+  heading: boolean;
+  words: { human: number; ai: number; paste: number; total: number };
+  dominant: ProvenanceSource;
+  /** Attributes of the first AI or pasted mark in the block, when there is one. */
+  first?: { source: "ai" | "paste"; provider?: string | null; label?: string | null; interactionId?: string | null };
+}
+
+export const provenanceStatsKey = new PluginKey<BlockProvenance[]>("thesisficProvenanceStats");
+
+const countWords = (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0);
+
+function computeBlockProvenance(doc: import("@tiptap/pm/model").Node): BlockProvenance[] {
+  const out: BlockProvenance[] = [];
+  let n = 0;
+  doc.forEach((node, offset) => {
+    if (!node.textContent.trim()) return;
+    const words = { human: 0, ai: 0, paste: 0, total: 0 };
+    let first: BlockProvenance["first"];
+    node.descendants((child) => {
+      if (!child.isText || !child.text) return;
+      const w = countWords(child.text);
+      const m = child.marks.find((x) => x.type.name === "provenance");
+      const src: ProvenanceSource = m ? (m.attrs.source === "ai" ? "ai" : "paste") : "human";
+      words[src] += w;
+      words.total += w;
+      if (m && !first) first = { source: src as "ai" | "paste", provider: m.attrs.provider, label: m.attrs.label, interactionId: m.attrs.interactionId };
+    });
+    const heading = node.type.name === "heading";
+    if (!heading) n += 1;
+    const dominant: ProvenanceSource = words.ai > words.human && words.ai >= words.paste ? "ai" : words.paste > words.human && words.paste > words.ai ? "paste" : "human";
+    out.push({ index: n, pos: offset, nodeType: node.type.name, heading, words, dominant, first });
+  });
+  return out;
+}
+
+/**
+ * Keeps, per top-level block, how many words are written / AI-assisted / pasted according to the
+ * provenance marks. Read it with `provenanceStatsKey.getState(editor.state)` or `editor.storage.provenanceStats.blocks`.
+ * It only reads the marks; it never changes them.
+ */
+export const ProvenanceStats = Extension.create({
+  name: "provenanceStats",
+  addStorage() {
+    return { blocks: [] as BlockProvenance[] };
+  },
+  addProseMirrorPlugins() {
+    const storage = this.storage as { blocks: BlockProvenance[] };
+    return [
+      new Plugin({
+        key: provenanceStatsKey,
+        state: {
+          init: (_, state) => {
+            storage.blocks = computeBlockProvenance(state.doc);
+            return storage.blocks;
+          },
+          apply: (tr, old, _oldState, newState) => {
+            if (!tr.docChanged) return old;
+            storage.blocks = computeBlockProvenance(newState.doc);
+            return storage.blocks;
+          },
+        },
+      }),
+    ];
+  },
+});

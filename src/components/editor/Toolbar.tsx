@@ -20,6 +20,28 @@ interface Props {
   spellcheck: boolean;
   onSpellcheck: (v: boolean) => void;
   compact?: boolean;
+  /** Provenance gutter + highlights switch, shown at the far right. `locked` keeps it on (review mode). */
+  provenance?: { on: boolean; onToggle: (v: boolean) => void; locked?: boolean };
+}
+
+function ProvenanceToggle({ on, onToggle, locked }: { on: boolean; onToggle: (v: boolean) => void; locked?: boolean }) {
+  return (
+    <label className={`ml-auto pl-3 flex items-center gap-2 text-[12px] text-gray-500 flex-shrink-0 select-none ${locked ? "cursor-default" : "cursor-pointer"}`} title={locked ? "Provenance is always shown in review mode" : "Show the provenance gutter and highlights"}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label="Provenance gutter"
+        disabled={locked}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => onToggle(!on)}
+        className={`relative inline-block w-7 h-4 rounded-full transition-colors ${on ? "bg-brand-600" : "bg-gray-300"} ${locked ? "opacity-70" : ""}`}
+      >
+        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-[left] ${on ? "left-[14px]" : "left-0.5"}`} />
+      </button>
+      Provenance
+    </label>
+  );
 }
 
 function Btn({ onClick, active, disabled, title, children }: { onClick: () => void; active?: boolean; disabled?: boolean; title: string; children: React.ReactNode }) {
@@ -36,7 +58,7 @@ function ColorPicker({ colors, value, onPick, title, icon, onClear }: { colors: 
     <div className="relative">
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)} title={title} className="tb-btn flex-col !gap-0 !px-1">
         {icon}
-        <span className="block h-1 w-4 rounded-sm -mt-0.5" style={{ background: value || "#000" }} />
+        <span className="block h-[3px] w-4 rounded-sm mt-px" style={{ background: value || "currentColor" }} />
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 p-2 z-50 w-[188px]" onMouseLeave={() => setOpen(false)}>
@@ -54,7 +76,7 @@ function ColorPicker({ colors, value, onPick, title, icon, onClear }: { colors: 
   );
 }
 
-export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable, onComment, onCite, onPrint, spellcheck, onSpellcheck, compact }: Props) {
+export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable, onComment, onCite, onPrint, spellcheck, onSpellcheck, compact, provenance }: Props) {
   const [, force] = useState(0);
   useEffect(() => {
     const h = () => force((n) => n + 1);
@@ -86,15 +108,15 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
   };
 
   return (
-    <div className="flex items-center gap-0.5 px-2 py-1 bg-[#edf2fa] rounded-full mx-2 my-1 overflow-x-auto no-scrollbar whitespace-nowrap" role="toolbar" aria-label="Formatting">
+    <div className={`flex items-center gap-px px-2.5 h-10 bg-white border-b border-gray-200 whitespace-nowrap flex-shrink-0 ${compact ? "overflow-x-auto no-scrollbar" : "overflow-hidden"}`} role="toolbar" aria-label="Formatting">
       <Btn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo (Ctrl+Z)"><Undo2 className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo (Ctrl+Y)"><Redo2 className="w-4 h-4" /></Btn>
       {!compact && <Btn onClick={onPrint} title="Print (Ctrl+P)"><Printer className="w-4 h-4" /></Btn>}
       {!compact && <Btn onClick={() => onSpellcheck(!spellcheck)} active={spellcheck} title="Spelling & grammar"><SpellCheck className="w-4 h-4" /></Btn>}
       {!compact && (
         <div className="flex items-center gap-0.5 ml-1">
-          <ZoomIn className="w-3.5 h-3.5 text-gray-500" />
-          <select value={zoom} onChange={(e) => onZoom(Number(e.target.value))} className="tb-select !px-0.5 w-[62px]" title="Zoom">
+          <ZoomIn className="w-4 h-4 text-gray-500" />
+          <select value={zoom} onChange={(e) => onZoom(Number(e.target.value))} className="tb-select !px-0.5 w-[62px]" title="Zoom" aria-label="Zoom">
             {[50, 75, 90, 100, 125, 150, 200].map((z) => (
               <option key={z} value={z}>{z}%</option>
             ))}
@@ -102,7 +124,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
         </div>
       )}
       <span className="tb-sep" />
-      <select value={style} onChange={(e) => setStyle(e.target.value)} className="tb-select w-[118px]" title="Styles">
+      <select value={style} onChange={(e) => setStyle(e.target.value)} className="tb-select w-[112px]" title="Styles" aria-label="Paragraph style">
         <option value="p">Normal text</option>
         <option value="h1">Title (H1)</option>
         <option value="h2">Heading 2</option>
@@ -110,7 +132,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
         <option value="h4">Heading 4</option>
       </select>
       <span className="tb-sep" />
-      <select value={font} onChange={(e) => (e.target.value ? editor.chain().focus().setFontFamily(e.target.value).run() : editor.chain().focus().unsetFontFamily().run())} className="tb-select w-[120px]" title="Font">
+      <select value={font} onChange={(e) => (e.target.value ? editor.chain().focus().setFontFamily(e.target.value).run() : editor.chain().focus().unsetFontFamily().run())} className="tb-select w-[104px]" title="Font" aria-label="Font">
         <option value="">Default</option>
         {FONTS.map((f) => (
           <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
@@ -118,7 +140,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
       </select>
       <span className="tb-sep" />
       <Btn onClick={() => stepSize(-1)} title="Decrease font size"><Minus className="w-3.5 h-3.5" /></Btn>
-      <select value={size} onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}pt`).run()} className="tb-select w-[52px] text-center" title="Font size">
+      <select value={size} onChange={(e) => editor.chain().focus().setFontSize(`${e.target.value}pt`).run()} className="tb-select w-[44px] text-center !px-0" title="Font size" aria-label="Font size">
         {FONT_SIZES.map((s) => (
           <option key={s} value={s}>{s}</option>
         ))}
@@ -150,7 +172,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
           <Btn onClick={() => editor.chain().focus().setTextAlign("justify").run()} active={editor.isActive({ textAlign: "justify" })} title="Justify"><AlignJustify className="w-4 h-4" /></Btn>
         </div>
       </div>
-      <select value={lineHeight} onChange={(e) => editor.chain().focus().setLineHeight(e.target.value).run()} className="tb-select w-[64px]" title="Line spacing">
+      <select value={lineHeight} onChange={(e) => editor.chain().focus().setLineHeight(e.target.value).run()} className="tb-select w-[84px]" title="Line spacing" aria-label="Line spacing">
         <option value="">Spacing</option>
         {["1", "1.15", "1.5", "2", "2.5"].map((v) => (
           <option key={v} value={v}>{v}</option>
@@ -165,6 +187,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
       <Btn onClick={() => editor.chain().focus().toggleSuperscript().run()} active={editor.isActive("superscript")} title="Superscript"><Superscript className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().toggleSubscript().run()} active={editor.isActive("subscript")} title="Subscript"><Subscript className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Clear formatting (Ctrl+\)"><RemoveFormatting className="w-4 h-4" /></Btn>
+      {provenance && <ProvenanceToggle on={provenance.on} onToggle={provenance.onToggle} locked={provenance.locked} />}
     </div>
   );
 }

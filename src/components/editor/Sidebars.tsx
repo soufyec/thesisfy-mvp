@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { AlertTriangle, ArrowDown, ArrowUp, BookMarked, Check, CheckCircle2, History, Library, MessageSquare, Plus, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, BookMarked, Check, CheckCircle2, History, Library, MessageSquare, Plus, RotateCcw, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { api, timeAgo } from "@/lib/client";
 import DatabaseCard, { ResearchDb } from "../library/DatabaseCard";
-import { CommentItem, FlagItem, formatReference, Reference, ThesisDoc, VersionItem } from "./types";
+import { CommentItem, FlagItem, formatReference, IntegrityBreakdown, IntegrityFix, Reference, ThesisDoc, VersionItem } from "./types";
 
 export function PanelShell({ title, icon, onClose, children, actions }: { title: string; icon?: React.ReactNode; onClose: () => void; children: React.ReactNode; actions?: React.ReactNode }) {
   return (
@@ -246,46 +246,109 @@ export function FindPanel({ editor, onClose, canEdit }: { editor: Editor; onClos
   );
 }
 
-// ---------- Integrity ----------
-export function IntegrityPanel({ thesis, flags, session, maxAi, showProvenance, onToggleProvenance, onRespondFlag, onClose, isOwner }: { thesis: ThesisDoc; flags: FlagItem[]; session: Record<string, number> | null; maxAi: number; showProvenance: boolean; onToggleProvenance: () => void; onRespondFlag: (id: string, note: string) => void; onClose: () => void; isOwner: boolean }) {
+// ---------- Integrity ledger ----------
+const NOTICE_TYPE_LABEL: Record<string, string> = {
+  bulk_paste: "Bulk paste",
+  unattributed_ai: "AI text pasted without attribution",
+  policy_limit: "AI share above the limit",
+  rapid_typing: "Typing burst",
+  ai_generation: "AI generation request",
+  style_inconsistency: "Style change",
+};
+
+const FIX_LABEL: Record<Exclude<IntegrityFix, "none">, string> = {
+  attribute_paste: "Attribute the pasted text",
+  reduce_ai: "Rewrite AI passages with the assistant",
+  open_notice: "Open the notice",
+};
+
+/**
+ * Integrity ledger: the score as a list of visible deductions, each with the action that removes it, followed by
+ * the provenance split, the session counters and the notices. Student and advisor see the same ledger.
+ */
+export function IntegrityLedger({ thesis, flags, session, maxAi, breakdown, showProvenance, onToggleProvenance, onFix, onRespondFlag, onClose, isOwner }: { thesis: ThesisDoc; flags: FlagItem[]; session: Record<string, number> | null; maxAi: number; breakdown: IntegrityBreakdown | null; showProvenance: boolean; onToggleProvenance: () => void; onFix: (fix: IntegrityFix, noticeId?: string) => void; onRespondFlag: (id: string, note: string) => void; onClose: () => void; isOwner: boolean }) {
   const total = Math.max(1, thesis.provenance.human + thesis.provenance.paste + thesis.provenance.ai);
   const pct = (n: number) => Math.round((n / total) * 100);
   const [note, setNote] = useState<Record<string, string>>({});
+  const [focusNotice, setFocusNotice] = useState<string | null>(null);
   const open = flags.filter((f) => !f.resolved);
+  const score = breakdown?.score ?? thesis.integrityScore;
+  const scoreColor = score >= 90 ? "text-green-600" : score >= 70 ? "text-amber-600" : "text-red-600";
+  const pointsClass = (p: number) => (p <= 0 ? "text-green-600" : p <= 4 ? "text-amber-600" : "text-red-600");
+  const fmtPoints = (p: number) => (p < 0 ? `+${Math.abs(p)}` : `−${p}`);
+
+  const jumpToNotice = (id: string) => {
+    setFocusNotice(id);
+    document.getElementById(`notice-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   return (
-    <PanelShell title="Integrity & provenance" onClose={onClose}>
+    <PanelShell title="Integrity ledger" icon={<ShieldCheck className="w-4 h-4 text-gray-500" />} onClose={onClose}>
       <div className="p-3 space-y-4 text-sm">
-        <div className="flex items-center gap-3">
-          <div className={`text-3xl font-bold ${thesis.integrityScore >= 90 ? "text-green-600" : thesis.integrityScore >= 70 ? "text-amber-600" : "text-red-600"}`}>{thesis.integrityScore}%</div>
-          <div className="text-xs text-gray-500">Integrity score. Transparent by design: every deduction below is something you can fix.</div>
-        </div>
         <div>
-          <div className="flex justify-between text-xs mb-1"><span>Who wrote this document</span><button onClick={onToggleProvenance} className="text-brand-600 hover:underline">{showProvenance ? "Hide" : "Show"} highlights</button></div>
+          <div className="text-[12px] font-semibold text-gray-500 tracking-[0.08em] uppercase mb-1">Integrity ledger</div>
+          <div className="divide-y divide-gray-200 border-y border-gray-200 text-[13px]">
+            <div className="flex items-center justify-between py-2">
+              <span className="text-gray-700">Starting score</span>
+              <span className="font-semibold text-gray-900">{breakdown?.starting ?? 100}</span>
+            </div>
+            {breakdown ? (
+              breakdown.lines.map((l, i) => (
+                <div key={i} className="py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-700">{l.reason}</span>
+                    <span className={`font-semibold tabular-nums ${pointsClass(l.points)}`}>{fmtPoints(l.points)}</span>
+                  </div>
+                  {l.points > 0 && l.fix && l.fix !== "none" && (
+                    <button onClick={() => (l.fix === "open_notice" && l.noticeId ? jumpToNotice(l.noticeId) : onFix(l.fix as IntegrityFix, l.noticeId))} className="mt-0.5 text-[12px] text-brand-700 hover:underline">
+                      {FIX_LABEL[l.fix as Exclude<IntegrityFix, "none">]} →
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="py-2 text-[12px] text-gray-400">The ledger rows load with the saved document.</div>
+            )}
+            <div className="flex items-center justify-between py-2">
+              <span className="text-[14px] font-bold text-gray-900">Integrity</span>
+              <span className={`text-[14px] font-bold ${scoreColor}`}>{score}</span>
+            </div>
+          </div>
+          <p className="mt-2 text-[12px] text-gray-500">Every deduction maps to an action you can take. Your advisor sees the same ledger.</p>
+        </div>
+
+        <div>
+          <div className="flex justify-between text-xs mb-1"><span>Who wrote this document</span><button onClick={onToggleProvenance} className="text-brand-600 hover:underline">{showProvenance ? "Hide" : "Show"} provenance</button></div>
           <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
-            <div className="bg-green-500" style={{ width: `${pct(thesis.provenance.human)}%` }} title="You" />
-            <div className="bg-amber-400" style={{ width: `${pct(thesis.provenance.paste)}%` }} title="Pasted" />
-            <div className="bg-purple-500" style={{ width: `${pct(thesis.provenance.ai)}%` }} title="AI-assisted" />
+            <div className="bg-prov-human" style={{ width: `${pct(thesis.provenance.human)}%` }} title="Written" />
+            <div className="bg-prov-paste" style={{ width: `${pct(thesis.provenance.paste)}%` }} title="Quoted or pasted" />
+            <div className="bg-prov-ai" style={{ width: `${pct(thesis.provenance.ai)}%` }} title="AI-assisted" />
           </div>
           <div className="flex gap-3 text-[11px] text-gray-600 mt-1 flex-wrap">
-            <span><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />You {pct(thesis.provenance.human)}%</span>
-            <span><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1" />Pasted {pct(thesis.provenance.paste)}%</span>
-            <span><span className="inline-block w-2 h-2 rounded-full bg-purple-500 mr-1" />AI-assisted {pct(thesis.provenance.ai)}% <span className="text-gray-400">(limit {maxAi}%)</span></span>
+            <span><span className="inline-block w-2 h-2 rounded-full bg-prov-human mr-1" />Written {pct(thesis.provenance.human)}%</span>
+            <span><span className="inline-block w-2 h-2 rounded-full bg-prov-paste mr-1" />Quoted or pasted {pct(thesis.provenance.paste)}%</span>
+            <span><span className="inline-block w-2 h-2 rounded-full bg-prov-ai mr-1" />AI-assisted {pct(thesis.provenance.ai)}% <span className="text-gray-400">(limit {maxAi}%)</span></span>
           </div>
           {pct(thesis.provenance.ai) > maxAi && <div className="mt-2 text-xs text-red-600 flex items-start gap-1"><AlertTriangle className="w-3.5 h-3.5 mt-0.5" />AI-assisted text is above your institution&apos;s limit. Rewrite AI passages in your own words to bring it down.</div>}
         </div>
+
         {session && (
-          <div className="grid grid-cols-3 gap-2 text-center">
-            {[["Keystrokes", session.keystrokes], ["Words", session.wordsWritten], ["AI assists", session.aiAssists], ["Pastes", session.pasteEvents], ["Tab switches", session.tabSwitches]].slice(0, 6).map(([l, v]) => (
-              <div key={String(l)} className="bg-gray-50 rounded-lg py-2"><div className="text-base font-semibold">{Number(v || 0).toLocaleString()}</div><div className="text-[10px] text-gray-500">{l}</div></div>
-            ))}
+          <div>
+            <div className="text-xs font-medium mb-1.5">This session</div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[["Keystrokes", session.keystrokes], ["Words", session.wordsWritten], ["AI assists", session.aiAssists], ["Pastes", session.pasteEvents], ["Tab switches", session.tabSwitches]].map(([l, v]) => (
+                <div key={String(l)} className="bg-gray-50 rounded-lg py-2"><div className="text-base font-semibold">{Number(v || 0).toLocaleString()}</div><div className="text-[10px] text-gray-500">{l}</div></div>
+              ))}
+            </div>
           </div>
         )}
+
         <div>
           <div className="text-xs font-medium mb-2 flex items-center gap-1">{open.length ? <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> : <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />}{open.length ? `${open.length} open notice${open.length > 1 ? "s" : ""}` : "No open notices"}</div>
           <div className="space-y-2">
             {flags.map((f) => (
-              <div key={f.id} className={`p-2.5 rounded-xl border text-xs ${f.resolved ? "border-gray-100 opacity-60" : f.severity === "high" ? "border-red-200 bg-red-50/40" : f.severity === "medium" ? "border-amber-200 bg-amber-50/40" : "border-gray-200"}`}>
-                <div className="flex items-center gap-2 mb-1"><span className={`badge ${f.severity === "high" ? "badge-danger" : f.severity === "medium" ? "badge-warning" : "badge-info"} !text-[10px]`}>{f.severity}</span><span className="font-medium capitalize">{f.type.replace(/_/g, " ")}</span>{f.resolved && <span className="badge-success !text-[10px]">resolved</span>}<span className="ml-auto text-gray-400">{timeAgo(f.timestamp)}</span></div>
+              <div key={f.id} id={`notice-${f.id}`} className={`p-2.5 rounded-xl border text-xs transition-shadow ${focusNotice === f.id ? "ring-2 ring-brand-300" : ""} ${f.resolved ? "border-gray-100 opacity-60" : f.severity === "high" ? "border-red-200 bg-red-50/40" : f.severity === "medium" ? "border-amber-200 bg-amber-50/40" : "border-gray-200"}`}>
+                <div className="flex items-center gap-2 mb-1"><span className={`badge ${f.severity === "high" ? "badge-danger" : f.severity === "medium" ? "badge-warning" : "badge-info"} !text-[10px]`}>{f.severity}</span><span className="font-medium">{NOTICE_TYPE_LABEL[f.type] || f.type.replace(/_/g, " ")}</span>{f.resolved && <span className="badge-success !text-[10px]">resolved</span>}<span className="ml-auto text-gray-400">{timeAgo(f.timestamp)}</span></div>
                 <div className="whitespace-pre-wrap text-gray-700">{f.description}</div>
                 {!f.resolved && isOwner && (
                   <div className="flex gap-1 mt-2">

@@ -104,3 +104,33 @@ export function formatReference(r: Reference, style: ThesisDoc["citationStyle"])
       return { full: `${authors} (${r.year}). ${r.title}. ${r.type === "article" ? `<em>${r.source}</em>` : r.source}${r.volume ? `, <em>${r.volume}</em>` : ""}${r.issue ? `(${r.issue})` : ""}${r.pages ? `, ${r.pages}` : ""}.${doi}`, inText: `(${etAl}, ${r.year})` };
   }
 }
+
+// ---------- Integrity ledger (mirrors src/lib/integrity.ts, which is server-only) ----------
+export type IntegrityFix = "attribute_paste" | "reduce_ai" | "open_notice" | "none";
+export interface IntegrityLine {
+  reason: string;
+  points: number;
+  fix?: IntegrityFix;
+  noticeId?: string;
+}
+export interface IntegrityBreakdown {
+  score: number;
+  starting: 100;
+  lines: IntegrityLine[];
+}
+
+/** The slice of an AI interaction the editor needs to annotate a provenance mark. */
+export interface InteractionLite {
+  id: string;
+  provider: string;
+  model: string;
+  mode: string;
+  timestamp: string;
+  insertedWords?: number;
+}
+
+/** UI labels for assistant modes and providers (the server-side MODES / PROVIDER_META pull in the data layer). */
+export const MODE_LABELS: Record<string, string> = {
+  chat: "Ask", brainstorm: "Brainstorm", outline: "Outline", critique: "Critique", grammar: "Grammar", summarize: "Summarize", explain: "Explain", citations: "Citations", gaps: "Find gaps", paraphrase_check: "Paraphrase", copilot: "Research copilot", paste: "Pasted",
+};
+export const PROVIDER_LABELS: Record<string, string> = { anthropic: "Claude", openai: "GPT", google: "Gemini", mistral: "Mistral", demo: "Demo", assistant: "AI", external: "External AI" };
