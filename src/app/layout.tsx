@@ -3,15 +3,15 @@ import "./globals.css";
 import PWARegister from "@/components/PWARegister";
 
 export const metadata: Metadata = {
-  title: "Thesisfy.edu - Academic Integrity Through AI Regulation",
-  description: "The anti-Turnitin. Thesisfy regulates AI usage during the writing process instead of detecting it after the fact. Ensuring genuine academic integrity.",
+  title: "Thesisfic.edu - Academic Integrity Through AI Regulation",
+  description: "The anti-Turnitin. Thesisfic regulates AI usage during the writing process instead of detecting it after the fact. Ensuring genuine academic integrity.",
   keywords: ["academic integrity", "AI regulation", "thesis", "university", "education"],
   manifest: "/manifest.webmanifest",
-  applicationName: "Thesisfy",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Thesisfy" },
+  applicationName: "Thesisfic",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Thesisfic" },
   icons: { icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }, { url: "/icons/icon-192.png", sizes: "192x192" }], apple: "/icons/apple-touch-icon.png" },
   openGraph: {
-    title: "Thesisfy.edu - Academic Integrity Through AI Regulation",
+    title: "Thesisfic.edu - Academic Integrity Through AI Regulation",
     description: "The anti-Turnitin. Regulate AI usage, don't just detect it.",
     type: "website",
   },

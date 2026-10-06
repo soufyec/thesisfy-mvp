@@ -35,7 +35,7 @@ export default function PWARegister() {
     <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-6 right-4 left-4 lg:left-auto lg:w-80 z-[90] bg-gray-900 text-white rounded-2xl p-3 shadow-2xl flex items-center gap-3 animate-slide-up">
       <img src="/icons/icon-192.png" alt="" className="w-10 h-10 rounded-xl" />
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold">Install Thesisfy</div>
+        <div className="text-sm font-semibold">Install Thesisfic</div>
         <div className="text-xs text-gray-300">Write and chat with your assistant from your home screen.</div>
       </div>
       <button

@@ -182,7 +182,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     editorProps: {
       attributes: { class: "docs-editor", spellcheck: "true" },
       handleClick: (_view, _pos, event) => {
-        const el = (event.target as HTMLElement).closest?.(".thesisfy-comment") as HTMLElement | null;
+        const el = (event.target as HTMLElement).closest?.(".thesisfic-comment") as HTMLElement | null;
         if (el) {
           setActiveCommentId(el.getAttribute("data-comment-id"));
           setSidebar("comments");
@@ -963,8 +963,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       <ConfirmDialog open={!!confirmPromote} onClose={() => setConfirmPromote(null)} title="Use this tab as Final submission?" confirmLabel="Use as Final submission" body={<>“{tabs.find((t) => t.id === confirmPromote)?.title}” becomes the text your advisor reviews and the integrity report measures. The current Final submission is kept as a working tab, so nothing is lost.</>} onConfirm={() => confirmPromote && promoteTab(confirmPromote)} />
       <ConfirmDialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Delete tab?" danger confirmLabel="Delete tab" body={<>“{tabs.find((t) => t.id === confirmDelete)?.title}” and its text will be deleted. The Final submission is not affected.</>} onConfirm={() => confirmDelete && deleteTab(confirmDelete)} />
       <CitationDialog open={!!citeMode} onClose={() => setCiteMode(null)} selection={citeText} thesis={thesis} sessionId={sessionId} insertMode={citeMode || "cursor"} onInsert={(c) => insertCitation(c, citeMode || "cursor")} />
-      <Modal open={dialog === "about"} onClose={() => setDialog(null)} title="About Thesisfy" size="sm" footer={<button onClick={() => setDialog(null)} className="btn-primary !py-2 !px-4 text-sm">Close</button>}>
-        <p className="text-sm text-gray-600">Thesisfy regulates AI use while you write instead of guessing afterwards. Everything you insert from an AI tool is marked, every session is logged according to your consent, and your advisor sees a provenance report instead of a “probability of AI” score.</p>
+      <Modal open={dialog === "about"} onClose={() => setDialog(null)} title="About Thesisfic" size="sm" footer={<button onClick={() => setDialog(null)} className="btn-primary !py-2 !px-4 text-sm">Close</button>}>
+        <p className="text-sm text-gray-600">Thesisfic regulates AI use while you write instead of guessing afterwards. Everything you insert from an AI tool is marked, every session is logged according to your consent, and your advisor sees a provenance report instead of a “probability of AI” score.</p>
       </Modal>
       <VersionPreviewDialog open={!!preview} onClose={() => setPreview(null)} html={preview?.html || ""} label={preview?.label || ""} canRestore={canEdit} onRestore={async () => { if (!preview) return; const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${preview.id}`, { method: "POST" }).catch(() => null); if (d) { restoreSubmission(d.thesis); loadVersions(); } }} />
       <PasteAttributionDialog open={!!paste} words={paste?.words || 0} matched={paste?.matched || null} onDecide={decidePaste} />

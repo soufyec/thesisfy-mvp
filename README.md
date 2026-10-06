@@ -1,6 +1,6 @@
-# Thesisfy.edu MVP
+# Thesisfic.edu MVP
 
-**Academic integrity through AI regulation, not detection.** Thesisfy attributes every word of a thesis as it is written (typed, pasted, AI-assisted), lets students use the AI account they already have, and gives advisors a provenance report instead of a guessed "AI probability".
+**Academic integrity through AI regulation, not detection.** Thesisfic attributes every word of a thesis as it is written (typed, pasted, AI-assisted), lets students use the AI account they already have, and gives advisors a provenance report instead of a guessed "AI probability".
 
 ## What's in the MVP
 
@@ -40,7 +40,7 @@ Like Copilot inside a company, the university can offer models to its students a
 
 | Backend | Runs on | Billed by |
 |---|---|---|
-| Thesisfy contract | Thesisfy's provider keys | Thesisfy invoice, usage at provider list price |
+| Thesisfic contract | Thesisfic's provider keys | Thesisfic invoice, usage at provider list price |
 | Claude in Microsoft Foundry | The university's Azure tenant (`@anthropic-ai/foundry-sdk`) | Microsoft, with the rest of the tenant |
 | Azure OpenAI | The university's Azure tenant | Microsoft |
 | Anthropic / OpenAI / Mistral / Google account | The university's own API account | That provider |
@@ -83,7 +83,7 @@ mobile/                              Capacitor wrapper + README
 
 ### How AI use is detected, with authorization
 
-1. **Inside Thesisfy**: every assistant call is logged (provider, model, mode, tokens, blocked-by-policy). Inserted text carries a provenance mark. Nothing is inferred.
+1. **Inside Thesisfic**: every assistant call is logged (provider, model, mode, tokens, blocked-by-policy). Inserted text carries a provenance mark. Nothing is inferred.
 2. **Pastes**: the editor fingerprints pasted text (SHA-256 of normalized text, first 32 hex) and asks the student to attribute large pastes. The text itself is never sent for monitoring.
 3. **External chat apps**: the extension (opt-in scope) reports visits, copy fingerprints and prompt submissions **only while a session is active**. A paste whose fingerprint matches a reported copy is attributed to that tool automatically.
 4. **Consent** is granular, versioned, revocable and enforced on the server: events for scopes the student did not grant are dropped even if a client sends them.
@@ -99,4 +99,4 @@ mobile/                              Capacitor wrapper + README
 
 1. Import the repository in Vercel.
 2. Set `JWT_SECRET`, `ENCRYPTION_KEY` and optionally provider keys.
-3. Deploy. The PWA is served from the same deployment; point `mobile/capacitor.config.ts` (`THESISFY_URL`) at it for native builds.
+3. Deploy. The PWA is served from the same deployment; point `mobile/capacitor.config.ts` (`THESISFIC_URL`) at it for native builds.

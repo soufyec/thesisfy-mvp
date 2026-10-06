@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     provider: aiUsed ? (cfg.provider as never) : "demo",
     model: aiUsed ? cfg.model : `lookup:${method}`,
     mode: "citations",
-    source: "thesisfy",
+    source: "thesisfic",
     promptPreview: (query || selection).slice(0, 200),
     responsePreview: candidates[0] ? `${candidates[0].authors} (${candidates[0].year}). ${candidates[0].title}`.slice(0, 200) : "no results",
     inputTokens: aiUsed ? citeUsage.inputTokens : 0,

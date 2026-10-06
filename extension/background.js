@@ -1,7 +1,7 @@
-// Thesisfy Transparency Companion — background service worker.
-// Holds the pairing token, polls session status, and relays consented events to the Thesisfy API.
+// Thesisfic Transparency Companion — background service worker.
+// Holds the pairing token, polls session status, and relays consented events to the Thesisfic API.
 
-const STATUS_ALARM = "thesisfy-status";
+const STATUS_ALARM = "thesisfic-status";
 let status = { monitoring: false, activeSession: null, scopes: null, user: null, policy: null, error: null, checkedAt: 0 };
 let queue = [];
 let flushTimer = null;
@@ -38,7 +38,7 @@ async function refreshStatus() {
 
 function broadcast() {
   chrome.tabs.query({ url: ["https://chatgpt.com/*", "https://chat.openai.com/*", "https://claude.ai/*", "https://gemini.google.com/*", "https://chat.mistral.ai/*"] }, (tabs) => {
-    for (const t of tabs) chrome.tabs.sendMessage(t.id, { type: "thesisfy:status", status }).catch?.(() => {});
+    for (const t of tabs) chrome.tabs.sendMessage(t.id, { type: "thesisfic:status", status }).catch?.(() => {});
   });
 }
 
@@ -70,7 +70,7 @@ chrome.alarms.onAlarm.addListener((a) => a.name === STATUS_ALARM && refreshStatu
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
-    if (msg.type === "thesisfy:pair") {
+    if (msg.type === "thesisfic:pair") {
       const baseUrl = msg.baseUrl.replace(/\/$/, "");
       try {
         const res = await fetch(baseUrl + "/api/monitor/pair", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: msg.code, name: `Chrome on ${navigator.platform}` }) });
@@ -83,15 +83,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } catch (e) {
         sendResponse({ ok: false, error: "Could not reach " + baseUrl });
       }
-    } else if (msg.type === "thesisfy:unpair") {
+    } else if (msg.type === "thesisfic:unpair") {
       await chrome.storage.local.remove(["token", "user", "status"]);
       status = { monitoring: false, activeSession: null, scopes: null, user: null, error: "not_paired", checkedAt: Date.now() };
       chrome.action.setBadgeText({ text: "" });
       sendResponse({ ok: true });
-    } else if (msg.type === "thesisfy:getStatus") {
+    } else if (msg.type === "thesisfic:getStatus") {
       if (Date.now() - status.checkedAt > 20000) await refreshStatus();
       sendResponse({ status, config: await getConfig() });
-    } else if (msg.type === "thesisfy:event") {
+    } else if (msg.type === "thesisfic:event") {
       if (Date.now() - status.checkedAt > 60000) await refreshStatus();
       enqueue(msg.event);
       sendResponse({ ok: true, monitoring: status.monitoring });

@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Thesisfy.edu",
-    short_name: "Thesisfy",
+    name: "Thesisfic.edu",
+    short_name: "Thesisfic",
     description: "Write your thesis with transparent, regulated AI assistance.",
     start_url: "/dashboard",
     scope: "/",

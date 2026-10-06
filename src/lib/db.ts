@@ -1,4 +1,4 @@
-// Thesisfy data layer.
+// Thesisfic data layer.
 // In-memory store persisted on globalThis (survives hot reloads) with optional
 // JSON-file persistence (DATA_FILE env). Swap for Postgres/Prisma in production:
 // every access goes through the `db` object below, so the surface stays stable.
@@ -42,7 +42,7 @@ export interface User {
 export interface ProvenanceStats {
   human: number; // words typed by the student
   paste: number; // words pasted from unknown sources
-  ai: number; // words inserted from AI (Thesisfy assistant or attributed external AI)
+  ai: number; // words inserted from AI (Thesisfic assistant or attributed external AI)
 }
 
 export interface Thesis {
@@ -144,7 +144,7 @@ export interface SessionEvent {
 export interface ConsentScopes {
   keystrokes: boolean; // typing rhythm and counts (never the text itself)
   paste: boolean; // paste sizes + hash for attribution
-  aiInteractions: boolean; // prompts/responses through Thesisfy assistant
+  aiInteractions: boolean; // prompts/responses through Thesisfic assistant
   tabActivity: boolean; // tab hidden/visible while a session is active
   extensionActivity: boolean; // visits/copies on external AI sites (via extension)
   extensionPromptText: boolean; // prompt text typed on external AI sites (opt-in, off by default)
@@ -217,7 +217,7 @@ export interface AIInteraction {
   provider: Provider | "demo";
   model: string;
   mode: AIMode;
-  source: "thesisfy" | "extension";
+  source: "thesisfic" | "extension";
   connectionId?: string;
   promptPreview: string;
   responsePreview: string;
@@ -304,7 +304,7 @@ export interface ResearchDatabase {
   access: DatabaseAccess;
   instructions?: string; // special steps, written by the library
   featured: boolean;
-  opens: number; // click-throughs from Thesisfy (for library usage reporting)
+  opens: number; // click-throughs from Thesisfic (for library usage reporting)
   createdAt: string;
   updatedAt: string;
 }
@@ -320,12 +320,12 @@ export interface LibrarySettings {
 
 /**
  * Where an institution-provided model runs, which decides who invoices the university:
- * - thesisfy: Thesisfy's own provider contracts, passed through on the Thesisfy invoice
+ * - thesisfic: Thesisfic's own provider contracts, passed through on the Thesisfic invoice
  * - anthropic / openai / mistral / google: the university's own API account with that provider
  * - azure_openai: GPT (or other Foundry models) in the university's Microsoft Azure subscription
  * - foundry_claude: Claude in the university's Microsoft Foundry resource (billed by Microsoft)
  */
-export type ModelBackend = "thesisfy" | "anthropic" | "openai" | "mistral" | "google" | "azure_openai" | "foundry_claude";
+export type ModelBackend = "thesisfic" | "anthropic" | "openai" | "mistral" | "google" | "azure_openai" | "foundry_claude";
 
 /** A model the institution offers to its students and pays for, like Copilot inside a company. */
 export interface InstitutionModel {
@@ -336,7 +336,7 @@ export interface InstitutionModel {
   label: string;
   model: string; // model id, or the deployment name on Azure / Foundry
   endpoint?: string; // Azure resource URL or Foundry resource name
-  encryptedSecret?: string; // the institution's key (not needed for the thesisfy backend)
+  encryptedSecret?: string; // the institution's key (not needed for the thesisfic backend)
   secretHint?: string;
   region: string; // shown to students, e.g. "EU (France Central)"
   inputPrice: number; // USD per million input tokens, as the provider bills it
@@ -444,7 +444,7 @@ function seed(): Store {
 <p>This research aims to bridge the gap between traditional climate science and modern machine learning by developing hybrid models that leverage the strengths of both approaches. We focus specifically on regional precipitation patterns and temperature anomalies in the Western United States.</p>
 <h2>2. Literature Review</h2>
 <h3>2.1 Traditional Climate Models</h3>
-<p>General Circulation Models (GCMs) have been the backbone of climate prediction for decades. These models solve the fundamental equations of fluid dynamics and thermodynamics on a three-dimensional grid covering the Earth's surface and atmosphere <span data-comment-id="cmt_1" class="thesisfy-comment">(Randall et al., 2007)</span>.</p>
+<p>General Circulation Models (GCMs) have been the backbone of climate prediction for decades. These models solve the fundamental equations of fluid dynamics and thermodynamics on a three-dimensional grid covering the Earth's surface and atmosphere <span data-comment-id="cmt_1" class="thesisfic-comment">(Randall et al., 2007)</span>.</p>
 <h3>2.2 Machine Learning in Climate Science</h3>
 <p>Recent advances in deep learning have shown promising results in weather forecasting and climate prediction. <span data-provenance="ai" data-provider="anthropic">Convolutional neural networks are particularly well suited to gridded climate fields because their inductive bias mirrors the spatial locality of atmospheric processes.</span> Convolutional Neural Networks (CNNs) have been particularly effective at capturing spatial patterns in climate data.</p>
 <p><span data-provenance="paste" data-source="Reichstein et al. (2019), Nature">Deep learning and process understanding for data-driven Earth system science requires hybrid modelling approaches that combine physical process models with the versatility of data-driven machine learning.</span> This framing motivates the hybrid architecture described in Chapter 3.</p>
@@ -583,7 +583,7 @@ function seed(): Store {
       sessionId: "sess_1",
       type: "external_source",
       severity: "low",
-      description: "Student visited chatgpt.com during an active writing session (reported by the Thesisfy extension with consent). No paste was matched to the visit.",
+      description: "Student visited chatgpt.com during an active writing session (reported by the Thesisfic extension with consent). No paste was matched to the visit.",
       timestamp: "2026-03-12T10:12:00Z",
       resolved: false,
     },
@@ -654,10 +654,10 @@ function seed(): Store {
 
   const t0 = "2026-09-01T00:00:00Z";
   const institutionModels: InstitutionModel[] = [
-    { id: "im_stan_1", university: "Stanford University", provider: "anthropic", backend: "thesisfy", label: "Claude Sonnet 5.5", model: "claude-sonnet-5-5", region: "US", inputPrice: 2, outputPrice: 10, enabled: true, isDefault: true, createdAt: t0, updatedAt: t0 },
+    { id: "im_stan_1", university: "Stanford University", provider: "anthropic", backend: "thesisfic", label: "Claude Sonnet 5.5", model: "claude-sonnet-5-5", region: "US", inputPrice: 2, outputPrice: 10, enabled: true, isDefault: true, createdAt: t0, updatedAt: t0 },
     { id: "im_stan_2", university: "Stanford University", provider: "openai", backend: "azure_openai", label: "GPT-4.1 (Azure)", model: "gpt-4.1", endpoint: "https://stanford-ai.openai.azure.com", region: "US (East US 2)", inputPrice: 2, outputPrice: 8, enabled: true, isDefault: false, createdAt: t0, updatedAt: t0 },
     { id: "im_stan_3", university: "Stanford University", provider: "anthropic", backend: "foundry_claude", label: "Claude Opus 5.5 (Microsoft Foundry)", model: "claude-opus-5-5", endpoint: "stanford-foundry", region: "US (East US 2)", inputPrice: 4, outputPrice: 20, enabled: false, isDefault: false, createdAt: t0, updatedAt: t0 },
-    { id: "im_sorb_1", university: "Sorbonne University", provider: "mistral", backend: "thesisfy", label: "Mistral Medium", model: "mistral-medium-latest", region: "EU (France)", inputPrice: 0.4, outputPrice: 2, enabled: true, isDefault: true, createdAt: t0, updatedAt: t0 },
+    { id: "im_sorb_1", university: "Sorbonne University", provider: "mistral", backend: "thesisfic", label: "Mistral Medium", model: "mistral-medium-latest", region: "EU (France)", inputPrice: 0.4, outputPrice: 2, enabled: true, isDefault: true, createdAt: t0, updatedAt: t0 },
     { id: "im_sorb_2", university: "Sorbonne University", provider: "anthropic", backend: "foundry_claude", label: "Claude Sonnet 5.5 (Microsoft Foundry)", model: "claude-sonnet-5-5", endpoint: "sorbonne-foundry", region: "EU (Sweden Central)", inputPrice: 2, outputPrice: 10, enabled: true, isDefault: false, createdAt: t0, updatedAt: t0 },
     { id: "im_sorb_3", university: "Sorbonne University", provider: "openai", backend: "azure_openai", label: "GPT-4.1 (Azure)", model: "gpt-4.1", endpoint: "https://sorbonne-ai.openai.azure.com", region: "EU (France Central)", inputPrice: 2, outputPrice: 8, enabled: true, isDefault: false, createdAt: t0, updatedAt: t0 },
   ];
@@ -683,7 +683,7 @@ function seed(): Store {
       const ts = new Date(monthStart.getTime() + (((n * 7919) % (daysSoFar * 24)) * 3600 * 1000) / 1).toISOString();
       if (new Date(ts).getTime() > Date.now()) continue;
       usage.push({
-        id: `ai_inst_${n}`, userId, thesisId: userId === "usr_1" ? "thesis_1" : "thesis_3", provider: m.provider, model: m.model, mode: modes[n % modes.length], source: "thesisfy",
+        id: `ai_inst_${n}`, userId, thesisId: userId === "usr_1" ? "thesis_1" : "thesis_3", provider: m.provider, model: m.model, mode: modes[n % modes.length], source: "thesisfic",
         promptPreview: "(institution model usage)", responsePreview: "", inputTokens, outputTokens, insertedWords: 0, blockedByPolicy: false, timestamp: ts,
         billedTo: "institution", institutionModelId: m.id, costUsd: (inputTokens * m.inputPrice + outputTokens * m.outputPrice) / 1e6,
       });
@@ -714,8 +714,8 @@ function seed(): Store {
     flags,
     connections: [],
     interactions: [
-      { id: "ai_1", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "anthropic", model: "claude-sonnet-4-5", mode: "outline", source: "thesisfy", promptPreview: "Help me outline the discussion section", responsePreview: "A discussion section typically moves from your findings to their implications…", inputTokens: 420, outputTokens: 310, insertedWords: 0, blockedByPolicy: false, timestamp: "2026-03-12T09:20:00Z" },
-      { id: "ai_2", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "anthropic", model: "claude-sonnet-4-5", mode: "grammar", source: "thesisfy", promptPreview: "Review this paragraph for clarity", responsePreview: "Two suggestions: split the second sentence and replace…", inputTokens: 380, outputTokens: 220, insertedWords: 41, blockedByPolicy: false, timestamp: "2026-03-12T11:02:00Z" },
+      { id: "ai_1", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "anthropic", model: "claude-sonnet-4-5", mode: "outline", source: "thesisfic", promptPreview: "Help me outline the discussion section", responsePreview: "A discussion section typically moves from your findings to their implications…", inputTokens: 420, outputTokens: 310, insertedWords: 0, blockedByPolicy: false, timestamp: "2026-03-12T09:20:00Z" },
+      { id: "ai_2", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "anthropic", model: "claude-sonnet-4-5", mode: "grammar", source: "thesisfic", promptPreview: "Review this paragraph for clarity", responsePreview: "Two suggestions: split the second sentence and replace…", inputTokens: 380, outputTokens: 220, insertedWords: 41, blockedByPolicy: false, timestamp: "2026-03-12T11:02:00Z" },
       { id: "ai_3", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "openai", model: "chatgpt.com", mode: "chat", source: "extension", promptPreview: "(prompt text not shared — consent scope off)", responsePreview: "", inputTokens: 0, outputTokens: 0, insertedWords: 0, blockedByPolicy: false, timestamp: "2026-03-12T10:12:00Z" },
       ...usage,
     ],
@@ -795,11 +795,11 @@ function seed(): Store {
 
 // ---------- persistence ----------
 
-const g = globalThis as unknown as { __thesisfyStore?: Store };
+const g = globalThis as unknown as { __thesisficStore?: Store };
 const DATA_FILE = process.env.DATA_FILE;
 
 function load(): Store {
-  if (g.__thesisfyStore) return g.__thesisfyStore;
+  if (g.__thesisficStore) return g.__thesisficStore;
   let store: Store | null = null;
   if (DATA_FILE) {
     try {
@@ -808,12 +808,12 @@ function load(): Store {
       console.warn("Could not read DATA_FILE, seeding:", e);
     }
   }
-  g.__thesisfyStore = store || seed();
+  g.__thesisficStore = store || seed();
   // fill collections added after a store was first created (hot reload / older DATA_FILE)
   const fresh = seed();
-  const st = g.__thesisfyStore as unknown as Record<string, unknown>;
+  const st = g.__thesisficStore as unknown as Record<string, unknown>;
   for (const k of Object.keys(fresh) as (keyof Store)[]) if (st[k] === undefined) st[k] = fresh[k];
-  return g.__thesisfyStore;
+  return g.__thesisficStore;
 }
 
 let persistTimer: NodeJS.Timeout | null = null;

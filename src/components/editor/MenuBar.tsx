@@ -247,7 +247,7 @@ export default function MenuBar({ editor, onAction, state }: Props) {
       title: "Help",
       items: [
         { label: "Keyboard shortcuts", action: "shortcuts", shortcut: `${mod}/` },
-        { label: "About Thesisfy", action: "about" },
+        { label: "About Thesisfic", action: "about" },
       ],
     },
   ];

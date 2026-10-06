@@ -44,6 +44,6 @@ export async function POST(request: NextRequest) {
     university: r.user.university,
     avatar: body.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase(),
   });
-  db.notifications.create({ userId: user.id, title: "Welcome to Thesisfy", message: `${r.user.name} invited you to ${r.user.university}'s Thesisfy workspace.`, type: "info" });
+  db.notifications.create({ userId: user.id, title: "Welcome to Thesisfic", message: `${r.user.name} invited you to ${r.user.university}'s Thesisfic workspace.`, type: "info" });
   return json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, temporaryPassword: temp }, 201);
 }

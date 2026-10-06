@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       provider: cfg.provider,
       model: cfg.model,
       mode,
-      source: "thesisfy",
+      source: "thesisfic",
       connectionId: cfg.connectionId,
       promptPreview: lastUser.slice(0, 200),
       responsePreview: text.slice(0, 200),

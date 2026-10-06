@@ -62,7 +62,7 @@ export function demoResponse(mode: AIMode, messages: { role: string; content: st
 
   const greeting = /^(hi|hello|hey|hola|bonjour|salut)\b/i.test(last.trim());
   if (greeting && mode === "chat") {
-    return (L === "es" ? "¡Hola! Soy Thesisfy AI. Puedo ayudarte a hacer lluvia de ideas, estructurar capítulos, revisar borradores, corregir gramática y formatear citas, siempre sin escribir tu tesis por ti. ¿En qué trabajamos hoy?" : L === "fr" ? "Bonjour ! Je suis Thesisfy AI. Je peux vous aider à réfléchir, structurer vos chapitres, relire vos brouillons, corriger la grammaire et mettre en forme vos citations, sans jamais écrire votre mémoire à votre place. Sur quoi travaillons-nous ?" : "Hello! I'm Thesisfy AI. I can help you brainstorm, structure chapters, review drafts, fix grammar and format citations, always without writing your thesis for you. What are we working on today?") + note;
+    return (L === "es" ? "¡Hola! Soy Thesisfic AI. Puedo ayudarte a hacer lluvia de ideas, estructurar capítulos, revisar borradores, corregir gramática y formatear citas, siempre sin escribir tu tesis por ti. ¿En qué trabajamos hoy?" : L === "fr" ? "Bonjour ! Je suis Thesisfic AI. Je peux vous aider à réfléchir, structurer vos chapitres, relire vos brouillons, corriger la grammaire et mettre en forme vos citations, sans jamais écrire votre mémoire à votre place. Sur quoi travaillons-nous ?" : "Hello! I'm Thesisfic AI. I can help you brainstorm, structure chapters, review drafts, fix grammar and format citations, always without writing your thesis for you. What are we working on today?") + note;
   }
   return byMode[mode][L] + note;
 }

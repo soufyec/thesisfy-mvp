@@ -2,7 +2,7 @@
   "name": "thesisfy-mvp",
   "private": true,
   "version": "1.0.0",
-  "description": "Thesisfy.edu - Academic integrity through AI regulation, not detection",
+  "description": "Thesisfic.edu - Academic integrity through AI regulation, not detection",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

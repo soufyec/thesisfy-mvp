@@ -9,7 +9,7 @@ export interface CitationCandidate extends Omit<Reference, "id"> {
   note?: string;
 }
 
-const UA = "Thesisfy/1.0 (academic citation lookup; https://thesisfy-mvp-bbe1.vercel.app)";
+const UA = "Thesisfic/1.0 (academic citation lookup; https://thesisfy-mvp-bbe1.vercel.app)";
 const DOI_RE = /\b(10\.\d{4,9}\/[^\s"<>]+)/i;
 
 export function extractDoi(text: string): string | null {

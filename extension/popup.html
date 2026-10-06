@@ -1,19 +1,19 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Thesisfy</title>
+<!doctype html><html><head><meta charset="utf-8"><title>Thesisfic</title>
 <style>body{width:320px;margin:0;font:13px/1.4 Inter,system-ui,sans-serif;color:#111827;background:#fff}.hd{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid #eee}.hd img{width:28px;height:28px;border-radius:8px}.hd b{font-size:14px}.sec{padding:12px 14px}label{display:block;font-size:12px;color:#6b7280;margin:8px 0 4px}input{width:100%;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px;font-size:13px}button{width:100%;margin-top:10px;background:#4c6ef5;color:#fff;border:none;border-radius:10px;padding:9px;font-weight:600;cursor:pointer}button.sec-btn{background:#f3f4f6;color:#374151}.status{display:flex;gap:8px;align-items:center;padding:10px;border-radius:10px;background:#f9fafb;border:1px solid #eee}.dot{width:10px;height:10px;border-radius:50%;background:#9ca3af}.dot.on{background:#20c997}.muted{color:#6b7280;font-size:12px}.err{color:#dc2626;font-size:12px;margin-top:6px}ul{margin:6px 0 0;padding-left:18px;color:#374151;font-size:12px}</style></head>
 <body>
-<div class="hd"><img src="icons/icon-48.png" alt=""><div><b>Thesisfy Companion</b><div class="muted">Transparent AI use, on your terms</div></div></div>
+<div class="hd"><img src="icons/icon-48.png" alt=""><div><b>Thesisfic Companion</b><div class="muted">Transparent AI use, on your terms</div></div></div>
 <div id="pair" class="sec" hidden>
-  <p class="muted">Pair with your Thesisfy account: in Thesisfy open <b>Settings &amp; Privacy → Browser extension</b> and generate a code.</p>
-  <label>Thesisfy URL</label><input id="baseUrl" placeholder="https://thesisfy.example.edu">
+  <p class="muted">Pair with your Thesisfic account: in Thesisfic open <b>Settings &amp; Privacy → Browser extension</b> and generate a code.</p>
+  <label>Thesisfic URL</label><input id="baseUrl" placeholder="https://thesisfic.example.edu">
   <label>Pairing code</label><input id="code" placeholder="ABC-123" autocomplete="off">
   <button id="pairBtn">Pair</button>
   <div id="pairErr" class="err"></div>
 </div>
 <div id="main" class="sec" hidden>
   <div class="status"><span id="dot" class="dot"></span><div><div id="line1"><b>Checking…</b></div><div id="line2" class="muted"></div></div></div>
-  <p class="muted" style="margin-top:10px">While a writing session is active in Thesisfy, this extension reports on ChatGPT, Claude, Gemini and Le Chat:</p>
+  <p class="muted" style="margin-top:10px">While a writing session is active in Thesisfic, this extension reports on ChatGPT, Claude, Gemini and Le Chat:</p>
   <ul><li>that you visited the site, and for how long</li><li>a fingerprint of text you copy (never the text)</li><li id="promptScope">that you sent a prompt</li></ul>
-  <p class="muted">Nothing is reported outside an active session. Change your choices in Thesisfy → Settings &amp; Privacy.</p>
+  <p class="muted">Nothing is reported outside an active session. Change your choices in Thesisfic → Settings &amp; Privacy.</p>
   <button id="refresh" class="sec-btn">Refresh status</button>
   <button id="unpair" class="sec-btn">Disconnect</button>
 </div>

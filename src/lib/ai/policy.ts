@@ -40,17 +40,17 @@ function t(lang: "en" | "es" | "fr", key: "mode" | "generation") {
     en: {
       mode: "This assistant mode is not enabled by your institution's AI policy. Ask your advisor or switch to a permitted mode.",
       generation:
-        "I can't write that part of your thesis for you: your institution's policy (and Thesisfy's rules) block AI-generated thesis text, and this request has been logged as blocked.\n\nWhat I can do instead:\n- **Outline** the section with you, heading by heading\n- Ask you **guiding questions** so you draft it in your own words\n- **Critique** or **correct** a draft you write\n\nWhich would you like?",
+        "I can't write that part of your thesis for you: your institution's policy (and Thesisfic's rules) block AI-generated thesis text, and this request has been logged as blocked.\n\nWhat I can do instead:\n- **Outline** the section with you, heading by heading\n- Ask you **guiding questions** so you draft it in your own words\n- **Critique** or **correct** a draft you write\n\nWhich would you like?",
     },
     es: {
       mode: "Este modo del asistente no está habilitado por la política de IA de tu institución. Consulta a tu tutor o elige un modo permitido.",
       generation:
-        "No puedo escribir esa parte de tu tesis por ti: la política de tu institución (y las reglas de Thesisfy) bloquean el texto de tesis generado por IA, y esta solicitud ha quedado registrada como bloqueada.\n\nLo que sí puedo hacer:\n- Hacer un **esquema** de la sección contigo, apartado por apartado\n- Plantearte **preguntas guía** para que la redactes con tus palabras\n- **Revisar** o **corregir** un borrador que escribas tú\n\n¿Qué prefieres?",
+        "No puedo escribir esa parte de tu tesis por ti: la política de tu institución (y las reglas de Thesisfic) bloquean el texto de tesis generado por IA, y esta solicitud ha quedado registrada como bloqueada.\n\nLo que sí puedo hacer:\n- Hacer un **esquema** de la sección contigo, apartado por apartado\n- Plantearte **preguntas guía** para que la redactes con tus palabras\n- **Revisar** o **corregir** un borrador que escribas tú\n\n¿Qué prefieres?",
     },
     fr: {
       mode: "Ce mode de l'assistant n'est pas activé par la politique IA de votre établissement. Demandez à votre directeur ou choisissez un mode autorisé.",
       generation:
-        "Je ne peux pas rédiger cette partie de votre mémoire à votre place : la politique de votre établissement (et les règles de Thesisfy) bloquent le texte généré par IA, et cette demande a été consignée comme bloquée.\n\nCe que je peux faire :\n- Construire un **plan** de la section avec vous\n- Vous poser des **questions guides** pour que vous rédigiez vous-même\n- **Critiquer** ou **corriger** un brouillon que vous écrivez\n\nQue préférez-vous ?",
+        "Je ne peux pas rédiger cette partie de votre mémoire à votre place : la politique de votre établissement (et les règles de Thesisfic) bloquent le texte généré par IA, et cette demande a été consignée comme bloquée.\n\nCe que je peux faire :\n- Construire un **plan** de la section avec vous\n- Vous poser des **questions guides** pour que vous rédigiez vous-même\n- **Critiquer** ou **corriger** un brouillon que vous écrivez\n\nQue préférez-vous ?",
     },
   };
   return msgs[lang][key];

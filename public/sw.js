@@ -1,5 +1,5 @@
-/* Thesisfy service worker: app-shell caching for installable PWA use. API calls always go to the network. */
-const VERSION = "thesisfy-v1";
+/* Thesisfic service worker: app-shell caching for installable PWA use. API calls always go to the network. */
+const VERSION = "thesisfic-v1";
 const SHELL = ["/", "/login", "/offline.html", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
-  event.waitUntil(self.registration.showNotification(data.title || "Thesisfy", { body: data.message || "", icon: "/icons/icon-192.png", data: { url: data.link || "/dashboard" } }));
+  event.waitUntil(self.registration.showNotification(data.title || "Thesisfic", { body: data.message || "", icon: "/icons/icon-192.png", data: { url: data.link || "/dashboard" } }));
 });
 
 self.addEventListener("notificationclick", (event) => {

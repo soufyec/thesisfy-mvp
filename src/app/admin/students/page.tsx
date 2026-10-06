@@ -60,7 +60,7 @@ export default function StudentsPage() {
           {students.length === 0 && <div className="card p-10 text-center text-sm text-gray-400">No students at {user?.university} yet.</div>}
         </div>
       </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="Invite to Thesisfy" size="sm" footer={created ? <button onClick={() => setOpen(false)} className="btn-primary !py-2 !px-4 text-sm">Done</button> : <><button onClick={() => setOpen(false)} className="btn-outline !py-2 !px-4 text-sm">Cancel</button><button disabled={!form.name || !form.email} onClick={invite} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">Create account</button></>}>
+      <Modal open={open} onClose={() => setOpen(false)} title="Invite to Thesisfic" size="sm" footer={created ? <button onClick={() => setOpen(false)} className="btn-primary !py-2 !px-4 text-sm">Done</button> : <><button onClick={() => setOpen(false)} className="btn-outline !py-2 !px-4 text-sm">Cancel</button><button disabled={!form.name || !form.email} onClick={invite} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">Create account</button></>}>
         {created ? (
           <div className="text-sm space-y-2"><p>Account created for <strong>{created.email}</strong>. Share this temporary password securely (shown once):</p><div className="font-mono text-lg bg-gray-900 text-white rounded-xl px-4 py-2 text-center">{created.temporaryPassword}</div></div>
         ) : (

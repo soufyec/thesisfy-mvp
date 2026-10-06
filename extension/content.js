@@ -1,5 +1,5 @@
-// Thesisfy Transparency Companion — content script for external AI chat sites.
-// Reports (only while Thesisfy says a consented writing session is active):
+// Thesisfic Transparency Companion — content script for external AI chat sites.
+// Reports (only while Thesisfic says a consented writing session is active):
 //  - a visit to this AI site with its duration
 //  - a fingerprint (SHA-256, first 32 hex) of text you copy here, never the text
 //  - that you sent a prompt (and its text only if you opted in)
@@ -10,7 +10,7 @@
   let visitStart = Date.now();
   let lastVisitReport = 0;
 
-  const send = (event) => chrome.runtime.sendMessage({ type: "thesisfy:event", event: { host, ...event } }).catch?.(() => {});
+  const send = (event) => chrome.runtime.sendMessage({ type: "thesisfic:event", event: { host, ...event } }).catch?.(() => {});
 
   async function fingerprint(text) {
     const norm = text.toLowerCase().replace(/\s+/g, " ").trim();
@@ -72,28 +72,28 @@
 
   // Small, honest banner so the student always knows when reporting is on.
   function renderBanner() {
-    let el = document.getElementById("thesisfy-banner");
+    let el = document.getElementById("thesisfic-banner");
     if (!status || !status.monitoring) {
       if (el) el.remove();
       return;
     }
     if (!el) {
       el = document.createElement("div");
-      el.id = "thesisfy-banner";
+      el.id = "thesisfic-banner";
       el.style.cssText = "position:fixed;bottom:12px;left:12px;z-index:2147483647;background:#111827;color:#fff;font:12px/1.3 Inter,system-ui,sans-serif;padding:8px 12px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);display:flex;gap:8px;align-items:center;max-width:320px";
       document.body.appendChild(el);
     }
     const thesis = status.activeSession && status.activeSession.thesisTitle ? status.activeSession.thesisTitle : "your thesis";
-    el.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#20c997;display:inline-block"></span><span><b>Thesisfy transparent mode</b> · this visit${status.scopes && status.scopes.promptText ? ", prompts" : ""} and copied text are logged to <i>${thesis.replace(/</g, "&lt;")}</i></span>`;
+    el.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#20c997;display:inline-block"></span><span><b>Thesisfic transparent mode</b> · this visit${status.scopes && status.scopes.promptText ? ", prompts" : ""} and copied text are logged to <i>${thesis.replace(/</g, "&lt;")}</i></span>`;
   }
 
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === "thesisfy:status") {
+    if (msg.type === "thesisfic:status") {
       status = msg.status;
       renderBanner();
     }
   });
-  chrome.runtime.sendMessage({ type: "thesisfy:getStatus" }).then((r) => {
+  chrome.runtime.sendMessage({ type: "thesisfic:getStatus" }).then((r) => {
     status = r && r.status;
     renderBanner();
     if (status && status.monitoring) reportVisit(true);

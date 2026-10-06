@@ -270,7 +270,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold leading-tight">Thesisfy AI</div>
+          <div className="text-sm font-semibold leading-tight">Thesisfic AI</div>
           <div className="text-[11px] text-gray-400 truncate">{providerChoice === "auto" ? autoLabel : activeInstitution ? `${activeInstitution.label} · paid by your university` : activeProvider?.connection?.label || activeProvider?.product} · logged for integrity</div>
         </div>
         <div className="relative">
@@ -377,7 +377,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             {m.role === "assistant" && (
               <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-400">
                 <Bot className="w-3 h-3" />
-                <span>{m.label || "Thesisfy AI"}</span>
+                <span>{m.label || "Thesisfic AI"}</span>
                 {m.model && <span>· {m.model}</span>}
                 {m.blocked && <span className="badge-danger !text-[10px] !py-0">blocked by policy</span>}
                 {m.demo && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">demo</span>}

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Thesisfy Transparency Companion",
+  "name": "Thesisfic Transparency Companion",
   "version": "0.1.0",
-  "description": "With your consent, reports your use of external AI tools (ChatGPT, Claude, Gemini, Le Chat) to Thesisfy while a writing session is active, so your AI use is transparent instead of detected.",
+  "description": "With your consent, reports your use of external AI tools (ChatGPT, Claude, Gemini, Le Chat) to Thesisfic while a writing session is active, so your AI use is transparent instead of detected.",
   "permissions": ["storage", "alarms"],
   "host_permissions": [],
   "background": { "service_worker": "background.js" },

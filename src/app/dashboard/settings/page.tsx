@@ -56,12 +56,12 @@ export default function SettingsPage() {
 
   const receipt = () => {
     if (!consent || !user) return;
-    downloadBlob(`thesisfy-consent-${consent.id}.json`, new Blob([JSON.stringify({ user: { id: user.id, email: user.email, university: user.university }, consent, policy }, null, 2)], { type: "application/json" }));
+    downloadBlob(`thesisfic-consent-${consent.id}.json`, new Blob([JSON.stringify({ user: { id: user.id, email: user.email, university: user.university }, consent, policy }, null, 2)], { type: "application/json" }));
   };
 
   const exportData = async () => {
     const [theses, logs, cons] = await Promise.all([api("/api/theses"), api("/api/ai/logs"), api("/api/monitor/consent")]);
-    downloadBlob(`thesisfy-export-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify({ user, theses, aiInteractions: logs, consent: cons, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" }));
+    downloadBlob(`thesisfic-export-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify({ user, theses, aiInteractions: logs, consent: cons, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" }));
   };
 
   const pair = async () => {
@@ -74,7 +74,7 @@ export default function SettingsPage() {
   return (
     <DashboardLayout>
       <div className="animate-fade-in max-w-3xl space-y-6">
-        <div><h1 className="text-2xl font-bold">Settings &amp; Privacy</h1><p className="text-gray-500 mt-1 text-sm">Your profile, what Thesisfy records, and your devices.</p></div>
+        <div><h1 className="text-2xl font-bold">Settings &amp; Privacy</h1><p className="text-gray-500 mt-1 text-sm">Your profile, what Thesisfic records, and your devices.</p></div>
 
         <section className="card p-5 sm:p-6">
           <h2 className="font-semibold mb-4">Profile</h2>
@@ -117,7 +117,7 @@ export default function SettingsPage() {
 
         <section id="extension" className="card p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-1"><Chrome className="w-5 h-5 text-gray-500" /><h2 className="font-semibold">Browser extension: transparent AI use</h2></div>
-          <p className="text-sm text-gray-600 mb-4">When you use ChatGPT, Claude, Gemini or Le Chat in another tab during a writing session, the Thesisfy Companion reports the visit and a fingerprint of what you copy, so a paste into your thesis is attributed to that tool instead of being flagged as an unknown source. Nothing is reported outside an active session, and only with the scopes you chose above.</p>
+          <p className="text-sm text-gray-600 mb-4">When you use ChatGPT, Claude, Gemini or Le Chat in another tab during a writing session, the Thesisfic Companion reports the visit and a fingerprint of what you copy, so a paste into your thesis is attributed to that tool instead of being flagged as an unknown source. Nothing is reported outside an active session, and only with the scopes you chose above.</p>
           <ol className="text-sm text-gray-600 list-decimal pl-5 space-y-1 mb-4">
             <li>Load the extension from the repository&apos;s <code className="bg-gray-100 px-1 rounded">extension/</code> folder (chrome://extensions → Developer mode → Load unpacked).</li>
             <li>Generate a pairing code below and enter it in the extension together with this site&apos;s URL.</li>
@@ -146,7 +146,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2 mb-1"><Smartphone className="w-5 h-5 text-gray-500" /><h2 className="font-semibold">Mobile app</h2></div>
           {isStandalone ? <p className="text-sm text-green-700">You are using the installed app. 🎉</p> : (
             <div className="text-sm text-gray-600 space-y-2">
-              <p>Thesisfy works as an app on your phone: write, review comments and chat with the assistant anywhere. Your writing sessions are logged the same way.</p>
+              <p>Thesisfic works as an app on your phone: write, review comments and chat with the assistant anywhere. Your writing sessions are logged the same way.</p>
               <ul className="list-disc pl-5 space-y-1"><li><strong>Android (Chrome):</strong> menu ⋮ → <em>Install app</em> / <em>Add to Home screen</em>.</li><li><strong>iPhone / iPad (Safari):</strong> Share → <em>Add to Home Screen</em>.</li><li><strong>Native builds:</strong> see <code className="bg-gray-100 px-1 rounded">mobile/README.md</code> (Capacitor iOS/Android wrapper).</li></ul>
             </div>
           )}
@@ -154,7 +154,7 @@ export default function SettingsPage() {
 
         <section className="card p-5 sm:p-6">
           <h2 className="font-semibold mb-1">Your data</h2>
-          <p className="text-sm text-gray-600 mb-3">Export everything Thesisfy holds about you (theses metadata, AI interaction log, consent records) as JSON.</p>
+          <p className="text-sm text-gray-600 mb-3">Export everything Thesisfic holds about you (theses metadata, AI interaction log, consent records) as JSON.</p>
           <button onClick={exportData} className="btn-outline !py-2 !px-4 text-sm"><Download className="w-4 h-4 mr-1" />Export my data</button>
         </section>
       </div>

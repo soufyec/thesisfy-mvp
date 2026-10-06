@@ -98,7 +98,7 @@ const features = [
   {
     icon: ShieldIcon,
     title: "Bring your own AI account",
-    description: "Students connect their Claude, ChatGPT/GPT, Gemini or Mistral account and use it inside Thesisfy, logged and bounded by your policy.",
+    description: "Students connect their Claude, ChatGPT/GPT, Gemini or Mistral account and use it inside Thesisfic, logged and bounded by your policy.",
   },
   {
     icon: GlobeIcon,
@@ -118,11 +118,11 @@ const features = [
 ];
 
 const comparisons = [
-  { feature: "Approach", turnitin: "Post-submission detection", thesisfy: "Real-time regulation" },
-  { feature: "AI Usage", turnitin: "Binary flag (AI or not)", thesisfy: "Transparent AI usage tracking" },
-  { feature: "False Positives", turnitin: "High rate of false accusations", thesisfy: "Behavioral analysis eliminates false positives" },
-  { feature: "Student Experience", turnitin: "Anxiety and fear", thesisfy: "Confidence and transparency" },
-  { feature: "Learning Value", turnitin: "Punitive after the fact", thesisfy: "Formative during the process" },
+  { feature: "Approach", turnitin: "Post-submission detection", thesisfic: "Real-time regulation" },
+  { feature: "AI Usage", turnitin: "Binary flag (AI or not)", thesisfic: "Transparent AI usage tracking" },
+  { feature: "False Positives", turnitin: "High rate of false accusations", thesisfic: "Behavioral analysis eliminates false positives" },
+  { feature: "Student Experience", turnitin: "Anxiety and fear", thesisfic: "Confidence and transparency" },
+  { feature: "Learning Value", turnitin: "Punitive after the fact", thesisfic: "Formative during the process" },
 ];
 
 const pricingPlans = [
@@ -175,7 +175,7 @@ export default function LandingPage() {
               <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center">
                 <ShieldIcon className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold">Thesisfy<span className="text-brand-600">.edu</span></span>
+              <span className="text-xl font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
             </div>
 
             <div className="hidden md:flex items-center gap-8">
@@ -221,7 +221,7 @@ export default function LandingPage() {
 
             <p className="text-lg sm:text-xl text-gray-600 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed animate-slide-up" style={{ animationDelay: "0.1s" }}>
               Stop punishing students for using AI. Start empowering them to use it responsibly.
-              Thesisfy monitors the writing process, not just the output.
+              Thesisfic monitors the writing process, not just the output.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-slide-up" style={{ animationDelay: "0.2s" }}>
@@ -259,7 +259,7 @@ export default function LandingPage() {
                 <div className="w-3 h-3 rounded-full bg-red-500" />
                 <div className="w-3 h-3 rounded-full bg-yellow-500" />
                 <div className="w-3 h-3 rounded-full bg-green-500" />
-                <span className="ml-2 text-xs text-gray-400">thesisfy.edu/dashboard</span>
+                <span className="ml-2 text-xs text-gray-400">thesisfic.edu/dashboard</span>
               </div>
               <div className="p-6 sm:p-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -330,7 +330,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Turnitin vs <span className="gradient-text">Thesisfy</span>
+              Turnitin vs <span className="gradient-text">Thesisfic</span>
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               The old approach punishes. The new approach empowers.
@@ -346,7 +346,7 @@ export default function LandingPage() {
                     <span className="text-sm font-medium text-gray-400">Turnitin</span>
                   </th>
                   <th className="text-left py-4 px-6">
-                    <span className="text-sm font-bold gradient-text">Thesisfy.edu</span>
+                    <span className="text-sm font-bold gradient-text">Thesisfic.edu</span>
                   </th>
                 </tr>
               </thead>
@@ -355,7 +355,7 @@ export default function LandingPage() {
                   <tr key={row.feature} className="border-t border-gray-100">
                     <td className="py-4 px-6 text-sm font-medium text-gray-900">{row.feature}</td>
                     <td className="py-4 px-6 text-sm text-gray-500">{row.turnitin}</td>
-                    <td className="py-4 px-6 text-sm text-brand-700 font-medium">{row.thesisfy}</td>
+                    <td className="py-4 px-6 text-sm text-brand-700 font-medium">{row.thesisfic}</td>
                   </tr>
                 ))}
               </tbody>
@@ -374,7 +374,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {[
-              { step: "01", title: "Write in Thesisfy", description: "Students write their thesis using our integrated editor. Every keystroke, edit, and AI interaction is transparently logged." },
+              { step: "01", title: "Write in Thesisfic", description: "Students write their thesis using our integrated editor. Every keystroke, edit, and AI interaction is transparently logged." },
               { step: "02", title: "AI Assists, Regulated", description: "Students can use AI tools within professor-defined boundaries. Usage is tracked and visible, not hidden." },
               { step: "03", title: "Integrity Verified", description: "Professors see a complete integrity profile based on actual writing behavior, not probabilistic AI detection." },
             ].map((item) => (
@@ -441,7 +441,7 @@ export default function LandingPage() {
                 Ready to Transform Academic Integrity?
               </h2>
               <p className="text-brand-100 mb-8 max-w-xl mx-auto">
-                Join 50+ universities already using Thesisfy to build a culture of transparency and responsible AI usage.
+                Join 50+ universities already using Thesisfic to build a culture of transparency and responsible AI usage.
               </p>
               <Link href="/login" className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-brand-700 bg-white rounded-xl hover:bg-brand-50 transition-all duration-200 shadow-lg">
                 Get Started for Free
@@ -461,7 +461,7 @@ export default function LandingPage() {
                 <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center">
                   <ShieldIcon className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-lg font-bold">Thesisfy<span className="text-brand-600">.edu</span></span>
+                <span className="text-lg font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
               </div>
               <p className="text-sm text-gray-500">Academic integrity through AI regulation, not detection.</p>
             </div>
@@ -491,7 +491,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-100 text-center text-sm text-gray-400">
-            &copy; {new Date().getFullYear()} Thesisfy.edu. All rights reserved.
+            &copy; {new Date().getFullYear()} Thesisfic.edu. All rights reserved.
           </div>
         </div>
       </footer>

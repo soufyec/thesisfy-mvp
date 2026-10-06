@@ -233,7 +233,7 @@ export async function htmlToDocx(html: string, opts: { title: string; author?: s
 
   const marginTwips = Math.round((opts.marginCm || 2.54) * 567);
   const document = new Document({
-    creator: opts.author || "Thesisfy",
+    creator: opts.author || "Thesisfic",
     title: opts.title,
     numbering: { config: [{ reference: "numbers", levels: [0, 1, 2].map((level) => ({ level, format: "decimal" as const, text: `%${level + 1}.`, alignment: AlignmentType.START, style: { paragraph: { indent: { left: 720 * (level + 1), hanging: 360 } } } })) }] },
     styles: { default: { document: { run: { font: "Times New Roman", size: 24 } } } },

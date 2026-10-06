@@ -7,7 +7,7 @@ import { ConfirmDialog } from "@/components/editor/Dialogs";
 import { Modal, Toast, Toggle } from "@/components/ui";
 import { api } from "@/lib/client";
 
-type Backend = "thesisfy" | "anthropic" | "openai" | "mistral" | "google" | "azure_openai" | "foundry_claude";
+type Backend = "thesisfic" | "anthropic" | "openai" | "mistral" | "google" | "azure_openai" | "foundry_claude";
 
 interface IModel {
   id: string;
@@ -56,7 +56,7 @@ interface Spend {
 }
 
 const BACKENDS: { id: Backend; name: string; who: string; providers: string[]; endpointLabel?: string; endpointHint?: string; modelLabel: string; modelHint: string; keyLabel?: string; keyHint?: string }[] = [
-  { id: "thesisfy", name: "Thesisfy contract", who: "Thesisfy invoices the university at provider list price. Nothing to configure.", providers: ["anthropic", "openai", "google", "mistral"], modelLabel: "Model id", modelHint: "claude-sonnet-5-5" },
+  { id: "thesisfic", name: "Thesisfic contract", who: "Thesisfic invoices the university at provider list price. Nothing to configure.", providers: ["anthropic", "openai", "google", "mistral"], modelLabel: "Model id", modelHint: "claude-sonnet-5-5" },
   { id: "foundry_claude", name: "Claude in Microsoft Foundry", who: "Runs in your Azure subscription; Microsoft bills it, like Copilot.", providers: ["anthropic"], endpointLabel: "Foundry resource name", endpointHint: "my-university-ai", modelLabel: "Model id", modelHint: "claude-sonnet-5-5", keyLabel: "Foundry API key", keyHint: "From the resource's Keys and Endpoint page" },
   { id: "azure_openai", name: "Azure OpenAI (GPT)", who: "Runs in your Azure subscription; Microsoft bills it, like Copilot.", providers: ["openai", "mistral"], endpointLabel: "Azure resource URL", endpointHint: "https://my-university-ai.openai.azure.com", modelLabel: "Deployment name", modelHint: "gpt-4-1-students", keyLabel: "Azure OpenAI key", keyHint: "Key 1 or Key 2 of the resource" },
   { id: "anthropic", name: "Anthropic (university account)", who: "Anthropic invoices the university's own API account.", providers: ["anthropic"], modelLabel: "Model id", modelHint: "claude-sonnet-5-5", keyLabel: "API key", keyHint: "sk-ant-…" },
@@ -67,7 +67,7 @@ const BACKENDS: { id: Backend; name: string; who: string; providers: string[]; e
 const FAMILIES: Record<string, string> = { anthropic: "Claude", openai: "GPT", google: "Gemini", mistral: "Mistral" };
 const PRESET_PRICES: Record<string, [number, number]> = { "claude-opus-5-5": [4, 20], "claude-sonnet-5-5": [2, 10], "claude-haiku-4-5": [1, 5], "gpt-4.1": [2, 8], "gpt-4.1-mini": [0.4, 1.6], "gpt-4o": [2.5, 10], "gpt-4o-mini": [0.15, 0.6], "mistral-medium-latest": [0.4, 2], "mistral-large-latest": [2, 6], "mistral-small-latest": [0.1, 0.3], "gemini-2.5-pro": [1.25, 10], "gemini-2.5-flash": [0.3, 2.5] };
 
-const EMPTY = { backend: "thesisfy" as Backend, provider: "anthropic", label: "", model: "claude-sonnet-5-5", endpoint: "", apiKey: "", region: "EU", inputPrice: 2, outputPrice: 10, enabled: true, isDefault: false };
+const EMPTY = { backend: "thesisfic" as Backend, provider: "anthropic", label: "", model: "claude-sonnet-5-5", endpoint: "", apiKey: "", region: "EU", inputPrice: 2, outputPrice: 10, enabled: true, isDefault: false };
 
 export default function AdminAIAccessPage() {
   const [funding, setFunding] = useState<Funding | null>(null);
@@ -201,7 +201,7 @@ export default function AdminAIAccessPage() {
           {/* Models */}
           <section className="lg:col-span-2 space-y-3">
             <h2 className="font-semibold">Models offered to students</h2>
-            {models.length === 0 && <div className="card p-6 text-sm text-gray-500">No models yet. Add one from Thesisfy&apos;s contract (nothing to configure), or connect your Microsoft Foundry / Azure OpenAI resource so Microsoft bills it with the rest of your tenant.</div>}
+            {models.length === 0 && <div className="card p-6 text-sm text-gray-500">No models yet. Add one from Thesisfic&apos;s contract (nothing to configure), or connect your Microsoft Foundry / Azure OpenAI resource so Microsoft bills it with the rest of your tenant.</div>}
             {models.map((m) => (
               <div key={m.id} className={`card p-4 ${!m.enabled ? "opacity-60" : ""}`}>
                 <div className="flex flex-col sm:flex-row sm:items-start gap-3">
@@ -210,7 +210,7 @@ export default function AdminAIAccessPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold">{m.label}</h3>
                       {m.isDefault && <span className="badge bg-emerald-50 text-emerald-700">Default (Auto)</span>}
-                      {m.ready ? <span className="badge-success flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Ready</span> : <span className="badge-warning">{m.backend === "thesisfy" ? "Thesisfy key missing on server" : "Key missing"}</span>}
+                      {m.ready ? <span className="badge-success flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Ready</span> : <span className="badge-warning">{m.backend === "thesisfic" ? "Thesisfic key missing on server" : "Key missing"}</span>}
                       {m.lastError && <span className="badge-danger">Last error</span>}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">{m.backendName} · <span className="font-mono">{m.model}</span>{m.endpoint && <> · <span className="font-mono">{m.endpoint}</span></>} · {m.region}</div>
@@ -232,7 +232,7 @@ export default function AdminAIAccessPage() {
             ))}
             <div className="card p-4 text-xs text-gray-500 space-y-1">
               <div className="font-medium text-gray-700">Three ways to pay, one assistant for students</div>
-              <p><strong>Thesisfy contract</strong>: nothing to configure; usage appears on the Thesisfy invoice at provider list price.</p>
+              <p><strong>Thesisfic contract</strong>: nothing to configure; usage appears on the Thesisfic invoice at provider list price.</p>
               <p><strong>Microsoft Foundry / Azure OpenAI</strong>: Claude and GPT run inside your Azure tenant and are billed by Microsoft, like Copilot. Data stays in the Azure region you choose (EU regions available). Create a Foundry or Azure OpenAI resource, deploy the model, paste the resource and a key here.</p>
               <p><strong>Your own provider account</strong>: Anthropic, OpenAI, Mistral or Google invoice the university directly; paste that account&apos;s API key.</p>
             </div>
@@ -268,7 +268,7 @@ export default function AdminAIAccessPage() {
         )}
       </div>
 
-      <Modal open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Edit model" : "Add a model for students"} size="lg" footer={<><button onClick={() => setEdit(null)} className="btn-outline !py-2 !px-4 text-sm">Cancel</button>{backendDef?.id !== "thesisfy" && <button disabled={busy} onClick={() => saveModel(true)} className="btn-outline !py-2 !px-4 text-sm">Save without testing</button>}<button disabled={busy} onClick={() => saveModel(false)} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">{busy ? "Testing…" : edit?.id ? "Save" : "Test & add"}</button></>}>
+      <Modal open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Edit model" : "Add a model for students"} size="lg" footer={<><button onClick={() => setEdit(null)} className="btn-outline !py-2 !px-4 text-sm">Cancel</button>{backendDef?.id !== "thesisfic" && <button disabled={busy} onClick={() => saveModel(true)} className="btn-outline !py-2 !px-4 text-sm">Save without testing</button>}<button disabled={busy} onClick={() => saveModel(false)} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">{busy ? "Testing…" : edit?.id ? "Save" : "Test & add"}</button></>}>
         {edit && backendDef && (
           <div className="space-y-3 text-sm">
             {error && <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs">{error}</div>}

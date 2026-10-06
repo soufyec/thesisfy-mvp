@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "edu.thesisfy.app",
-  appName: "Thesisfy",
+  appId: "edu.thesisfic.app",
+  appName: "Thesisfic",
   webDir: "www",
   server: {
-    url: process.env.THESISFY_URL || "https://thesisfy-mvp.vercel.app",
+    url: process.env.THESISFIC_URL || "https://thesisfy-mvp.vercel.app",
     cleartext: false,
   },
   ios: { contentInset: "automatic", backgroundColor: "#f9fafb" },

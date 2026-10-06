@@ -40,7 +40,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md card p-8">
         <Link href="/" className="flex items-center gap-2 mb-6">
           <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
-          <span className="text-xl font-bold">Thesisfy<span className="text-brand-600">.edu</span></span>
+          <span className="text-xl font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
         </Link>
         <h1 className="text-2xl font-bold mb-1">Create your student account</h1>
         <p className="text-gray-500 text-sm mb-6">Your institution&apos;s AI policy applies automatically.</p>

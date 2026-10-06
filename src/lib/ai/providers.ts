@@ -54,7 +54,7 @@ export interface ResolvedProvider {
 }
 
 export const BACKEND_META: Record<ModelBackend, { name: string; billedBy: string; needsKey: boolean; endpointLabel?: string; endpointHint?: string }> = {
-  thesisfy: { name: "Thesisfy contract", billedBy: "Thesisfy invoice, usage passed through at provider list price", needsKey: false },
+  thesisfic: { name: "Thesisfic contract", billedBy: "Thesisfic invoice, usage passed through at provider list price", needsKey: false },
   anthropic: { name: "Anthropic (your account)", billedBy: "Anthropic invoices the university", needsKey: true },
   openai: { name: "OpenAI (your account)", billedBy: "OpenAI invoices the university", needsKey: true },
   mistral: { name: "Mistral (your account)", billedBy: "Mistral invoices the university", needsKey: true },
@@ -65,7 +65,7 @@ export const BACKEND_META: Record<ModelBackend, { name: string; billedBy: string
 
 /** Model families a backend can serve. */
 export const BACKEND_PROVIDERS: Record<ModelBackend, Provider[]> = {
-  thesisfy: ["anthropic", "openai", "google", "mistral"],
+  thesisfic: ["anthropic", "openai", "google", "mistral"],
   anthropic: ["anthropic"],
   openai: ["openai"],
   mistral: ["mistral"],
@@ -75,7 +75,7 @@ export const BACKEND_PROVIDERS: Record<ModelBackend, Provider[]> = {
 };
 
 function institutionKey(m: InstitutionModel): string | undefined {
-  if (m.backend === "thesisfy") return PLATFORM_KEYS[m.provider];
+  if (m.backend === "thesisfic") return PLATFORM_KEYS[m.provider];
   if (!m.encryptedSecret) return undefined;
   try {
     return decrypt(m.encryptedSecret);
@@ -85,7 +85,7 @@ function institutionKey(m: InstitutionModel): string | undefined {
   }
 }
 
-/** Is an institution model usable right now (configured and, for the thesisfy backend, backed by a Thesisfy key)? */
+/** Is an institution model usable right now (configured and, for the thesisfic backend, backed by a Thesisfic key)? */
 export function institutionModelReady(m: InstitutionModel) {
   return m.enabled && !!institutionKey(m);
 }
@@ -120,12 +120,12 @@ function fromInstitutionModel(m: InstitutionModel): ResolvedProvider {
 /**
  * Pick the provider for a request.
  * Order: a model the institution pays for (within its allowance) → the student's own connected account →
- * the Thesisfy platform key → demo. `requested` can be a provider id or an institution model id ("im_…").
+ * the Thesisfic platform key → demo. `requested` can be a provider id or an institution model id ("im_…").
  */
 export function resolveProvider(user: User, policy: Policy, requested?: string | null): ResolvedProvider {
   const funding = db.aiAccess.funding(user.university);
   let notice: string | undefined;
-  // Thesisfy's own keys back the assistant unless the university pays and the allowance is used up.
+  // Thesisfic's own keys back the assistant unless the university pays and the allowance is used up.
   let allowPlatform = true;
   const requestedModel = requested && requested.startsWith("im_") ? db.aiAccess.findModel(requested) : undefined;
   const requestedProvider = requested && !requested.startsWith("im_") ? (requested as Provider) : requestedModel?.provider || null;
@@ -134,7 +134,7 @@ export function resolveProvider(user: User, policy: Policy, requested?: string |
     const allowance = allowanceFor(user);
     if (allowance.exhausted !== "none") {
       const what = allowance.exhausted === "student" ? `your monthly allowance (${allowance.perStudentMonthly.toFixed(2)} ${allowance.currency})` : "your university's monthly AI budget";
-      if (funding.atLimit === "block") return { provider: "demo", model: "thesisfy-demo", authType: "none", source: "demo", label: "Allowance used up", billedTo: "none", notice: `You have used ${what} for this month. It resets on the 1st; ask your library or advisor if you need more.` };
+      if (funding.atLimit === "block") return { provider: "demo", model: "thesisfic-demo", authType: "none", source: "demo", label: "Allowance used up", billedTo: "none", notice: `You have used ${what} for this month. It resets on the 1st; ask your library or advisor if you need more.` };
       notice = `You have used ${what}; the assistant now uses your own connected account.`;
       allowPlatform = false;
     } else {
@@ -167,18 +167,18 @@ export function resolveProvider(user: User, policy: Policy, requested?: string |
     }
     if (requestedP && requestedP !== provider) continue;
     if (allowPlatform && PLATFORM_KEYS[provider]) {
-      return { provider, model: DEFAULT_MODELS[provider], apiKey: PLATFORM_KEYS[provider], authType: "api_key", source: "platform", label: `${PROVIDER_META[provider].product} (Thesisfy)`, billedTo: "none", notice };
+      return { provider, model: DEFAULT_MODELS[provider], apiKey: PLATFORM_KEYS[provider], authType: "api_key", source: "platform", label: `${PROVIDER_META[provider].product} (Thesisfic)`, billedTo: "none", notice };
     }
   }
   // Second pass: platform keys regardless of requested provider
   if (allowPlatform) {
     for (const provider of order) {
       if (policy.allowedProviders.includes(provider) && PLATFORM_KEYS[provider]) {
-        return { provider, model: DEFAULT_MODELS[provider], apiKey: PLATFORM_KEYS[provider], authType: "api_key", source: "platform", label: `${PROVIDER_META[provider].product} (Thesisfy)`, billedTo: "none", notice };
+        return { provider, model: DEFAULT_MODELS[provider], apiKey: PLATFORM_KEYS[provider], authType: "api_key", source: "platform", label: `${PROVIDER_META[provider].product} (Thesisfic)`, billedTo: "none", notice };
       }
     }
   }
-  return { provider: "demo", model: "thesisfy-demo", authType: "none", source: "demo", label: "Demo assistant", billedTo: "none", notice };
+  return { provider: "demo", model: "thesisfic-demo", authType: "none", source: "demo", label: "Demo assistant", billedTo: "none", notice };
 }
 
 /** Provider list cost of one request in USD, from the institution model's configured prices. */
@@ -350,7 +350,7 @@ function parseErr(text: string): string | undefined {
 
 /** Validates an institution model's credentials with a one-token request (Foundry/Azure have no cheap model list). */
 export async function testInstitutionModel(m: Pick<InstitutionModel, "backend" | "provider" | "model" | "endpoint">, apiKey?: string): Promise<{ ok: boolean; error?: string; models?: string[] }> {
-  if (m.backend === "thesisfy") return PLATFORM_KEYS[m.provider] ? { ok: true } : { ok: false, error: `Thesisfy has no ${PROVIDER_META[m.provider].name} key configured on this server yet (set ${m.provider.toUpperCase()}_API_KEY).` };
+  if (m.backend === "thesisfic") return PLATFORM_KEYS[m.provider] ? { ok: true } : { ok: false, error: `Thesisfic has no ${PROVIDER_META[m.provider].name} key configured on this server yet (set ${m.provider.toUpperCase()}_API_KEY).` };
   if (!apiKey) return { ok: false, error: "A key is required for this backend" };
   if (m.backend === "foundry_claude" || m.backend === "azure_openai") {
     try {

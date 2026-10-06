@@ -5,7 +5,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync }
 const SECRET = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || "thesisfy-mvp-dev-secret-key-2024";
 let cachedKey: Buffer | null = null;
 function key() {
-  if (!cachedKey) cachedKey = scryptSync(SECRET, "thesisfy-connections", 32);
+  if (!cachedKey) cachedKey = scryptSync(SECRET, "thesisfic-connections", 32);
   return cachedKey;
 }
 

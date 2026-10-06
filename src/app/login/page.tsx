@@ -52,7 +52,7 @@ function LoginForm() {
       <div className="lg:hidden mb-8">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
-          <span className="text-xl font-bold">Thesisfy<span className="text-brand-600">.edu</span></span>
+          <span className="text-xl font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
         </Link>
       </div>
       <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
@@ -78,7 +78,7 @@ function LoginForm() {
         <button type="submit" disabled={loading} className="btn-primary w-full !py-3 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? "Signing in…" : "Sign In"}</button>
       </form>
       <p className="mt-6 text-center text-sm text-gray-500">
-        New to Thesisfy? <Link href="/register" className="text-brand-600 hover:text-brand-700 font-medium">Create a student account</Link>
+        New to Thesisfic? <Link href="/register" className="text-brand-600 hover:text-brand-700 font-medium">Create a student account</Link>
       </p>
     </div>
   );
@@ -91,7 +91,7 @@ export default function LoginPage() {
         <div className="relative">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><ShieldCheck className="w-6 h-6 text-white" /></div>
-            <span className="text-2xl font-bold text-white">Thesisfy.edu</span>
+            <span className="text-2xl font-bold text-white">Thesisfic.edu</span>
           </Link>
         </div>
         <div className="relative">

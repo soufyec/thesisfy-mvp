@@ -180,8 +180,8 @@
 .prov { border-bottom: 1px dotted rgba(0, 0, 0, 0.25); }
 
 /* Comments */
-.thesisfy-comment { background: rgba(251, 188, 4, 0.28); border-bottom: 2px solid rgba(251, 188, 4, 0.8); cursor: pointer; }
-.thesisfy-comment.active-comment { background: rgba(251, 188, 4, 0.55); }
+.thesisfic-comment { background: rgba(251, 188, 4, 0.28); border-bottom: 2px solid rgba(251, 188, 4, 0.8); cursor: pointer; }
+.thesisfic-comment.active-comment { background: rgba(251, 188, 4, 0.55); }
 
 /* Search */
 .search-hit { background: rgba(255, 213, 79, 0.6); }
@@ -206,7 +206,7 @@
   .docs-workspace, .docs-workspace * { visibility: visible; }
   .docs-workspace { position: absolute; inset: 0; background: #fff !important; }
   .docs-page { box-shadow: none; margin: 0; width: auto; min-height: 0; zoom: 1; padding: 0; }
-  .show-provenance .prov-ai, .show-provenance .prov-paste, .thesisfy-comment { background: none !important; border-bottom: none !important; }
+  .show-provenance .prov-ai, .show-provenance .prov-paste, .thesisfic-comment { background: none !important; border-bottom: none !important; }
   .page-break { page-break-after: always; border: none !important; }
   .page-break-label { display: none; }
   @page { margin: var(--page-margin, 2.54cm); }

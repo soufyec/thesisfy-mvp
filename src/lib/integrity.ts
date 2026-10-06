@@ -57,7 +57,7 @@ export function evaluateEvent(session: WritingSession, type: string, data: Recor
           sessionId: session.id,
           type: "unattributed_ai",
           severity: words > th.pasteWords ? "high" : "medium",
-          description: `${words} words pasted that match text copied from ${matched.provider} (reported by the Thesisfy extension with consent). Attribute it as AI-assisted or rewrite in your own words.`,
+          description: `${words} words pasted that match text copied from ${matched.provider} (reported by the Thesisfic extension with consent). Attribute it as AI-assisted or rewrite in your own words.`,
         })
       );
     } else if (words > th.pasteWords && !data.attributed) {

@@ -103,7 +103,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
             </div>
             {!collapsed && (
               <span className="text-lg font-bold truncate">
-                Thesisfy<span className="text-brand-600">.edu</span>
+                Thesisfic<span className="text-brand-600">.edu</span>
               </span>
             )}
           </Link>
@@ -156,7 +156,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
               <Menu className="w-6 h-6" />
             </button>
             <Link href="/" className="lg:hidden font-bold">
-              Thesisfy<span className="text-brand-600">.edu</span>
+              Thesisfic<span className="text-brand-600">.edu</span>
             </Link>
           </div>
           <div className="flex items-center gap-3 ml-auto">

@@ -1,6 +1,6 @@
-# Thesisfy Mobile
+# Thesisfic Mobile
 
-Thesisfy ships as a **Progressive Web App** and, optionally, as native **iOS / Android** apps that wrap the same web app with Capacitor.
+Thesisfic ships as a **Progressive Web App** and, optionally, as native **iOS / Android** apps that wrap the same web app with Capacitor.
 
 ## 1. PWA (no build needed)
 
@@ -16,7 +16,7 @@ The web app is installable on Android (Chrome) and iOS (Safari → Share → *Ad
 cd mobile
 npm install
 # point the wrapper at your deployment (defaults to the URL in capacitor.config.ts)
-THESISFY_URL=https://your-deployment.vercel.app npx cap sync
+THESISFIC_URL=https://your-deployment.vercel.app npx cap sync
 npx cap add ios      # requires Xcode
 npx cap add android  # requires Android Studio
 npx cap open ios / android

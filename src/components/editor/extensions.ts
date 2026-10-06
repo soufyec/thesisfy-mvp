@@ -85,7 +85,7 @@ export const CommentMark = Mark.create({
     return [{ tag: "span[data-comment-id]" }];
   },
   renderHTML({ HTMLAttributes }) {
-    return ["span", mergeAttributes(HTMLAttributes, { class: "thesisfy-comment" }), 0];
+    return ["span", mergeAttributes(HTMLAttributes, { class: "thesisfic-comment" }), 0];
   },
   addCommands() {
     return {
@@ -238,7 +238,7 @@ export const PageBreak = Node.create({
 
 // ---------- Find & replace ----------
 
-const searchKey = new PluginKey("thesisfySearch");
+const searchKey = new PluginKey("thesisficSearch");
 
 interface SearchState {
   term: string;

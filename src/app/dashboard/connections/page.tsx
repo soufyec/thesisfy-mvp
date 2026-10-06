@@ -91,7 +91,7 @@ function ConnectionsInner() {
 
   return (
     <div className="animate-fade-in max-w-4xl">
-      <div className="mb-6"><h1 className="text-2xl font-bold">AI Connections</h1><p className="text-gray-500 mt-1 text-sm">Use the models your university provides, or the AI account you already pay for, inside Thesisfy, with every interaction logged transparently.</p></div>
+      <div className="mb-6"><h1 className="text-2xl font-bold">AI Connections</h1><p className="text-gray-500 mt-1 text-sm">Use the models your university provides, or the AI account you already pay for, inside Thesisfic, with every interaction logged transparently.</p></div>
 
       {allowance?.institutionPays && (
         <section className="card p-5 mb-6 border-emerald-100 bg-gradient-to-br from-emerald-50/60 to-white">
@@ -128,7 +128,7 @@ function ConnectionsInner() {
       <div className="card p-4 sm:p-5 mb-6 flex gap-3">
         <ShieldCheck className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-gray-600 space-y-1">
-          <p><strong>How it works.</strong> Connect Claude, ChatGPT/GPT, Gemini or Mistral with an API key from your own account. Thesisfy stores it encrypted (AES-256-GCM), uses it only for your requests, and never shows it to staff. Requests you make through Thesisfy are logged with provider, model and purpose; text you insert is marked as AI-assisted.</p>
+          <p><strong>How it works.</strong> Connect Claude, ChatGPT/GPT, Gemini or Mistral with an API key from your own account. Thesisfic stores it encrypted (AES-256-GCM), uses it only for your requests, and never shows it to staff. Requests you make through Thesisfic are logged with provider, model and purpose; text you insert is marked as AI-assisted.</p>
           <p><strong>Using the chat apps directly?</strong> Install the <Link href="/dashboard/settings#extension" className="text-brand-600 underline">transparency extension</Link> so visits and copied text on chatgpt.com, claude.ai or gemini.google.com are attributed to you honestly while you write.</p>
           {policy && !policy.allowBYOK && <p className="text-amber-700">Your institution does not allow personal AI accounts; the institution assistant is used instead.</p>}
         </div>
@@ -155,7 +155,7 @@ function ConnectionsInner() {
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-2 text-sm text-gray-500">{p.platformKey ? `Your institution provides ${p.product} for you. Connect your own account to use your personal quota and models.` : `Connect your ${p.product} account to use it from Thesisfy.`} Sites covered by the extension: {p.sites.join(", ")}.</div>
+                    <div className="mt-2 text-sm text-gray-500">{p.platformKey ? `Your institution provides ${p.product} for you. Connect your own account to use your personal quota and models.` : `Connect your ${p.product} account to use it from Thesisfic.`} Sites covered by the extension: {p.sites.join(", ")}.</div>
                   )}
                   {!c && p.allowedByPolicy && policy?.allowBYOK && (
                     <div className="flex items-center gap-2 mt-3 flex-wrap">

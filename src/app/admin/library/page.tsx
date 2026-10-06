@@ -59,7 +59,7 @@ export default function AdminLibraryPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">Research databases</h1>
-            <p className="text-gray-500 mt-1 text-sm">The databases {university} students see in Thesisfy, with how to sign in. {totalOpens} opens from Thesisfy so far.</p>
+            <p className="text-gray-500 mt-1 text-sm">The databases {university} students see in Thesisfic, with how to sign in. {totalOpens} opens from Thesisfic so far.</p>
           </div>
           {canManage && <button onClick={() => { setError(""); setEdit({ form: { ...EMPTY } }); }} className="btn-primary !px-4"><Plus className="w-4 h-4 mr-1" />Add database</button>}
         </div>
@@ -130,7 +130,7 @@ export default function AdminLibraryPage() {
           </div>
         )}
       </Modal>
-      <ConfirmDialog open={!!del} onClose={() => setDel(null)} title="Remove database?" danger confirmLabel="Remove" body={<>Students will no longer see “{del?.name}” in Thesisfy. Your subscription is not affected.</>} onConfirm={async () => { if (del) { await api(`/api/research-databases/${del.id}`, { method: "DELETE" }).catch(() => {}); load(); } }} />
+      <ConfirmDialog open={!!del} onClose={() => setDel(null)} title="Remove database?" danger confirmLabel="Remove" body={<>Students will no longer see “{del?.name}” in Thesisfic. Your subscription is not affected.</>} onConfirm={async () => { if (del) { await api(`/api/research-databases/${del.id}`, { method: "DELETE" }).catch(() => {}); load(); } }} />
       {toast && <Toast message={toast} kind="success" onClose={() => setToast(null)} />}
     </DashboardLayout>
   );

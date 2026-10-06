@@ -77,7 +77,7 @@ export default function PoliciesPage() {
 
           <div className="card p-5 sm:p-6">
             <h2 className="font-semibold mb-1">Monitoring features</h2>
-            <p className="text-sm text-gray-500 mb-4">What Thesisfy may collect. Students still choose individually within these limits; disabled features never appear in their consent screen.</p>
+            <p className="text-sm text-gray-500 mb-4">What Thesisfic may collect. Students still choose individually within these limits; disabled features never appear in their consent screen.</p>
             <div className="space-y-2">
               {MONITORING.map(([k, l, d]) => <div key={k} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"><div><div className="text-sm">{l}</div><div className="text-xs text-gray-500">{d}</div></div><Toggle checked={p.monitoring[k]} disabled={!canEdit} onChange={(v) => setP({ ...p, monitoring: { ...p.monitoring, [k]: v } })} /></div>)}
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"><div><div className="text-sm font-medium">Require consent before monitoring</div><div className="text-xs text-gray-500">Students must accept AI logging to use the assistant and monitored editor.</div></div><Toggle checked={p.requireConsent} disabled={!canEdit} onChange={(v) => setP({ ...p, requireConsent: v })} /></div>
