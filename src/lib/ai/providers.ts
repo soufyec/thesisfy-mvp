@@ -6,7 +6,7 @@ import { decrypt } from "../crypto";
 export const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: process.env.CLAUDE_MODEL || "claude-opus-5-5",
   openai: process.env.OPENAI_MODEL || "gpt-4o-mini",
-  google: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+  google: process.env.GEMINI_MODEL || "gemini-2.5-flash",
   mistral: process.env.MISTRAL_MODEL || "mistral-small-latest",
 };
 
