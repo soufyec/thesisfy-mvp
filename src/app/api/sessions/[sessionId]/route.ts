@@ -9,7 +9,7 @@ const ALLOWED: SessionEventType[] = ["typing", "paste", "ai_prompt", "ai_insert"
 
 /** Batched session events from the editor. Scopes the student did not consent to are dropped server-side too. */
 export async function POST(request: NextRequest, { params }: { params: { sessionId: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const session = db.sessions.findById(params.sessionId);
   if (!session || session.userId !== r.user.id) return error("Session not found", 404);
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest, { params }: { params: { session
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { sessionId: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const session = db.sessions.findById(params.sessionId);
   if (!session || session.userId !== r.user.id) return error("Session not found", 404);
@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { sessio
 }
 
 export async function GET(request: NextRequest, { params }: { params: { sessionId: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const session = db.sessions.findById(params.sessionId);
   if (!session) return error("Session not found", 404);

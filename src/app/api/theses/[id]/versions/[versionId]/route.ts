@@ -5,7 +5,7 @@ import { error, json, requireUser } from "@/lib/api";
 import { refreshThesisMetrics } from "@/lib/integrity";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string; versionId: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (!canAccessThesis(r.user, params.id)) return error("Thesis not found", 404);
   const v = db.versions.findById(params.versionId);
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 /** Restore: the current content is snapshotted first, then replaced by the version. */
 export async function POST(request: NextRequest, { params }: { params: { id: string; versionId: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
 
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
   const body = await request.json().catch(() => null);

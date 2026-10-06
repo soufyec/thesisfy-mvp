@@ -3,7 +3,7 @@ import { db, publicUser } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
   return json({
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const body = await request.json().catch(() => null);
   if (!body) return error("Invalid body");

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
 /** Administrators list pilot requests. */
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (r.user.role !== "admin") return error("Only administrators can list pilot requests", 403);
   return json({ leads: db.leads.list() });

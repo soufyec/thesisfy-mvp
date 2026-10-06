@@ -44,7 +44,7 @@ Every citation's quote must be copied character for character from the passage i
  * → { answer, citations, meta }: an answer grounded only in the library's top passages, with string-verified quotes.
  */
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
   const body = (await request.json().catch(() => null)) as Body | null;

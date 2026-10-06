@@ -20,7 +20,7 @@ const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
  * Response: { references, checked, results: { [referenceId]: ReferenceCheck } }.
  */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);

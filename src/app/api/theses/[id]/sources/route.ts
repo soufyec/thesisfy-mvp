@@ -23,7 +23,7 @@ interface JsonBody {
 
 /** GET → every source of the thesis, without the extracted text. */
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  * The source is created, its text extracted, chunked and indexed in the same request; `parseStatus` tells the outcome.
  */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);

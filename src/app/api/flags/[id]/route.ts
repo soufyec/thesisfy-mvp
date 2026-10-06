@@ -4,7 +4,7 @@ import { error, json, requireUser } from "@/lib/api";
 import { refreshThesisMetrics } from "@/lib/integrity";
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const flag = db.flags.list().find((f) => f.id === params.id);
   if (!flag) return error("Flag not found", 404);

@@ -12,7 +12,7 @@ const LANGS: DeclarationLang[] = ["en", "es", "fr"];
 
 /** GET → { declarations } newest first. Same list for the student and the advisor. */
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  * With `rephrase`, also asks the model for a reworded proposal (not stored until the student accepts it).
  */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
  * Text can be edited until the declaration is signed; signing is final for that version.
  */
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);

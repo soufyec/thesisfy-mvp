@@ -27,7 +27,7 @@ interface Body {
 }
 
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
   const body = (await request.json().catch(() => null)) as Body | null;

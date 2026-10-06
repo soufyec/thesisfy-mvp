@@ -4,6 +4,7 @@ import { encrypt } from "@/lib/crypto";
 import { DEFAULT_MODELS, PROVIDER_META } from "@/lib/ai/providers";
 
 export async function GET(request: NextRequest) {
+  await db.ready();
   const back = new URL("/dashboard/connections", request.url);
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");

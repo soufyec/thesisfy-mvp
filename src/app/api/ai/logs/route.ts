@@ -4,7 +4,7 @@ import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesisId = request.nextUrl.searchParams.get("thesisId");
   let list;

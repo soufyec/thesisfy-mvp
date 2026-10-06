@@ -5,7 +5,7 @@ import { DEFAULT_RUBRIC, effectiveRubric, rubricVersion, validateRubric } from "
 
 /** GET: the reviewer rubric in force for the caller's university (any signed-in user). */
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const policy = db.policies.get(r.user.university);
   const rubric = effectiveRubric(policy);
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
  * Body: { rubric: [{ id, weight, label?, description? }] } or { reset: true } to return to the default.
  */
 export async function PUT(request: NextRequest) {
-  const r = requireStaff(request);
+  const r = await requireStaff(request);
   if ("response" in r) return r.response;
   if (r.user.role !== "admin") return error("Only administrators can change the reviewer rubric", 403);
   const body = await request.json().catch(() => null);

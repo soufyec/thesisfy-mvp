@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 import { registerUser } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
+  await db.ready();
   try {
     const { email, password, name, university } = await request.json();
     if (!email || !password || !name || !university) {

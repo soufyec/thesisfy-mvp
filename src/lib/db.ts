@@ -5,6 +5,7 @@
 
 import { randomUUID } from "crypto";
 import fs from "fs";
+import { ensureTable, readStore, readVersion, storeConfigured, writeStore } from "./store";
 
 export type Role = "student" | "professor" | "admin";
 export type ThesisStatus = "draft" | "in_progress" | "under_review" | "revision_requested" | "approved" | "submitted";
@@ -920,9 +921,29 @@ function seed(): Store {
 }
 
 // ---------- persistence ----------
+//
+// Three tiers, chosen by environment:
+//   DATABASE_URL / POSTGRES_URL → Postgres document (Neon on Vercel): hydrated by `ready()`, written by `persist()`.
+//   DATA_FILE                   → local JSON file (development).
+//   neither                     → memory only (the demo seed, reset on every cold start).
 
-const g = globalThis as unknown as { __thesisficStore?: Store };
+const g = globalThis as unknown as {
+  __thesisficStore?: Store;
+  __thesisficVersion?: number;
+  __thesisficChecked?: number;
+  __thesisficSync?: Promise<void>;
+};
 const DATA_FILE = process.env.DATA_FILE;
+/** How long a server instance trusts its copy before re-checking the row version. */
+const SYNC_INTERVAL_MS = 3000;
+
+function fillMissingCollections(store: Store): Store {
+  // collections added after a store was first created (hot reload, older DATA_FILE or row)
+  const fresh = seed();
+  const st = store as unknown as Record<string, unknown>;
+  for (const k of Object.keys(fresh) as (keyof Store)[]) if (st[k] === undefined) st[k] = fresh[k];
+  return store;
+}
 
 function load(): Store {
   if (g.__thesisficStore) return g.__thesisficStore;
@@ -934,16 +955,70 @@ function load(): Store {
       console.warn("Could not read DATA_FILE, seeding:", e);
     }
   }
-  g.__thesisficStore = store || seed();
-  // fill collections added after a store was first created (hot reload / older DATA_FILE)
-  const fresh = seed();
-  const st = g.__thesisficStore as unknown as Record<string, unknown>;
-  for (const k of Object.keys(fresh) as (keyof Store)[]) if (st[k] === undefined) st[k] = fresh[k];
+  g.__thesisficStore = fillMissingCollections(store || seed());
   return g.__thesisficStore;
+}
+
+let writeInFlight = false;
+let writeDirty = false;
+
+/**
+ * Makes sure this instance holds the current Postgres document. Cheap after the first call: it only
+ * re-reads the version every few seconds, and never while this instance still has unsaved writes.
+ * No-op when Postgres is not configured.
+ */
+async function ready(): Promise<void> {
+  if (!storeConfigured) return;
+  if (g.__thesisficStore && g.__thesisficChecked && Date.now() - g.__thesisficChecked < SYNC_INTERVAL_MS) return;
+  if (g.__thesisficSync) return g.__thesisficSync;
+  g.__thesisficSync = (async () => {
+    try {
+      await ensureTable();
+      if (writeInFlight || writeDirty) return; // our copy is newer than the row
+      const version = await readVersion();
+      if (version === null) {
+        // first boot against an empty database: the seed becomes the initial document
+        g.__thesisficVersion = await writeStore(JSON.stringify(load()));
+      } else if (!g.__thesisficStore || version !== g.__thesisficVersion) {
+        const row = await readStore<Store>();
+        if (row) {
+          g.__thesisficStore = fillMissingCollections(row.data);
+          g.__thesisficVersion = row.version;
+        }
+      }
+    } catch (e) {
+      console.warn("store: could not sync with Postgres, serving the in-memory copy:", (e as Error).message);
+    } finally {
+      g.__thesisficChecked = Date.now();
+      g.__thesisficSync = undefined;
+    }
+  })();
+  return g.__thesisficSync;
+}
+
+async function flushToDb() {
+  if (writeInFlight) return;
+  writeInFlight = true;
+  try {
+    while (writeDirty) {
+      writeDirty = false;
+      g.__thesisficVersion = await writeStore(JSON.stringify(load()));
+      g.__thesisficChecked = Date.now();
+    }
+  } catch (e) {
+    writeDirty = true; // retried by the next persist()
+    console.warn("store: could not write to Postgres:", (e as Error).message);
+  } finally {
+    writeInFlight = false;
+  }
 }
 
 let persistTimer: NodeJS.Timeout | null = null;
 function persist() {
+  if (storeConfigured) {
+    writeDirty = true;
+    void flushToDb();
+  }
   if (!DATA_FILE) return;
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
@@ -1004,6 +1079,10 @@ type PublicUser = ReturnType<typeof publicUser>;
 export const db = {
   raw: () => load(),
   persist,
+  /** Await before reading when Postgres is configured (route handlers do this through requireUser). */
+  ready,
+  storeConfigured,
+  storeVersion: () => g.__thesisficVersion,
 
   users: {
     findByEmail: (email: string) => load().users.find((u) => u.email.toLowerCase() === email.toLowerCase()),

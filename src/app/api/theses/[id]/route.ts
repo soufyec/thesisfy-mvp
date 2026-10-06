@@ -7,7 +7,7 @@ import { integrityBreakdown, refreshThesisMetrics } from "@/lib/integrity";
 const STATUSES: ThesisStatus[] = ["draft", "in_progress", "under_review", "revision_requested", "approved", "submitted"];
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);
@@ -101,7 +101,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);

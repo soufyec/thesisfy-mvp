@@ -14,8 +14,8 @@ export const dynamic = "force-dynamic";
 
 const SUMMARY_WORDS = 3000;
 
-function load(request: NextRequest, params: { id: string; sourceId: string }) {
-  const r = requireUser(request);
+async function load(request: NextRequest, params: { id: string; sourceId: string }) {
+  const r = await requireUser(request);
   if ("response" in r) return { response: r.response };
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return { response: error("Thesis not found", 404) };
@@ -26,7 +26,7 @@ function load(request: NextRequest, params: { id: string; sourceId: string }) {
 
 /** GET → the source (without text) and its chunks, for the chunk viewer and quote highlighting. */
 export async function GET(request: NextRequest, { params }: { params: { id: string; sourceId: string } }) {
-  const l = load(request, params);
+  const l = await load(request, params);
   if ("response" in l) return l.response;
   const chunks = db.sourceChunks.listBySource(l.source.id).map((c) => ({ id: c.id, index: c.index, page: c.page, section: c.section, text: c.text }));
   return json({ source: publicSource(l.source), chunks });
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 /** DELETE → removes the source and its chunks. */
 export async function DELETE(request: NextRequest, { params }: { params: { id: string; sourceId: string } }) {
-  const l = load(request, params);
+  const l = await load(request, params);
   if ("response" in l) return l.response;
   db.sourceChunks.removeForSource(l.source.id);
   db.sources.remove(l.source.id);
@@ -43,7 +43,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
 /** POST { action: "summarize" } → a short summary of the source's first ~3000 words, logged as a "summarize" interaction. */
 export async function POST(request: NextRequest, { params }: { params: { id: string; sourceId: string } }) {
-  const l = load(request, params);
+  const l = await load(request, params);
   if ("response" in l) return l.response;
   const { user, thesis, source } = l;
   const body = (await request.json().catch(() => null)) as { action?: string; sessionId?: string; provider?: string } | null;

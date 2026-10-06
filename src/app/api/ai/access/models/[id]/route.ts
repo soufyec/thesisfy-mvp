@@ -5,8 +5,8 @@ import { decrypt } from "@/lib/crypto";
 import { BACKEND_META, testInstitutionModel } from "@/lib/ai/providers";
 import { parseModel, publicModel } from "@/lib/ai/funding";
 
-function own(request: NextRequest, id: string) {
-  const r = requireUser(request);
+async function own(request: NextRequest, id: string) {
+  const r = await requireUser(request);
   if ("response" in r) return r;
   if (r.user.role !== "admin") return { response: error("Only administrators can manage institution models", 403) };
   const model = db.aiAccess.findModel(id);
@@ -15,7 +15,7 @@ function own(request: NextRequest, id: string) {
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = own(request, params.id);
+  const r = await own(request, params.id);
   if ("response" in r) return r.response;
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") return error("Invalid body");
@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 /** Test the stored credentials. */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = own(request, params.id);
+  const r = await own(request, params.id);
   if ("response" in r) return r.response;
   let key: string | undefined;
   try {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = own(request, params.id);
+  const r = await own(request, params.id);
   if ("response" in r) return r.response;
   db.aiAccess.removeModel(r.model.id);
   return json({ ok: true });

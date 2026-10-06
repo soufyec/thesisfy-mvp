@@ -3,13 +3,13 @@ import { db } from "@/lib/db";
 import { error, json, requireStaff, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   return json({ policy: db.policies.get(r.user.university) });
 }
 
 export async function PUT(request: NextRequest) {
-  const r = requireStaff(request);
+  const r = await requireStaff(request);
   if ("response" in r) return r.response;
   if (r.user.role !== "admin") return error("Only administrators can change policies", 403);
   const body = await request.json().catch(() => null);

@@ -10,14 +10,14 @@ const strip = (c: ReturnType<typeof db.connections.listByUser>[number]) => {
 };
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   return json({ connections: db.connections.listByUser(r.user.id).map(strip) });
 }
 
 /** Connect the student's own AI account with an API key (BYOK). The key is validated, then stored encrypted. */
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const body = await request.json().catch(() => null);
   const provider = body?.provider as Provider;

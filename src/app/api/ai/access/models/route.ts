@@ -6,7 +6,7 @@ import { parseModel, publicModel } from "@/lib/ai/funding";
 
 /** Add a model the institution pays for. The key is validated with a one-token request, then stored encrypted. */
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (r.user.role !== "admin") return error("Only administrators can manage institution models", 403);
   const body = await request.json().catch(() => null);

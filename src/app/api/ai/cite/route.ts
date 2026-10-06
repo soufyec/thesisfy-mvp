@@ -15,7 +15,7 @@ const AI_SYSTEM = `You extract bibliographic metadata. Return ONLY a JSON object
  * Verified registries (Crossref, Open Library, page metadata) come first; the AI only structures what is in the input.
  */
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
   const body = await request.json().catch(() => null);

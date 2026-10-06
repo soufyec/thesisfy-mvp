@@ -5,13 +5,13 @@ import { error, json, requireUser } from "@/lib/api";
 const CONSENT_VERSION = "2026-03";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   return json({ consent: db.consents.latest(r.user.id) || null, history: db.consents.list(r.user.id), version: CONSENT_VERSION, policy: db.policies.get(r.user.university) });
 }
 
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const body = await request.json().catch(() => null);
   const s = body?.scopes || {};
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   db.consents.revoke(r.user.id);
   // End any active sessions: monitoring stops immediately.

@@ -5,7 +5,7 @@ import { decrypt } from "@/lib/crypto";
 import { testConnection } from "@/lib/ai/providers";
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const c = db.connections.findById(params.id);
   if (!c || c.userId !== r.user.id) return error("Connection not found", 404);
@@ -18,7 +18,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const c = db.connections.findById(params.id);
   if (!c || c.userId !== r.user.id) return error("Connection not found", 404);
@@ -34,7 +34,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
 /** Re-test a stored key. */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const c = db.connections.findById(params.id);
   if (!c || c.userId !== r.user.id) return error("Connection not found", 404);

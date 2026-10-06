@@ -46,6 +46,10 @@ Like Copilot inside a company, the university can offer models to its students a
 
 Spend is metered per request from the model's configured prices; administrators set a monthly budget, a per-student allowance, what happens when it runs out (pause, or fall back to the student's own account) and an alert threshold. Students see their allowance in the assistant and in AI Connections, and may still connect a personal account, which the university never pays for.
 
+### Persistence (Neon Postgres)
+
+Set `DATABASE_URL` (Neon's Vercel integration creates it, along with `POSTGRES_URL`). The whole store is kept as one JSONB document in `thesisfic_store` (`src/lib/store.ts`): each server instance loads it at start (`src/instrumentation.ts`), re-checks the row version every few seconds through `db.ready()` (called by `requireUser`), and writes the document after every mutation. Without the variable, `DATA_FILE` keeps a local JSON file and otherwise the demo seed lives in memory. `GET /api/health` reports which tier is active and the current version. On the first boot against an empty database the demo seed becomes the initial document; delete the row to reseed. Two instances writing in the same second can overwrite each other, which is acceptable for a pilot and the reason this is a document, not a schema.
+
 ### Languages
 
 The UI ships in English, Spanish and French. Entry links set a `locale` cookie and keep working for every later page: `/en`, `/es`, `/fr` (or `?lang=es`). The switcher in the landing nav, the login page and the dashboard sidebar changes the language in place and stores it on the account, so the assistant answers in the same language. Strings live in `src/lib/i18n/messages/<area>.ts`; English defines the keys and the other two locales are typed against it, so a missing translation fails `tsc`. Text that comes from data (thesis titles, notices, API errors, institution rubric) is shown as stored.

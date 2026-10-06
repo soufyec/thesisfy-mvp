@@ -4,7 +4,7 @@ import { parseDatabase } from "@/lib/library";
 import { error, json, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const uni = r.user.university;
   const list = db.library.list(uni).map((d) => (r.user.role === "student" ? { ...d, opens: undefined } : d));
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (r.user.role !== "admin") return error("Only administrators can manage research databases", 403);
   const body = await request.json().catch(() => null);

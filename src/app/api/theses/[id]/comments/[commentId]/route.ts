@@ -4,7 +4,7 @@ import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string; commentId: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (!canAccessThesis(r.user, params.id)) return error("Thesis not found", 404);
   const body = await request.json().catch(() => ({}));
@@ -17,7 +17,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string; commentId: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (!canAccessThesis(r.user, params.id)) return error("Thesis not found", 404);
   const body = await request.json().catch(() => ({}));
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string; commentId: string } }) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (!canAccessThesis(r.user, params.id)) return error("Thesis not found", 404);
   const c = db.comments.findById(params.commentId);

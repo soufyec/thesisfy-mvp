@@ -6,7 +6,7 @@ import { BACKEND_META } from "@/lib/ai/providers";
 import { MODES } from "@/lib/ai/prompts";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const policy = db.policies.get(r.user.university);
   const connections = db.connections.listByUser(r.user.id);

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { json, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesisId = request.nextUrl.searchParams.get("thesisId") || undefined;
   const list = db.conversations.listByUser(r.user.id, thesisId).map((c) => ({ id: c.id, title: c.title, thesisId: c.thesisId, mode: c.messages[0]?.mode, messageCount: c.messages.length, updatedAt: c.updatedAt, createdAt: c.createdAt }));
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const id = request.nextUrl.searchParams.get("id");
   const c = id ? db.conversations.findById(id) : undefined;

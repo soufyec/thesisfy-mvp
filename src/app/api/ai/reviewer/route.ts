@@ -32,7 +32,7 @@ interface PostBody {
  * /api/theses/[id]/comments so anchors are real document positions.
  */
 export async function POST(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
   const body = (await request.json().catch(() => null)) as PostBody | null;
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
 
 /** GET ?thesisId= → previous runs and the rubric in force. */
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesisId = request.nextUrl.searchParams.get("thesisId");
   if (!thesisId) return error("thesisId is required");
@@ -182,7 +182,7 @@ interface PatchBody {
  * a dismissedReason also resolves the comment.
  */
 export async function PATCH(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const body = (await request.json().catch(() => null)) as PatchBody | null;
   if (!body || typeof body.thesisId !== "string") return error("thesisId is required");

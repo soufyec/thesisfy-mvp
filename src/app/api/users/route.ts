@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { error, json, requireStaff } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = requireStaff(request);
+  await db.ready();
+  const r = await requireStaff(request);
   if ("response" in r) return r.response;
   const users = db.users.getByUniversity(r.user.university);
   const students = users
@@ -30,7 +31,8 @@ export async function GET(request: NextRequest) {
 
 /** Invite (create) a student account. Returns a temporary password once. */
 export async function POST(request: NextRequest) {
-  const r = requireStaff(request);
+  await db.ready();
+  const r = await requireStaff(request);
   if ("response" in r) return r.response;
   const body = await request.json().catch(() => null);
   if (!body?.email || !body?.name) return error("name and email are required");

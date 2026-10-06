@@ -13,7 +13,7 @@ const stringList = (v: unknown, max = 500, maxLen = 80) =>
 
 /** GET /api/language/prefs?thesisId= — language review preferences of a thesis (visible to everyone who can open it). */
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesisId = request.nextUrl.searchParams.get("thesisId");
   if (!thesisId) return error("thesisId is required");
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
 /** PUT /api/language/prefs?thesisId= — partial update by the thesis owner. Body: { language?, motherTongue?, mutedCategories?, mutedRules?, dictionary? } */
 export async function PUT(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const thesisId = request.nextUrl.searchParams.get("thesisId") || (typeof body?.thesisId === "string" ? (body.thesisId as string) : null);

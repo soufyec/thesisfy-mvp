@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { json, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = requireUser(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
   const theses = user.role === "student" ? db.theses.getByStudent(user.id) : user.role === "professor" ? db.theses.getByProfessor(user.id) : db.theses.getByUniversity(user.university);
