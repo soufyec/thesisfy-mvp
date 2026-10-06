@@ -95,10 +95,9 @@ export default function LoginPage() {
           </Link>
         </div>
         <div className="relative">
-          <h2 className="text-4xl font-bold text-white mb-4">Write with integrity.<br />Graduate with confidence.</h2>
-          <p className="text-brand-100 text-lg">Use Claude, ChatGPT or Gemini transparently. Your advisor sees provenance, not suspicion.</p>
+          <h2 className="text-4xl font-bold text-white mb-4 tracking-[-0.02em] leading-[1.15] [text-wrap:pretty]">Evidence of the writing process, not suspicion of the result.</h2>
+          <p className="text-brand-100 text-lg max-w-[520px]">Every sentence is attributed as it is written: typed, quoted or AI-assisted. Your advisor reads the process, not just the draft.</p>
         </div>
-        <div className="relative text-brand-200 text-sm">Trusted by 50+ universities worldwide</div>
       </div>
       <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
         <Suspense fallback={null}>

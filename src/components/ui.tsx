@@ -92,7 +92,7 @@ export function ScoreRing({ value, size = 56, stroke = 4 }: { value: number; siz
 export function IntegrityPill({ aiPct, pastePct, limitPct, score, onClick, variant = "header", className = "" }: { aiPct: number; pastePct: number; limitPct: number; score: number; onClick?: () => void; variant?: "header" | "landing"; className?: string }) {
   const a = Math.max(0, Math.min(100, aiPct));
   const p = Math.max(0, Math.min(100 - a, pastePct));
-  const ring = `conic-gradient(theme(colors.prov.ai) 0 ${a}%, theme(colors.prov.paste) ${a}% ${a + p}%, theme(colors.prov.human) ${a + p}% 100%)`;
+  const ring = `conic-gradient(var(--prov-ai) 0 ${a}%, var(--prov-paste) ${a}% ${a + p}%, var(--prov-human) ${a + p}% 100%)`;
   const scoreColor = score >= 90 ? "text-green-600" : score >= 70 ? "text-amber-600" : "text-red-600";
   const Tag = onClick ? "button" : "span";
   if (variant === "landing") {
