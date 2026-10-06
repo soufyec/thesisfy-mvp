@@ -1,7 +1,10 @@
 import { BarChart3, BookOpen, Bot, CreditCard, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users } from "lucide-react";
 
 export interface NavItem {
+  /** i18n key, rendered with `t(item.label)`. */
   label: string;
+  /** Optional shorter i18n key for the mobile bottom bar. */
+  shortLabel?: string;
   href: string;
   icon: React.ReactNode;
   mobile?: boolean; // shown in the mobile bottom bar
@@ -10,21 +13,21 @@ export interface NavItem {
 const cls = "w-5 h-5";
 
 export const studentNav: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className={cls} />, mobile: true },
-  { label: "My Theses", href: "/dashboard/theses", icon: <FileText className={cls} />, mobile: true },
-  { label: "Research copilot", href: "/dashboard/ai-chat", icon: <Bot className={cls} />, mobile: true },
-  { label: "Research databases", href: "/dashboard/library", icon: <Library className={cls} />, mobile: true },
-  { label: "Analytics", href: "/dashboard/analytics", icon: <BarChart3 className={cls} /> },
-  { label: "AI Connections", href: "/dashboard/connections", icon: <Plug className={cls} /> },
-  { label: "Settings & Privacy", href: "/dashboard/settings", icon: <Settings className={cls} />, mobile: true },
+  { label: "dashboard.nav.dashboard", href: "/dashboard", icon: <LayoutDashboard className={cls} />, mobile: true },
+  { label: "dashboard.nav.theses", href: "/dashboard/theses", icon: <FileText className={cls} />, mobile: true },
+  { label: "dashboard.nav.copilot", shortLabel: "dashboard.nav.short.copilot", href: "/dashboard/ai-chat", icon: <Bot className={cls} />, mobile: true },
+  { label: "dashboard.nav.library", shortLabel: "dashboard.nav.short.library", href: "/dashboard/library", icon: <Library className={cls} />, mobile: true },
+  { label: "dashboard.nav.analytics", href: "/dashboard/analytics", icon: <BarChart3 className={cls} /> },
+  { label: "dashboard.nav.connections", href: "/dashboard/connections", icon: <Plug className={cls} /> },
+  { label: "dashboard.nav.settings", shortLabel: "dashboard.nav.short.settings", href: "/dashboard/settings", icon: <Settings className={cls} />, mobile: true },
 ];
 
 export const adminNav: NavItem[] = [
-  { label: "Overview", href: "/admin", icon: <LayoutDashboard className={cls} />, mobile: true },
-  { label: "All Theses", href: "/admin/theses", icon: <BookOpen className={cls} />, mobile: true },
-  { label: "Students", href: "/admin/students", icon: <Users className={cls} />, mobile: true },
-  { label: "Integrity Flags", href: "/admin/flags", icon: <Flag className={cls} />, mobile: true },
-  { label: "AI Policies", href: "/admin/policies", icon: <ShieldCheck className={cls} /> },
-  { label: "AI access & billing", href: "/admin/ai-access", icon: <CreditCard className={cls} /> },
-  { label: "Research databases", href: "/admin/library", icon: <Library className={cls} /> },
+  { label: "dashboard.nav.overview", href: "/admin", icon: <LayoutDashboard className={cls} />, mobile: true },
+  { label: "dashboard.nav.allTheses", href: "/admin/theses", icon: <BookOpen className={cls} />, mobile: true },
+  { label: "dashboard.nav.students", href: "/admin/students", icon: <Users className={cls} />, mobile: true },
+  { label: "dashboard.nav.notices", shortLabel: "dashboard.nav.short.notices", href: "/admin/flags", icon: <Flag className={cls} />, mobile: true },
+  { label: "dashboard.nav.policies", href: "/admin/policies", icon: <ShieldCheck className={cls} /> },
+  { label: "dashboard.nav.aiAccess", shortLabel: "dashboard.nav.short.aiAccess", href: "/admin/ai-access", icon: <CreditCard className={cls} /> },
+  { label: "dashboard.nav.library", shortLabel: "dashboard.nav.short.library", href: "/admin/library", icon: <Library className={cls} /> },
 ];

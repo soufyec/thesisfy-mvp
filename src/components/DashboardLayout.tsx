@@ -6,7 +6,9 @@ import { useEffect, useRef, useState } from "react";
 import { Bell, ChevronLeft, ChevronRight, LogOut, Menu, ShieldCheck, X } from "lucide-react";
 import { adminNav, NavItem, studentNav } from "@/lib/nav";
 import { setMeCache, useUser } from "./useUser";
-import { api, timeAgo } from "@/lib/client";
+import { api } from "@/lib/client";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useFormat, useT } from "@/lib/i18n/client";
 
 interface Notification {
   id: string;
@@ -18,7 +20,26 @@ interface Notification {
   createdAt: string;
 }
 
+/** Relative time ("5m ago") in the active language; older than 30 days falls back to a formatted date. */
+export function useTimeAgo() {
+  const t = useT();
+  const format = useFormat();
+  return (iso: string | Date): string => {
+    const d = typeof iso === "string" ? new Date(iso) : iso;
+    const m = Math.round((Date.now() - d.getTime()) / 60000);
+    if (m < 1) return t("dashboard.time.justNow");
+    if (m < 60) return t("dashboard.time.minutesAgo", { n: m });
+    const h = Math.round(m / 60);
+    if (h < 24) return t("dashboard.time.hoursAgo", { n: h });
+    const days = Math.round(h / 24);
+    if (days < 30) return t("dashboard.time.daysAgo", { n: days });
+    return format.date(d);
+  };
+}
+
 export default function DashboardLayout({ children, navItems, fullBleed = false }: { children: React.ReactNode; navItems?: NavItem[]; fullBleed?: boolean }) {
+  const t = useT();
+  const timeAgo = useTimeAgo();
   const router = useRouter();
   const pathname = usePathname();
   const { me, user, loading } = useUser();
@@ -83,7 +104,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
     router.push("/login");
   };
 
-  if (!user) return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 text-sm">Loading…</div>;
+  if (!user) return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 text-sm">{t("common.loading")}…</div>;
 
   const items = navItems || (user.role === "student" ? studentNav : adminNav);
   const mobileItems = items.filter((i) => i.mobile).slice(0, 5);
@@ -107,16 +128,16 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
               </span>
             )}
           </Link>
-          <button className="lg:hidden text-gray-400" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
+          <button className="lg:hidden text-gray-400" onClick={() => setSidebarOpen(false)} aria-label={t("dashboard.layout.closeMenu")}>
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {items.map((item) => (
-            <Link key={item.href} href={item.href} title={item.label} className={`${isActive(item.href) ? "sidebar-link-active" : "sidebar-link"} ${collapsed ? "lg:justify-center lg:px-0" : ""}`} onClick={() => setSidebarOpen(false)}>
+            <Link key={item.href} href={item.href} title={t(item.label)} className={`${isActive(item.href) ? "sidebar-link-active" : "sidebar-link"} ${collapsed ? "lg:justify-center lg:px-0" : ""}`} onClick={() => setSidebarOpen(false)}>
               {item.icon}
-              <span className={collapsed ? "lg:hidden" : ""}>{item.label}</span>
+              <span className={collapsed ? "lg:hidden" : ""}>{t(item.label)}</span>
             </Link>
           ))}
         </nav>
@@ -129,9 +150,10 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
               <div className="text-xs text-gray-500 truncate">{user.university}</div>
             </div>
           </div>
+          <LanguageSwitcher variant="select" className={`w-full px-2 py-1 ${collapsed ? "lg:hidden" : ""}`} />
           <button onClick={handleLogout} className={`w-full flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors px-2 py-1.5 ${collapsed ? "lg:justify-center" : ""}`}>
             <LogOut className="w-4 h-4" />
-            <span className={collapsed ? "lg:hidden" : ""}>Sign out</span>
+            <span className={collapsed ? "lg:hidden" : ""}>{t("common.signOut")}</span>
           </button>
           <button
             onClick={() => {
@@ -141,7 +163,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
               });
             }}
             className="hidden lg:flex w-full items-center justify-center text-gray-300 hover:text-gray-500 mt-1"
-            aria-label="Toggle sidebar"
+            aria-label={t("dashboard.layout.toggleSidebar")}
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
@@ -152,7 +174,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 lg:h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 lg:px-6 flex-shrink-0 sticky top-0 z-30" style={{ paddingTop: "env(safe-area-inset-top)" }}>
           <div className="flex items-center gap-3">
-            <button className="lg:hidden text-gray-600" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+            <button className="lg:hidden text-gray-600" onClick={() => setSidebarOpen(true)} aria-label={t("dashboard.layout.openMenu")}>
               <Menu className="w-6 h-6" />
             </button>
             <Link href="/" className="lg:hidden font-bold">
@@ -160,22 +182,22 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
             </Link>
           </div>
           <div className="flex items-center gap-3 ml-auto">
-            <span className="text-xs text-gray-400 hidden sm:block capitalize">{user.role} account</span>
+            <span className="text-xs text-gray-400 hidden sm:block capitalize">{t("dashboard.layout.account", { role: t(`common.role.${user.role}`) })}</span>
             <div className="relative" ref={notifRef}>
-              <button onClick={openNotifications} className="relative p-2 text-gray-500 hover:text-gray-700" aria-label="Notifications">
+              <button onClick={openNotifications} className="relative p-2 text-gray-500 hover:text-gray-700" aria-label={t("dashboard.layout.notifications")}>
                 <Bell className="w-5 h-5" />
                 {unread > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">{unread > 9 ? "9+" : unread}</span>}
               </button>
               {notifOpen && (
                 <div className="absolute right-0 mt-1 w-80 max-w-[90vw] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-fade-in">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                    <span className="text-sm font-semibold">Notifications</span>
+                    <span className="text-sm font-semibold">{t("dashboard.layout.notifications")}</span>
                     <button onClick={markAllRead} className="text-xs text-brand-600 hover:underline">
-                      Mark all read
+                      {t("dashboard.layout.markAllRead")}
                     </button>
                   </div>
                   <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
-                    {notifications.length === 0 && <div className="p-6 text-center text-sm text-gray-400">You&apos;re all caught up.</div>}
+                    {notifications.length === 0 && <div className="p-6 text-center text-sm text-gray-400">{t("dashboard.layout.caughtUp")}</div>}
                     {notifications.map((n) => (
                       <Link
                         key={n.id}
@@ -214,7 +236,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
         {mobileItems.map((item) => (
           <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-0.5 py-2 px-2 min-w-[56px] text-[10px] ${isActive(item.href) ? "text-brand-600" : "text-gray-500"}`}>
             {item.icon}
-            <span className="truncate max-w-[64px]">{item.label.replace("Settings & Privacy", "Settings").replace("Research copilot", "Copilot").replace("Integrity Flags", "Flags").replace("Research databases", "Databases").replace("AI access & billing", "AI billing")}</span>
+            <span className="truncate max-w-[64px]">{t(item.shortLabel || item.label)}</span>
           </Link>
         ))}
       </nav>
