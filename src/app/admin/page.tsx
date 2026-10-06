@@ -81,7 +81,7 @@ export default function AdminDashboard() {
                 <div className="divide-y divide-gray-50">
                   {logs.length === 0 && <div className="text-sm text-gray-400 py-4">No AI interactions yet.</div>}
                   {logs.map((i) => (
-                    <div key={i.id} className="py-2.5 text-sm flex items-start gap-3"><span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${i.blockedByPolicy ? "bg-red-500" : i.source === "extension" ? "bg-amber-400" : "bg-brand-500"}`} /><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{i.userName}</span><span className="text-xs text-gray-400 capitalize">{i.mode.replace("_", " ")} · {i.provider}</span>{i.source === "extension" && <span className="badge-warning !text-[10px]">external</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">blocked</span>}</div><div className="text-gray-500 truncate text-xs">{i.promptPreview}</div><div className="text-[11px] text-gray-400">{i.thesisTitle} · {timeAgo(i.timestamp)}</div></div></div>
+                    <div key={i.id} className="py-2.5 text-sm flex items-start gap-3"><span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${i.blockedByPolicy ? "bg-red-500" : i.mode === "copilot" ? "bg-emerald-500" : "bg-brand-500"}`} /><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{i.userName}</span><span className="text-xs text-gray-400 capitalize">{i.mode.replace("_", " ")} · {i.provider}</span>{i.mode === "copilot" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px]">copilot</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">blocked</span>}</div><div className="text-gray-500 truncate text-xs">{i.promptPreview}</div><div className="text-[11px] text-gray-400">{i.thesisTitle} · {timeAgo(i.timestamp)}</div></div></div>
                   ))}
                 </div>
               </div>
@@ -91,7 +91,7 @@ export default function AdminDashboard() {
                   <div className="space-y-3 text-sm">
                     <div className="p-3 bg-green-50 rounded-xl"><div className="text-xs text-green-800">Max AI-assisted content</div><div className="text-xl font-bold text-green-700">{policy.maxAiUsagePercent}%</div></div>
                     <div className="p-3 bg-blue-50 rounded-xl"><div className="text-xs text-blue-800">Permitted providers</div><div className="font-medium text-blue-700 capitalize">{policy.allowedProviders.join(", ")}</div><div className="text-xs text-blue-600 mt-0.5">{policy.allowBYOK ? "Students may connect their own accounts" : "Institution assistant only"}</div></div>
-                    <div className="p-3 bg-amber-50 rounded-xl"><div className="text-xs text-amber-800">External AI tools</div><div className="font-medium text-amber-700">{policy.allowExternalAi ? "Allowed when reported via extension" : "Not allowed"}</div><div className="text-xs text-amber-600 mt-0.5">Flag sensitivity: {policy.flagSensitivity}</div></div>
+                    <div className="p-3 bg-emerald-50 rounded-xl"><div className="text-xs text-emerald-800">Research copilot</div><div className="font-medium text-emerald-700">{policy.researchCopilot ? "Offered on university models, history kept" : "Not offered"}</div><div className="text-xs text-emerald-600 mt-0.5">Flag sensitivity: {policy.flagSensitivity}</div></div>
                   </div>
                 )}
               </div>

@@ -81,9 +81,11 @@ export interface AssistantPanelProps {
   onConsentRequired?: () => void;
   onRejectSuggestion?: (meta: { provider: string; mode: string }) => void;
   variant?: "panel" | "page";
+  /** Starting mode. When omitted, the Research copilot is used if the institution offers it. */
   initialMode?: AIMode;
   initialConversationId?: string;
   className?: string;
+  onConversationsChanged?: () => void;
 }
 
 const QUICK: Record<AIMode, string[]> = {
@@ -100,12 +102,12 @@ const QUICK: Record<AIMode, string[]> = {
   copilot: ["Which statistical test fits my design?", "Explain how to run a systematic review search", "Help me plan the next 4 weeks of my research", "What are the strongest objections to my method?"],
 };
 
-export default function AssistantPanel({ thesisId, sessionId, selection, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode = "chat", initialConversationId, className = "" }: AssistantPanelProps) {
+export default function AssistantPanel({ thesisId, sessionId, selection, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode, initialConversationId, className = "", onConversationsChanged }: AssistantPanelProps) {
   const [modes, setModes] = useState<ModeInfo[]>([]);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [institutionModels, setInstitutionModels] = useState<InstitutionModelInfo[]>([]);
   const [allowance, setAllowance] = useState<AllowanceInfo | null>(null);
-  const [mode, setMode] = useState<AIMode>(initialMode);
+  const [mode, setMode] = useState<AIMode>(initialMode || "chat");
   const [providerChoice, setProviderChoice] = useState<string>("auto");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
@@ -122,24 +124,29 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    api<{ providers: ProviderInfo[]; modes: ModeInfo[]; defaultProvider: string | null; institutionModels?: InstitutionModelInfo[]; allowance?: AllowanceInfo | null }>("/api/ai/providers")
+    api<{ providers: ProviderInfo[]; modes: ModeInfo[]; defaultProvider: string | null; institutionModels?: InstitutionModelInfo[]; allowance?: AllowanceInfo | null; policy?: { researchCopilot?: boolean } }>("/api/ai/providers")
       .then((d) => {
         setProviders(d.providers);
-        setModes(d.modes);
+        // The copilot leads when the institution offers it.
+        const ordered = [...d.modes.filter((m) => m.id === "copilot"), ...d.modes.filter((m) => m.id !== "copilot")];
+        setModes(ordered);
+        if (!initialMode && !initialConversationId && d.policy?.researchCopilot) setMode("copilot");
         setInstitutionModels(d.institutionModels || []);
         setAllowance(d.allowance || null);
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadConversations = useCallback(async () => {
     try {
       const d = await api<{ conversations: typeof conversations }>(`/api/ai/conversations${thesisId ? `?thesisId=${thesisId}` : ""}`);
       setConversations(d.conversations);
+      onConversationsChanged?.();
     } catch {
       /* ignore */
     }
-  }, [thesisId]);
+  }, [thesisId, onConversationsChanged]);
 
   useEffect(() => {
     loadConversations();
@@ -148,7 +155,11 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   useEffect(() => {
     if (!initialConversationId) return;
     api<{ conversation: { messages: { id: string; role: "user" | "assistant"; content: string; mode?: AIMode; provider?: string; model?: string; createdAt: string }[] } }>(`/api/ai/conversations/${initialConversationId}`)
-      .then((d) => setMessages(d.conversation.messages.map((m) => ({ ...m }))))
+      .then((d) => {
+        setMessages(d.conversation.messages.map((m) => ({ ...m })));
+        const first = d.conversation.messages.find((m) => m.mode)?.mode;
+        if (first) setMode(first);
+      })
       .catch(() => {});
   }, [initialConversationId]);
 

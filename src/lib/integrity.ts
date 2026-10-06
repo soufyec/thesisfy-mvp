@@ -49,15 +49,15 @@ export function evaluateEvent(session: WritingSession, type: string, data: Recor
 
   if (type === "paste" && policy.monitoring.paste) {
     const words = Number(data.words || 0);
-    const matched = data.matchedExternal as { provider?: string } | undefined;
-    if (matched?.provider) {
+    const matched = data.matchedAi as { mode?: string; share?: number } | undefined;
+    if (matched) {
       created.push(
         db.flags.create({
           thesisId: session.thesisId,
           sessionId: session.id,
           type: "unattributed_ai",
           severity: words > th.pasteWords ? "high" : "medium",
-          description: `${words} words pasted that match text copied from ${matched.provider} (reported by the Thesisfic extension with consent). Attribute it as AI-assisted or rewrite in your own words.`,
+          description: `${words} words pasted that match an answer from the ${matched.mode === "copilot" ? "Research copilot" : "Thesisfic assistant"}${matched.share && matched.share < 1 ? ` (${Math.round(matched.share * 100)}% of the sentences)` : ""}. Marked as AI-assisted; rewrite in your own words to count as yours.`,
         })
       );
     } else if (words > th.pasteWords && !data.attributed) {
@@ -83,20 +83,6 @@ export function evaluateEvent(session: WritingSession, type: string, data: Recor
           type: "rapid_typing",
           severity: "low",
           description: `Typing burst of ${Math.round(wpm)} words/min sustained over ${data.words} words, unusual for original composition.`,
-        })
-      );
-    }
-  }
-
-  if (type === "external_ai_visit" && policy.monitoring.extension) {
-    if (!policy.allowExternalAi) {
-      created.push(
-        db.flags.create({
-          thesisId: session.thesisId,
-          sessionId: session.id,
-          type: "external_source",
-          severity: "medium",
-          description: `Visited ${data.host} during an active writing session. External AI tools are not permitted by ${policy.university}'s policy.`,
         })
       );
     }

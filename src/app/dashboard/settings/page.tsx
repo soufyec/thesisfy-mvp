@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Chrome, Download, KeyRound, Smartphone, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Download, Smartphone } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ConsentModal from "@/components/ConsentModal";
 import { Toast } from "@/components/ui";
@@ -9,14 +9,7 @@ import { useUser, type Consent } from "@/components/useUser";
 import { api } from "@/lib/client";
 import { downloadBlob } from "@/lib/export";
 
-interface Token {
-  name: string;
-  createdAt: string;
-  lastSeenAt?: string;
-  tokenHint: string;
-}
-
-const SCOPE_LABELS: Record<string, string> = { aiInteractions: "AI interactions", keystrokes: "Typing rhythm", paste: "Paste events", tabActivity: "Tab activity", extensionActivity: "External AI (extension)", extensionPromptText: "Prompt text (extension)" };
+const SCOPE_LABELS: Record<string, string> = { aiInteractions: "AI interactions", keystrokes: "Typing rhythm", paste: "Paste events", tabActivity: "Tab activity" };
 
 export default function SettingsPage() {
   const { me, user, policy, consent, refresh } = useUser();
@@ -24,8 +17,6 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState<"en" | "es" | "fr">("en");
   const [consentOpen, setConsentOpen] = useState(false);
   const [history, setHistory] = useState<Consent[]>([]);
-  const [code, setCode] = useState<{ code: string; expiresAt: string } | null>(null);
-  const [tokens, setTokens] = useState<Token[]>([]);
   const [toast, setToast] = useState<{ message: string; kind?: "info" | "success" | "error" } | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
 
@@ -35,12 +26,10 @@ export default function SettingsPage() {
       setLanguage(user.preferences.language);
     }
   }, [user]);
-  const loadTokens = useCallback(() => api<{ tokens: Token[] }>("/api/monitor/pair").then((d) => setTokens(d.tokens)).catch(() => {}), []);
   useEffect(() => {
-    loadTokens();
     api<{ history: Consent[] }>("/api/monitor/consent").then((d) => setHistory(d.history)).catch(() => {});
     setIsStandalone(window.matchMedia("(display-mode: standalone)").matches);
-  }, [loadTokens]);
+  }, []);
 
   const saveProfile = async () => {
     await api("/api/auth/me", { method: "PATCH", json: { name, preferences: { language } } }).catch(() => {});
@@ -64,11 +53,6 @@ export default function SettingsPage() {
     downloadBlob(`thesisfic-export-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify({ user, theses, aiInteractions: logs, consent: cons, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" }));
   };
 
-  const pair = async () => {
-    const d = await api<{ code: string; expiresAt: string }>("/api/monitor/pair", { method: "POST" }).catch(() => null);
-    if (d) setCode(d);
-  };
-
   if (!me || !user || !policy) return <DashboardLayout><div className="text-gray-400 text-sm">Loading…</div></DashboardLayout>;
 
   return (
@@ -89,7 +73,7 @@ export default function SettingsPage() {
 
         <section id="privacy" className="card p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3 mb-3">
-            <div><h2 className="font-semibold">Monitoring &amp; consent</h2><p className="text-xs text-gray-500 mt-0.5">{policy.university} · policy updated {new Date(policy.updatedAt).toLocaleDateString()} · AI limit {policy.maxAiUsagePercent}% · external AI tools {policy.allowExternalAi ? "allowed when reported" : "not allowed"}</p></div>
+            <div><h2 className="font-semibold">Monitoring &amp; consent</h2><p className="text-xs text-gray-500 mt-0.5">{policy.university} · policy updated {new Date(policy.updatedAt).toLocaleDateString()} · AI limit {policy.maxAiUsagePercent}% · Research copilot {policy.researchCopilot ? "offered" : "not offered"}</p></div>
             <button onClick={() => setConsentOpen(true)} className="btn-primary !py-2 !px-3 text-xs whitespace-nowrap">{consent ? "Change choices" : "Set choices"}</button>
           </div>
           {consent ? (
@@ -112,33 +96,6 @@ export default function SettingsPage() {
             <details className="mt-3 text-xs text-gray-500"><summary className="cursor-pointer">Consent history ({history.length})</summary>
               <ul className="mt-2 space-y-1">{history.map((h) => <li key={h.id}>{new Date(h.grantedAt).toLocaleString()} → {h.revokedAt ? `withdrawn ${new Date(h.revokedAt).toLocaleString()}` : "active"} · {Object.values(h.scopes).filter(Boolean).length} scopes on</li>)}</ul>
             </details>
-          )}
-        </section>
-
-        <section id="extension" className="card p-5 sm:p-6">
-          <div className="flex items-center gap-2 mb-1"><Chrome className="w-5 h-5 text-gray-500" /><h2 className="font-semibold">Browser extension: transparent AI use</h2></div>
-          <p className="text-sm text-gray-600 mb-4">When you use ChatGPT, Claude, Gemini or Le Chat in another tab during a writing session, the Thesisfic Companion reports the visit and a fingerprint of what you copy, so a paste into your thesis is attributed to that tool instead of being flagged as an unknown source. Nothing is reported outside an active session, and only with the scopes you chose above.</p>
-          <ol className="text-sm text-gray-600 list-decimal pl-5 space-y-1 mb-4">
-            <li>Load the extension from the repository&apos;s <code className="bg-gray-100 px-1 rounded">extension/</code> folder (chrome://extensions → Developer mode → Load unpacked).</li>
-            <li>Generate a pairing code below and enter it in the extension together with this site&apos;s URL.</li>
-          </ol>
-          <div className="flex flex-wrap items-center gap-3">
-            <button onClick={pair} className="btn-primary !py-2 !px-4 text-sm"><KeyRound className="w-4 h-4 mr-1" />Generate pairing code</button>
-            {code && <div className="font-mono text-2xl tracking-widest bg-gray-900 text-white px-4 py-2 rounded-xl">{code.code}</div>}
-            {code && <span className="text-xs text-gray-400">expires {new Date(code.expiresAt).toLocaleTimeString()}</span>}
-          </div>
-          {tokens.length > 0 && (
-            <div className="mt-4">
-              <div className="text-xs font-medium text-gray-500 mb-2">Paired devices</div>
-              <ul className="space-y-2">
-                {tokens.map((t) => (
-                  <li key={t.tokenHint} className="flex items-center justify-between text-sm bg-gray-50 rounded-xl px-3 py-2">
-                    <div><div className="font-medium">{t.name}</div><div className="text-xs text-gray-400">paired {new Date(t.createdAt).toLocaleDateString()}{t.lastSeenAt ? ` · last seen ${new Date(t.lastSeenAt).toLocaleString()}` : " · never seen"} · ···{t.tokenHint}</div></div>
-                    <button onClick={async () => { await api("/api/monitor/pair", { method: "DELETE", json: { tokenHint: t.tokenHint } }); loadTokens(); }} className="text-gray-400 hover:text-red-500" title="Revoke"><Trash2 className="w-4 h-4" /></button>
-                  </li>
-                ))}
-              </ul>
-            </div>
           )}
         </section>
 

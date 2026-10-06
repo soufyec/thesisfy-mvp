@@ -275,7 +275,7 @@ export function IntegrityPanel({ thesis, flags, session, maxAi, showProvenance, 
         </div>
         {session && (
           <div className="grid grid-cols-3 gap-2 text-center">
-            {[["Keystrokes", session.keystrokes], ["Words", session.wordsWritten], ["AI assists", session.aiAssists], ["Pastes", session.pasteEvents], ["Tab switches", session.tabSwitches], ["Ext. AI visits", session.externalAiVisits]].map(([l, v]) => (
+            {[["Keystrokes", session.keystrokes], ["Words", session.wordsWritten], ["AI assists", session.aiAssists], ["Pastes", session.pasteEvents], ["Tab switches", session.tabSwitches]].slice(0, 6).map(([l, v]) => (
               <div key={String(l)} className="bg-gray-50 rounded-lg py-2"><div className="text-base font-semibold">{Number(v || 0).toLocaleString()}</div><div className="text-[10px] text-gray-500">{l}</div></div>
             ))}
           </div>

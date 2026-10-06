@@ -18,8 +18,6 @@ export interface ConsentScopes {
   paste: boolean;
   aiInteractions: boolean;
   tabActivity: boolean;
-  extensionActivity: boolean;
-  extensionPromptText: boolean;
 }
 
 export interface Consent {
@@ -35,13 +33,12 @@ export interface Policy {
   maxAiUsagePercent: number;
   allowBYOK: boolean;
   allowedProviders: string[];
-  allowExternalAi: boolean;
   allowedModes: string[];
   blockGeneration: boolean;
   researchCopilot: boolean;
   flagSensitivity: "low" | "medium" | "high";
   requireConsent: boolean;
-  monitoring: { keystrokes: boolean; paste: boolean; aiInteractions: boolean; tabActivity: boolean; extension: boolean };
+  monitoring: { keystrokes: boolean; paste: boolean; aiInteractions: boolean; tabActivity: boolean };
   updatedAt: string;
 }
 

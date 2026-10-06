@@ -96,14 +96,14 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="card">
-          <div className="p-5 border-b border-gray-100"><h2 className="font-semibold">AI interaction log</h2><p className="text-xs text-gray-400 mt-0.5">Every assistant request, plus external AI use reported by your extension. This is what your advisor sees.</p></div>
+          <div className="p-5 border-b border-gray-100"><h2 className="font-semibold">AI interaction log</h2><p className="text-xs text-gray-400 mt-0.5">Every assistant and Research copilot request. This is what your advisor sees.</p></div>
           <div className="divide-y divide-gray-50">
             {logs.length === 0 && <div className="p-8 text-center text-sm text-gray-400">No interactions logged yet.</div>}
             {logs.slice(0, 40).map((i) => (
               <div key={i.id} className="p-4 flex items-start gap-3 text-sm">
-                <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${i.blockedByPolicy ? "bg-red-500" : i.source === "extension" ? "bg-amber-400" : "bg-brand-500"}`} />
+                <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${i.blockedByPolicy ? "bg-red-500" : i.mode === "copilot" ? "bg-emerald-500" : "bg-brand-500"}`} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap"><span className="font-medium capitalize">{i.mode.replace("_", " ")}</span><span className="text-xs text-gray-400">{i.provider} · {i.model}</span>{i.source === "extension" && <span className="badge-warning !text-[10px]">external</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">blocked</span>}{i.insertedWords > 0 && <span className="badge-info !text-[10px]">{i.insertedWords} words inserted</span>}</div>
+                  <div className="flex items-center gap-2 flex-wrap"><span className="font-medium capitalize">{i.mode.replace("_", " ")}</span><span className="text-xs text-gray-400">{i.provider} · {i.model}</span>{i.mode === "copilot" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px]">copilot</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">blocked</span>}{i.insertedWords > 0 && <span className="badge-info !text-[10px]">{i.insertedWords} words inserted</span>}</div>
                   <div className="text-gray-600 truncate">{i.promptPreview}</div>
                   <div className="text-[11px] text-gray-400">{i.thesisTitle ? `${i.thesisTitle} · ` : ""}{timeAgo(i.timestamp)}</div>
                 </div>

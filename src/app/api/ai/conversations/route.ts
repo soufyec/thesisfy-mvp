@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const r = requireUser(request);
   if ("response" in r) return r.response;
   const thesisId = request.nextUrl.searchParams.get("thesisId") || undefined;
-  const list = db.conversations.listByUser(r.user.id, thesisId).map((c) => ({ id: c.id, title: c.title, thesisId: c.thesisId, messageCount: c.messages.length, updatedAt: c.updatedAt, createdAt: c.createdAt }));
+  const list = db.conversations.listByUser(r.user.id, thesisId).map((c) => ({ id: c.id, title: c.title, thesisId: c.thesisId, mode: c.messages[0]?.mode, messageCount: c.messages.length, updatedAt: c.updatedAt, createdAt: c.createdAt }));
   return json({ conversations: list });
 }
 

@@ -102,8 +102,8 @@ const features = [
   },
   {
     icon: GlobeIcon,
-    title: "Transparent external AI use",
-    description: "An optional browser extension attributes text copied from chatgpt.com or claude.ai during a session, with the student's explicit consent.",
+    title: "Research copilot",
+    description: "Universities offer a research copilot on the models they pay for: ask anything, history kept, visible to the institution. It never writes the thesis, and any answer pasted in is recognised and marked.",
   },
   {
     icon: BarChartIcon,

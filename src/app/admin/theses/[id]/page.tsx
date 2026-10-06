@@ -17,7 +17,7 @@ interface Detail {
   policy: { maxAiUsagePercent: number };
   interactions: { id: string; provider: string; model: string; mode: string; source: string; promptPreview: string; responsePreview: string; insertedWords: number; blockedByPolicy: boolean; timestamp: string }[];
 }
-interface Session { id: string; startedAt: string; endedAt?: string; lastHeartbeatAt: string; wordsWritten: number; aiAssists: number; keystrokes: number; pasteEvents: number; tabSwitches: number; externalAiVisits: number; device: string; consentId?: string; events: { id: string; type: string; timestamp: string; data: Record<string, unknown> }[]; integrityFlags: { id: string }[] }
+interface Session { id: string; startedAt: string; endedAt?: string; lastHeartbeatAt: string; wordsWritten: number; aiAssists: number; keystrokes: number; pasteEvents: number; tabSwitches: number; device: string; consentId?: string; events: { id: string; type: string; timestamp: string; data: Record<string, unknown> }[]; integrityFlags: { id: string }[] }
 
 export default function AdminThesisDetail() {
   const params = useParams<{ id: string }>();
@@ -65,7 +65,7 @@ export default function AdminThesisDetail() {
               <div><div className="text-amber-500 font-bold text-lg">{pct(t.provenance.paste)}%</div><div className="text-xs text-gray-500">pasted / quoted ({t.provenance.paste.toLocaleString()} w)</div></div>
               <div><div className={`font-bold text-lg ${pct(t.provenance.ai) > d.policy.maxAiUsagePercent ? "text-red-600" : "text-purple-600"}`}>{pct(t.provenance.ai)}%</div><div className="text-xs text-gray-500">AI-assisted ({t.provenance.ai.toLocaleString()} w) · limit {d.policy.maxAiUsagePercent}%</div></div>
             </div>
-            <p className="text-xs text-gray-400 mt-3">Provenance comes from the editor&apos;s insertion marks, paste attribution and extension-reported copies, not from a statistical AI detector. Open the document to see highlights in context.</p>
+            <p className="text-xs text-gray-400 mt-3">Provenance comes from the editor&apos;s insertion marks and paste attribution, including sentences recognised from the student&apos;s assistant and Research copilot answers, not from a statistical AI detector. Open the document to see highlights in context.</p>
           </div>
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-3"><Flag className="w-4 h-4 text-gray-500" /><h2 className="font-semibold">Integrity flags</h2></div>
@@ -91,7 +91,7 @@ export default function AdminThesisDetail() {
                 <div key={s.id} className="p-4 text-sm">
                   <button onClick={() => setOpen(open === s.id ? null : s.id)} className="w-full text-left">
                     <div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{new Date(s.startedAt).toLocaleString()}</span><span className="text-xs text-gray-400">{duration(s)} min</span>{s.device === "mobile" ? <Smartphone className="w-3.5 h-3.5 text-gray-400" /> : <Monitor className="w-3.5 h-3.5 text-gray-400" />}{!s.endedAt && Date.now() - new Date(s.lastHeartbeatAt).getTime() < 5 * 60 * 1000 && <span className="badge-success !text-[10px]">live</span>}{!s.consentId && <span className="badge bg-gray-100 text-gray-500 !text-[10px]">no consent record</span>}{s.integrityFlags.length > 0 && <span className="badge-warning !text-[10px]">{s.integrityFlags.length} flag</span>}</div>
-                    <div className="flex gap-3 text-xs text-gray-500 mt-1 flex-wrap"><span>{s.wordsWritten} words</span><span>{s.keystrokes.toLocaleString()} keys</span><span>{s.aiAssists} AI</span><span>{s.pasteEvents} pastes</span><span>{s.tabSwitches} tab switches</span><span>{s.externalAiVisits} ext. AI visits</span></div>
+                    <div className="flex gap-3 text-xs text-gray-500 mt-1 flex-wrap"><span>{s.wordsWritten} words</span><span>{s.keystrokes.toLocaleString()} keys</span><span>{s.aiAssists} AI</span><span>{s.pasteEvents} pastes</span><span>{s.tabSwitches} tab switches</span></div>
                   </button>
                   {open === s.id && (
                     <ul className="mt-2 pl-3 border-l border-gray-100 space-y-1 text-xs text-gray-600 max-h-48 overflow-y-auto">
@@ -111,7 +111,7 @@ export default function AdminThesisDetail() {
               {d.interactions.length === 0 && <div className="p-6 text-sm text-gray-400">No AI use logged.</div>}
               {d.interactions.map((i) => (
                 <div key={i.id} className="p-4 text-sm">
-                  <div className="flex items-center gap-2 flex-wrap"><span className="font-medium capitalize">{i.mode.replace("_", " ")}</span><span className="text-xs text-gray-400">{i.provider} · {i.model}</span>{i.source === "extension" && <span className="badge-warning !text-[10px] flex items-center gap-0.5"><ExternalLink className="w-2.5 h-2.5" />external</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">blocked</span>}{i.insertedWords > 0 && <span className="badge bg-purple-50 text-purple-700 !text-[10px]">{i.insertedWords} words inserted</span>}<span className="ml-auto text-[11px] text-gray-400">{timeAgo(i.timestamp)}</span></div>
+                  <div className="flex items-center gap-2 flex-wrap"><span className="font-medium capitalize">{i.mode.replace("_", " ")}</span><span className="text-xs text-gray-400">{i.provider} · {i.model}</span>{i.mode === "copilot" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px]">copilot</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">blocked</span>}{i.insertedWords > 0 && <span className="badge bg-purple-50 text-purple-700 !text-[10px]">{i.insertedWords} words inserted</span>}<span className="ml-auto text-[11px] text-gray-400">{timeAgo(i.timestamp)}</span></div>
                   <div className="text-gray-700 mt-1"><span className="text-gray-400">Prompt:</span> {i.promptPreview}</div>
                   {i.responsePreview && <div className="text-gray-500 text-xs mt-0.5 truncate"><span className="text-gray-400">Reply:</span> {i.responsePreview}</div>}
                 </div>

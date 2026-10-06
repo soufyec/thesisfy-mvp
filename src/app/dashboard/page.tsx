@@ -121,10 +121,10 @@ export default function StudentDashboard() {
             <h2 className="font-semibold mb-3">Quick actions</h2>
             <div className="space-y-2">
               <Link href="/dashboard/theses?new=1" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><FileText className="w-5 h-5 text-brand-600" />New thesis</Link>
+              <Link href="/dashboard/ai-chat?mode=copilot" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Sparkles className="w-5 h-5 text-emerald-600" />Research copilot</Link>
               <Link href="/dashboard/ai-chat" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Bot className="w-5 h-5 text-brand-600" />Ask the AI assistant</Link>
               <Link href="/dashboard/connections" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Plug className="w-5 h-5 text-brand-600" />{stats?.connectedProviders?.length ? `Connected: ${stats.connectedProviders.join(", ")}` : "Connect Claude / ChatGPT / Gemini"}</Link>
               <Link href="/dashboard/settings#mobile" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Smartphone className="w-5 h-5 text-brand-600" />Install on your phone</Link>
-              <Link href="/dashboard/settings#extension" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Sparkles className="w-5 h-5 text-brand-600" />Transparent AI use extension</Link>
             </div>
           </div>
         </div>

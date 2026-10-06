@@ -21,8 +21,6 @@ export async function POST(request: NextRequest) {
     paste: !!s.paste && policy.monitoring.paste,
     aiInteractions: !!s.aiInteractions && policy.monitoring.aiInteractions,
     tabActivity: !!s.tabActivity && policy.monitoring.tabActivity,
-    extensionActivity: !!s.extensionActivity && policy.monitoring.extension,
-    extensionPromptText: !!s.extensionPromptText && !!s.extensionActivity && policy.monitoring.extension,
   };
   if (policy.requireConsent && !scopes.aiInteractions) return error("AI interaction logging is required by your institution's policy to use the assistant.", 422);
   const consent = db.consents.grant({ userId: r.user.id, thesisId: body?.thesisId, version: CONSENT_VERSION, scopes, userAgent: request.headers.get("user-agent") || undefined });

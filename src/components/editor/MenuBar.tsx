@@ -10,7 +10,7 @@ export type MenuAction =
   | "outline" | "comments" | "ai" | "provenance" | "zoom-50" | "zoom-75" | "zoom-100" | "zoom-125" | "zoom-150" | "fullscreen" | "focus"
   | "image" | "table" | "link" | "comment" | "pageBreak" | "hr" | "date" | "citation" | "toc" | "footnote"
   | "bold" | "italic" | "underline" | "strike" | "superscript" | "subscript" | "h1" | "h2" | "h3" | "h4" | "p" | "alignLeft" | "alignCenter" | "alignRight" | "alignJustify" | "ls-1" | "ls-1.15" | "ls-1.5" | "ls-2" | "bullets" | "numbers" | "checklist" | "indent" | "outdent" | "clearFormat" | "blockquote" | "codeBlock"
-  | "spellcheck" | "references" | "integrity" | "privacy" | "shortcuts" | "about" | "extension";
+  | "spellcheck" | "references" | "integrity" | "privacy" | "shortcuts" | "about" | "copilot";
 
 interface Item {
   label: string;
@@ -240,7 +240,7 @@ export default function MenuBar({ editor, onAction, state }: Props) {
         { label: "Integrity & provenance report", action: "integrity" },
         { sep: true, label: "" },
         { label: "Privacy & monitoring choices", action: "privacy" },
-        { label: "Browser extension (transparent AI use)", action: "extension" },
+        { label: "Research copilot (ask anything, history kept)", action: "copilot" },
       ],
     },
     {

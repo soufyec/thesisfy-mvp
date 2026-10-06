@@ -127,9 +127,6 @@ export type SessionEventType =
   | "ai_prompt"
   | "ai_insert"
   | "ai_suggestion_rejected"
-  | "external_ai_visit"
-  | "external_ai_copy"
-  | "external_ai_prompt"
   | "tab_hidden"
   | "tab_visible"
   | "save"
@@ -147,8 +144,6 @@ export interface ConsentScopes {
   paste: boolean; // paste sizes + hash for attribution
   aiInteractions: boolean; // prompts/responses through Thesisfic assistant
   tabActivity: boolean; // tab hidden/visible while a session is active
-  extensionActivity: boolean; // visits/copies on external AI sites (via extension)
-  extensionPromptText: boolean; // prompt text typed on external AI sites (opt-in, off by default)
 }
 
 export interface Consent {
@@ -166,7 +161,7 @@ export interface IntegrityFlag {
   id: string;
   thesisId: string;
   sessionId?: string;
-  type: "bulk_paste" | "ai_generation" | "style_inconsistency" | "rapid_typing" | "external_source" | "unattributed_ai" | "policy_limit";
+  type: "bulk_paste" | "ai_generation" | "style_inconsistency" | "rapid_typing" | "unattributed_ai" | "policy_limit";
   severity: "low" | "medium" | "high";
   description: string;
   timestamp: string;
@@ -187,7 +182,6 @@ export interface WritingSession {
   keystrokes: number;
   pasteEvents: number;
   tabSwitches: number;
-  externalAiVisits: number;
   consentId?: string;
   device: "desktop" | "mobile" | "tablet";
   events: SessionEvent[];
@@ -218,7 +212,7 @@ export interface AIInteraction {
   provider: Provider | "demo";
   model: string;
   mode: AIMode;
-  source: "thesisfic" | "extension";
+  source: "thesisfic";
   connectionId?: string;
   promptPreview: string;
   responsePreview: string;
@@ -249,7 +243,6 @@ export interface Policy {
   maxAiUsagePercent: number;
   allowBYOK: boolean; // students may connect their own AI accounts
   allowedProviders: Provider[];
-  allowExternalAi: boolean; // external AI tools allowed when reported via extension
   allowedModes: AIMode[];
   blockGeneration: boolean; // hard-block "write it for me"
   /**
@@ -265,7 +258,6 @@ export interface Policy {
     paste: boolean;
     aiInteractions: boolean;
     tabActivity: boolean;
-    extension: boolean;
   };
   updatedAt: string;
   updatedBy?: string;
@@ -280,23 +272,6 @@ export interface Notification {
   read: boolean;
   link?: string;
   createdAt: string;
-}
-
-export interface PairingCode {
-  code: string;
-  userId: string;
-  createdAt: string;
-  expiresAt: string;
-  used: boolean;
-}
-
-export interface ExtensionToken {
-  token: string;
-  userId: string;
-  name: string;
-  createdAt: string;
-  lastSeenAt?: string;
-  revoked: boolean;
 }
 
 export type DatabaseAccess = "sso" | "proxy" | "vpn" | "campus" | "open" | "personal";
@@ -385,8 +360,6 @@ interface Store {
   consents: Consent[];
   policies: Policy[];
   notifications: Notification[];
-  pairingCodes: PairingCode[];
-  extensionTokens: ExtensionToken[];
   researchDatabases: ResearchDatabase[];
   librarySettings: LibrarySettings[];
   institutionModels: InstitutionModel[];
@@ -586,16 +559,6 @@ function seed(): Store {
       timestamp: "2026-03-07T11:02:00Z",
       resolved: false,
     },
-    {
-      id: "flag_3",
-      thesisId: "thesis_1",
-      sessionId: "sess_1",
-      type: "external_source",
-      severity: "low",
-      description: "Student visited chatgpt.com during an active writing session (reported by the Thesisfic extension with consent). No paste was matched to the visit.",
-      timestamp: "2026-03-12T10:12:00Z",
-      resolved: false,
-    },
   ];
 
   const sessions: WritingSession[] = [
@@ -611,13 +574,11 @@ function seed(): Store {
       keystrokes: 4200,
       pasteEvents: 2,
       tabSwitches: 6,
-      externalAiVisits: 1,
       consentId: "consent_1",
       device: "desktop",
       events: [
         { id: "ev_1", type: "ai_prompt", timestamp: "2026-03-12T09:20:00Z", data: { mode: "outline", provider: "anthropic", promptPreview: "Help me outline the discussion section" } },
-        { id: "ev_2", type: "external_ai_visit", timestamp: "2026-03-12T10:12:00Z", data: { host: "chatgpt.com", provider: "openai", durationSec: 340 } },
-        { id: "ev_3", type: "paste", timestamp: "2026-03-12T10:19:00Z", data: { words: 38, matchedExternal: false, hash: "9f2c" } },
+        { id: "ev_3", type: "paste", timestamp: "2026-03-12T10:19:00Z", data: { words: 38, hash: "9f2c" } },
         { id: "ev_4", type: "ai_insert", timestamp: "2026-03-12T11:02:00Z", data: { words: 41, provider: "anthropic", mode: "grammar" } },
       ],
       integrityFlags: [flags[2]],
@@ -634,7 +595,6 @@ function seed(): Store {
       keystrokes: 3800,
       pasteEvents: 1,
       tabSwitches: 2,
-      externalAiVisits: 0,
       consentId: "consent_1",
       device: "desktop",
       events: [],
@@ -652,9 +612,8 @@ function seed(): Store {
       keystrokes: 9100,
       pasteEvents: 3,
       tabSwitches: 4,
-      externalAiVisits: 0,
       device: "mobile",
-      events: [{ id: "ev_5", type: "paste", timestamp: "2026-03-07T11:02:00Z", data: { words: 342, matchedExternal: false } }],
+      events: [{ id: "ev_5", type: "paste", timestamp: "2026-03-07T11:02:00Z", data: { words: 342 } }],
       integrityFlags: [flags[1]],
     },
   ];
@@ -725,7 +684,6 @@ function seed(): Store {
     interactions: [
       { id: "ai_1", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "anthropic", model: "claude-sonnet-4-5", mode: "outline", source: "thesisfic", promptPreview: "Help me outline the discussion section", responsePreview: "A discussion section typically moves from your findings to their implications…", inputTokens: 420, outputTokens: 310, insertedWords: 0, blockedByPolicy: false, timestamp: "2026-03-12T09:20:00Z" },
       { id: "ai_2", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "anthropic", model: "claude-sonnet-4-5", mode: "grammar", source: "thesisfic", promptPreview: "Review this paragraph for clarity", responsePreview: "Two suggestions: split the second sentence and replace…", inputTokens: 380, outputTokens: 220, insertedWords: 41, blockedByPolicy: false, timestamp: "2026-03-12T11:02:00Z" },
-      { id: "ai_3", userId: "usr_1", thesisId: "thesis_1", sessionId: "sess_1", provider: "openai", model: "chatgpt.com", mode: "chat", source: "extension", promptPreview: "(prompt text not shared — consent scope off)", responsePreview: "", inputTokens: 0, outputTokens: 0, insertedWords: 0, blockedByPolicy: false, timestamp: "2026-03-12T10:12:00Z" },
       ...usage,
     ],
     conversations: [],
@@ -734,7 +692,7 @@ function seed(): Store {
         id: "consent_1",
         userId: "usr_1",
         version: "2026-03",
-        scopes: { keystrokes: true, paste: true, aiInteractions: true, tabActivity: true, extensionActivity: true, extensionPromptText: false },
+        scopes: { keystrokes: true, paste: true, aiInteractions: true, tabActivity: true },
         grantedAt: "2026-03-01T09:00:00Z",
       },
     ],
@@ -744,13 +702,12 @@ function seed(): Store {
         maxAiUsagePercent: 25,
         allowBYOK: true,
         allowedProviders: ["anthropic", "openai", "google"],
-        allowExternalAi: true,
         allowedModes: ["chat", "brainstorm", "outline", "critique", "grammar", "summarize", "explain", "citations", "gaps", "paraphrase_check", "copilot"],
         blockGeneration: true,
         researchCopilot: true,
         flagSensitivity: "medium",
         requireConsent: true,
-        monitoring: { keystrokes: true, paste: true, aiInteractions: true, tabActivity: true, extension: true },
+        monitoring: { keystrokes: true, paste: true, aiInteractions: true, tabActivity: true },
         updatedAt: "2026-02-01T00:00:00Z",
         updatedBy: "usr_2",
       },
@@ -759,13 +716,12 @@ function seed(): Store {
         maxAiUsagePercent: 15,
         allowBYOK: true,
         allowedProviders: ["anthropic", "openai", "mistral"],
-        allowExternalAi: false,
         allowedModes: ["chat", "brainstorm", "outline", "critique", "grammar", "explain", "citations", "gaps", "copilot"],
         blockGeneration: true,
         researchCopilot: true,
         flagSensitivity: "high",
         requireConsent: true,
-        monitoring: { keystrokes: true, paste: true, aiInteractions: true, tabActivity: false, extension: true },
+        monitoring: { keystrokes: true, paste: true, aiInteractions: true, tabActivity: false },
         updatedAt: "2026-02-10T00:00:00Z",
       },
     ],
@@ -775,8 +731,6 @@ function seed(): Store {
       { id: "notif_3", userId: "usr_1", title: "Integrity Score Updated", message: "Your integrity score for 'ML in Climate Change' increased to 94%.", type: "success", read: true, createdAt: "2026-03-12T12:00:00Z" },
       { id: "notif_4", userId: "usr_4", title: "Thesis submitted for review", message: "Marie Dupont submitted 'L'impact de l'IA…' for review.", type: "info", read: false, link: "/admin/theses/thesis_3", createdAt: "2026-03-08T16:05:00Z" },
     ],
-    pairingCodes: [],
-    extensionTokens: [],
     librarySettings: [
       { university: "Stanford University", intro: "Databases licensed by Stanford Libraries for your research. Sign in with your university account when a provider asks.", helpUrl: "https://library.stanford.edu/", updatedAt: "2026-09-01T00:00:00Z" },
       { university: "Sorbonne University", intro: "Ressources documentaires accessibles avec votre compte universitaire. En cas de problème d'accès, contactez la bibliothèque.", helpUrl: "https://www.sorbonne-universite.fr/bibliotheques", updatedAt: "2026-09-01T00:00:00Z" },
@@ -1071,7 +1025,6 @@ export const db = {
         keystrokes: 0,
         pasteEvents: 0,
         tabSwitches: 0,
-        externalAiVisits: 0,
         consentId: data.consentId,
         device: data.device,
         events: [],
@@ -1097,7 +1050,6 @@ export const db = {
       if (type === "paste") s.pasteEvents += 1;
       if (type === "ai_insert" || type === "ai_prompt") s.aiAssists += 1;
       if (type === "tab_hidden") s.tabSwitches += 1;
-      if (type === "external_ai_visit") s.externalAiVisits += 1;
       if (type === "typing" && typeof data.keystrokes === "number") s.keystrokes += data.keystrokes as number;
       if (type === "typing" && typeof data.words === "number") s.wordsWritten += data.words as number;
       if (s.events.length > 2000) s.events.splice(0, s.events.length - 2000);
@@ -1362,38 +1314,6 @@ export const db = {
     },
   },
 
-  pairing: {
-    create: (userId: string) => {
-      const s = load();
-      s.pairingCodes = s.pairingCodes.filter((p) => new Date(p.expiresAt).getTime() > Date.now() && p.userId !== userId);
-      const code = Math.random().toString(36).slice(2, 5).toUpperCase() + "-" + Math.random().toString(36).slice(2, 5).toUpperCase();
-      const p: PairingCode = { code, userId, createdAt: now(), expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), used: false };
-      s.pairingCodes.push(p);
-      persist();
-      return p;
-    },
-    redeem: (code: string, name: string) => {
-      const s = load();
-      const p = s.pairingCodes.find((x) => x.code === code.toUpperCase().trim() && !x.used && new Date(x.expiresAt).getTime() > Date.now());
-      if (!p) return null;
-      p.used = true;
-      const token: ExtensionToken = { token: "ext_" + randomUUID().replace(/-/g, ""), userId: p.userId, name, createdAt: now(), revoked: false };
-      s.extensionTokens.push(token);
-      persist();
-      return token;
-    },
-    tokens: (userId: string) => load().extensionTokens.filter((t) => t.userId === userId && !t.revoked),
-    findToken: (token: string) => load().extensionTokens.find((t) => t.token === token && !t.revoked),
-    revokeToken: (token: string) => {
-      const t = load().extensionTokens.find((x) => x.token === token);
-      if (t) t.revoked = true;
-      persist();
-    },
-    touch: (token: string) => {
-      const t = load().extensionTokens.find((x) => x.token === token);
-      if (t) t.lastSeenAt = now();
-    },
-  },
 };
 
 export function escapeHtml(s: string) {

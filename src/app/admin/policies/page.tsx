@@ -8,7 +8,7 @@ import { api } from "@/lib/client";
 
 const PROVIDERS = [["anthropic", "Claude (Anthropic)"], ["openai", "ChatGPT / GPT (OpenAI)"], ["google", "Gemini (Google)"], ["mistral", "Mistral / Le Chat"]];
 const MODES = [["chat", "Ask"], ["brainstorm", "Brainstorm"], ["outline", "Outline"], ["critique", "Critique"], ["grammar", "Grammar & style"], ["summarize", "Summarize"], ["explain", "Explain"], ["citations", "Citations"], ["gaps", "Find gaps"], ["paraphrase_check", "Paraphrase check"]];
-const MONITORING: [keyof Policy["monitoring"], string, string][] = [["keystrokes", "Typing rhythm", "Counts and speed only"], ["paste", "Paste detection", "Sizes and fingerprints for attribution"], ["aiInteractions", "AI interaction logging", "Prompts and answers via the assistant"], ["tabActivity", "Tab activity", "Editor tab hidden/visible"], ["extension", "External AI tools (extension)", "Visits and copies on AI chat sites"]];
+const MONITORING: [keyof Policy["monitoring"], string, string][] = [["keystrokes", "Typing rhythm", "Counts and speed only"], ["paste", "Paste detection", "Sizes and fingerprints for attribution"], ["aiInteractions", "AI interaction logging", "Prompts and answers via the assistant"], ["tabActivity", "Tab activity", "Editor tab hidden/visible"]];
 
 export default function PoliciesPage() {
   const { user } = useUser();
@@ -55,7 +55,6 @@ export default function PoliciesPage() {
                 <div key={id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"><span className="text-sm">{label}</span><Toggle checked={p.allowedProviders.includes(id)} disabled={!canEdit} onChange={() => toggleIn("allowedProviders", id)} /></div>
               ))}
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"><div><div className="text-sm font-medium">Allow personal AI accounts</div><div className="text-xs text-gray-500">Students connect Claude / ChatGPT / Gemini keys; requests are still logged and limited.</div></div><Toggle checked={p.allowBYOK} disabled={!canEdit} onChange={(v) => setP({ ...p, allowBYOK: v })} /></div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"><div><div className="text-sm font-medium">External AI tools (chat apps)</div><div className="text-xs text-gray-500">Allowed when the student reports them via the extension; otherwise visits are flagged.</div></div><Toggle checked={p.allowExternalAi} disabled={!canEdit} onChange={(v) => setP({ ...p, allowExternalAi: v })} /></div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"><div><div className="text-sm font-medium">Block “write it for me” requests</div><div className="text-xs text-gray-500">Requests for generated thesis text are refused and logged as blocked.</div></div><Toggle checked={p.blockGeneration} disabled={!canEdit} onChange={(v) => setP({ ...p, blockGeneration: v })} /></div>
             </div>
           </div>

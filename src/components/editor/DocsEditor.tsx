@@ -223,11 +223,10 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           if (!matched || !editorRef.current) return;
           const ed = editorRef.current;
           const to = Math.min(from + text.length, ed.state.doc.content.size);
-          const assistant = matched.kind === "assistant";
-          const label = assistant ? (matched.mode === "copilot" ? "Research copilot" : "Thesisfic assistant") : matched.host;
+          const label = matched.mode === "copilot" ? "Research copilot" : "Thesisfic assistant";
           ed.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: matched.provider, label, interactionId: matched.interactionId }).setTextSelection(to).run();
-          monitorRef.current?.recordAiInsert(words, matched.provider || "assistant", assistant ? matched.mode || "paste" : "paste", matched.interactionId);
-          notify(assistant ? `Pasted text came from the ${label}: marked as AI-assisted.` : `Pasted text matched a copy from ${label || matched.provider}: marked as AI-assisted.`, "info");
+          monitorRef.current?.recordAiInsert(words, matched.provider || "assistant", matched.mode || "paste", matched.interactionId);
+          notify(`Pasted text came from the ${label}: marked as AI-assisted.`, "info");
         });
         return false;
       },
@@ -485,7 +484,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     try {
       const res = await api<{ session: { id: string }; consent: Consent | null }>(`/api/theses/${thesisId}/sessions`, { method: "POST" });
       setSessionId(res.session.id);
-      const scopes = res.consent?.scopes || { keystrokes: false, paste: true, aiInteractions: true, tabActivity: false, extensionActivity: false, extensionPromptText: false };
+      const scopes = res.consent?.scopes || { keystrokes: false, paste: true, aiInteractions: true, tabActivity: false };
       monitorRef.current = new SessionMonitor(res.session.id, scopes, {
         onFlags: (fl: MonitorFlag[]) => {
           setFlags((prev) => [...fl.map((f) => ({ ...f, timestamp: new Date().toISOString(), resolved: false })), ...prev]);
@@ -536,8 +535,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     const to = editor.state.selection.to;
     if (decision !== "own") {
       const m = p.matched;
-      editor.chain().setTextSelection({ from, to }).setProvenance({ source: decision === "ai" ? "ai" : "paste", label: label || (decision === "ai" ? m?.host : undefined), provider: decision === "ai" ? m?.provider || label?.toLowerCase() : undefined, interactionId: decision === "ai" ? m?.interactionId : undefined }).setTextSelection(to).run();
-      if (decision === "ai") monitorRef.current?.recordAiInsert(p.words, m?.provider || label || "external", m?.kind === "assistant" ? m.mode || "paste" : "paste", m?.interactionId);
+      editor.chain().setTextSelection({ from, to }).setProvenance({ source: decision === "ai" ? "ai" : "paste", label: label || undefined, provider: decision === "ai" ? m?.provider || label?.toLowerCase() : undefined, interactionId: decision === "ai" ? m?.interactionId : undefined }).setTextSelection(to).run();
+      if (decision === "ai") monitorRef.current?.recordAiInsert(p.words, m?.provider || label || "external", m?.mode || "paste", m?.interactionId);
     }
     monitorRef.current?.flush();
   };
@@ -716,7 +715,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       clearFormat: () => c().unsetAllMarks().clearNodes().run(),
       spellcheck: () => setSpellcheck((v) => !v),
       privacy: () => setDialog("consent"),
-      extension: () => router.push("/dashboard/settings#extension"),
+      copilot: () => { setSidebar("ai"); },
       shortcuts: () => setDialog("shortcuts"),
       about: () => setDialog("about"),
     };

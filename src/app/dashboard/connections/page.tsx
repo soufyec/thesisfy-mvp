@@ -129,7 +129,7 @@ function ConnectionsInner() {
         <ShieldCheck className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-gray-600 space-y-1">
           <p><strong>How it works.</strong> Connect Claude, ChatGPT/GPT, Gemini or Mistral with an API key from your own account. Thesisfic stores it encrypted (AES-256-GCM), uses it only for your requests, and never shows it to staff. Requests you make through Thesisfic are logged with provider, model and purpose; text you insert is marked as AI-assisted.</p>
-          <p><strong>Using the chat apps directly?</strong> Install the <Link href="/dashboard/settings#extension" className="text-brand-600 underline">transparency extension</Link> so visits and copied text on chatgpt.com, claude.ai or gemini.google.com are attributed to you honestly while you write.</p>
+          <p><strong>Prefer not to manage keys?</strong> The <Link href="/dashboard/ai-chat?mode=copilot" className="text-brand-600 underline">Research copilot</Link> runs on the models your university provides, keeps your history, and needs nothing from you.</p>
           {policy && !policy.allowBYOK && <p className="text-amber-700">Your institution does not allow personal AI accounts; the institution assistant is used instead.</p>}
         </div>
       </div>
@@ -155,7 +155,7 @@ function ConnectionsInner() {
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-2 text-sm text-gray-500">{p.platformKey ? `Your institution provides ${p.product} for you. Connect your own account to use your personal quota and models.` : `Connect your ${p.product} account to use it from Thesisfic.`} Sites covered by the extension: {p.sites.join(", ")}.</div>
+                    <div className="mt-2 text-sm text-gray-500">{p.platformKey ? `Your institution provides ${p.product} for you. Connect your own account to use your personal quota and models.` : `Connect your ${p.product} account to use it from Thesisfic.`}</div>
                   )}
                   {!c && p.allowedByPolicy && policy?.allowBYOK && (
                     <div className="flex items-center gap-2 mt-3 flex-wrap">

@@ -14,7 +14,7 @@ export async function PUT(request: NextRequest) {
   if (r.user.role !== "admin") return error("Only administrators can change policies", 403);
   const body = await request.json().catch(() => null);
   if (!body) return error("Invalid body");
-  const allowed = ["maxAiUsagePercent", "allowBYOK", "allowedProviders", "allowExternalAi", "allowedModes", "blockGeneration", "researchCopilot", "flagSensitivity", "requireConsent", "monitoring"];
+  const allowed = ["maxAiUsagePercent", "allowBYOK", "allowedProviders", "allowedModes", "blockGeneration", "researchCopilot", "flagSensitivity", "requireConsent", "monitoring"];
   const patch: Record<string, unknown> = {};
   for (const k of allowed) if (body[k] !== undefined) patch[k] = body[k];
   if (patch.maxAiUsagePercent !== undefined) patch.maxAiUsagePercent = Math.max(0, Math.min(100, Number(patch.maxAiUsagePercent)));

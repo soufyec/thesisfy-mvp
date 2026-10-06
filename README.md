@@ -7,11 +7,10 @@
 | Area | Highlights |
 |---|---|
 | **Google-Docs-style editor** | TipTap/ProseMirror editor with File/Edit/View/Insert/Format/Tools/Help menus, full toolbar (styles, fonts, sizes, colors, highlight, align, spacing, lists, checklists, indent, super/subscript), A4/Letter page layout with zoom, outline, comments with replies/resolve, version history with preview/restore, citations manager (APA/MLA/Chicago/IEEE/Harvard) and bibliography, find & replace, tables, images, links, page breaks, footnotes, TOC, page setup, word count, print/PDF, export to **.docx**, HTML, Markdown, text. Autosave with named versions. |
-| **Provenance tracking** | Text inserted from the assistant is marked `data-provenance="ai"`; large pastes trigger an attribution prompt (own / source / AI); pastes that match text copied from an AI site (via the extension) are attributed automatically. Toggle highlights, see the share per document, integrity score explained line by line. |
+| **Provenance tracking** | Text inserted from the assistant is marked `data-provenance="ai"`; large pastes trigger an attribution prompt (own / source / AI); pastes that match a sentence from the student's assistant or Research copilot answers are attributed automatically. Toggle highlights, see the share per document, integrity score explained line by line. |
 | **AI assistant** | Streaming multi-provider assistant (Anthropic Claude via official SDK, OpenAI, Google Gemini, Mistral) with 10 pedagogical modes (ask, brainstorm, outline, critique, grammar, summarize, explain, citations, gaps, paraphrase check), policy guardrails (blocks "write it for me" in EN/ES/FR, mode allow-list, AI % limit), conversation history, insert-to-document as AI-marked text, demo mode without keys. |
 | **Bring your own AI account** | Students connect their Claude / ChatGPT / Gemini / Mistral **API key** (validated, AES-256-GCM encrypted, revocable, per-provider model choice). OAuth 2.0 + PKCE "Sign in with …" flow is implemented and activates through env vars once a provider offers third-party sign-in. |
-| **Consent-based monitoring** | Students choose scopes (AI interactions, typing rhythm, paste fingerprints, tab activity, extension activity, prompt text) within institution policy; receipts and history; withdrawal ends monitoring instantly. Sessions log counts and fingerprints, never text. |
-| **Browser extension** | `extension/` (Manifest V3): with consent and only during an active session, reports visits to chatgpt.com / claude.ai / gemini.google.com / chat.mistral.ai, SHA-256 fingerprints of copied text, and prompt submissions. Pairing via one-time code. |
+| **Consent-based monitoring** | Students choose scopes (AI interactions, typing rhythm, paste fingerprints, tab activity) within institution policy; receipts and history; withdrawal ends monitoring instantly. Sessions log counts and fingerprints, never text. |
 | **Mobile** | Responsive layouts with bottom navigation, touch editor toolbar, bottom-sheet AI assistant, installable PWA (manifest, service worker, offline page, icons) and a Capacitor wrapper in `mobile/` for iOS/Android. |
 | **Institution side** | Dashboard, all theses, per-thesis review page (provenance report, sessions timeline with events, AI log, flags, comments, approve / request revision), students with invites, flag resolution, persisted AI policies (limits, providers, BYOK, external tools, modes, monitoring features, consent requirement). |
 
@@ -49,7 +48,7 @@ Spend is metered per request from the model's configured prices; administrators 
 
 ### Research copilot
 
-With **Research copilot** enabled (Admin → AI policies), students may ask anything connected to their research on the university-provided models: literature, methods, statistics, code, planning. The history is kept and visible to the institution. Two guardrails stay on: "write it for me" requests are refused and logged as blocked, and every answer is fingerprinted sentence by sentence (SHA-256 of normalised text, never the text itself), so when a student pastes part of an answer into the thesis the editor recognises it, marks it as AI-assisted and links it to the conversation. The same mechanism attributes copies reported by the browser extension.
+With **Research copilot** enabled (Admin → AI policies), students may ask anything connected to their research on the university-provided models: literature, methods, statistics, code, planning. The history is kept and visible to the institution. Two guardrails stay on: "write it for me" requests are refused and logged as blocked, and every answer is fingerprinted sentence by sentence (SHA-256 of normalised text, never the text itself), so when a student pastes part of an answer into the thesis the editor recognises it, marks it as AI-assisted and links it to the conversation.
 
 ## Architecture
 
@@ -68,7 +67,7 @@ src/
 │       ├── ai/chat                  SSE streaming, guardrails, logging
 │       ├── ai/connections           BYOK keys, oauth/[provider], oauth/callback
 │       ├── ai/{providers,logs,conversations}
-│       ├── monitor/{consent,pair,status,events}   Consent + extension endpoints
+│       ├── monitor/consent              Consent endpoints
 │       ├── policies, flags, notifications, users, stats
 ├── components/
 │   ├── editor/                      DocsEditor, MenuBar, Toolbar, Sidebars, Dialogs, extensions (provenance, comments, search…)
@@ -81,7 +80,6 @@ src/
 │   ├── monitor.ts                   Client session monitor (batching, fingerprints, visibility)
 │   ├── export.ts                    HTML → DOCX / Markdown / text
 │   ├── auth.ts, crypto.ts, api.ts, cors.ts, client.ts, nav.tsx
-extension/                           Chrome MV3 transparency companion
 mobile/                              Capacitor wrapper + README
 ```
 
@@ -89,7 +87,7 @@ mobile/                              Capacitor wrapper + README
 
 1. **Inside Thesisfic**: every assistant call is logged (provider, model, mode, tokens, blocked-by-policy). Inserted text carries a provenance mark. Nothing is inferred.
 2. **Pastes**: the editor fingerprints pasted text (SHA-256 of normalized text, first 32 hex) and asks the student to attribute large pastes. The text itself is never sent for monitoring.
-3. **External chat apps**: the extension (opt-in scope) reports visits, copy fingerprints and prompt submissions **only while a session is active**. A paste whose fingerprint matches a reported copy is attributed to that tool automatically.
+3. **Research copilot answers**: every answer is fingerprinted sentence by sentence; a paste whose sentences match is attributed to that conversation automatically.
 4. **Consent** is granular, versioned, revocable and enforced on the server: events for scopes the student did not grant are dropped even if a client sends them.
 
 ### Production notes

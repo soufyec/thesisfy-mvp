@@ -1,9 +1,8 @@
 "use client";
 
 export interface PasteMatch {
-  kind: "external" | "assistant";
+  kind: "assistant";
   provider?: string;
-  host?: string;
   model?: string;
   mode?: string;
   interactionId?: string;
@@ -19,8 +18,6 @@ export interface ConsentScopes {
   paste: boolean;
   aiInteractions: boolean;
   tabActivity: boolean;
-  extensionActivity: boolean;
-  extensionPromptText: boolean;
 }
 
 export interface MonitorFlag {
@@ -92,7 +89,7 @@ export class SessionMonitor {
 
   /**
    * Paste: only sizes and fingerprints (whole text, paragraphs, sentences) leave the browser.
-   * Resolves with the server's attribution: a copy reported by the extension, or an answer from the Thesisfic assistant.
+   * Resolves with the server's attribution when the text came from a Thesisfic assistant answer.
    */
   async recordPaste(text: string, attributed = false): Promise<PasteMatch | null> {
     if (!this.scopes.paste) return null;
@@ -102,10 +99,8 @@ export class SessionMonitor {
     const fingerprints = Array.from(new Set([fp, ...(await Promise.all(parts.map(fingerprint)))]));
     this.push("paste", { words, chars: text.length, fingerprint: fp, fingerprints, attributed });
     const res = await this.flush();
-    const ev = res?.matches?.find((m) => m.fingerprint === fp) as { matchedExternal?: { provider?: string; host?: string }; matchedAi?: PasteMatch } | undefined;
-    if (ev?.matchedAi) return ev.matchedAi;
-    if (ev?.matchedExternal) return { kind: "external", ...ev.matchedExternal };
-    return null;
+    const ev = res?.matches?.find((m) => m.fingerprint === fp) as { matchedAi?: PasteMatch } | undefined;
+    return ev?.matchedAi || null;
   }
 
   recordAiInsert(words: number, provider: string, mode: string, interactionId?: string) {

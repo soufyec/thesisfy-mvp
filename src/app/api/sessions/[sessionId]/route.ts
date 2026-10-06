@@ -30,7 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: { session
     if ((ev.type === "ai_prompt" || ev.type === "ai_insert") && scopes && !scopes.aiInteractions) continue;
 
     if (ev.type === "paste") {
-      // Never store pasted text. Fingerprint it and match against copies reported by the extension.
+      // Never store pasted text. Fingerprint it and match against the student's assistant answers.
       const text = typeof data.text === "string" ? (data.text as string) : "";
       delete data.text;
       const fp = (data.fingerprint as string | undefined) || (text ? textFingerprint(text) : undefined);
@@ -39,10 +39,6 @@ export async function POST(request: NextRequest, { params }: { params: { session
       if (text) for (const f of passageFingerprints(text)) if (!fps.includes(f)) fps.push(f);
       delete data.fingerprints;
       data.fingerprintCount = fps.length;
-      const cutoff = Date.now() - 30 * 60 * 1000;
-      const fpSet = new Set(fps);
-      const match = session.events.find((e) => e.type === "external_ai_copy" && fpSet.has(String(e.data.fingerprint)) && new Date(e.timestamp).getTime() > cutoff);
-      if (match) data.matchedExternal = { provider: match.data.provider, host: match.data.host };
       // Text taken from the Thesisfic assistant / research copilot: recognised by the answer's sentence fingerprints.
       const ai = db.interactions.matchFingerprints(r.user.id, fps)[0];
       if (ai) {
@@ -60,8 +56,8 @@ export async function POST(request: NextRequest, { params }: { params: { session
   return json({
     ok: true,
     flags: created,
-    session: { id: refreshed.id, keystrokes: refreshed.keystrokes, wordsWritten: refreshed.wordsWritten, aiAssists: refreshed.aiAssists, pasteEvents: refreshed.pasteEvents, tabSwitches: refreshed.tabSwitches, externalAiVisits: refreshed.externalAiVisits },
-    matches: events.filter((e) => e.type === "paste").length ? refreshed.events.slice(-events.length).filter((e) => e.type === "paste" && (e.data.matchedExternal || e.data.matchedAi)).map((e) => e.data) : [],
+    session: { id: refreshed.id, keystrokes: refreshed.keystrokes, wordsWritten: refreshed.wordsWritten, aiAssists: refreshed.aiAssists, pasteEvents: refreshed.pasteEvents, tabSwitches: refreshed.tabSwitches },
+    matches: events.filter((e) => e.type === "paste").length ? refreshed.events.slice(-events.length).filter((e) => e.type === "paste" && e.data.matchedAi).map((e) => e.data) : [],
   });
 }
 

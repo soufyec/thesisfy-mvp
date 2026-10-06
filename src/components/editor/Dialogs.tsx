@@ -135,9 +135,8 @@ export function ConfirmDialog({ open, onClose, title, body, onConfirm, confirmLa
 export type PasteDecision = "own" | "source" | "ai";
 
 export interface PasteMatchInfo {
-  kind: "external" | "assistant";
+  kind: "assistant";
   provider?: string;
-  host?: string;
   model?: string;
   mode?: string;
   interactionId?: string;
@@ -149,7 +148,7 @@ export function PasteAttributionDialog({ open, words, matched, onDecide }: { ope
   const [label, setLabel] = useState("");
   const [choice, setChoice] = useState<PasteDecision>(matched ? "ai" : "own");
   const assistant = matched?.kind === "assistant";
-  const defaultLabel = assistant ? (matched?.mode === "copilot" ? "Research copilot" : "Thesisfic assistant") : matched?.host || "";
+  const defaultLabel = assistant ? (matched?.mode === "copilot" ? "Research copilot" : "Thesisfic assistant") : "";
   useEffect(() => { setChoice(matched ? "ai" : "own"); setLabel(defaultLabel); }, [matched, open, defaultLabel]);
   return (
     <Modal open={open} onClose={() => onDecide(choice, label)} title="Where does this text come from?" size="sm" footer={<button onClick={() => onDecide(choice, label)} className="btn-primary !py-2 !px-4 text-sm">Continue</button>}>
@@ -158,7 +157,7 @@ export function PasteAttributionDialog({ open, words, matched, onDecide }: { ope
           {matched?.share !== undefined && matched.share < 1 ? `About ${Math.round(matched.share * 100)}% of` : "All of"} this text matches an answer from the <strong>{defaultLabel}</strong>{matched?.model ? ` (${matched.model})` : ""}{matched?.at ? `, ${new Date(matched.at).toLocaleString()}` : ""}. It will be marked as AI-assisted and linked to that conversation.
         </div>
       )}
-      <p className="text-sm text-gray-600 mb-3">You pasted <strong>{words} words</strong>{matched && !assistant ? <> that match text you copied from <strong>{matched.host || matched.provider}</strong> (reported by your extension)</> : null}. Attribution keeps your integrity profile honest and is visible to your advisor.</p>
+      <p className="text-sm text-gray-600 mb-3">You pasted <strong>{words} words</strong>. Attribution keeps your integrity profile honest and is visible to your advisor.</p>
       <div className="space-y-2">
         {([["own", "My own writing (from notes or another file)", "Counted as yours."], ["source", "Quoted or adapted from a source", "Marked as pasted; remember to cite it."], ["ai", "From an AI tool (ChatGPT, Claude, Gemini…)", "Marked as AI-assisted and counted toward your AI limit."]] as [PasteDecision, string, string][]).map(([k, t, d]) => (
           <label key={k} className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer ${choice === k ? "border-brand-500 bg-brand-50" : "border-gray-200"} ${assistant && k !== "ai" ? "opacity-50" : ""}`}>

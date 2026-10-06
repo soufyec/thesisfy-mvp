@@ -62,18 +62,12 @@ export function verifyToken(token: string): AuthPayload | null {
   }
 }
 
-/** Resolves the current user from the auth cookie or an Authorization: Bearer header (mobile / extension clients). */
+/** Resolves the current user from the auth cookie or an Authorization: Bearer header (mobile clients). */
 export function getSessionUser(request: NextRequest): User | null {
   const header = request.headers.get("authorization");
   const bearer = header?.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : undefined;
   const token = bearer || request.cookies.get("token")?.value;
   if (!token) return null;
-  if (token.startsWith("ext_")) {
-    const ext = db.pairing.findToken(token);
-    if (!ext) return null;
-    db.pairing.touch(token);
-    return db.users.findById(ext.userId) || null;
-  }
   const payload = verifyToken(token);
   if (!payload) return null;
   const user = db.users.findById(payload.userId) || null;
