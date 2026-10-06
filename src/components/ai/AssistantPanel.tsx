@@ -1,7 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Check, ChevronDown, Copy, FilePlus2, History, Plus, Send, Square, Trash2, Wand2 } from "lucide-react";
+import {
+  ArrowUp,
+  BookMarked,
+  Bot,
+  Check,
+  ChevronDown,
+  CircleAlert,
+  Compass,
+  Copy,
+  FileText,
+  GraduationCap,
+  History,
+  Lightbulb,
+  List,
+  type LucideIcon,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Search,
+  Shuffle,
+  Square,
+  Trash2,
+  X,
+} from "lucide-react";
 import Markdown, { markdownToHtml } from "../Markdown";
 import { api, ApiError, countWordsInText, streamChat, timeAgo } from "@/lib/client";
 
@@ -11,6 +34,7 @@ interface ModeInfo {
   id: AIMode;
   label: string;
   description: string;
+  /** lucide-react icon name (see `MODES` in `src/lib/ai/prompts.ts`). */
   icon: string;
   insertable: boolean;
 }
@@ -96,6 +120,45 @@ export interface AssistantPanelProps {
   onKeepAsNotes?: (html: string, meta: InsertMeta) => void;
 }
 
+/** Display labels used inside the panel (tiles, meta lines, placeholder). Short forms per the UI vocabulary. */
+export const MODE_LABELS: Record<AIMode, string> = {
+  copilot: "Research copilot",
+  chat: "Ask",
+  brainstorm: "Brainstorm",
+  outline: "Outline",
+  critique: "Critique",
+  grammar: "Grammar",
+  summarize: "Summarize",
+  explain: "Explain",
+  citations: "Citations",
+  gaps: "Find gaps",
+  paraphrase_check: "Paraphrase",
+};
+
+/** Noun used in the cost card: "Inserting this outline adds…". */
+const INSERT_NOUN: Partial<Record<AIMode, string>> = {
+  outline: "outline",
+  summarize: "summary",
+  citations: "citation",
+  brainstorm: "brainstorm",
+  explain: "explanation",
+  grammar: "correction",
+};
+
+const ICONS: Record<string, LucideIcon> = {
+  MessageSquare,
+  Lightbulb,
+  List,
+  Search,
+  Pencil,
+  FileText,
+  GraduationCap,
+  BookMarked,
+  CircleAlert,
+  Shuffle,
+  Compass,
+};
+
 const QUICK: Record<AIMode, string[]> = {
   chat: ["How do I narrow my research question?", "What makes a strong thesis statement?", "How should I respond to a reviewer who disagrees with my method?"],
   brainstorm: ["Give me angles on the limitations of my approach", "What counter-arguments should I anticipate?", "Research questions around my topic"],
@@ -110,7 +173,29 @@ const QUICK: Record<AIMode, string[]> = {
   copilot: ["Which statistical test fits my design?", "Explain how to run a systematic review search", "Help me plan the next 4 weeks of my research", "What are the strongest objections to my method?"],
 };
 
-export default function AssistantPanel({ thesisId, sessionId, selection, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode, initialConversationId, className = "", onConversationsChanged }: AssistantPanelProps) {
+const GUIDING_PROMPT = "Give me three guiding questions so I can redraft this in my own words, without writing it for me.";
+const COPILOT_NOTE = "Provided by your university. Ask anything about your research. The history is kept and visible to your institution; it will not write your thesis, and sentences you copy from it into your thesis are marked as AI-assisted.";
+
+type PendingAction = "insert" | "notes" | "replace";
+const ACTION_LABEL: Record<PendingAction, string> = { insert: "Insert, marked as AI", notes: "Keep as notes", replace: "Replace selection" };
+
+/** Markdown answer -> plain text for comments. */
+function toPlainText(md: string) {
+  return md
+    .replace(/```[\s\S]*?```/g, (b) => b.replace(/```\w*\n?/g, ""))
+    .replace(/^\s*#{1,6}\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/^\s*[-*•]\s+/gm, "• ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__)([^*_]+)\1/g, "$2")
+    .replace(/(\*|_)([^*_\n]+)\1/g, "$2")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
+}
+
+const ACTION_BTN = "text-xs px-2.5 py-[5px] rounded-lg border border-gray-200 bg-white text-brand-700 font-medium hover:bg-brand-50 disabled:opacity-40 flex items-center gap-1";
+
+export default function AssistantPanel({ thesisId, sessionId, selection, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode, initialConversationId, className = "", onConversationsChanged, insertContext, onClearSelection, onAddComment, onKeepAsNotes }: AssistantPanelProps) {
   const [modes, setModes] = useState<ModeInfo[]>([]);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [institutionModels, setInstitutionModels] = useState<InstitutionModelInfo[]>([]);
@@ -127,6 +212,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const [providerOpen, setProviderOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [inserted, setInserted] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ id: string; action: PendingAction } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -173,9 +259,17 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, loading]);
+  }, [messages, loading, pending]);
+
+  // A new selection from the editor re-enables the "Working on" context after it was dismissed.
+  useEffect(() => {
+    setUseSelection(true);
+  }, [selection]);
 
   const currentMode = useMemo(() => modes.find((m) => m.id === mode), [modes, mode]);
+  const copilotMode = modes.find((m) => m.id === "copilot");
+  const gridModes = (modes.length ? modes : [{ id: "chat", label: "Ask", icon: "MessageSquare", description: "Open conversation about your research", insertable: false } as ModeInfo]).filter((m) => m.id !== "copilot");
+  const workingOn = !!selection && useSelection;
   const selectionWords = selection ? countWordsInText(selection) : 0;
   const connected = providers.filter((p) => p.connection && p.connection.status === "active");
   const activeProvider = providers.find((p) => p.id === providerChoice);
@@ -183,14 +277,34 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const readyInstitution = institutionModels.filter((m) => m.ready);
   const defaultInstitution = readyInstitution.find((m) => m.isDefault) || readyInstitution[0];
   const allowanceUsed = allowance && allowance.perStudentMonthly > 0 ? Math.min(100, Math.round((allowance.spentStudent / allowance.perStudentMonthly) * 100)) : null;
-  const autoLabel = allowance?.institutionPays && defaultInstitution && allowance.exhausted === "none" ? `${defaultInstitution.label} · paid by your university` : connected[0] ? `Your ${connected[0].product} account` : "Institution assistant";
-  const chipLabel = providerChoice === "auto" ? "Auto" : activeInstitution ? activeInstitution.label.split(" (")[0] : activeProvider?.product.split(" ")[0];
-  const chipColor = activeInstitution?.color || activeProvider?.color || "#5c7cfa";
+
+  // Provider chip: "Claude · your account" / "Claude Sonnet 5.5 · your university" / "Demo assistant".
+  const shortLabel = (s: string) => s.split(" (")[0];
+  const firstWord = (s: string) => s.split(/[\s/]/)[0];
+  let chipText = "Demo assistant";
+  let chipColor: string | null = null;
+  if (providerChoice === "auto") {
+    if (allowance?.institutionPays && defaultInstitution && allowance.exhausted === "none") {
+      chipText = `${shortLabel(defaultInstitution.label)} · your university`;
+      chipColor = defaultInstitution.color;
+    } else if (connected[0]) {
+      chipText = `${firstWord(connected[0].product)} · your account`;
+      chipColor = connected[0].color;
+    }
+  } else if (activeInstitution) {
+    chipText = `${shortLabel(activeInstitution.label)} · your university`;
+    chipColor = activeInstitution.color;
+  } else if (activeProvider) {
+    const name = firstWord(activeProvider.product);
+    chipText = activeProvider.connection?.status === "active" ? `${name} · your account` : activeProvider.platformKey ? `${name} · institution` : `${name} · demo`;
+    chipColor = activeProvider.color;
+  }
 
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
     setInput("");
+    setPending(null);
     const userMsg: ChatMsg = { id: `u_${Date.now()}`, role: "user", content, mode, createdAt: new Date().toISOString() };
     const asstId = `a_${Date.now()}`;
     const asst: ChatMsg = { id: asstId, role: "assistant", content: "", mode, streaming: true, createdAt: new Date().toISOString() };
@@ -209,7 +323,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           sessionId,
           conversationId,
           provider: providerChoice === "auto" ? null : providerChoice,
-          selection: useSelection && selection ? selection : undefined,
+          selection: workingOn ? selection : undefined,
         },
         {
           onMeta: (meta) => {
@@ -246,6 +360,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     setMessages([]);
     setConversationId(undefined);
     setHistoryOpen(false);
+    setPending(null);
   };
 
   const openConversation = async (id: string) => {
@@ -254,6 +369,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       const d = await api<{ conversation: { messages: ChatMsg[] } }>(`/api/ai/conversations/${id}`);
       setConversationId(id);
       setMessages(d.conversation.messages);
+      setPending(null);
     } catch {
       /* ignore */
     }
@@ -271,42 +387,145 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     setTimeout(() => setCopied(null), 1500);
   };
 
-  const insert = (m: ChatMsg, replace = false) => {
+  const dismissSelection = () => {
+    setUseSelection(false);
+    onClearSelection?.();
+  };
+
+  const metaFor = (m: ChatMsg): InsertMeta => ({ provider: m.provider || "demo", model: m.model || "", mode: m.mode || mode, interactionId: m.interactionId, words: countWordsInText(m.content) });
+
+  /** Runs the confirmed action from the cost card. Never called without it. */
+  const confirmPending = () => {
+    if (!pending) return;
+    const m = messages.find((x) => x.id === pending.id);
+    if (!m) return setPending(null);
     const html = markdownToHtml(m.content);
-    const meta: InsertMeta = { provider: m.provider || "demo", model: m.model || "", mode: m.mode || mode, interactionId: m.interactionId, words: countWordsInText(m.content) };
-    if (replace) onReplaceSelection?.(html, meta);
-    else onInsert?.(html, meta);
+    const meta = metaFor(m);
+    if (pending.action === "insert") onInsert?.(html, meta);
+    else if (pending.action === "notes") onKeepAsNotes?.(html, meta);
+    else onReplaceSelection?.(html, meta);
+    setPending(null);
     setInserted(m.id);
     setTimeout(() => setInserted(null), 1500);
   };
 
   const isPage = variant === "page";
+  const column = isPage ? "max-w-3xl w-full mx-auto" : "";
+  const modeLabel = (id?: AIMode) => (id ? MODE_LABELS[id] || id : "Ask");
+  const placeholderLabel = currentMode ? MODE_LABELS[currentMode.id] || currentMode.label : modeLabel(mode);
+
+  const renderCostCard = (m: ChatMsg) => {
+    if (!pending || pending.id !== m.id) return null;
+    const n = countWordsInText(m.content);
+    const noun = INSERT_NOUN[m.mode || mode] || "answer";
+    const ctx = insertContext;
+    const cur = ctx && ctx.wordCount > 0 ? Math.round((ctx.aiWords / ctx.wordCount) * 100) : 0;
+    const next = ctx ? Math.round(((ctx.aiWords + n) / (ctx.wordCount + n || 1)) * 100) : 0;
+    const over = !!ctx && next > ctx.limitPct;
+    return (
+      <div className="mt-2 border border-prov-ai-line bg-prov-ai-soft rounded-xl p-3" role="dialog" aria-label="Before you insert AI text">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="w-2 h-2 rounded-full bg-prov-ai" />
+          <span className="text-xs font-semibold text-prov-ai-deep">Before you insert AI text</span>
+        </div>
+        <div className="text-[12.5px] leading-normal text-gray-700">
+          {ctx ? (
+            <>
+              Inserting this {noun} adds <b>{n} AI-assisted {n === 1 ? "word" : "words"}</b>. Your AI share goes from <b>{cur}% to {next}%</b> of the {ctx.limitPct}% your institution allows. It is marked in the document and visible to your advisor.
+            </>
+          ) : (
+            <>
+              Inserting this {noun} adds <b>{n} AI-assisted {n === 1 ? "word" : "words"}</b>. It is marked as AI-assisted wherever it goes and counts toward your institution&apos;s AI limit.
+            </>
+          )}
+          {ctx?.payer && <> Billed to {ctx.payer} (AI budget).</>}
+          {over && ctx && <div className="mt-1.5 text-prov-ai-deep font-medium">This insertion would take you to {next}%, above the {ctx.limitPct}% limit.</div>}
+        </div>
+        <div className="flex gap-1.5 mt-2.5 text-xs">
+          <button onClick={confirmPending} disabled={over} className="px-[11px] py-1.5 rounded-lg bg-prov-ai text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+            {ACTION_LABEL[pending.action]}
+          </button>
+          <button onClick={() => setPending(null)} className="px-[11px] py-1.5 rounded-lg border border-prov-ai-line text-prov-ai-deep font-medium hover:bg-white">
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderActions = (m: ChatMsg) => {
+    const mm = m.mode || mode;
+    const guiding = mm === "critique" || mm === "gaps" || mm === "paraphrase_check" || mm === "copilot";
+    const insertable = mm === "outline" || mm === "summarize" || mm === "citations" || mm === "brainstorm" || mm === "explain";
+    const grammar = mm === "grammar";
+    const canReplace = grammar && !!onReplaceSelection && !!selection;
+    const canInsert = !!onInsert && (insertable || (grammar && !canReplace));
+    const canNotes = !!onKeepAsNotes && insertable;
+    const open = (action: PendingAction) => setPending((p) => (p && p.id === m.id && p.action === action ? null : { id: m.id, action }));
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+        {!m.blocked && guiding && (
+          <button onClick={() => send(GUIDING_PROMPT)} disabled={loading} className={ACTION_BTN}>
+            Guiding questions
+          </button>
+        )}
+        {!m.blocked && (guiding || mm === "chat") && onAddComment && (
+          <button onClick={() => onAddComment(toPlainText(m.content))} className={ACTION_BTN}>
+            Add as comment
+          </button>
+        )}
+        {!m.blocked && canInsert && (
+          <button onClick={() => open("insert")} className={ACTION_BTN} title="Insert at the cursor, marked as AI-assisted">
+            {inserted === m.id ? <Check className="w-3 h-3" /> : null} {ACTION_LABEL.insert}
+          </button>
+        )}
+        {!m.blocked && canNotes && (
+          <button onClick={() => open("notes")} className={ACTION_BTN} title="Add to your Research notes tab, marked as AI-assisted">
+            {ACTION_LABEL.notes}
+          </button>
+        )}
+        {!m.blocked && canReplace && (
+          <button onClick={() => open("replace")} className={ACTION_BTN} title="Replace the selected passage, marked as AI-assisted">
+            {inserted === m.id ? <Check className="w-3 h-3" /> : null} {ACTION_LABEL.replace}
+          </button>
+        )}
+        <button onClick={() => copy(m)} className={`${ACTION_BTN} !text-gray-500 hover:!bg-gray-50`}>
+          {copied === m.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied === m.id ? "Copied" : "Copy"}
+        </button>
+        {onRejectSuggestion && !m.blocked && (mm === "grammar" || mm === "outline") && (
+          <button onClick={() => onRejectSuggestion({ provider: m.provider || "demo", mode: mm })} className="text-xs px-2 py-[5px] rounded-lg text-gray-400 hover:bg-gray-100">
+            Dismiss
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={`flex flex-col h-full min-h-0 bg-white ${className}`}>
       {/* Header */}
-      <div className="px-3 py-2 border-b border-gray-100 flex items-center gap-2 flex-shrink-0">
-        <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2.5 flex-shrink-0">
+        <div className="w-[30px] h-[30px] bg-gradient-to-br from-brand-500 to-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold leading-tight">Thesisfic AI</div>
-          <div className="text-[11px] text-gray-400 truncate">{providerChoice === "auto" ? autoLabel : activeInstitution ? `${activeInstitution.label} · paid by your university` : activeProvider?.connection?.label || activeProvider?.product} · logged for integrity</div>
+          <div className="text-xs text-gray-400 truncate">Thinks with you. Never writes your thesis.</div>
         </div>
-        <div className="relative">
-          <button onClick={() => setProviderOpen((o) => !o)} className="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center gap-1" title="Choose AI provider">
-            <span className="w-2 h-2 rounded-full" style={{ background: chipColor }} />
-            {chipLabel}
-            <ChevronDown className="w-3 h-3" />
+        <div className="relative flex-shrink-0">
+          <button onClick={() => setProviderOpen((o) => !o)} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1.5 max-w-[190px]" aria-label="Choose AI provider" aria-expanded={providerOpen}>
+            <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 ${chipColor ? "" : "bg-gray-400"}`} style={chipColor ? { background: chipColor } : undefined} />
+            <span className="truncate">{chipText}</span>
+            <ChevronDown className="w-3 h-3 flex-shrink-0" />
           </button>
           {providerOpen && (
-            <div className="absolute right-0 mt-1 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 py-1 text-sm">
+            <div className="absolute right-0 mt-1 w-64 bg-white rounded-[10px] shadow-xl border border-gray-100 z-20 py-1 text-sm">
               <button onClick={() => { setProviderChoice("auto"); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${providerChoice === "auto" ? "text-brand-600 font-medium" : ""}`}>
                 Auto {allowance?.institutionPays && readyInstitution.length ? "(university models first)" : "(your account first)"}
               </button>
               {allowance?.institutionPays && institutionModels.length > 0 && (
                 <>
-                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">Paid by your university</div>
+                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">Provided by your university</div>
                   {allowanceUsed !== null && <div className="px-3 pb-1 text-[11px] text-gray-500">{allowance.spentStudent.toFixed(2)} / {allowance.perStudentMonthly} {allowance.currency} used this month</div>}
                   {allowanceUsed !== null && (
                     <div className="mx-3 mb-1 h-1 rounded-full bg-gray-100 overflow-hidden"><div className={`h-full ${allowanceUsed >= 100 ? "bg-red-500" : allowanceUsed >= 80 ? "bg-amber-400" : "bg-brand-500"}`} style={{ width: `${allowanceUsed}%` }} /></div>
@@ -330,18 +549,18 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               ))}
               <div className="border-t border-gray-100 mt-1 pt-1">
                 <a href="/dashboard/connections" className="block px-3 py-2 text-xs text-brand-600 hover:bg-gray-50">
-                  Connect your Claude / ChatGPT / Gemini account →
+                  Connect your Claude / ChatGPT / Gemini account
                 </a>
               </div>
             </div>
           )}
         </div>
-        <div className="relative">
-          <button onClick={() => setHistoryOpen((o) => !o)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title="Conversation history">
+        <div className="relative flex-shrink-0">
+          <button onClick={() => setHistoryOpen((o) => !o)} className="w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center" aria-label="Conversation history" aria-expanded={historyOpen}>
             <History className="w-4 h-4" />
           </button>
           {historyOpen && (
-            <div className="absolute right-0 mt-1 w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-20 max-h-80 overflow-y-auto text-sm">
+            <div className="absolute right-0 mt-1 w-72 bg-white rounded-[10px] shadow-xl border border-gray-100 z-20 max-h-80 overflow-y-auto text-sm">
               <button onClick={newChat} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-brand-600 font-medium border-b border-gray-100">
                 <Plus className="w-4 h-4" /> New conversation
               </button>
@@ -352,7 +571,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                     <div className="truncate text-xs font-medium">{c.title}</div>
                     <div className="text-[10px] text-gray-400">{c.messageCount} messages · {timeAgo(c.updatedAt)}</div>
                   </button>
-                  <button onClick={() => deleteConversation(c.id)} className="p-1 text-gray-300 hover:text-red-500" title="Delete">
+                  <button onClick={() => deleteConversation(c.id)} className="p-1 text-gray-300 hover:text-red-500" aria-label="Delete conversation">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -360,34 +579,76 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             </div>
           )}
         </div>
-        <button onClick={newChat} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title="New conversation">
+        <button onClick={newChat} className="w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0" aria-label="New conversation">
           <Plus className="w-4 h-4" />
         </button>
       </div>
 
       {/* Modes */}
-      <div className="px-2 py-1.5 border-b border-gray-100 flex gap-1 overflow-x-auto flex-shrink-0 no-scrollbar">
-        {(modes.length ? modes : [{ id: "chat", label: "Ask", icon: "💬", description: "", insertable: false } as ModeInfo]).map((m) => (
-          <button key={m.id} onClick={() => setMode(m.id)} title={m.description} className={`flex-shrink-0 text-xs px-2.5 py-1 rounded-full border transition-colors ${mode === m.id ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-brand-300"}`}>
-            <span className="mr-1">{m.icon}</span>
-            {m.label}
+      <div className={`px-4 pt-3 flex-shrink-0 ${column}`}>
+        {copilotMode && (
+          <button
+            onClick={() => setMode("copilot")}
+            aria-pressed={mode === "copilot"}
+            className={`w-full mb-1.5 flex items-center gap-2.5 px-3 py-2 rounded-[10px] border text-left transition-colors ${mode === "copilot" ? "bg-accent-600 border-accent-600 text-white" : "bg-accent-50 border-accent-200 text-accent-800 hover:border-accent-400"}`}
+          >
+            <Compass className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-xs font-semibold leading-tight">Research copilot</span>
+              <span className={`block text-[11px] leading-tight truncate ${mode === "copilot" ? "text-white/80" : "text-accent-700"}`}>Provided by your university · history kept</span>
+            </span>
           </button>
-        ))}
+        )}
+        <div className="grid grid-cols-5 gap-1.5">
+          {gridModes.map((m) => {
+            const Icon = ICONS[m.icon] || MessageSquare;
+            const active = mode === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={() => setMode(m.id)}
+                title={m.description}
+                aria-pressed={active}
+                className={`flex flex-col items-center gap-1 px-0.5 pt-2 pb-1.5 rounded-[10px] border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-brand-300"}`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{MODE_LABELS[m.id] || m.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {mode === "copilot" ? (
+          <div className="mt-2 mx-0.5 text-xs text-accent-800 bg-accent-50 rounded-lg px-2.5 py-1.5">
+            <strong>Research copilot</strong>, {COPILOT_NOTE.charAt(0).toLowerCase() + COPILOT_NOTE.slice(1)}
+          </div>
+        ) : (
+          <div className="mt-2 mx-0.5 text-xs text-gray-500">{currentMode?.description || ""}</div>
+        )}
       </div>
 
-      {mode === "copilot" && (
-        <div className="px-3 py-1.5 bg-emerald-50 border-b border-emerald-100 text-[11px] text-emerald-800 flex-shrink-0">
-          <strong>Research copilot</strong>, provided by your university. Ask anything about your research. The history is kept and visible to your institution; it will not write your thesis, and sentences you copy from it into your thesis are marked as AI-assisted.
+      {/* Working on */}
+      {workingOn && (
+        <div className={`px-4 flex-shrink-0 ${column}`}>
+          <div className="mt-3 px-3 py-2.5 border border-gray-200 rounded-[10px] bg-gray-50 flex gap-2.5 items-start">
+            <span className="w-[3px] self-stretch rounded-sm bg-brand-600 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-semibold uppercase tracking-[.06em] text-gray-400 mb-0.5">Working on · {selectionWords} {selectionWords === 1 ? "word" : "words"}</div>
+              <div className="font-serif text-[13px] leading-[1.45] text-gray-700 line-clamp-2">{selection}</div>
+            </div>
+            <button onClick={dismissSelection} className="text-gray-400 hover:text-gray-600 p-0.5 -mr-1" aria-label="Stop working on this selection">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Messages */}
-      <div className={`flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0 ${isPage ? "max-w-3xl w-full mx-auto" : ""}`}>
+      {/* Conversation */}
+      <div className={`flex-1 overflow-y-auto px-4 py-3.5 flex flex-col gap-3.5 min-h-0 ${column}`}>
         {messages.length === 0 && (
-          <div className="text-sm text-gray-500 space-y-3 pt-2">
+          <div className="text-sm text-gray-500 flex flex-col gap-3 pt-1">
             <p>
-              <strong>{currentMode?.label || "Ask"}</strong>
-              {currentMode?.description ? ` — ${currentMode.description.toLowerCase()}.` : "."} {mode === "copilot" ? "Go as deep as you need; writing stays yours." : "I help you think and revise; I never write your thesis for you."}
+              <strong className="text-gray-700">{placeholderLabel}</strong>
+              {currentMode?.description ? ` — ${currentMode.description.charAt(0).toLowerCase()}${currentMode.description.slice(1)}.` : "."} {mode === "copilot" ? "Go as deep as you need; writing stays yours." : "It helps you think and revise; it never writes your thesis for you."}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {QUICK[mode].map((q) => (
@@ -398,65 +659,40 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             </div>
           </div>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className={`${m.role === "user" ? "ml-8" : "mr-2"}`}>
-            {m.role === "assistant" && (
-              <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-400">
-                <Bot className="w-3 h-3" />
-                <span>{m.label || "Thesisfic AI"}</span>
-                {m.model && <span>· {m.model}</span>}
+        {messages.map((m) =>
+          m.role === "user" ? (
+            <div key={m.id} className="self-end max-w-[85%] text-sm leading-normal px-3 py-[9px] rounded-[12px_12px_2px_12px] bg-brand-600 text-white whitespace-pre-wrap">
+              {m.content}
+            </div>
+          ) : (
+            <div key={m.id} className="min-w-0">
+              <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-400 flex-wrap">
+                <span>
+                  {m.label || "Thesisfic AI"} · {modeLabel(m.mode)}
+                </span>
+                {!m.error && <span className="px-[7px] py-px rounded-full bg-brand-50 text-brand-700 font-semibold">logged</span>}
                 {m.blocked && <span className="badge-danger !text-[10px] !py-0">blocked by policy</span>}
                 {m.demo && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">demo</span>}
                 {m.billedTo === "institution" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px] !py-0">paid by university</span>}
                 {m.billedTo === "student" && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">your account</span>}
               </div>
-            )}
-            {m.role === "assistant" && m.notice && !m.error && <div className="mb-1 text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1">{m.notice}</div>}
-            <div className={`text-sm leading-relaxed rounded-xl px-3 py-2 ${m.role === "user" ? "bg-brand-600 text-white rounded-br-sm whitespace-pre-wrap" : m.blocked ? "bg-amber-50 border border-amber-100 rounded-bl-sm" : "bg-gray-50 rounded-bl-sm"}`}>
-              {m.role === "user" ? m.content : <Markdown text={m.content || (m.streaming ? "…" : "")} />}
-              {m.error && <div className="mt-2 text-xs text-red-600">{m.error}</div>}
-              {m.streaming && <span className="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 align-middle" />}
-            </div>
-            {m.role === "assistant" && !m.streaming && m.content && (
-              <div className="flex items-center gap-1 mt-1">
-                <button onClick={() => copy(m)} className="text-[11px] px-1.5 py-0.5 rounded hover:bg-gray-100 text-gray-500 flex items-center gap-1">
-                  {copied === m.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied === m.id ? "Copied" : "Copy"}
-                </button>
-                {onInsert && !m.blocked && (
-                  <button onClick={() => insert(m)} className="text-[11px] px-1.5 py-0.5 rounded hover:bg-brand-50 text-brand-600 flex items-center gap-1" title="Insert at cursor, marked as AI-assisted">
-                    {inserted === m.id ? <Check className="w-3 h-3" /> : <FilePlus2 className="w-3 h-3" />} Insert (AI-marked)
-                  </button>
-                )}
-                {onReplaceSelection && selection && !m.blocked && (m.mode === "grammar" || m.mode === "summarize") && (
-                  <button onClick={() => insert(m, true)} className="text-[11px] px-1.5 py-0.5 rounded hover:bg-brand-50 text-brand-600 flex items-center gap-1" title="Replace the selected passage">
-                    <Wand2 className="w-3 h-3" /> Replace selection
-                  </button>
-                )}
-                {onRejectSuggestion && !m.blocked && (m.mode === "grammar" || m.mode === "outline") && (
-                  <button onClick={() => onRejectSuggestion({ provider: m.provider || "demo", mode: m.mode || "chat" })} className="text-[11px] px-1.5 py-0.5 rounded hover:bg-gray-100 text-gray-400">
-                    Dismiss
-                  </button>
-                )}
+              {m.notice && !m.error && <div className="mb-1 text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1">{m.notice}</div>}
+              <div className={`text-sm leading-[1.55] px-3 py-2.5 rounded-[12px_12px_12px_2px] text-gray-900 ${m.blocked ? "bg-amber-50 border border-amber-100" : "bg-gray-100"}`}>
+                <Markdown text={m.content || (m.streaming ? "…" : "")} />
+                {m.error && <div className="mt-2 text-xs text-red-600">{m.error}</div>}
+                {m.streaming && <span className="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 align-middle" />}
               </div>
-            )}
-          </div>
-        ))}
+              {!m.streaming && m.content && renderActions(m)}
+              {!m.streaming && m.content && renderCostCard(m)}
+            </div>
+          )
+        )}
         <div ref={endRef} />
       </div>
 
-      {/* Selection chip */}
-      {selection && (
-        <div className="px-3 pb-1 flex-shrink-0">
-          <label className="flex items-center gap-2 text-[11px] text-gray-500 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
-            <input type="checkbox" checked={useSelection} onChange={(e) => setUseSelection(e.target.checked)} className="rounded" />
-            Use selected text ({selectionWords} words) as context
-          </label>
-        </div>
-      )}
-
-      {/* Input */}
-      <div className={`p-2 border-t border-gray-100 flex-shrink-0 ${isPage ? "max-w-3xl w-full mx-auto" : ""}`}>
-        <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 focus-within:border-brand-400">
+      {/* Composer */}
+      <div className={`px-4 pt-3 pb-3.5 border-t border-gray-100 flex-shrink-0 ${column}`}>
+        <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-[9px] border border-gray-200 focus-within:border-brand-400">
           <textarea
             ref={inputRef}
             value={input}
@@ -472,20 +708,20 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               }
             }}
             rows={1}
-            placeholder={`${currentMode?.label || "Ask"}… (Enter to send, Shift+Enter for a new line)`}
-            className="flex-1 bg-transparent resize-none text-sm focus:outline-none max-h-[140px]"
+            aria-label="Message to Thesisfic AI"
+            placeholder={`${placeholderLabel}… (Enter to send, Shift+Enter for a new line)`}
+            className="flex-1 bg-transparent resize-none text-sm placeholder:text-gray-400 focus:outline-none max-h-[140px] leading-normal"
           />
           {loading ? (
-            <button onClick={stop} className="p-2 rounded-lg bg-gray-200 text-gray-700" title="Stop">
-              <Square className="w-4 h-4" />
+            <button onClick={stop} className="w-7 h-7 rounded-lg bg-gray-200 text-gray-700 flex items-center justify-center flex-shrink-0" aria-label="Stop">
+              <Square className="w-3.5 h-3.5" />
             </button>
           ) : (
-            <button onClick={() => send()} disabled={!input.trim()} className="p-2 rounded-lg bg-brand-600 text-white disabled:opacity-30" title="Send">
-              <Send className="w-4 h-4" />
+            <button onClick={() => send()} disabled={!input.trim()} className="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-30" aria-label="Send">
+              <ArrowUp className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
-        <div className="text-[10px] text-gray-400 mt-1 px-1">Answers are guidance, not thesis text. Anything you insert is marked as AI-assisted and counts toward your institution&apos;s AI limit.</div>
       </div>
     </div>
   );

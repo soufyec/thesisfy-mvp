@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Compass, History, Plus, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import AssistantPanel, { AIMode } from "@/components/ai/AssistantPanel";
+import AssistantPanel, { AIMode, MODE_LABELS } from "@/components/ai/AssistantPanel";
 import ConsentModal from "@/components/ConsentModal";
 import { useUser } from "@/components/useUser";
 import { api, timeAgo } from "@/lib/client";
@@ -17,8 +17,6 @@ interface ConversationRow {
   messageCount: number;
   updatedAt: string;
 }
-
-const MODE_LABEL: Record<string, string> = { copilot: "Research copilot", chat: "Ask", brainstorm: "Brainstorm", outline: "Outline", critique: "Critique", grammar: "Grammar", summarize: "Summarize", explain: "Explain", citations: "Citations", gaps: "Find gaps", paraphrase_check: "Paraphrase check" };
 
 function AIChatInner() {
   const { me, refresh } = useUser();
@@ -64,7 +62,7 @@ function AIChatInner() {
     <DashboardLayout fullBleed>
       <div className="h-[calc(100dvh-3.5rem-4.5rem)] lg:h-[calc(100vh-4rem)] flex flex-col">
         <div className="px-4 py-2 border-b border-gray-100 bg-white flex items-center gap-3 flex-wrap">
-          <div className="text-sm font-semibold flex items-center gap-2">{copilot ? <><Compass className="w-4 h-4 text-emerald-600" />Research copilot</> : "AI Assistant"}</div>
+          <div className="text-sm font-semibold flex items-center gap-2">{copilot ? <><Compass className="w-4 h-4 text-accent-600" />Thesisfic AI · Research copilot</> : "Thesisfic AI"}</div>
           <select value={thesisId || ""} onChange={(e) => { setThesisId(e.target.value || undefined); open(undefined); }} className="text-xs border border-gray-200 rounded-lg px-2 py-1 max-w-[60vw]">
             <option value="">No thesis context</option>
             {theses.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
@@ -85,7 +83,7 @@ function AIChatInner() {
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-medium truncate">{c.title}</div>
                     <div className="text-[10px] text-gray-400 flex items-center gap-1 flex-wrap">
-                      <span className={`px-1 rounded ${c.mode === "copilot" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>{MODE_LABEL[c.mode || "chat"] || c.mode}</span>
+                      <span className={`px-1 rounded ${c.mode === "copilot" ? "bg-accent-50 text-accent-700" : "bg-gray-100 text-gray-500"}`}>{MODE_LABELS[c.mode || "chat"] || c.mode}</span>
                       <span>{c.messageCount} msgs · {timeAgo(c.updatedAt)}</span>
                     </div>
                   </div>
