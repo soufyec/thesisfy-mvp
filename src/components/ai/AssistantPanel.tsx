@@ -200,6 +200,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const t = useT();
   const fmt = useFormat();
   const [modes, setModes] = useState<ModeInfo[]>([]);
+  /** The mode grid folds into a chip once a conversation is under way, so the messages get the space (phones above all). */
+  const [modesOpen, setModesOpen] = useState<boolean | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [institutionModels, setInstitutionModels] = useState<InstitutionModelInfo[]>([]);
   const [allowance, setAllowance] = useState<AllowanceInfo | null>(null);
@@ -604,10 +606,29 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       </div>
 
       {/* Modes */}
+      {(() => {
+        const open = modesOpen === null ? messages.length === 0 : modesOpen;
+        const ActiveIcon = ICONS[(modes.find((m) => m.id === mode) || gridModes[0])?.icon || "MessageSquare"] || MessageSquare;
+        if (!open) {
+          return (
+            <div className={`px-4 pt-2.5 flex-shrink-0 ${column}`}>
+              <button
+                onClick={() => setModesOpen(true)}
+                aria-expanded={false}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-[10px] border text-left text-xs ${mode === "copilot" ? "bg-accent-50 border-accent-200 text-accent-800" : "bg-gray-50 border-gray-200 text-gray-700"}`}
+              >
+                {mode === "copilot" ? <Compass className="w-4 h-4 flex-shrink-0" /> : <ActiveIcon className="w-4 h-4 flex-shrink-0" />}
+                <span className="font-semibold truncate">{mode === "copilot" ? t("glossary.copilot") : t(`assistant.mode.${mode}.label`)}</span>
+                <span className="ml-auto text-[11px] text-gray-500 flex-shrink-0">{t("assistant.modes.change")}</span>
+              </button>
+            </div>
+          );
+        }
+        return (
       <div className={`px-4 pt-3 flex-shrink-0 ${column}`}>
         {copilotMode && (
           <button
-            onClick={() => setMode("copilot")}
+            onClick={() => { setMode("copilot"); if (messages.length) setModesOpen(false); }}
             aria-pressed={mode === "copilot"}
             className={`w-full mb-1.5 flex items-center gap-2.5 px-3 py-2 rounded-[10px] border text-left transition-colors ${mode === "copilot" ? "bg-accent-600 border-accent-600 text-white" : "bg-accent-50 border-accent-200 text-accent-800 hover:border-accent-400"}`}
           >
@@ -625,7 +646,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             return (
               <button
                 key={m.id}
-                onClick={() => setMode(m.id)}
+                onClick={() => { setMode(m.id); if (messages.length) setModesOpen(false); }}
                 title={t(`assistant.mode.${m.id}.description`)}
                 aria-pressed={active}
                 className={`flex flex-col items-center gap-1 px-0.5 pt-2 pb-1.5 rounded-[10px] border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-brand-300"}`}
@@ -644,6 +665,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           <div className="mt-2 mx-0.5 text-xs text-gray-500">{modeDescription}</div>
         )}
       </div>
+        );
+      })()}
 
       {/* Working on */}
       {workingOn && (
