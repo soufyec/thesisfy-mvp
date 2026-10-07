@@ -116,7 +116,11 @@ export function formatReference(r: Reference, style: ThesisDoc["citationStyle"])
 
 // ---------- Integrity ledger (mirrors src/lib/integrity.ts, which is server-only) ----------
 export type IntegrityFix = "attribute_paste" | "reduce_ai" | "open_notice" | "none";
+export type IntegrityLineCode = "ai_share" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
 export interface IntegrityLine {
+  /** Translated on the client via `editor.ledger.line.<code>`; `reason` is the English fallback. */
+  code: IntegrityLineCode;
+  vars: Record<string, string | number>;
   reason: string;
   points: number;
   fix?: IntegrityFix;

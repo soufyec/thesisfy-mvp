@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { AlertTriangle, ArrowDown, ArrowUp, BookMarked, Check, CheckCircle2, History, Library, MessageSquare, Plus, RotateCcw, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, BookMarked, Bot, Check, CheckCircle2, History, Library, MessageSquare, Plus, RotateCcw, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
 import DatabaseCard, { ResearchDb } from "../library/DatabaseCard";
@@ -93,7 +93,11 @@ export function CommentsPanel({ comments, activeId, canResolve, userId, onJump, 
         {visible.map((c) => (
           <div key={c.id} onClick={() => onJump(c)} className={`p-3 rounded-xl border cursor-pointer ${activeId === c.id ? "border-brand-400 shadow-sm" : "border-gray-100"} ${c.resolved ? "opacity-60" : ""}`}>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-[10px] font-semibold flex items-center justify-center">{c.authorName.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
+              {c.authorRole === "ai" ? (
+                <div className="w-6 h-6 rounded-full bg-prov-ai-soft text-prov-ai-deep flex items-center justify-center" aria-hidden="true"><Bot className="w-3.5 h-3.5" /></div>
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-[10px] font-semibold flex items-center justify-center">{c.authorName.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
+              )}
               <div className="text-xs font-medium flex-1 truncate">{c.authorName}{c.authorRole === "professor" && <span className="ml-1 text-[10px] text-brand-600">{t("editor.comments.advisorTag")}</span>}</div>
               <div className="text-[10px] text-gray-400">{ago(c.createdAt)}</div>
               {(canResolve || c.authorId === userId) && (
@@ -263,6 +267,13 @@ export function FindPanel({ editor, onClose, canEdit }: { editor: Editor; onClos
 
 // ---------- Integrity ledger ----------
 const NOTICE_TYPES = ["bulk_paste", "unattributed_ai", "policy_limit", "rapid_typing", "ai_generation", "style_inconsistency"];
+const LINE_CODES = ["ai_share", "paste_unattributed", "paste_attributed", "open_notice", "floor"];
+
+/** Notice titles by type, shared by the ledger, the toasts and the pill (`editor.notice.type.<type>`). */
+export function useNoticeLabel() {
+  const t = useT();
+  return (type: string) => (NOTICE_TYPES.indexOf(type) !== -1 ? t(`editor.notice.type.${type}`) : type.replace(/_/g, " "));
+}
 
 /**
  * Integrity ledger: the score as a list of visible deductions, each with the action that removes it, followed by
@@ -272,7 +283,16 @@ export function IntegrityLedger({ thesis, flags, session, maxAi, breakdown, show
   const t = useT();
   const fmt = useFormat();
   const ago = (iso: string) => formatTimeAgo(iso, t, (d) => fmt.date(d));
-  const noticeLabel = (type: string) => (NOTICE_TYPES.indexOf(type) !== -1 ? t(`editor.ledger.noticeType.${type}`) : type.replace(/_/g, " "));
+  const noticeLabel = useNoticeLabel();
+  /** Ledger rows arrive as codes + values from the server; the words are the viewer's language. */
+  const lineLabel = (l: IntegrityBreakdown["lines"][number]) => {
+    if (LINE_CODES.indexOf(l.code) === -1) return l.reason;
+    if (l.code === "open_notice") {
+      const notice = noticeLabel(String(l.vars.type || ""));
+      return l.vars.words !== undefined ? t("editor.ledger.line.open_notice_words", { notice, words: fmt.number(Number(l.vars.words)) }) : t("editor.ledger.line.open_notice", { notice });
+    }
+    return t(`editor.ledger.line.${l.code}`, l.vars);
+  };
   const severityLabel = (sv: string) => {
     const key = `editor.ledger.severity.${sv}`;
     const l = t(key);
@@ -280,6 +300,8 @@ export function IntegrityLedger({ thesis, flags, session, maxAi, breakdown, show
   };
   const total = Math.max(1, thesis.provenance.human + thesis.provenance.paste + thesis.provenance.ai);
   const pct = (n: number) => Math.round((n / total) * 100);
+  // Compared unrounded: 25.4% is above a 25% limit even though it displays as 25%.
+  const aiAboveLimit = (thesis.provenance.ai / total) * 100 > maxAi;
   const [note, setNote] = useState<Record<string, string>>({});
   const [focusNotice, setFocusNotice] = useState<string | null>(null);
   const open = flags.filter((f) => !f.resolved);
@@ -306,7 +328,7 @@ export function IntegrityLedger({ thesis, flags, session, maxAi, breakdown, show
               breakdown.lines.map((l, i) => (
                 <div key={i} className="py-2">
                   <div className="flex items-start justify-between gap-3">
-                    <span className="text-gray-700">{l.reason}</span>
+                    <span className="text-gray-700">{lineLabel(l)}</span>
                     <span className={`font-semibold tabular-nums ${pointsClass(l.points)}`}>{fmtPoints(l.points)}</span>
                   </div>
                   {l.points > 0 && l.fix && l.fix !== "none" && (
@@ -339,7 +361,7 @@ export function IntegrityLedger({ thesis, flags, session, maxAi, breakdown, show
             <span><span className="inline-block w-2 h-2 rounded-full bg-prov-paste mr-1" />{t("glossary.quotedOrPasted")} {pct(thesis.provenance.paste)}%</span>
             <span><span className="inline-block w-2 h-2 rounded-full bg-prov-ai mr-1" />{t("glossary.aiAssisted")} {pct(thesis.provenance.ai)}% <span className="text-gray-400">{t("editor.ledger.limit", { n: maxAi })}</span></span>
           </div>
-          {pct(thesis.provenance.ai) > maxAi && <div className="mt-2 text-xs text-red-600 flex items-start gap-1"><AlertTriangle className="w-3.5 h-3.5 mt-0.5" />{t("editor.ledger.aboveLimit")}</div>}
+          {aiAboveLimit && <div className="mt-2 text-xs text-red-600 flex items-start gap-1"><AlertTriangle className="w-3.5 h-3.5 mt-0.5" />{t("editor.ledger.aboveLimit")}</div>}
         </div>
 
         {session && (

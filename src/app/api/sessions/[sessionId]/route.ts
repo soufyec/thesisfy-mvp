@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { db, SessionEventType } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
-import { evaluateEvent, refreshThesisMetrics } from "@/lib/integrity";
+import { evaluateEvent, isEmptySession, refreshThesisMetrics, thesisMetrics } from "@/lib/integrity";
 import { passageFingerprints, textFingerprint } from "@/lib/crypto";
 import { matchPasteFingerprintsToSources } from "@/lib/sources/retrieve";
 
 const ALLOWED: SessionEventType[] = ["typing", "paste", "ai_prompt", "ai_insert", "ai_suggestion_rejected", "tab_hidden", "tab_visible", "save"];
+const ATTRIBUTIONS = ["own", "source", "ai", "none", "pending"];
 
 /** Batched session events from the editor. Scopes the student did not consent to are dropped server-side too. */
 export async function POST(request: NextRequest, { params }: { params: { sessionId: string } }) {
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest, { params }: { params: { session
   const policy = db.policies.get(r.user.university);
 
   const created = [];
+  const pasteResults: Record<string, unknown>[] = [];
   for (const ev of events.slice(0, 200)) {
     if (!ALLOWED.includes(ev.type)) continue;
     const data = { ...(ev.data || {}) };
@@ -31,6 +33,25 @@ export async function POST(request: NextRequest, { params }: { params: { session
     if ((ev.type === "ai_prompt" || ev.type === "ai_insert") && scopes && !scopes.aiInteractions) continue;
 
     if (ev.type === "paste") {
+      const attribution = typeof data.attribution === "string" && ATTRIBUTIONS.includes(data.attribution) ? data.attribution : data.attributed ? "own" : "none";
+      data.attribution = attribution;
+      data.attributed = attribution === "own" || attribution === "source" || attribution === "ai";
+      if (typeof data.label === "string") data.label = data.label.slice(0, 120);
+      else delete data.label;
+
+      // A declaration completes the pending paste recorded when the dialog opened: same event, judged now.
+      if (data.declared && typeof data.fingerprint === "string") {
+        const fp = data.fingerprint as string;
+        const pending = [...session.events].reverse().find((e) => e.type === "paste" && e.data.fingerprint === fp && e.data.attribution === "pending");
+        if (pending) {
+          Object.assign(pending.data, { attribution, attributed: data.attributed, label: data.label, declaredAt: new Date().toISOString() });
+          db.persist();
+          created.push(...evaluateEvent(session, "paste", pending.data, policy));
+        }
+        continue;
+      }
+      delete data.declared;
+
       // Never store pasted text. Fingerprint it and match against the student's assistant answers.
       const text = typeof data.text === "string" ? (data.text as string) : "";
       delete data.text;
@@ -50,6 +71,7 @@ export async function POST(request: NextRequest, { params }: { params: { session
         // One short sentence in common is not enough to attribute a long paste.
         if (share >= 0.25 || ai.hits >= 2) data.matchedAi = { kind: "assistant", provider: ai.interaction.provider, model: ai.interaction.model, mode: ai.interaction.mode, interactionId: ai.interaction.id, share: Math.round(share * 100) / 100, at: ai.interaction.timestamp };
       }
+      if (data.matchedAi || data.matchedSource) pasteResults.push(data);
     }
 
     db.sessions.addEvent(session.id, ev.type, data);
@@ -61,7 +83,8 @@ export async function POST(request: NextRequest, { params }: { params: { session
     ok: true,
     flags: created,
     session: { id: refreshed.id, keystrokes: refreshed.keystrokes, wordsWritten: refreshed.wordsWritten, aiAssists: refreshed.aiAssists, pasteEvents: refreshed.pasteEvents, tabSwitches: refreshed.tabSwitches },
-    matches: events.filter((e) => e.type === "paste").length ? refreshed.events.slice(-events.length).filter((e) => e.type === "paste" && (e.data.matchedAi || e.data.matchedSource)).map((e) => e.data) : [],
+    matches: pasteResults,
+    metrics: thesisMetrics(session.thesisId) || undefined,
   });
 }
 
@@ -72,10 +95,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { sessio
   if (!session || session.userId !== r.user.id) return error("Session not found", 404);
   const body = await request.json().catch(() => ({}));
   if (body.action === "end") {
-    const ended = db.sessions.end(session.id);
+    if (session.endedAt) return json({ session });
+    const ended = db.sessions.end(session.id)!;
+    // An editor opened and closed without any activity leaves no session behind.
+    if (isEmptySession(ended)) {
+      db.sessions.remove(ended.id);
+      return json({ session: null, removed: true });
+    }
     refreshThesisMetrics(session.thesisId);
     return json({ session: ended });
   }
+  if (session.endedAt) return json({ ok: true, ended: true });
   db.sessions.update(session.id, {});
   return json({ ok: true });
 }

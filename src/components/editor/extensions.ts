@@ -52,6 +52,8 @@ export const Provenance = Mark.create({
       provider: { default: null, parseHTML: (el) => el.getAttribute("data-provider"), renderHTML: (a) => (a.provider ? { "data-provider": a.provider } : {}) },
       label: { default: null, parseHTML: (el) => el.getAttribute("data-source"), renderHTML: (a) => (a.label ? { "data-source": a.label } : {}) },
       interactionId: { default: null, parseHTML: (el) => el.getAttribute("data-interaction"), renderHTML: (a) => (a.interactionId ? { "data-interaction": a.interactionId } : {}) },
+      /** The AI-use declaration appendix (ProcessPanel): a record about the thesis, left out of every word count. */
+      declaration: { default: null, parseHTML: (el) => el.getAttribute("data-declaration"), renderHTML: (a) => (a.declaration ? { "data-declaration": "true" } : {}) },
     };
   },
   parseHTML() {

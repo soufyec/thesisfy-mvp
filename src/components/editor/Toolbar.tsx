@@ -21,14 +21,17 @@ interface Props {
   spellcheck: boolean;
   onSpellcheck: (v: boolean) => void;
   compact?: boolean;
-  /** Provenance gutter + highlights switch, shown at the far right. `locked` keeps it on (review mode). */
+  /**
+   * Provenance gutter + highlights switch, shown at the far right. `locked` keeps it on (review mode). Below
+   * 1500px only the switch is shown (the name stays in the tooltip and the aria-label) so the toolbar never clips it.
+   */
   provenance?: { on: boolean; onToggle: (v: boolean) => void; locked?: boolean };
 }
 
 function ProvenanceToggle({ on, onToggle, locked }: { on: boolean; onToggle: (v: boolean) => void; locked?: boolean }) {
   const t = useT();
   return (
-    <label className={`ml-auto pl-3 flex items-center gap-2 text-[12px] text-gray-500 flex-shrink-0 select-none ${locked ? "cursor-default" : "cursor-pointer"}`} title={locked ? t("editor.toolbar.provenanceAlways") : t("editor.toolbar.provenanceShow")}>
+    <label className={`ml-auto pl-3 flex items-center gap-2 text-[12px] text-gray-500 flex-shrink-0 select-none ${locked ? "cursor-default" : "cursor-pointer"}`} title={`${t("glossary.provenance")} · ${locked ? t("editor.toolbar.provenanceAlways") : t("editor.toolbar.provenanceShow")}`}>
       <button
         type="button"
         role="switch"
@@ -41,7 +44,7 @@ function ProvenanceToggle({ on, onToggle, locked }: { on: boolean; onToggle: (v:
       >
         <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-[left] ${on ? "left-[14px]" : "left-0.5"}`} />
       </button>
-      {t("glossary.provenance")}
+      <span className="hidden min-[1500px]:inline">{t("glossary.provenance")}</span>
     </label>
   );
 }

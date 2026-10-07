@@ -14,7 +14,7 @@ import ProcessPanel from "@/components/editor/process/ProcessPanel";
 
 interface Detail {
   thesis: { id: string; title: string; description: string; status: string; wordCount: number; targetWords: number; aiUsagePercent: number; integrityScore: number; provenance: { human: number; paste: number; ai: number }; studentName: string; professorName: string; updatedAt: string; deadline?: string; citationStyle: string; createdAt: string };
-  comments: { id: string; authorName: string; text: string; resolved: boolean; createdAt: string; quote: string }[];
+  comments: { id: string; authorName: string; authorRole?: string; text: string; resolved: boolean; createdAt: string; quote: string }[];
   flags: { id: string; type: string; severity: string; description: string; timestamp: string; resolved: boolean; resolvedBy?: string; resolutionNote?: string }[];
   versionCount: number;
   policy: { maxAiUsagePercent: number };
@@ -135,7 +135,7 @@ export default function AdminThesisDetail() {
           <div className="p-5 border-b border-gray-100"><h2 className="font-semibold">{t("admin.detail.commentsTitle", { n: d.comments.length })}</h2></div>
           <div className="divide-y divide-gray-50">
             {d.comments.length === 0 && <div className="p-6 text-sm text-gray-400">{t("admin.detail.noComments")}</div>}
-            {d.comments.map((c) => <div key={c.id} className="p-4 text-sm"><div className="flex items-center gap-2"><span className="font-medium">{c.authorName}</span><span className="text-xs text-gray-400">{ago(c.createdAt)}</span>{c.resolved && <span className="badge-success !text-[10px]">{t("admin.detail.resolvedBadge")}</span>}</div>{c.quote && <div className="text-xs text-gray-400 border-l-2 border-amber-300 pl-2 my-1">{c.quote}</div>}<div>{c.text}</div></div>)}
+            {d.comments.map((c) => <div key={c.id} className="p-4 text-sm"><div className="flex items-center gap-2">{c.authorRole === "ai" && <Bot className="w-4 h-4 text-prov-ai-deep flex-shrink-0" aria-hidden="true" />}<span className="font-medium">{c.authorName}</span><span className="text-xs text-gray-400">{ago(c.createdAt)}</span>{c.resolved && <span className="badge-success !text-[10px]">{t("admin.detail.resolvedBadge")}</span>}</div>{c.quote && <div className="text-xs text-gray-400 border-l-2 border-amber-300 pl-2 my-1">{c.quote}</div>}<div>{c.text}</div></div>)}
           </div>
         </div>
       </div>

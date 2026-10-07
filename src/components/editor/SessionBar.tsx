@@ -19,7 +19,7 @@ interface Props {
   advisorName?: string;
   words: number;
   targetWords: number;
-  page: number;
+  /** Estimated page count of the open tab (about 350 words a page). */
   pages: number;
   citationStyle: string;
   zoom: number;
@@ -44,7 +44,7 @@ function joinList(items: string[], and: string) {
  * Session bar (30px, bottom of the editor): what the current session records, in the student's own consent
  * terms, and the document facts an advisor glances at (status, words, page, citation style).
  */
-export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, advisorName, words, targetWords, page, pages, citationStyle, zoom, onWordCount, workingTab }: Props) {
+export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, advisorName, words, targetWords, pages, citationStyle, zoom, onWordCount, workingTab }: Props) {
   const t = useT();
   const fmt = useFormat();
   const granted = scopes ? SCOPE_WORDS.filter((s) => scopes[s.key]).map((s) => t(s.label)) : [];
@@ -105,7 +105,7 @@ export default function SessionBar({ sessionActive, scopes, onChange, isOwner, r
       <button onClick={onWordCount} className="hover:text-gray-900 flex-shrink-0" title={t("editor.details.title")}>
         {t("editor.session.wordsOf", { words: fmt.number(words), target: fmt.number(targetWords) })}
       </button>
-      <span className="flex-shrink-0">{t("editor.session.page", { page, pages })}</span>
+      <span className="flex-shrink-0">{pages === 1 ? t("editor.session.pages_one") : t("editor.session.pages", { n: pages })}</span>
       <span className="flex-shrink-0">{citationStyle}</span>
       {zoom !== 100 && <span className="flex-shrink-0">{zoom}%</span>}
     </footer>

@@ -13,8 +13,16 @@ export function downloadBlob(name: string, blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Keeps accented letters and ñ; removes only characters that are invalid in file names, and trailing dots. */
 export function safeFileName(title: string) {
-  return (title || "thesis").replace(/[^\w\d\-. ]+/g, "").trim().slice(0, 80) || "thesis";
+  const cleaned = (title || "thesis")
+    .replace(/[\\/:*?"<>|\x00-\x1f]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\.+$/, "")
+    .slice(0, 80)
+    .trim();
+  return cleaned || "thesis";
 }
 
 export function htmlToText(html: string) {

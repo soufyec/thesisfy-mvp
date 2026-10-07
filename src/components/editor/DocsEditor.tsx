@@ -25,14 +25,14 @@ import TaskItem from "@tiptap/extension-task-item";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Typography from "@tiptap/extension-typography";
-import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, FileText, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, FileText, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
 import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, ProvenanceStats, Search } from "./extensions";
 import CitationDialog, { CitationInsert } from "./CitationDialog";
 import Toolbar from "./Toolbar";
 import { MenuAction, MenuOverflow } from "./MenuBar";
 import SessionBar from "./SessionBar";
 import ProvenanceGutter from "./ProvenanceGutter";
-import { CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, ReferencesPanel, VersionsPanel } from "./Sidebars";
+import { CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, ReferencesPanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
 import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, PasteMatchInfo } from "./Dialogs";
 import { CommentItem, FlagItem, formatReference, formatTimeAgo, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, richText, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { InsertMeta } from "../ai/AssistantPanel";
@@ -51,7 +51,7 @@ import { api, ApiError, countWordsInText } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
 import { LOCALES } from "@/lib/i18n";
 import { translate, type Translate } from "@/lib/i18n/dictionary";
-import { SessionMonitor, type MonitorFlag } from "@/lib/monitor";
+import { acquireSessionMonitor, releaseSessionMonitor, SessionMonitor, type MonitorFlag, type MonitorHandlers, type MonitorMetrics } from "@/lib/monitor";
 import { downloadBlob, htmlToDocx, htmlToMarkdown, htmlToText, safeFileName, standaloneHtml } from "@/lib/export";
 
 interface LoadResponse {
@@ -152,7 +152,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent">(null);
   const [linkInitial, setLinkInitial] = useState("");
-  const [paste, setPaste] = useState<{ words: number; text: string; html: string; matched: PasteMatchInfo | null } | null>(null);
+  const [paste, setPaste] = useState<{ words: number; text: string; html: string; matched: PasteMatchInfo | null; fingerprint: string | null } | null>(null);
   const [preview, setPreview] = useState<{ id: string; html: string; label: string } | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStats, setSessionStats] = useState<Record<string, number> | null>(null);
@@ -160,6 +160,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyRef = useRef(false);
   const lastCounts = useRef({ chars: 0, words: 0 });
+  /** >0 while the editor itself is changing the document (AI insertion, declared paste, citation, bibliography…): not typing. */
+  const programmaticDepth = useRef(0);
+  const noticeLabel = useNoticeLabel();
 
   // ---------- document tabs ----------
   // "submission" is the Final submission tab (thesis.content): the only one submitted, reviewed and scored.
@@ -193,26 +196,42 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
 
   // The assistant panel starts open on wide screens (README 4.7).
   useEffect(() => {
-    if (!reviewMode && window.innerWidth >= 1280) setSidebar("ai");
-  }, [reviewMode]);
+    if (!reviewMode && isOwner && window.innerWidth >= 1280) setSidebar("ai");
+  }, [reviewMode, isOwner]);
 
   // Who pays for institution-provided models, for the cost card shown before any AI insertion.
   useEffect(() => {
     if (!isOwner) return;
     api<{ allowance?: { institutionPays?: boolean } | null }>("/api/ai/providers")
-      .then((d) => setPayer(d.allowance?.institutionPays ? "your university" : undefined))
+      .then((d) => setPayer(d.allowance?.institutionPays ? "institution" : undefined))
       .catch(() => {});
   }, [isOwner]);
+
+  // The pill and the ledger always read the same numbers: every server answer that carries metrics goes through here.
+  const applyMetrics = useCallback((m: Partial<MonitorMetrics> | null | undefined) => {
+    if (!m) return;
+    if (m.integrityBreakdown) setBreakdown(m.integrityBreakdown as IntegrityBreakdown);
+    setThesis((t) => ({ ...t, integrityScore: m.integrityScore ?? t.integrityScore, aiUsagePercent: m.aiUsagePercent ?? t.aiUsagePercent }));
+  }, []);
 
   // Ledger rows and AI log come from the server (the formula lives in src/lib/integrity.ts); refreshed when the score or notices change.
   const refreshLedger = useCallback(async () => {
     try {
       const d = await api<LoadResponse>(`/api/theses/${thesisId}`);
-      if (d.integrityBreakdown) setBreakdown(d.integrityBreakdown);
+      applyMetrics({ integrityScore: d.thesis.integrityScore, aiUsagePercent: d.thesis.aiUsagePercent, integrityBreakdown: d.integrityBreakdown });
       if (d.interactions) setInteractions(d.interactions);
-      setThesis((t) => ({ ...t, integrityScore: d.thesis.integrityScore, aiUsagePercent: d.thesis.aiUsagePercent }));
     } catch { /* keep the previous ledger */ }
-  }, [thesisId]);
+  }, [thesisId, applyMetrics]);
+
+  /** Runs editor commands that are not the student typing: the typing counters skip the resulting transactions. */
+  const programmatic = useCallback(<T,>(fn: () => T): T => {
+    programmaticDepth.current++;
+    try {
+      return fn();
+    } finally {
+      programmaticDepth.current--;
+    }
+  }, []);
 
   // ---------- editor ----------
   const editor = useEditor({
@@ -284,26 +303,23 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         if (internalCopy.current && norm(text) === internalCopy.current) return false;
         if (words >= PASTE_DIALOG_MIN_WORDS) {
           event.preventDefault();
-          (async () => {
-            const matched = (await monitorRef.current?.recordPaste(text)) || null;
-            setPaste({ words, text, html, matched });
-          })();
+          openPasteDialog(text, html);
           return true;
         }
         // Small paste: let ProseMirror handle it, fingerprint in the background and attribute if it matches an AI copy.
         const from = view.state.selection.from;
-        monitorRef.current?.recordPaste(text).then((matched) => {
+        monitorRef.current?.recordPaste(text).then(({ match: matched }) => {
           if (!matched || !editorRef.current) return;
           const ed = editorRef.current;
           const to = Math.min(from + text.length, ed.state.doc.content.size);
           if (matched.kind === "source") {
             const srcLabel = `${matched.authors || matched.title || t("editor.source")}${matched.year ? ` (${matched.year})` : ""}${matched.page ? `, p. ${matched.page}` : ""}`;
-            ed.chain().setTextSelection({ from, to }).setProvenance({ source: "paste", label: srcLabel }).setTextSelection(to).run();
+            programmatic(() => ed.chain().setTextSelection({ from, to }).setProvenance({ source: "paste", label: srcLabel }).setTextSelection(to).run());
             notify(t("editor.toast.pasteMatchesSource", { source: matched.title || t("editor.aSource") }), "info");
             return;
           }
           const label = matched.mode === "copilot" ? t("editor.label.copilot") : t("editor.label.assistant");
-          ed.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: matched.provider, label, interactionId: matched.interactionId }).setTextSelection(to).run();
+          programmatic(() => ed.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: matched.provider, label, interactionId: matched.interactionId }).setTextSelection(to).run());
           monitorRef.current?.recordAiInsert(words, matched.provider || "assistant", matched.mode || "paste", matched.interactionId);
           notify(t("editor.toast.pastedFromAssistant", { label, aiAssisted }), "info");
         });
@@ -334,7 +350,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       const words = ed.storage.characterCount.words();
       setTabWords(words);
       const isPaste = transaction.getMeta("paste") || transaction.getMeta("uiEvent") === "paste";
-      if (!isPaste && !transaction.getMeta("ai-insert")) monitorRef.current?.recordTyping(chars - lastCounts.current.chars, words - lastCounts.current.words);
+      const charDelta = chars - lastCounts.current.chars;
+      // Typing is counted only for what the student types: not pastes, not editor commands (insertions, citations,
+      // declarations) and not a single transaction that adds more text than any keystroke or IME composition can.
+      const isTyping = !isPaste && !transaction.getMeta("ai-insert") && programmaticDepth.current === 0 && charDelta <= 40;
+      if (isTyping) monitorRef.current?.recordTyping(charDelta, words - lastCounts.current.words);
       lastCounts.current = { chars, words };
       if (activeTabRef.current === SUBMISSION) scheduleProvenance(ed);
     },
@@ -363,16 +383,18 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const scheduleProvenance = (ed: Editor) => {
     if (provTimer.current) clearTimeout(provTimer.current);
     provTimer.current = setTimeout(() => {
-      let ai = 0, paste = 0;
+      let ai = 0, paste = 0, declaration = 0;
       ed.state.doc.descendants((node) => {
         if (!node.isText || !node.text) return;
         const m = node.marks.find((x) => x.type.name === "provenance");
         if (!m) return;
         const w = countWordsInText(node.text);
-        if (m.attrs.source === "ai") ai += w;
+        // The AI-use declaration appendix is a record, not thesis text: excluded from every total (as on the server).
+        if (m.attrs.declaration) declaration += w;
+        else if (m.attrs.source === "ai") ai += w;
         else paste += w;
       });
-      const total = ed.storage.characterCount.words();
+      const total = Math.max(0, ed.storage.characterCount.words() - declaration);
       setThesis((t) => ({ ...t, wordCount: total, provenance: { human: Math.max(0, total - ai - paste), ai, paste } }));
     }, 400);
   };
@@ -398,12 +420,18 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       tabsMetaDirty.current = false;
       setSaveState("saving");
       try {
-        const res = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}`, { method: "PUT", json: payload });
+        const res = await api<{ thesis: ThesisDoc; integrityBreakdown?: IntegrityBreakdown; flags?: FlagItem[] }>(`/api/theses/${thesisId}`, { method: "PUT", json: payload });
         dirtyRef.current = false;
         setThesis((t) => ({ ...t, ...res.thesis, content: t.content }));
         setLastSaved(new Date().toISOString());
         setSaveState("saved");
-        if (payload.content !== undefined) refreshLedger();
+        // The saved document is what the server scores: the pill and the ledger update together from this answer.
+        applyMetrics({ integrityScore: res.thesis.integrityScore, aiUsagePercent: res.thesis.aiUsagePercent, integrityBreakdown: res.integrityBreakdown });
+        if (res.flags?.length) {
+          const fresh = res.flags;
+          setFlags((prev) => [...fresh.filter((f) => !prev.some((p) => p.id === f.id)), ...prev]);
+          notify(t("editor.toast.newNotice", { notice: noticeLabel(fresh[0].type) }), "error");
+        }
         // Process record: a hash-chained snapshot of the tab that was saved (throttled client- and server-side).
         const tabId = activeTabRef.current;
         recordSnapshot(thesisId, { tabId, html: contentsRef.current[tabId] || "", wordCount: countWordsInText(ed.getText()), sessionId: sessionId || undefined });
@@ -414,7 +442,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         notify(t("editor.toast.saveFailed", { message: (e as Error).message }), "error");
       }
     },
-    [canEdit, thesisId, sessionId, notify, refreshLedger, t]
+    [canEdit, thesisId, sessionId, notify, applyMetrics, noticeLabel, t]
   );
   const saveNowRef = useRef(saveNow);
   saveNowRef.current = saveNow;
@@ -546,7 +574,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       ...(before && before !== " " ? [{ type: "text", text: " " }] : []),
       { type: "text", text: c.inText, marks: [{ type: "citation", attrs: { refId: c.reference.id } }] },
     ];
-    chain.insertContentAt(at, nodes).run();
+    programmatic(() => chain.insertContentAt(at, nodes).run());
     notify(t(c.isNew ? "editor.toast.citationInsertedNew" : "editor.toast.citationInserted", { cite: c.inText }), "success");
   };
 
@@ -562,36 +590,59 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   }, []);
 
   // ---------- writing session + consent ----------
+  // One session per open editor: a remount (React strict mode, a quick back-and-forth) reuses the session that
+  // `acquireSessionMonitor` keeps for a few seconds instead of starting a second, empty one.
+  const monitorHandlers = useMemo<MonitorHandlers>(
+    () => ({
+      onFlags: (fl: MonitorFlag[]) => {
+        setFlags((prev) => [...fl.filter((f) => !prev.some((p) => p.id === f.id)).map((f) => ({ ...f, timestamp: new Date().toISOString(), resolved: false })), ...prev]);
+        notify(t("editor.toast.newNotice", { notice: noticeLabel(fl[0].type) }), "error");
+        refreshLedger();
+      },
+      onStats: setSessionStats,
+      onMetrics: applyMetrics,
+    }),
+    [notify, refreshLedger, applyMetrics, noticeLabel, t]
+  );
   const startSession = useCallback(async () => {
     if (!isOwner || monitorRef.current) return;
     try {
-      const res = await api<{ session: { id: string }; consent: Consent | null }>(`/api/theses/${thesisId}/sessions`, { method: "POST" });
-      setSessionId(res.session.id);
-      const scopes = res.consent?.scopes || { keystrokes: false, paste: true, aiInteractions: true, tabActivity: false };
-      monitorRef.current = new SessionMonitor(res.session.id, scopes, {
-        onFlags: (fl: MonitorFlag[]) => {
-          setFlags((prev) => [...fl.map((f) => ({ ...f, timestamp: new Date().toISOString(), resolved: false })), ...prev]);
-          notify(fl[0].description, "error");
-          refreshLedger();
+      const monitor = await acquireSessionMonitor(
+        `thesis:${thesisId}`,
+        async () => {
+          const res = await api<{ session: { id: string }; consent: Consent | null }>(`/api/theses/${thesisId}/sessions`, { method: "POST" });
+          const scopes = res.consent?.scopes || { keystrokes: false, paste: true, aiInteractions: true, tabActivity: false };
+          return new SessionMonitor(res.session.id, scopes, monitorHandlers);
         },
-        onStats: setSessionStats,
-      });
+        monitorHandlers
+      );
+      if (!monitor) return;
+      monitorRef.current = monitor;
+      setSessionId(monitor.sessionId);
     } catch (e) {
       if (e instanceof ApiError && e.status === 428) setDialog("consent");
       else notify((e as Error).message, "error");
     }
-  }, [isOwner, thesisId, notify, refreshLedger]);
+  }, [isOwner, thesisId, notify, monitorHandlers]);
 
   useEffect(() => {
     if (sidebar === "integrity") refreshLedger();
   }, [sidebar, flags.length, refreshLedger]);
+
+  // Escape closes the mobile bottom sheet (the desktop panels keep their own close button).
+  useEffect(() => {
+    if (!isMobile || sidebar === "none") return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSidebar("none"); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isMobile, sidebar]);
 
   useEffect(() => {
     if (!isOwner) return;
     if (policy.requireConsent && !me?.consent) setDialog("consent");
     else startSession();
     return () => {
-      monitorRef.current?.end();
+      releaseSessionMonitor(`thesis:${thesisId}`);
       monitorRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -601,14 +652,18 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const insertWithProvenance = (html: string, meta: InsertMeta, replace: boolean, opts: { atEnd?: boolean; message?: string } = {}) => {
     if (!editor || !canEdit) return notify(t("editor.toast.readOnly"), "error");
     if (opts.atEnd) editor.commands.focus("end");
-    const chain = editor.chain().focus();
-    if (replace) chain.deleteSelection();
-    const from = replace ? editor.state.selection.from : editor.state.selection.to;
-    chain.insertContent(html).run();
-    const to = editor.state.selection.to;
-    editor.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: meta.provider, label: meta.model, interactionId: meta.interactionId }).setTextSelection(to).setMeta("ai-insert", true).run();
+    programmatic(() => {
+      const chain = editor.chain().focus();
+      if (replace) chain.deleteSelection();
+      const from = replace ? editor.state.selection.from : editor.state.selection.to;
+      chain.insertContent(html).run();
+      const to = editor.state.selection.to;
+      editor.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: meta.provider, label: meta.model, interactionId: meta.interactionId }).setTextSelection(to).setMeta("ai-insert", true).run();
+    });
     monitorRef.current?.recordAiInsert(meta.words, meta.provider, meta.mode, meta.interactionId);
     notify(opts.message || t("editor.toast.aiInserted", { words: meta.words, aiAssisted, provider: meta.provider }), "success");
+    // Save right away so the score, the AI share and the AI log reflect the insertion without waiting for the autosave.
+    saveNowRef.current().then(refreshLedger);
   };
 
   /** "Keep as notes": the answer goes to the Research notes tab (created when missing), marked as AI-assisted. */
@@ -680,22 +735,40 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     }
   };
 
-  const decidePaste = (decision: PasteDecision, label?: string) => {
+  /** A long paste (dialog): recorded as pending while the student says where it comes from. */
+  const openPasteDialog = (text: string, html: string) => {
+    const words = countWordsInText(text);
+    (async () => {
+      const r = await monitorRef.current?.recordPaste(text, "pending");
+      setPaste({ words, text, html, matched: r?.match || null, fingerprint: r?.fingerprint || null });
+    })();
+  };
+
+  /**
+   * The student's declaration for a long paste. "own" inserts it as Written; "source"/"ai" mark it with the label;
+   * "none" (dialog dismissed) inserts it as pasted without attribution, which the ledger shows and may open a notice.
+   * The insertion is an editor command, never typing, and the declaration completes the pending paste on the server.
+   */
+  const decidePaste = (decision: PasteDecision | "none", label?: string) => {
     if (!paste || !editor) return;
     const p = paste;
     setPaste(null);
-    const from = editor.state.selection.from;
     const paragraphs = p.text.split(/\n{2,}|\r\n\r\n/).map((s) => s.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean);
     const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const html = decision === "own" && p.html ? p.html : paragraphs.map((s) => `<p>${esc(s)}</p>`).join("");
-    editor.chain().focus().insertContent(html).run();
-    const to = editor.state.selection.to;
-    if (decision !== "own") {
-      const m = p.matched;
-      editor.chain().setTextSelection({ from, to }).setProvenance({ source: decision === "ai" ? "ai" : "paste", label: label || undefined, provider: decision === "ai" ? m?.provider || label?.toLowerCase() : undefined, interactionId: decision === "ai" ? m?.interactionId : undefined }).setTextSelection(to).run();
-      if (decision === "ai") monitorRef.current?.recordAiInsert(p.words, m?.provider || label || "external", m?.mode || "paste", m?.interactionId);
-    }
-    monitorRef.current?.flush();
+    const m = p.matched;
+    programmatic(() => {
+      const from = editor.state.selection.from;
+      editor.chain().focus().insertContent(html).run();
+      const to = editor.state.selection.to;
+      if (decision !== "own") {
+        editor.chain().setTextSelection({ from, to }).setProvenance({ source: decision === "ai" ? "ai" : "paste", label: label || undefined, provider: decision === "ai" ? m?.provider || label?.toLowerCase() : undefined, interactionId: decision === "ai" ? m?.interactionId : undefined }).setTextSelection(to).run();
+      }
+    });
+    if (decision === "ai") monitorRef.current?.recordAiInsert(p.words, m?.provider || label || "external", m?.mode || "paste", m?.interactionId);
+    const declared = monitorRef.current?.declarePaste(p.fingerprint, decision, label) || Promise.resolve(null);
+    // Save right away: the pill, the ledger and any notice come from the saved document, not from the autosave delay.
+    declared.then(() => saveNowRef.current());
   };
 
   const openLink = () => {
@@ -710,7 +783,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     if (empty) return notify(t("editor.toast.selectText"), "info");
     const quote = editor.state.doc.textBetween(from, to, " ").slice(0, 200);
     const anchorId = `cmt_${Date.now().toString(36)}`;
-    if (canEdit) editor.chain().focus().setComment(anchorId).run();
+    if (canEdit) programmatic(() => editor.chain().focus().setComment(anchorId).run());
+    // Collapse the selection so the bubble menu closes while the comment is written.
+    editor.commands.setTextSelection(to);
     setPendingComment({ anchorId, quote });
     setSidebar("comments");
   };
@@ -787,7 +862,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     if (!editor) return;
     const refs = [...thesis.references].sort((a, b) => a.authors.localeCompare(b.authors));
     const items = refs.map((r, i) => `<p>${thesis.citationStyle === "IEEE" ? `[${i + 1}] ` : ""}${formatReference(r, thesis.citationStyle).full}</p>`).join("");
-    editor.chain().focus().insertContent(`<h2>${t("editor.doc.references")}</h2>${items}`).run();
+    programmatic(() => editor.chain().focus().insertContent(`<h2>${t("editor.doc.references")}</h2>${items}`).run());
   };
 
   const insertToc = () => {
@@ -796,15 +871,17 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     editor.state.doc.descendants((node) => {
       if (node.type.name === "heading" && node.attrs.level > 1) items.push(`<li><p>${"&nbsp;&nbsp;".repeat(node.attrs.level - 2)}${node.textContent}</p></li>`);
     });
-    editor.chain().focus().insertContent(`<h2>${t("editor.doc.toc")}</h2><ul>${items.join("") || `<li><p>${t("editor.doc.noHeadings")}</p></li>`}</ul>`).run();
+    programmatic(() => editor.chain().focus().insertContent(`<h2>${t("editor.doc.toc")}</h2><ul>${items.join("") || `<li><p>${t("editor.doc.noHeadings")}</p></li>`}</ul>`).run());
   };
 
   const insertFootnote = () => {
     if (!editor) return;
     const n = (editor.state.doc.textContent.match(/\[\d+\]/g) || []).length + 1;
-    editor.chain().focus().insertContent(`<sup>[${n}]</sup>`).run();
-    const end = editor.state.doc.content.size;
-    editor.chain().insertContentAt(end, `<p><sup>[${n}]</sup> ${t("editor.doc.footnoteText")}</p>`).setTextSelection(editor.state.doc.content.size - t("editor.doc.footnoteText").length - 1).run();
+    programmatic(() => {
+      editor.chain().focus().insertContent(`<sup>[${n}]</sup>`).run();
+      const end = editor.state.doc.content.size;
+      editor.chain().insertContentAt(end, `<p><sup>[${n}]</sup> ${t("editor.doc.footnoteText")}</p>`).setTextSelection(editor.state.doc.content.size - t("editor.doc.footnoteText").length - 1).run();
+    });
   };
 
   const updateThesis = async (patch: Record<string, unknown>, successMsg?: string) => {
@@ -815,6 +892,22 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     } catch (e) {
       notify((e as Error).message, "error");
     }
+  };
+
+  /** Text pasted from the menu (clipboard API): long pastes open the attribution dialog like Ctrl+V does. */
+  const pasteText = (text: string) => {
+    if (!editor || !canEdit) return;
+    const words = countWordsInText(text);
+    if (!words) return;
+    if (words >= PASTE_DIALOG_MIN_WORDS) return openPasteDialog(text, "");
+    const from = editor.state.selection.from;
+    editor.chain().focus().insertContent(text.replace(/</g, "&lt;")).setMeta("paste", true).run();
+    const insertedTo = editor.state.selection.to;
+    monitorRef.current?.recordPaste(text).then(({ match }) => {
+      if (!match || !editorRef.current) return;
+      const label = match.kind === "source" ? `${match.authors || match.title || t("editor.source")}${match.year ? ` (${match.year})` : ""}` : match.mode === "copilot" ? t("editor.label.copilot") : t("editor.label.assistant");
+      programmatic(() => editorRef.current!.chain().setTextSelection({ from, to: insertedTo }).setProvenance(match.kind === "source" ? { source: "paste", label } : { source: "ai", provider: match.provider, label, interactionId: match.interactionId }).setTextSelection(insertedTo).run());
+    });
   };
 
   const onAction = (a: MenuAction) => {
@@ -840,8 +933,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       redo: () => c().redo().run(),
       cut: () => document.execCommand("cut"),
       copy: () => document.execCommand("copy"),
-      paste: () => navigator.clipboard?.readText().then((t) => t && c().insertContent(t).run()).catch(() => notify(t("editor.toast.useCtrlV"), "info")),
-      pastePlain: () => navigator.clipboard?.readText().then((t) => t && c().insertContent(t.replace(/</g, "&lt;")).run()).catch(() => notify(t("editor.toast.useCtrlShiftV"), "info")),
+      // Menu paste goes through the same attribution flow as Ctrl+V.
+      paste: () => navigator.clipboard?.readText().then((txt) => txt && pasteText(txt)).catch(() => notify(t("editor.toast.useCtrlV"), "info")),
+      pastePlain: () => navigator.clipboard?.readText().then((txt) => txt && pasteText(txt)).catch(() => notify(t("editor.toast.useCtrlShiftV"), "info")),
       selectAll: () => c().selectAll().run(),
       find: () => setSidebar("find"),
       outline: () => setSidebar((s) => (s === "outline" ? "none" : "outline")),
@@ -859,7 +953,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       comment: startComment,
       pageBreak: () => c().setPageBreak().run(),
       hr: () => c().setHorizontalRule().run(),
-      date: () => c().insertContent(fmt.date(new Date(), { year: "numeric", month: "long", day: "numeric" })).run(),
+      date: () => programmatic(() => c().insertContent(fmt.date(new Date(), { year: "numeric", month: "long", day: "numeric" })).run()),
       citation: () => openCite(),
       toc: insertToc,
       footnote: insertFootnote,
@@ -914,6 +1008,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     return l === key ? k : l;
   };
   const aiPct = thesis.wordCount ? Math.round((thesis.provenance.ai / thesis.wordCount) * 100) : 0;
+  // One number for the pill and the ledger: the server's breakdown when it has arrived, the stored score until then.
+  const integrityScore = breakdown?.score ?? thesis.integrityScore;
   const pastePct = thesis.wordCount ? Math.round((thesis.provenance.paste / thesis.wordCount) * 100) : 0;
   const ws = thesis.pageSetup;
   const workspaceClass = `docs-workspace ${ws.orientation === "landscape" ? "landscape" : ""} ${ws.size === "Letter" ? "letter" : ""} ${showProvenance ? "show-provenance" : ""}`;
@@ -942,7 +1038,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           onChangeStyle={(s) => updateThesis({ citationStyle: s })}
           onAdd={(r: Reference) => updateThesis({ references: [...thesis.references, r] }, t("editor.toast.referenceAddedShort"))}
           onRemove={(id) => updateThesis({ references: thesis.references.filter((r) => r.id !== id) })}
-          onInsertInText={(r) => editor.chain().focus().insertContent(formatReference(r, thesis.citationStyle).inText).run()}
+          onInsertInText={(r) => programmatic(() => editor.chain().focus().insertContent(formatReference(r, thesis.citationStyle).inText).run())}
           onInsertBibliography={insertBibliography}
           onAddWithAi={() => openCite("library")}
         />
@@ -969,7 +1065,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       );
       case "process": return (
         <ProcessPanel thesisId={thesisId} isOwner={canEdit} sessionId={sessionId || undefined} onClose={() => setSidebar("none")} onOpenConsent={() => setDialog("consent")}
-          onInsertDeclaration={(html) => { if (activeTabRef.current !== SUBMISSION) switchTab(SUBMISSION); editor.chain().focus("end").insertContent(html).run(); saveNow(); notify(t("editor.toast.declarationAppended", { finalSubmission }), "success"); }}
+          onInsertDeclaration={(html) => { if (activeTabRef.current !== SUBMISSION) switchTab(SUBMISSION); programmatic(() => editor.chain().focus("end").insertContent(html).run()); saveNow(); notify(t("editor.toast.declarationAppended", { finalSubmission }), "success"); }}
         />
       );
       case "sources": return (
@@ -1007,6 +1103,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     }
   };
 
+  const panelTitle = (k: SidebarKind) => {
+    const key = k === "ai" ? "glossary.aiAssistant" : k === "integrity" ? "glossary.integrityLedger" : `editor.panel.${k}`;
+    const l = t(key);
+    return l === key ? k : l;
+  };
+
   const saveLabel = saveState === "saving" ? t("editor.save.saving") : saveState === "unsaved" ? t("editor.save.unsavedChanges") : saveState === "error" ? t("editor.save.failedRetry") : t("editor.save.savedAgo", { ago: formatTimeAgo(lastSaved, t, (d) => fmt.date(d)) });
 
   return (
@@ -1025,8 +1127,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
             {saveState === "saved" ? t("editor.save.saved") : saveState === "saving" ? t("editor.save.saving") : saveState === "unsaved" ? t("editor.save.unsaved") : t("editor.save.failed")}
           </span>
         )}
-        <IntegrityPill aiPct={aiPct} pastePct={pastePct} limitPct={policy.maxAiUsagePercent} score={thesis.integrityScore} onClick={() => setSidebar((x) => (x === "integrity" ? "none" : "integrity"))} className="hidden md:inline-flex flex-shrink-0" />
-        <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />{t("glossary.aiAssistant")}</button>
+        <IntegrityPill aiPct={aiPct} pastePct={pastePct} limitPct={policy.maxAiUsagePercent} score={integrityScore} onClick={() => setSidebar((x) => (x === "integrity" ? "none" : "integrity"))} className="hidden md:inline-flex flex-shrink-0" />
+        {/* The assistant thinks with the author: a reviewer reads the thesis, so the panel is not offered in review. */}
+        {isOwner && <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />{t("glossary.aiAssistant")}</button>}
         <button onClick={() => setDialog("share")} className="hidden md:inline-flex items-center px-3.5 py-[7px] rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 flex-shrink-0">{t("editor.share")}</button>
         {!isMobile && <MenuOverflow editor={editor} onAction={onAction} state={{ showProvenance, sidebar, spellcheck, zoom, focus, canEdit }} />}
         <button onClick={() => setMobileMenu(true)} className="md:hidden p-2 text-gray-600" aria-label={t("common.more")}><MoreVertical className="w-5 h-5" /></button>
@@ -1107,7 +1210,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
                   <button onMouseDown={(e) => e.preventDefault()} onClick={startComment} className="bm-btn !px-[9px]"><MessageSquarePlus className="w-[13px] h-[13px]" />{t("editor.comment")}</button>
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("cite")} className="bm-btn !px-[9px]" title={t("editor.bubble.supportTitle")}><SearchIcon className="w-[13px] h-[13px]" />{t("editor.support")}</button>
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("evidence")} className="bm-btn !px-[9px]" title={t("editor.bubble.evidenceTitle")}><Scale className="w-[13px] h-[13px]" />{t("editor.evidence")}</button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />{t("editor.askAi")}</button>
+                  {isOwner && <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />{t("editor.askAi")}</button>}
                 </div>
               </BubbleMenu>
             </div>
@@ -1127,8 +1230,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         advisorName={thesis.professorName && thesis.professorName !== "Unassigned" ? thesis.professorName : undefined}
         words={activeTab === SUBMISSION ? thesis.wordCount : tabWords}
         targetWords={thesis.targetWords}
-        page={Math.max(1, Math.ceil((activeTab === SUBMISSION ? thesis.wordCount : tabWords) / 350))}
-        pages={Math.max(1, Math.ceil(thesis.targetWords / 350))}
+        pages={Math.max(1, Math.ceil((activeTab === SUBMISSION ? thesis.wordCount : tabWords) / 350))}
         citationStyle={thesis.citationStyle}
         zoom={zoom}
         onWordCount={() => setDialog("wordCount")}
@@ -1137,15 +1239,25 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
 
       {/* Mobile bottom action bar */}
       {isMobile && (
-        <nav className="flex justify-around border-t border-gray-200 bg-white flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-          {([["ai", <Bot key="a" className="w-5 h-5" />, t("editor.mobile.ai")], ["comments", <MessageSquare key="c" className="w-5 h-5" />, t("editor.panel.comments")], ["outline", <ListTree key="o" className="w-5 h-5" />, t("editor.panel.outline")], ["integrity", <ShieldCheck key="i" className="w-5 h-5" />, t("glossary.integrity")]] as [SidebarKind, React.ReactNode, string][]).map(([k, icon, label]) => (
-            <button key={k} onClick={() => setSidebar((s) => (s === k ? "none" : k))} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] ${sidebar === k ? "text-brand-600" : "text-gray-500"}`}>{icon}{label}</button>
+        <nav className="relative z-[70] flex justify-around border-t border-gray-200 bg-white flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} aria-label={t("editor.mobile.navLabel")}>
+          {([...(isOwner ? [["ai", <Bot key="a" className="w-5 h-5" />, t("editor.mobile.ai")]] : []), ["comments", <MessageSquare key="c" className="w-5 h-5" />, t("editor.panel.comments")], ["outline", <ListTree key="o" className="w-5 h-5" />, t("editor.panel.outline")], ["integrity", <ShieldCheck key="i" className="w-5 h-5" />, t("glossary.integrity")]] as [SidebarKind, React.ReactNode, string][]).map(([k, icon, label]) => (
+            <button key={k} onClick={() => setSidebar((s) => (s === k ? "none" : k))} aria-pressed={sidebar === k} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] ${sidebar === k ? "text-brand-600" : "text-gray-500"}`}>{icon}{label}</button>
           ))}
           <button onClick={() => setMobileMenu(true)} className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-gray-500"><ChevronDown className="w-5 h-5" />{t("common.more")}</button>
         </nav>
       )}
+      {/* Mobile bottom sheet: a tap on the backdrop, the close button, Escape or the bottom bar closes it. */}
       {isMobile && sidebar !== "none" && (
-        <div className="fixed inset-x-0 bottom-0 top-[30%] z-[60] bg-white rounded-t-2xl shadow-2xl border-t border-gray-200 flex flex-col animate-slide-up">{sidebarPanel()}</div>
+        <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={panelTitle(sidebar)}>
+          <div className="absolute inset-0 bg-black/40 animate-fade-in" onClick={() => setSidebar("none")} aria-hidden="true" />
+          <div className="absolute inset-x-0 bottom-0 top-12 bg-white rounded-t-2xl shadow-2xl border-t border-gray-200 flex flex-col animate-slide-up" style={{ paddingBottom: "calc(56px + env(safe-area-inset-bottom, 0px))", top: "max(3rem, env(safe-area-inset-top, 0px))" }}>
+            <div className="flex items-center h-9 pl-10 pr-1 flex-shrink-0 border-b border-gray-100">
+              <span className="flex-1 flex justify-center"><span className="w-9 h-1 rounded-full bg-gray-300" aria-hidden="true" /></span>
+              <button onClick={() => setSidebar("none")} className="w-8 h-8 inline-flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 flex-shrink-0" aria-label={t("editor.mobile.closePanel")}><X className="w-[18px] h-[18px]" /></button>
+            </div>
+            <div className="flex-1 min-h-0 flex flex-col">{sidebarPanel()}</div>
+          </div>
+        </div>
       )}
       <Modal open={mobileMenu} onClose={() => setMobileMenu(false)} title={thesis.title} size="sm">
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -1173,7 +1285,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         <p className="text-sm text-gray-600">{t("editor.dialog.aboutBody")}</p>
       </Modal>
       <VersionPreviewDialog open={!!preview} onClose={() => setPreview(null)} html={preview?.html || ""} label={preview?.label || ""} canRestore={canEdit} onRestore={async () => { if (!preview) return; const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${preview.id}`, { method: "POST" }).catch(() => null); if (d) { restoreSubmission(d.thesis); loadVersions(); } }} />
-      <PasteAttributionDialog open={!!paste} words={paste?.words || 0} matched={paste?.matched || null} onDecide={decidePaste} />
+      <PasteAttributionDialog open={!!paste} words={paste?.words || 0} matched={paste?.matched || null} onDecide={decidePaste} onDismiss={() => decidePaste("none")} />
       {me?.policy && (
         <ConsentModal open={dialog === "consent"} onClose={() => setDialog(null)} policy={me.policy} existing={me.consent} thesisId={thesisId} onGranted={async () => { await refreshMe(); if (!monitorRef.current) startSession(); else notify(t("editor.toast.monitoringUpdated"), "success"); }} />
       )}

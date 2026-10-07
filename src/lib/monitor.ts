@@ -33,10 +33,38 @@ export interface MonitorFlag {
   description: string;
 }
 
+/** Metrics the server recomputes after an event; the editor shows them in the pill and the ledger alike. */
+export interface MonitorMetrics {
+  integrityScore: number;
+  aiUsagePercent: number;
+  integrityBreakdown?: unknown;
+}
+
+/**
+ * What the student said about a paste. `pending` is the dialog still open (the paste is recorded, nothing is
+ * judged yet); `none` is a paste that was never declared (dialog dismissed, or too short for the dialog).
+ */
+export type PasteAttribution = "own" | "source" | "ai" | "none" | "pending";
+
+export interface MonitorHandlers {
+  onFlags?: (f: MonitorFlag[]) => void;
+  onStats?: (s: Record<string, number>) => void;
+  onMetrics?: (m: MonitorMetrics) => void;
+}
+
 interface QueuedEvent {
   type: string;
   data: Record<string, unknown>;
 }
+
+interface SessionResponse {
+  flags: MonitorFlag[];
+  matches?: Record<string, unknown>[];
+  session?: Record<string, number>;
+  metrics?: MonitorMetrics;
+}
+
+const HEARTBEAT_MS = 60000;
 
 /**
  * Client-side writing-session monitor. Batches events (counts, timings, fingerprints — never the text
@@ -49,24 +77,34 @@ export class SessionMonitor {
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private typing = { keystrokes: 0, words: 0, windowStart: Date.now(), lastKey: 0 };
-  private onFlags: (flags: MonitorFlag[]) => void;
-  private onStats: (stats: Record<string, number>) => void;
-  private ended = false;
+  private handlers: MonitorHandlers;
+  ended = false;
   private visibilityHandler = () => {
+    if (!document.hidden) this.sendHeartbeat();
     if (!this.scopes.tabActivity) return;
     this.push(document.hidden ? "tab_hidden" : "tab_visible", {});
   };
-  private unloadHandler = () => this.end(true);
+  private unloadHandler = () => this.end();
 
-  constructor(sessionId: string, scopes: ConsentScopes, handlers: { onFlags?: (f: MonitorFlag[]) => void; onStats?: (s: Record<string, number>) => void } = {}) {
+  constructor(sessionId: string, scopes: ConsentScopes, handlers: MonitorHandlers = {}) {
     this.sessionId = sessionId;
     this.scopes = scopes;
-    this.onFlags = handlers.onFlags || (() => {});
-    this.onStats = handlers.onStats || (() => {});
+    this.handlers = handlers;
     this.flushTimer = setInterval(() => this.flush(), 5000);
-    this.heartbeat = setInterval(() => fetch(`/api/sessions/${sessionId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {}), 60000);
+    // One heartbeat a minute while the tab is visible: "minutes in the editor" is startedAt → last heartbeat.
+    this.heartbeat = setInterval(() => { if (!document.hidden) this.sendHeartbeat(); }, HEARTBEAT_MS);
     document.addEventListener("visibilitychange", this.visibilityHandler);
     window.addEventListener("pagehide", this.unloadHandler);
+  }
+
+  /** Rebinds the callbacks (a remounted editor reusing this session passes its own setters). */
+  setHandlers(handlers: MonitorHandlers) {
+    this.handlers = handlers;
+  }
+
+  private sendHeartbeat() {
+    if (this.ended) return;
+    fetch(`/api/sessions/${this.sessionId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
   }
 
   private push(type: string, data: Record<string, unknown>) {
@@ -74,7 +112,7 @@ export class SessionMonitor {
     this.queue.push({ type, data });
   }
 
-  /** Called on each editor transaction that changed the document by typing. */
+  /** Called on each editor transaction that changed the document by typing (never for pastes or commands). */
   recordTyping(charDelta: number, wordDelta: number) {
     if (!this.scopes.keystrokes) return;
     const now = Date.now();
@@ -95,19 +133,27 @@ export class SessionMonitor {
 
   /**
    * Paste: only sizes and fingerprints (whole text, paragraphs, sentences) leave the browser.
-   * Resolves with the server's attribution when the text came from a Thesisfic assistant answer.
+   * Resolves with the server's attribution when the text came from a Thesisfic assistant answer or a library source.
+   * With `attribution: "pending"` the paste is recorded but not judged until `declarePaste` says what it was.
    */
-  async recordPaste(text: string, attributed = false): Promise<PasteMatch | null> {
-    if (!this.scopes.paste) return null;
+  async recordPaste(text: string, attribution: PasteAttribution = "none"): Promise<{ fingerprint: string | null; match: PasteMatch | null }> {
+    if (!this.scopes.paste) return { fingerprint: null, match: null };
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const fp = await fingerprint(text);
     const parts = passages(text);
     const fingerprints = Array.from(new Set([fp, ...(await Promise.all(parts.map(fingerprint)))]));
     // Sent in its own request so the attribution answer cannot be lost to a concurrent timed flush.
     this.flushTyping();
-    const res = await this.send([{ type: "paste", data: { words, chars: text.length, fingerprint: fp, fingerprints, attributed } }]);
+    const res = await this.send([{ type: "paste", data: { words, chars: text.length, fingerprint: fp, fingerprints, attribution } }]);
     const ev = res?.matches?.find((m) => m.fingerprint === fp) as { matchedAi?: PasteMatch; matchedSource?: PasteMatch } | undefined;
-    return ev?.matchedAi || ev?.matchedSource || null;
+    return { fingerprint: fp, match: ev?.matchedAi || ev?.matchedSource || null };
+  }
+
+  /** Completes a pending paste with the student's declaration; the server judges it only now. */
+  async declarePaste(fp: string | null, attribution: Exclude<PasteAttribution, "pending">, label?: string) {
+    if (!this.scopes.paste || !fp) return null;
+    this.flushTyping();
+    return this.send([{ type: "paste", data: { fingerprint: fp, declared: true, attribution, label: label || undefined } }]);
   }
 
   recordAiInsert(words: number, provider: string, mode: string, interactionId?: string) {
@@ -121,21 +167,22 @@ export class SessionMonitor {
     this.push("ai_suggestion_rejected", { provider, mode });
   }
 
-  async flush(): Promise<{ flags: MonitorFlag[]; matches?: Record<string, unknown>[]; session?: Record<string, number> } | null> {
+  async flush(): Promise<SessionResponse | null> {
     if (this.ended) return null;
     this.flushTyping();
     if (!this.queue.length) return null;
     return this.send(this.queue.splice(0, this.queue.length));
   }
 
-  private async send(events: QueuedEvent[]): Promise<{ flags: MonitorFlag[]; matches?: Record<string, unknown>[]; session?: Record<string, number> } | null> {
+  private async send(events: QueuedEvent[]): Promise<SessionResponse | null> {
     if (this.ended) return null;
     try {
       const res = await fetch(`/api/sessions/${this.sessionId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ events }) });
       if (!res.ok) return null;
-      const data = await res.json();
-      if (data.flags?.length) this.onFlags(data.flags);
-      if (data.session) this.onStats(data.session);
+      const data = (await res.json()) as SessionResponse;
+      if (data.flags?.length) this.handlers.onFlags?.(data.flags);
+      if (data.session) this.handlers.onStats?.(data.session);
+      if (data.metrics) this.handlers.onMetrics?.(data.metrics);
       return data;
     } catch {
       return null;
@@ -146,7 +193,7 @@ export class SessionMonitor {
     this.scopes = scopes;
   }
 
-  end(beacon = false) {
+  end() {
     if (this.ended) return;
     this.flushTyping();
     this.ended = true;
@@ -156,13 +203,72 @@ export class SessionMonitor {
     window.removeEventListener("pagehide", this.unloadHandler);
     const events = this.queue.splice(0, this.queue.length);
     const url = `/api/sessions/${this.sessionId}`;
-    if (beacon && navigator.sendBeacon) {
-      if (events.length) navigator.sendBeacon(url, new Blob([JSON.stringify({ events })], { type: "application/json" }));
-      // PATCH cannot be beaconed; the server closes stale sessions after 5 minutes without a heartbeat.
-      return;
-    }
+    // keepalive lets both requests outlive the page on pagehide; the server also closes sessions after 5 min without a heartbeat.
     const finish = () => fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "end" }), keepalive: true }).catch(() => {});
     if (events.length) fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ events }), keepalive: true }).catch(() => {}).finally(finish);
     else finish();
   }
+}
+
+// ---------- one session per open editor ----------
+
+interface PoolEntry {
+  monitor: SessionMonitor | null;
+  starting: Promise<SessionMonitor | null> | null;
+  releaseTimer: ReturnType<typeof setTimeout> | null;
+  released: boolean;
+}
+
+const pool = new Map<string, PoolEntry>();
+/** A remount within this window (React strict mode, a fast back-and-forth) reuses the open session instead of starting another. */
+const REUSE_GRACE_MS = 10000;
+
+/**
+ * Returns the monitor for `key` (one per thesis per browser tab), starting a session only when none is open or
+ * being opened. Concurrent calls share the same start request, so a double mount never creates two sessions.
+ */
+export function acquireSessionMonitor(key: string, start: () => Promise<SessionMonitor | null>, handlers?: MonitorHandlers): Promise<SessionMonitor | null> {
+  let entry = pool.get(key);
+  if (entry) {
+    entry.released = false;
+    if (entry.releaseTimer) { clearTimeout(entry.releaseTimer); entry.releaseTimer = null; }
+    if (entry.monitor && !entry.monitor.ended) {
+      if (handlers) entry.monitor.setHandlers(handlers);
+      return Promise.resolve(entry.monitor);
+    }
+    if (entry.starting) return entry.starting.then((m) => { if (m && handlers) m.setHandlers(handlers); return m; });
+  }
+  entry = { monitor: null, starting: null, releaseTimer: null, released: false };
+  pool.set(key, entry);
+  const e = entry;
+  e.starting = start()
+    .then((m) => {
+      e.monitor = m;
+      e.starting = null;
+      if (!m) pool.delete(key);
+      else if (e.released) scheduleRelease(key, e);
+      return m;
+    })
+    .catch((err) => {
+      pool.delete(key);
+      throw err;
+    });
+  return e.starting;
+}
+
+function scheduleRelease(key: string, e: PoolEntry) {
+  if (e.releaseTimer) clearTimeout(e.releaseTimer);
+  e.releaseTimer = setTimeout(() => {
+    if (!e.released) return;
+    e.monitor?.end();
+    if (pool.get(key) === e) pool.delete(key);
+  }, REUSE_GRACE_MS);
+}
+
+/** The editor unmounted: the session ends after a short grace unless the editor comes back first. */
+export function releaseSessionMonitor(key: string) {
+  const e = pool.get(key);
+  if (!e) return;
+  e.released = true;
+  if (e.monitor) scheduleRelease(key, e);
 }

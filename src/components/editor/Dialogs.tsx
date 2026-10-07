@@ -159,7 +159,11 @@ export interface PasteMatchInfo {
   at?: string;
 }
 
-export function PasteAttributionDialog({ open, words, matched, onDecide }: { open: boolean; words: number; matched: PasteMatchInfo | null; onDecide: (d: PasteDecision, label?: string) => void }) {
+/**
+ * Where does the pasted text come from? "Continue" declares it; closing the dialog (X, Escape, backdrop) inserts
+ * the text as pasted without attribution, which the ledger shows and may open a notice.
+ */
+export function PasteAttributionDialog({ open, words, matched, onDecide, onDismiss }: { open: boolean; words: number; matched: PasteMatchInfo | null; onDecide: (d: PasteDecision, label?: string) => void; onDismiss: () => void }) {
   const t = useT();
   const fmt = useFormat();
   const [label, setLabel] = useState("");
@@ -170,7 +174,7 @@ export function PasteAttributionDialog({ open, words, matched, onDecide }: { ope
   const defaultLabel = assistant ? (matched?.mode === "copilot" ? t("editor.label.copilot") : t("editor.label.assistant")) : fromSource ? `${matched?.authors || matched?.title || t("editor.source")}${matched?.year ? ` (${matched.year})` : ""}${matched?.page ? `, p. ${matched.page}` : ""}` : "";
   useEffect(() => { setChoice(assistant ? "ai" : fromSource ? "source" : "own"); setLabel(defaultLabel); }, [matched, open, defaultLabel, assistant, fromSource]);
   return (
-    <Modal open={open} onClose={() => onDecide(choice, label)} title={t("editor.paste.title")} size="sm" footer={<button onClick={() => onDecide(choice, label)} className="btn-primary !py-2 !px-4 text-sm">{t("common.continue")}</button>}>
+    <Modal open={open} onClose={onDismiss} title={t("editor.paste.title")} size="sm" footer={<button onClick={() => onDecide(choice, label)} className="btn-primary !py-2 !px-4 text-sm">{t("common.continue")}</button>}>
       {assistant && (
         <div className="mb-3 p-3 rounded-xl bg-purple-50 border border-purple-100 text-xs text-purple-800">
           {richText(t("editor.paste.assistantNotice", { aiAssisted: t("glossary.aiAssisted") }), { share, label: <strong>{defaultLabel}</strong>, model: matched?.model ? ` (${matched.model})` : "", at: matched?.at ? `, ${fmt.dateTime(matched.at)}` : "" })}
@@ -191,6 +195,7 @@ export function PasteAttributionDialog({ open, words, matched, onDecide }: { ope
         ))}
         {choice !== "own" && <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={choice === "ai" ? t("editor.paste.toolPlaceholder") : t("editor.paste.sourcePlaceholder")} className="input-field !py-2 text-sm" />}
       </div>
+      <p className="mt-3 text-[12px] text-gray-500">{t("editor.paste.dismissHint", { quotedOrPasted: t("glossary.quotedOrPasted") })}</p>
     </Modal>
   );
 }
