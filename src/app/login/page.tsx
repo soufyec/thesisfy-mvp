@@ -25,7 +25,7 @@ function LoginForm() {
       const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || t("landing.login.errorFailed"));
+        setError(data.code === "invalid_credentials" ? t("landing.login.invalidCredentials") : data.code === "missing_fields" ? t("landing.login.missingFields") : data.error || t("landing.login.errorFailed"));
         setLoading(false);
         return;
       }

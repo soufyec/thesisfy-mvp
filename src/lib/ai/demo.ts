@@ -1,11 +1,39 @@
 import { AIMode } from "../db";
 
-/** Simulated assistant used when no provider key is configured. Mode-aware and multilingual-ish. */
-export function demoResponse(mode: AIMode, messages: { role: string; content: string }[], lang: "en" | "es" | "fr"): string {
+type DemoLang = "en" | "es" | "fr";
+
+/**
+ * The "demo mode" explanation. It travels as response metadata (`meta.demoNotice`), never inside the answer text,
+ * so it cannot end up inserted in the thesis as AI-assisted text.
+ */
+export function demoNotice(lang: DemoLang): string {
+  return lang === "es"
+    ? "Modo demo: conecta tu cuenta de Claude, GPT o Gemini en Conexiones de IA, o pide a tu universidad que ofrezca un modelo, para obtener respuestas reales."
+    : lang === "fr"
+      ? "Mode démo : connectez votre compte Claude, GPT ou Gemini dans Connexions IA, ou demandez à votre université de fournir un modèle, pour des réponses réelles."
+      : "Demo mode: connect your Claude, GPT or Gemini account in AI Connections, or ask your university to provide a model, for live answers.";
+}
+
+/** Matches the legacy demo footnote that older conversations still carry inside the answer text. */
+export const DEMO_NOTE_RE = /\n*_\((?:Demo mode|Modo demo|Mode démo)[^)]*\)_\s*$/;
+
+/**
+ * Demo answer when "Use my sources" is on and the library returned passages: it points at those passages
+ * (author, title, page) instead of giving the generic mode answer, so the grounding is visible even without a model.
+ */
+export function demoGroundedResponse(passages: { label: string; quote: string }[], lang: DemoLang): string {
+  // `label` already carries authors/title, year and page (see `passageLabel`).
+  const items = passages.map((p, i) => `${i + 1}. **${p.label}**\n   > ${p.quote}`).join("\n");
+  if (lang === "es") return `He buscado en tu biblioteca. Estos son los pasajes que mejor responden a tu pregunta:\n\n${items}\n\nSin un modelo conectado solo puedo mostrarte los pasajes, no sintetizarlos. Léelos y dime cuál sostiene mejor tu argumento; el texto de la tesis lo escribes tú.`;
+  if (lang === "fr") return `J'ai parcouru votre bibliothèque. Voici les passages qui répondent le mieux à votre question :\n\n${items}\n\nSans modèle connecté, je peux seulement vous montrer les passages, pas les synthétiser. Lisez-les et dites-moi lequel soutient le mieux votre argument ; le texte du mémoire reste le vôtre.`;
+  return `I searched your library. These are the passages that best answer your question:\n\n${items}\n\nWithout a connected model I can only show you the passages, not synthesise them. Read them and tell me which one best supports your argument; the thesis text stays yours.`;
+}
+
+/** Simulated assistant used when no provider key is configured. Mode-aware, in the user's language; the demo notice is separate (see `demoNotice`). */
+export function demoResponse(mode: AIMode, messages: { role: string; content: string }[], lang: DemoLang): string {
   const last = messages[messages.length - 1]?.content || "";
   const excerpt = last.length > 140 ? last.slice(0, 140).trim() + "…" : last;
   const L = lang;
-  const note = L === "es" ? "\n\n_(Modo demo: conecta tu cuenta de Claude, GPT o Gemini en Conexiones de IA o configura una clave del servidor para respuestas reales.)_" : L === "fr" ? "\n\n_(Mode démo : connectez votre compte Claude, GPT ou Gemini dans Connexions IA ou configurez une clé serveur pour des réponses réelles.)_" : "\n\n_(Demo mode: connect your Claude, GPT or Gemini account in AI Connections, or set a server key, for live answers.)_";
 
   const byMode: Record<AIMode, Record<"en" | "es" | "fr", string>> = {
     chat: {
@@ -67,7 +95,7 @@ export function demoResponse(mode: AIMode, messages: { role: string; content: st
 
   const greeting = /^(hi|hello|hey|hola|bonjour|salut)\b/i.test(last.trim());
   if (greeting && mode === "chat") {
-    return (L === "es" ? "¡Hola! Soy Thesisfic AI. Puedo ayudarte a hacer lluvia de ideas, estructurar capítulos, revisar borradores, corregir gramática y formatear citas, siempre sin escribir tu tesis por ti. ¿En qué trabajamos hoy?" : L === "fr" ? "Bonjour ! Je suis Thesisfic AI. Je peux vous aider à réfléchir, structurer vos chapitres, relire vos brouillons, corriger la grammaire et mettre en forme vos citations, sans jamais écrire votre mémoire à votre place. Sur quoi travaillons-nous ?" : "Hello! I'm Thesisfic AI. I can help you brainstorm, structure chapters, review drafts, fix grammar and format citations, always without writing your thesis for you. What are we working on today?") + note;
+    return (L === "es" ? "Hola, soy Thesisfic AI. Puedo ayudarte a hacer lluvia de ideas, estructurar capítulos, revisar borradores, corregir gramática y formatear citas, siempre sin escribir tu tesis por ti. ¿En qué trabajamos hoy?" : L === "fr" ? "Bonjour, je suis Thesisfic AI. Je peux vous aider à réfléchir, structurer vos chapitres, relire vos brouillons, corriger la grammaire et mettre en forme vos citations, sans jamais écrire votre mémoire à votre place. Sur quoi travaillons-nous ?" : "Hello, I'm Thesisfic AI. I can help you brainstorm, structure chapters, review drafts, fix grammar and format citations, always without writing your thesis for you. What are we working on today?");
   }
-  return byMode[mode][L] + note;
+  return byMode[mode][L];
 }

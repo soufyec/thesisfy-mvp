@@ -197,16 +197,25 @@ function ReplayText({ prev, next }: { prev: string; next: string }) {
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** Declaration as document HTML. Reworded text carries the `ai` provenance mark, as any model output does. */
+/**
+ * Declaration as document HTML. The appendix is a record of the process, not thesis text the student wrote, so every
+ * paragraph (title and signature line included) carries a provenance mark labelled with the declaration's name and
+ * `data-declaration="true"`: `paste` for the deterministic template, `ai` when the wording came from the model.
+ * Counting code (server `computeProvenance`, client ledger) excludes `data-declaration="true"` spans from all totals,
+ * so inserting the declaration can neither raise nor lower the AI share.
+ */
+export const DECLARATION_ATTR = "data-declaration";
+
 export function declarationHtml(d: DeclarationItem, t: Translate, fmt: Fmt) {
   const aiReworded = d.ledgerSummary?.aiReworded === true;
   const paragraphs = d.text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
   const [title, ...rest] = paragraphs;
-  const body = rest.map((p) => `<p>${esc(p)}</p>`).join("");
-  const wrapped = aiReworded ? `<span data-provenance="ai" data-source="Thesisfic assistant">${body}</span>` : body;
+  const label = esc(t("panelsResearch.process.decl.title"));
+  const mark = (inner: string) => `<span data-provenance="${aiReworded ? "ai" : "paste"}" data-source="${label}" ${DECLARATION_ATTR}="true">${inner}</span>`;
+  const body = rest.map((p) => `<p>${mark(esc(p))}</p>`).join("");
   const by = d.signedByName ? t("panelsResearch.process.decl.signedBy", { name: esc(d.signedByName) }) : "";
-  const signed = d.signedAt ? `<p><em>${t("panelsResearch.process.decl.signedHtml", { date: esc(fmt.date(d.signedAt)), by })}</em></p>` : "";
-  return `<h1>${esc(title || t("panelsResearch.process.decl.title"))}</h1>${wrapped}${signed}`;
+  const signed = d.signedAt ? `<p>${mark(`<em>${t("panelsResearch.process.decl.signedHtml", { date: esc(fmt.date(d.signedAt)), by })}</em>`)}</p>` : "";
+  return `<h1>${mark(esc(title || t("panelsResearch.process.decl.title")))}</h1>${body}${signed}`;
 }
 
 // ---------- Panel ----------

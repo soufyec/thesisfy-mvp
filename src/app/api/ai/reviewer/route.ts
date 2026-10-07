@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   for (const chunk of chunks) {
     let comments: ReviewerComment[];
     if (cfg.provider === "demo") {
-      comments = demoReview(chunk.text, activeRubric, { categories });
+      comments = demoReview(chunk.text, activeRubric, { categories, lang: user.preferences.language });
     } else {
       let raw = "";
       let err: string | undefined;

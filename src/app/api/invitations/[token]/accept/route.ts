@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { registerUser, setAuthCookie } from "@/lib/auth";
 import { error, json } from "@/lib/api";
 import { invitationStatus } from "@/lib/invitations";
+import { getLocale } from "@/lib/i18n/server";
 
 const MIN_PASSWORD = 8;
 
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest, { params }: { params: { token: 
   if (!name) return json({ error: "Name is required", code: "name_required" }, 400);
   if (password.length < MIN_PASSWORD) return json({ error: `Password must be at least ${MIN_PASSWORD} characters`, code: "password_short" }, 400);
 
-  const result = await registerUser({ email: inv.email, password, name, university: inv.university, role: inv.role });
+  // The account speaks the language the invitation was accepted in (`/es/invite/…`, cookie or Accept-Language).
+  const result = await registerUser({ email: inv.email, password, name, university: inv.university, role: inv.role, language: getLocale() });
   if ("error" in result) return json({ error: result.error, code: "email_taken" }, 409);
   db.invitations.accept(inv.id, result.user.id);
   return setAuthCookie(json({ user: result.user, token: result.token }, 201), result.token);

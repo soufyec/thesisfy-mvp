@@ -263,6 +263,15 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
     }
   };
 
+  /** Fixed server answers (`meta.code`) are rendered from the UI strings; model answers are shown as they came. */
+  const localizedAnswer = (a: { answer: string; citations: LibraryCitation[]; meta: Record<string, unknown> }) => {
+    const code = a.meta?.code;
+    if (code === "no_match") return t("panelsResearch.sources.answer.noMatch");
+    if (code === "no_index") return t("panelsResearch.sources.answer.noIndex");
+    if (code === "demo_extract") return `${t("panelsResearch.sources.answer.demoExtract")}\n\n${a.citations.map((c) => `- ${c.quote} [${c.ref}]`).join("\n")}\n\n_${t("panelsResearch.sources.answer.demoConnect")}_`;
+    return a.answer;
+  };
+
   const ask = async () => {
     const q = question.trim();
     if (!q || asking) return;
@@ -418,7 +427,7 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
           </button>
           {answer && (
             <div className="rounded-xl bg-white border border-gray-100 p-3 space-y-3">
-              <Markdown text={answer.answer} className="text-[13px] leading-relaxed text-gray-800" />
+              <Markdown text={localizedAnswer(answer)} className="text-[13px] leading-relaxed text-gray-800" />
               {answer.citations.length > 0 && (
                 <ol className="space-y-2 border-t border-gray-100 pt-2" aria-label={t("panelsResearch.sources.citedPassages")}>
                   {answer.citations.map((c, i) => (

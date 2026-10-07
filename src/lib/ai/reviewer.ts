@@ -284,7 +284,51 @@ interface DemoCandidate {
  * Demo reviewer used when no provider key is configured: deterministic, rubric-aware comments on
  * 3–5 sentences of the passage, chosen by simple textual cues. Same shape as a real run.
  */
-export function demoReview(text: string, rubric: RubricCriterion[], opts: { max?: number; categories?: ReviewCategory[] } = {}): ReviewerComment[] {
+export type DemoLang = "en" | "es" | "fr";
+
+type DemoKey = "claim" | "number" | "inference" | "long" | "vague" | "method" | "transition" | "fbArgument" | "fbStructure" | "fbEvidence";
+/** Rationale and question of each demo cue, per language. `{words}` is the sentence length for the long-sentence cue. */
+const DEMO_TEXT: Record<DemoLang, Record<DemoKey, [string, string]>> = {
+  en: {
+    claim: ["The sentence asserts a general finding without pointing to a result, table or source in this passage. A reader will take it as opinion until the support is visible.", "Which result or source in this chapter supports this statement, and how strong is it?"],
+    number: ["A figure is given without a reference or a pointer to where it was obtained. Numbers without provenance are the first thing an examiner checks.", "Where does this number come from: your data, a cited study, or an estimate?"],
+    inference: ["The connector signals a conclusion, but the premise it rests on is not stated in the surrounding sentences. The step from evidence to claim needs to be explicit.", "What has to be true for this conclusion to follow, and is that shown above?"],
+    long: ["This sentence runs to {words} words and carries more than one idea. Readers lose the subject before reaching the verb.", "Which of the ideas in this sentence is the one the paragraph is about?"],
+    vague: ["A vague quantifier stands in for a specific term or amount. The reader cannot tell how much, or which ones, you mean.", "Can you name the specific items or give the actual number?"],
+    method: ["The procedure is named but not quantified: no size, period, instrument or criterion. Without these, the method cannot be judged or repeated.", "What were the sample size, the period and the selection criteria?"],
+    transition: ["The paragraph opens with a transition word, but the previous paragraph does not set up the contrast or addition it announces. Check that the link between the two paragraphs is real.", "What exactly is this paragraph contrasting with, or adding to?"],
+    fbArgument: ["The sentence states a position, but the passage does not say what would count against it. A thesis argument is stronger when its limits are named.", "What is the strongest objection to this sentence, and where do you answer it?"],
+    fbStructure: ["This sentence carries the paragraph's main point but sits in the middle of it. Readers scan the first sentence of each paragraph for the point.", "Would the paragraph read better if this sentence came first?"],
+    fbEvidence: ["The statement is plausible but unanchored: nothing in the passage shows the reader how you know it. Tie it to a result, an observation or a source.", "What did you observe or read that makes you confident of this?"],
+  },
+  es: {
+    claim: ["La frase afirma un hallazgo general sin remitir a un resultado, tabla o fuente de este pasaje. El lector lo tomará por opinión hasta que vea el respaldo.", "¿Qué resultado o fuente de este capítulo sostiene esta afirmación, y con qué solidez?"],
+    number: ["Se da una cifra sin referencia ni indicación de dónde se obtuvo. Los números sin procedencia son lo primero que comprueba un tribunal.", "¿De dónde sale este número: de tus datos, de un estudio citado o de una estimación?"],
+    inference: ["El conector anuncia una conclusión, pero la premisa en que se apoya no aparece en las frases cercanas. El paso de la evidencia a la afirmación debe ser explícito.", "¿Qué tiene que ser cierto para que esta conclusión se siga, y está demostrado más arriba?"],
+    long: ["Esta frase llega a {words} palabras y contiene más de una idea. El lector pierde el sujeto antes de llegar al verbo.", "¿Cuál de las ideas de esta frase es la que trata el párrafo?"],
+    vague: ["Un cuantificador vago sustituye a un término o una cantidad concretos. El lector no sabe cuánto, ni cuáles, quieres decir.", "¿Puedes nombrar los elementos concretos o dar la cifra real?"],
+    method: ["Se nombra el procedimiento pero no se cuantifica: sin tamaño, periodo, instrumento ni criterio. Sin estos datos el método no puede juzgarse ni repetirse.", "¿Cuáles fueron el tamaño de la muestra, el periodo y los criterios de selección?"],
+    transition: ["El párrafo empieza con un conector de transición, pero el párrafo anterior no prepara el contraste o la adición que anuncia. Comprueba que el vínculo entre ambos sea real.", "¿Con qué contrasta exactamente este párrafo, o a qué añade?"],
+    fbArgument: ["La frase enuncia una posición, pero el pasaje no dice qué la contradiría. Un argumento de tesis es más sólido cuando nombra sus límites.", "¿Cuál es la objeción más fuerte a esta frase, y dónde la respondes?"],
+    fbStructure: ["Esta frase lleva la idea principal del párrafo pero está en medio de él. El lector busca la idea en la primera frase de cada párrafo.", "¿Se leería mejor el párrafo si esta frase fuera la primera?"],
+    fbEvidence: ["La afirmación es plausible pero no está anclada: nada en el pasaje muestra al lector cómo lo sabes. Vincúlala a un resultado, una observación o una fuente.", "¿Qué observaste o leíste que te da confianza en esto?"],
+  },
+  fr: {
+    claim: ["La phrase affirme un résultat général sans renvoyer à un résultat, un tableau ou une source de ce passage. Le lecteur y verra une opinion tant que l'appui n'est pas visible.", "Quel résultat ou quelle source de ce chapitre soutient cette affirmation, et avec quelle solidité ?"],
+    number: ["Un chiffre est donné sans référence ni indication de sa provenance. Les nombres sans origine sont la première chose qu'un jury vérifie.", "D'où vient ce nombre : de vos données, d'une étude citée ou d'une estimation ?"],
+    inference: ["Le connecteur annonce une conclusion, mais la prémisse sur laquelle elle repose n'apparaît pas dans les phrases voisines. Le passage des preuves à l'affirmation doit être explicite.", "Que faut-il pour que cette conclusion s'ensuive, et est-ce montré plus haut ?"],
+    long: ["Cette phrase atteint {words} mots et porte plus d'une idée. Le lecteur perd le sujet avant d'arriver au verbe.", "Laquelle des idées de cette phrase est celle dont traite le paragraphe ?"],
+    vague: ["Un quantificateur vague remplace un terme ou une quantité précis. Le lecteur ne sait pas combien, ni lesquels, vous voulez dire.", "Pouvez-vous nommer les éléments précis ou donner le nombre réel ?"],
+    method: ["La procédure est nommée mais pas quantifiée : ni taille, ni période, ni instrument, ni critère. Sans cela, la méthode ne peut être ni jugée ni reproduite.", "Quels étaient la taille de l'échantillon, la période et les critères de sélection ?"],
+    transition: ["Le paragraphe s'ouvre sur un mot de transition, mais le paragraphe précédent ne prépare pas le contraste ou l'ajout annoncé. Vérifiez que le lien entre les deux est réel.", "Avec quoi ce paragraphe contraste-t-il exactement, ou à quoi ajoute-t-il ?"],
+    fbArgument: ["La phrase énonce une position, mais le passage ne dit pas ce qui la contredirait. Un argument de thèse est plus solide quand ses limites sont nommées.", "Quelle est l'objection la plus forte à cette phrase, et où y répondez-vous ?"],
+    fbStructure: ["Cette phrase porte l'idée principale du paragraphe mais se trouve en son milieu. Le lecteur cherche l'idée dans la première phrase de chaque paragraphe.", "Le paragraphe se lirait-il mieux si cette phrase venait en premier ?"],
+    fbEvidence: ["L'affirmation est plausible mais sans ancrage : rien dans le passage ne montre au lecteur comment vous le savez. Reliez-la à un résultat, une observation ou une source.", "Qu'avez-vous observé ou lu qui vous rend confiant sur ce point ?"],
+  },
+};
+
+export function demoReview(text: string, rubric: RubricCriterion[], opts: { max?: number; categories?: ReviewCategory[]; lang?: DemoLang } = {}): ReviewerComment[] {
+  const T = DEMO_TEXT[opts.lang || "en"];
   const active = new Set(rubric.filter((r) => r.weight > 0 && (!opts.categories || opts.categories.includes(r.id))).map((r) => r.id));
   const weight = (c: ReviewCategory) => rubric.find((r) => r.id === c)?.weight ?? 0;
   const paras = paragraphSpans(text);
@@ -301,24 +345,24 @@ export function demoReview(text: string, rubric: RubricCriterion[], opts: { max?
       cands.push({ start: s.start, end: s.end, category, severity, rationale, question, score: base + weight(category) * 2 + (severity === "high" ? 3 : severity === "medium" ? 1 : 0) });
     };
     if (CLAIM_WORDS.test(sent) && !hasCite) {
-      push("evidence", words > 20 ? "high" : "medium", "The sentence asserts a general finding without pointing to a result, table or source in this passage. A reader will take it as opinion until the support is visible.", "Which result or source in this chapter supports this statement, and how strong is it?", 6);
+      push("evidence", words > 20 ? "high" : "medium", T.claim[0], T.claim[1], 6);
     }
     if (NUMBER.test(sent) && !hasCite) {
-      push("citations", "medium", "A figure is given without a reference or a pointer to where it was obtained. Numbers without provenance are the first thing an examiner checks.", "Where does this number come from: your data, a cited study, or an estimate?", 5);
+      push("citations", "medium", T.number[0], T.number[1], 5);
     }
     if (INFERENCE.test(sent)) {
-      push("argument", "medium", "The connector signals a conclusion, but the premise it rests on is not stated in the surrounding sentences. The step from evidence to claim needs to be explicit.", "What has to be true for this conclusion to follow, and is that shown above?", 4);
+      push("argument", "medium", T.inference[0], T.inference[1], 4);
     }
     if (words > 45) {
-      push("clarity", words > 65 ? "high" : "medium", `This sentence runs to ${words} words and carries more than one idea. Readers lose the subject before reaching the verb.`, "Which of the ideas in this sentence is the one the paragraph is about?", 3);
+      push("clarity", words > 65 ? "high" : "medium", T.long[0].replace("{words}", String(words)), T.long[1], 3);
     } else if (VAGUE.test(sent) && words > 12 && !hasCite) {
-      push("clarity", "low", "A vague quantifier stands in for a specific term or amount. The reader cannot tell how much, or which ones, you mean.", "Can you name the specific items or give the actual number?", 1);
+      push("clarity", "low", T.vague[0], T.vague[1], 1);
     }
     if (METHOD.test(sent) && !/\b\d/.test(sent)) {
-      push("method", "medium", "The procedure is named but not quantified: no size, period, instrument or criterion. Without these, the method cannot be judged or repeated.", "What were the sample size, the period and the selection criteria?", 4);
+      push("method", "medium", T.method[0], T.method[1], 4);
     }
     if (paraStart.has(s.start) && TRANSITION_OPEN.test(sent)) {
-      push("structure", "low", "The paragraph opens with a transition word, but the previous paragraph does not set up the contrast or addition it announces. Check that the link between the two paragraphs is real.", "What exactly is this paragraph contrasting with, or adding to?", 2);
+      push("structure", "low", T.transition[0], T.transition[1], 2);
     }
   }
 
@@ -339,9 +383,9 @@ export function demoReview(text: string, rubric: RubricCriterion[], opts: { max?
   if (picked.length < 3) {
     const rest = spans.filter((s) => !usedSentences.has(s.start)).sort((a, b) => b.end - b.start - (a.end - a.start));
     const fallbacks: [ReviewCategory, ReviewSeverity, string, string][] = [
-      ["argument", "low", "The sentence states a position, but the passage does not say what would count against it. A thesis argument is stronger when its limits are named.", "What is the strongest objection to this sentence, and where do you answer it?"],
-      ["structure", "low", "This sentence carries the paragraph's main point but sits in the middle of it. Readers scan the first sentence of each paragraph for the point.", "Would the paragraph read better if this sentence came first?"],
-      ["evidence", "low", "The statement is plausible but unanchored: nothing in the passage shows the reader how you know it. Tie it to a result, an observation or a source.", "What did you observe or read that makes you confident of this?"],
+      ["argument", "low", T.fbArgument[0], T.fbArgument[1]],
+      ["structure", "low", T.fbStructure[0], T.fbStructure[1]],
+      ["evidence", "low", T.fbEvidence[0], T.fbEvidence[1]],
     ];
     for (const s of rest) {
       if (picked.length >= 3) break;

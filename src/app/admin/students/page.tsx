@@ -59,9 +59,10 @@ export default function StudentsPage() {
       <div className="max-w-5xl">
         <div className="flex items-center justify-between mb-6">
           <div><h1 className="text-2xl font-bold">{t("admin.students.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.students.subtitle")}</p></div>
-          <button onClick={() => { setOpen(true); setCreated(null); }} className="btn-primary !px-4"><Plus className="w-4 h-4 mr-1" />{t("admin.students.invite")}</button>
+          {/* Advisors have no invitation links, so they keep the direct button; admins use the Invite people block below. */}
+          {user?.role === "professor" && <button onClick={() => { setOpen(true); setCreated(null); }} className="btn-primary !px-4"><Plus className="w-4 h-4 mr-1" />{t("admin.students.invite")}</button>}
         </div>
-        {user?.role === "admin" && <div className="mb-6"><InvitePeople onToast={showToast} /></div>}
+        {user?.role === "admin" && <div className="mb-6"><InvitePeople onToast={showToast} onCreateManually={() => { setOpen(true); setCreated(null); }} /></div>}
         {resetShown && (
           <div className="mb-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-xs">
             <p className="text-gray-600 mb-2">{t("accounts.admin.resetLinkShown", { email: resetShown.email })}</p>

@@ -237,6 +237,10 @@ const en = {
   "panelsResearch.evidence.findSupport": "Find support",
   "panelsResearch.evidence.useLabel": "Use this claim in {feature}",
   "panelsResearch.evidence.use": "Use in {feature}",
+  "panelsResearch.sources.answer.demoExtract": "The passages below are the closest matches in your library for this question. Demo mode: no model was called, so this is an extract, not a synthesis.",
+  "panelsResearch.sources.answer.demoConnect": "Connect a model in AI connections, or ask your university to provide one, for a grounded answer.",
+  "panelsResearch.sources.answer.noMatch": "No passage in your library matches this question. Try other terms, or add the source you have in mind.",
+  "panelsResearch.sources.answer.noIndex": "Your library has no indexed text yet. Add a DOI, a URL, a PDF or pasted text, then ask again.",
 };
 
 const es: Record<keyof typeof en, string> = {
@@ -471,6 +475,10 @@ const es: Record<keyof typeof en, string> = {
   "panelsResearch.evidence.findSupport": "Buscar apoyo",
   "panelsResearch.evidence.useLabel": "Usar esta afirmación en {feature}",
   "panelsResearch.evidence.use": "Usar en {feature}",
+  "panelsResearch.sources.answer.demoExtract": "Los pasajes siguientes son los que mejor coinciden con esta pregunta en tu biblioteca. Modo demo: no se ha llamado a ningún modelo, así que es un extracto, no una síntesis.",
+  "panelsResearch.sources.answer.demoConnect": "Conecta un modelo en Conexiones de IA, o pide a tu universidad que ofrezca uno, para obtener una respuesta fundamentada.",
+  "panelsResearch.sources.answer.noMatch": "Ningún pasaje de tu biblioteca coincide con esta pregunta. Prueba con otros términos o añade la fuente que tienes en mente.",
+  "panelsResearch.sources.answer.noIndex": "Tu biblioteca aún no tiene texto indexado. Añade un DOI, una URL, un PDF o texto pegado y vuelve a preguntar.",
 };
 
 const fr: Record<keyof typeof en, string> = {
@@ -705,6 +713,10 @@ const fr: Record<keyof typeof en, string> = {
   "panelsResearch.evidence.findSupport": "Trouver des appuis",
   "panelsResearch.evidence.useLabel": "Utiliser cette affirmation dans {feature}",
   "panelsResearch.evidence.use": "Utiliser dans {feature}",
+  "panelsResearch.sources.answer.demoExtract": "Les passages ci-dessous sont ceux de votre bibliothèque qui correspondent le mieux à cette question. Mode démo : aucun modèle n'a été appelé, il s'agit donc d'un extrait, pas d'une synthèse.",
+  "panelsResearch.sources.answer.demoConnect": "Connectez un modèle dans Connexions IA, ou demandez à votre université d'en fournir un, pour une réponse fondée sur vos sources.",
+  "panelsResearch.sources.answer.noMatch": "Aucun passage de votre bibliothèque ne correspond à cette question. Essayez d'autres termes ou ajoutez la source que vous avez en tête.",
+  "panelsResearch.sources.answer.noIndex": "Votre bibliothèque ne contient encore aucun texte indexé. Ajoutez un DOI, une URL, un PDF ou du texte collé, puis posez à nouveau la question.",
 };
 
 export const panelsResearch: Messages<typeof en> = { en, es, fr };

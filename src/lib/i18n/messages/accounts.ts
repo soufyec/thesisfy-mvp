@@ -97,6 +97,8 @@ const en = {
   "accounts.admin.resetLinkCopied": "Reset link copied. It is valid for 48 hours.",
   "accounts.admin.resetLinkShown": "Reset link for {email} (valid 48 hours). Copy it and send it yourself.",
   "accounts.admin.hideLink": "Hide",
+  "accounts.admin.manualCreate": "Create an account manually",
+  "accounts.admin.manualCreateHint": "Invitation links let each person choose their own password. Manual creation gives you a temporary password that you pass on yourself.",
 };
 
 export const accounts: Messages<typeof en> = {
@@ -189,6 +191,8 @@ export const accounts: Messages<typeof en> = {
     "accounts.admin.resetLinkCopied": "Enlace de restablecimiento copiado. Es válido durante 48 horas.",
     "accounts.admin.resetLinkShown": "Enlace de restablecimiento para {email} (válido 48 horas). Cópialo y envíalo tú.",
     "accounts.admin.hideLink": "Ocultar",
+    "accounts.admin.manualCreate": "Crear una cuenta manualmente",
+    "accounts.admin.manualCreateHint": "Con los enlaces de invitación cada persona elige su contraseña. La creación manual te da una contraseña temporal que debes transmitir tú.",
   },
   fr: {
     "accounts.minPassword": "Au moins 8 caractères.",
@@ -278,5 +282,7 @@ export const accounts: Messages<typeof en> = {
     "accounts.admin.resetLinkCopied": "Lien de réinitialisation copié. Il est valable 48 heures.",
     "accounts.admin.resetLinkShown": "Lien de réinitialisation pour {email} (valable 48 heures). Copiez-le et envoyez-le vous-même.",
     "accounts.admin.hideLink": "Masquer",
+    "accounts.admin.manualCreate": "Créer un compte manuellement",
+    "accounts.admin.manualCreateHint": "Avec les liens d'invitation, chaque personne choisit son mot de passe. La création manuelle vous donne un mot de passe temporaire à transmettre vous-même.",
   },
 };

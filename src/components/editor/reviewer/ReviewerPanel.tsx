@@ -8,7 +8,7 @@ import { useFormat, useT } from "@/lib/i18n/client";
 import type { Translate } from "@/lib/i18n/dictionary";
 import { PanelShell } from "../Sidebars";
 import { anchorStatusFor, AnchorStatus, locateQuote, tokenJaccard } from "@/lib/ai/anchor";
-import type { AnchoredReviewComment, ReviewCategory, ReviewScope, ReviewSeverity } from "@/lib/ai/reviewer";
+import { DEFAULT_RUBRIC, type AnchoredReviewComment, type ReviewCategory, type ReviewScope, type ReviewSeverity } from "@/lib/ai/reviewer";
 import type { ReviewRun, RubricCriterion } from "@/lib/db";
 
 export interface ReviewerPanelProps {
@@ -68,6 +68,19 @@ interface RunResponse {
 const SEVERITIES: ReviewSeverity[] = ["high", "medium", "low"];
 const SEVERITY_RANK: Record<ReviewSeverity, number> = { high: 0, medium: 1, low: 2 };
 const SEVERITY_LABEL: Record<ReviewSeverity, string> = { high: "panelsReview.reviewer.severityHigh", medium: "panelsReview.reviewer.severityMedium", low: "panelsReview.reviewer.severityLow" };
+
+/**
+ * Criterion label/description in the UI language. The institution's own wording (set in Admin → AI policies) is kept
+ * as written; only the default rubric's English text is translated, by criterion id.
+ */
+function criterionLabel(t: Translate, c: RubricCriterion): string {
+  const d = DEFAULT_RUBRIC.find((x) => x.id === c.id);
+  return d && d.label === c.label ? t(`panelsReview.reviewer.criteria.${c.id}.label`) : c.label;
+}
+function criterionDescription(t: Translate, c: RubricCriterion): string {
+  const d = DEFAULT_RUBRIC.find((x) => x.id === c.id);
+  return d && d.description === c.description ? t(`panelsReview.reviewer.criteria.${c.id}.description`) : c.description;
+}
 const SEVERITY_GROUP_LABEL: Record<ReviewSeverity, string> = { high: "panelsReview.reviewer.severityGroupHigh", medium: "panelsReview.reviewer.severityGroupMedium", low: "panelsReview.reviewer.severityGroupLow" };
 const SCOPE_LABEL: Record<ReviewScope, string> = { selection: "panelsReview.reviewer.scopeSelection", section: "panelsReview.reviewer.scopeSection", document: "panelsReview.reviewer.scopeDocument" };
 const SEVERITY_CLASS: Record<ReviewSeverity, string> = { high: "text-red-600", medium: "text-amber-600", low: "text-gray-500" };
@@ -217,6 +230,10 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
   const t = useT();
   const timeAgo = useTimeAgo();
   const [rubric, setRubric] = useState<RubricCriterion[]>([]);
+  const categoryLabel = (id: ReviewCategory) => {
+    const c = rubric.find((r) => r.id === id);
+    return c ? criterionLabel(t, c) : id;
+  };
   const [runs, setRuns] = useState<ReviewRun[]>([]);
   const [categories, setCategories] = useState<Set<ReviewCategory>>(new Set());
   const [scope, setScope] = useState<ReviewScope>(selectionText ? "selection" : "section");
@@ -483,8 +500,8 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
               const on = categories.has(c.id);
               const off = c.weight === 0;
               return (
-                <button key={c.id} type="button" disabled={off || busy} aria-pressed={on} title={off ? t("panelsReview.reviewer.criterionDisabled", { label: c.label }) : c.description} onClick={() => toggleCategory(c.id)} className={`text-[11px] px-2 py-1 rounded-[10px] border ${on && !off ? `${CATEGORY_CLASS[c.id]} border-transparent font-medium` : "border-gray-200 text-gray-500"} disabled:opacity-40 disabled:line-through`}>
-                  {c.label}
+                <button key={c.id} type="button" disabled={off || busy} aria-pressed={on} title={off ? t("panelsReview.reviewer.criterionDisabled", { label: criterionLabel(t, c) }) : criterionDescription(t, c)} onClick={() => toggleCategory(c.id)} className={`text-[11px] px-2 py-1 rounded-[10px] border ${on && !off ? `${CATEGORY_CLASS[c.id]} border-transparent font-medium` : "border-gray-200 text-gray-500"} disabled:opacity-40 disabled:line-through`}>
+                  {criterionLabel(t, c)}
                 </button>
               );
             })}
@@ -556,7 +573,7 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
                 {newGroup && <div className={`text-[10px] font-semibold uppercase tracking-wide mt-1 mb-1 ${SEVERITY_CLASS[it.severity]}`}>{t(SEVERITY_GROUP_LABEL[it.severity])}</div>}
                 <article className="p-3 rounded-xl border border-gray-100 hover:border-gray-200">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-[10px] font-medium ${CATEGORY_CLASS[it.category]}`}>{rubric.find((r) => r.id === it.category)?.label || it.category}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-[10px] font-medium ${CATEGORY_CLASS[it.category]}`}>{categoryLabel(it.category)}</span>
                     <span className={`text-[10px] ${SEVERITY_CLASS[it.severity]}`}>{t(SEVERITY_LABEL[it.severity])}</span>
                     {it.status === "stale" && <span className="text-[10px] px-1.5 py-0.5 rounded-[10px] bg-amber-50 text-amber-700" title={t("panelsReview.reviewer.textChangedTitle")}>{t("panelsReview.reviewer.textChanged")}</span>}
                     {it.status === "orphaned" && <span className="text-[10px] px-1.5 py-0.5 rounded-[10px] bg-gray-100 text-gray-500" title={t("panelsReview.reviewer.anchorLostTitle")}>{t("panelsReview.reviewer.anchorLost")}</span>}
@@ -605,7 +622,7 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
               <ul className="mt-2 space-y-1.5">
                 {resolved.map((it) => (
                   <li key={it.id} className="text-[11px] text-gray-500 p-2 rounded-lg bg-gray-50">
-                    <span className={`px-1.5 py-0.5 rounded-[10px] mr-1 ${CATEGORY_CLASS[it.category]}`}>{rubric.find((r) => r.id === it.category)?.label || it.category}</span>
+                    <span className={`px-1.5 py-0.5 rounded-[10px] mr-1 ${CATEGORY_CLASS[it.category]}`}>{categoryLabel(it.category)}</span>
                     <span className="line-clamp-1 mt-1">{it.rationale}</span>
                     <span className="block mt-0.5 text-gray-400">{it.dismissedReason ? t("panelsReview.reviewer.dismissedReason", { reason: it.dismissedReason }) : t("panelsReview.reviewer.resolved")}</span>
                   </li>

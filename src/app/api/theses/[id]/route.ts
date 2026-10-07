@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { db, ThesisStatus } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
-import { integrityBreakdown, refreshThesisMetrics } from "@/lib/integrity";
+import { evaluatePolicyLimit, integrityBreakdown, refreshThesisMetrics, thesisMetrics } from "@/lib/integrity";
+import { getT } from "@/lib/i18n/server";
 
 const STATUSES: ThesisStatus[] = ["draft", "in_progress", "under_review", "revision_requested", "approved", "submitted"];
 
@@ -16,9 +17,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   const professor = thesis.professorId ? db.users.findById(thesis.professorId) : null;
   const policy = db.policies.get(student?.university || r.user.university);
   const flags = db.flags.listByThesis(thesis.id);
+  // AI reviewer comments are signed "AI reviewer" (authorRole "ai"), never with the student's name.
+  const t = getT();
   const comments = db.comments.list(thesis.id).map((c) => ({
     ...c,
-    authorName: db.users.findById(c.authorId)?.name || "Unknown",
+    authorName: c.source === "ai" ? t("panelsReview.reviewer.author") : db.users.findById(c.authorId)?.name || "Unknown",
+    authorRole: c.source === "ai" ? ("ai" as const) : db.users.findById(c.authorId)?.role,
     replies: c.replies.map((rp) => ({ ...rp, authorName: db.users.findById(rp.authorId)?.name || "Unknown" })),
   }));
 
@@ -84,6 +88,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   const updated = db.theses.update(thesis.id, patch);
   if (!updated) return error("Thesis not found", 404);
+  const newFlags = [];
 
   if (patch.content !== undefined) {
     const last = db.versions.list(thesis.id)[0];
@@ -93,11 +98,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (changed && (kind === "manual" || !last || Date.now() - new Date(last.createdAt).getTime() > 2 * 60 * 1000)) {
       db.versions.create({ thesisId: thesis.id, authorId: r.user.id, content: updated.content, wordCount: updated.wordCount, kind, label: body.versionLabel });
     }
-    if (body.sessionId) db.sessions.addEvent(body.sessionId, "save", { wordCount: updated.wordCount });
-    refreshThesisMetrics(thesis.id);
+    const session = typeof body.sessionId === "string" ? db.sessions.findById(body.sessionId) : undefined;
+    if (session && session.userId === r.user.id && !session.endedAt) {
+      db.sessions.addEvent(session.id, "save", { wordCount: updated.wordCount });
+      // The AI-limit notice follows the saved document (pastes declared as AI, assistant insertions), never a stale count.
+      newFlags.push(...evaluatePolicyLimit(session, db.policies.get(r.user.university)));
+    }
   }
 
-  return json({ thesis: { ...updated, content: undefined, sessions: undefined, tabs: undefined } });
+  // The pill and the ledger read these same numbers: the response carries them after every save.
+  const metrics = thesisMetrics(thesis.id);
+  return json({ thesis: { ...updated, content: undefined, sessions: undefined, tabs: undefined, integrityScore: metrics?.integrityScore ?? updated.integrityScore, aiUsagePercent: metrics?.aiUsagePercent ?? updated.aiUsagePercent }, integrityBreakdown: metrics?.integrityBreakdown, flags: newFlags });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {

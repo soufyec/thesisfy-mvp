@@ -262,6 +262,8 @@ const en = {
   "dashboard.settings.profileSaved": "Profile saved",
   "dashboard.settings.consentWithdrawn": "Consent withdrawn. Monitoring stopped and the assistant is paused until you choose again.",
   "dashboard.settings.choicesSaved": "Monitoring choices saved",
+  "dashboard.thesis.template.abstract": "Abstract",
+  "dashboard.thesis.template.introduction": "1. Introduction",
 };
 
 export const dashboard: Messages<typeof en> = {
@@ -527,6 +529,8 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.settings.profileSaved": "Perfil guardado",
     "dashboard.settings.consentWithdrawn": "Consentimiento retirado. La monitorización se ha detenido y el asistente queda en pausa hasta que vuelvas a elegir.",
     "dashboard.settings.choicesSaved": "Opciones de monitorización guardadas",
+    "dashboard.thesis.template.abstract": "Resumen",
+    "dashboard.thesis.template.introduction": "1. Introducción",
   },
   fr: {
     // Navigation
@@ -789,5 +793,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.settings.profileSaved": "Profil enregistré",
     "dashboard.settings.consentWithdrawn": "Consentement retiré. Le suivi est arrêté et l'assistant est en pause jusqu'à ce que vous choisissiez à nouveau.",
     "dashboard.settings.choicesSaved": "Choix de suivi enregistrés",
+    "dashboard.thesis.template.abstract": "Résumé",
+    "dashboard.thesis.template.introduction": "1. Introduction",
   },
 };

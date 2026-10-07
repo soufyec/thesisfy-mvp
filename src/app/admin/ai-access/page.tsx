@@ -77,6 +77,9 @@ export default function AdminAIAccessPage() {
   const t = useT();
   const fmt = useFormat();
   const money = (n: number) => fmt.number(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // The API sends the backend's English name and billing line; the page translates them by backend id.
+  const backendName = (m: IModel) => (BACKENDS.some((b) => b.id === m.backend) ? t(`admin.access.backendMeta.${m.backend}.name`) : m.backendName);
+  const billedBy = (m: IModel) => (BACKENDS.some((b) => b.id === m.backend) ? t(`admin.access.backendMeta.${m.backend}.billedBy`) : m.billedBy);
   const [funding, setFunding] = useState<Funding | null>(null);
   const [models, setModels] = useState<IModel[]>([]);
   const [spend, setSpend] = useState<Spend | null>(null);
@@ -195,7 +198,7 @@ export default function AdminAIAccessPage() {
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"><div><div className="text-sm font-medium">{t("admin.access.uniProvides")}</div><div className="text-xs text-gray-500">{t("admin.access.uniProvidesDesc")}</div></div><Toggle checked={funding.institutionPays} disabled={!canManage} onChange={(v) => setFunding({ ...funding, institutionPays: v })} /></div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <label className="text-xs text-gray-500">{t("admin.access.currency")}<select disabled={!canManage} value={funding.currency} onChange={(e) => setFunding({ ...funding, currency: e.target.value as Funding["currency"] })} className="input-field !py-2 mt-1">{["EUR", "USD", "GBP", "CHF"].map((c) => <option key={c}>{c}</option>)}</select></label>
-              <label className="text-xs text-gray-500">{t("admin.access.usdRate", { cur: funding.currency })}<input type="number" step="0.01" disabled={!canManage} value={funding.usdRate} onChange={(e) => setFunding({ ...funding, usdRate: Number(e.target.value) })} className="input-field !py-2 mt-1" /></label>
+              <label className="text-xs text-gray-500">{funding.currency === "USD" ? t("admin.access.usdRateUsd") : t("admin.access.usdRate", { cur: funding.currency })}<input type="number" step="0.01" disabled={!canManage} value={funding.usdRate} onChange={(e) => setFunding({ ...funding, usdRate: Number(e.target.value) })} className="input-field !py-2 mt-1" /></label>
               <label className="text-xs text-gray-500">{t("admin.access.monthlyBudget", { cur })}<input type="number" min={0} disabled={!canManage} value={funding.monthlyBudget} onChange={(e) => setFunding({ ...funding, monthlyBudget: Number(e.target.value) })} className="input-field !py-2 mt-1" /></label>
               <label className="text-xs text-gray-500">{t("admin.access.perStudent", { cur })}<input type="number" min={0} step="0.5" disabled={!canManage} value={funding.perStudentMonthly} onChange={(e) => setFunding({ ...funding, perStudentMonthly: Number(e.target.value) })} className="input-field !py-2 mt-1" /></label>
               <label className="text-xs text-gray-500 col-span-2">{t("admin.access.atLimit")}<select disabled={!canManage} value={funding.atLimit} onChange={(e) => setFunding({ ...funding, atLimit: e.target.value as Funding["atLimit"] })} className="input-field !py-2 mt-1"><option value="own_account">{t("admin.access.atLimitOwn")}</option><option value="block">{t("admin.access.atLimitBlock")}</option></select></label>
@@ -220,8 +223,8 @@ export default function AdminAIAccessPage() {
                       {m.ready ? <span className="badge-success flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{t("admin.access.ready")}</span> : <span className="badge-warning">{m.backend === "thesisfic" ? t("admin.access.keyMissingServer") : t("admin.access.keyMissing")}</span>}
                       {m.lastError && <span className="badge-danger">{t("admin.access.lastError")}</span>}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">{m.backendName} · <span className="font-mono">{m.model}</span>{m.endpoint && <> · <span className="font-mono">{m.endpoint}</span></>} · {m.region}</div>
-                    <div className="text-xs text-gray-500">{t("admin.access.listPrice", { billedBy: m.billedBy, input: m.inputPrice, output: m.outputPrice })}{m.secretHint && <> · {t("admin.access.keyHint", { hint: m.secretHint })}</>}{m.lastTestedAt && <> · {t("admin.access.tested", { date: fmt.date(m.lastTestedAt) })}</>}</div>
+                    <div className="text-xs text-gray-500 mt-1">{backendName(m)} · <span className="font-mono">{m.model}</span>{m.endpoint && <> · <span className="font-mono">{m.endpoint}</span></>} · {m.region}</div>
+                    <div className="text-xs text-gray-500">{t("admin.access.listPrice", { billedBy: billedBy(m), input: m.inputPrice, output: m.outputPrice })}{m.secretHint && <> · {t("admin.access.keyHint", { hint: m.secretHint })}</>}{m.lastTestedAt && <> · {t("admin.access.tested", { date: fmt.date(m.lastTestedAt) })}</>}</div>
                     {m.lastError && <div className="text-xs text-red-600 mt-1">{m.lastError}</div>}
                     {spend && (() => { const u = spend.byModel.find((x) => x.id === m.id); return u && u.requests ? <div className="text-xs text-gray-400 mt-1">{t("admin.access.thisMonth", { requests: plural(t, "admin.requests", u.requests), spent: money(u.spent), cur, students: plural(t, "admin.students", u.students) })}</div> : null; })()}
                   </div>

@@ -85,10 +85,18 @@ export interface ChatMsg {
   streaming?: boolean;
   error?: string;
   demo?: boolean;
+  /** Demo-mode explanation sent as metadata (never part of the answer text). */
+  demoNotice?: string;
   billedTo?: string;
   notice?: string;
+  /** "Use my sources" was on for this answer; `groundedPassages` is how many library passages grounded it. */
+  useSources?: boolean;
+  groundedPassages?: number;
   createdAt: string;
 }
+
+/** Legacy demo footnote that older stored conversations still carry inside the answer; stripped before any insertion. */
+const DEMO_NOTE_RE = /\n*_\((?:Demo mode|Modo demo|Mode démo)[^)]*\)_\s*$/;
 
 export interface InsertMeta {
   provider: string;
@@ -337,7 +345,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         {
           onMeta: (meta) => {
             if (meta.conversationId) setConversationId(String(meta.conversationId));
-            update({ provider: String(meta.provider), model: String(meta.model), label: String(meta.label), blocked: !!meta.blocked, demo: !!meta.demo, billedTo: meta.billedTo ? String(meta.billedTo) : undefined, notice: meta.notice ? String(meta.notice) : undefined });
+            update({ provider: String(meta.provider), model: String(meta.model), label: String(meta.label), blocked: !!meta.blocked, demo: !!meta.demo, demoNotice: meta.demoNotice ? String(meta.demoNotice) : undefined, billedTo: meta.billedTo ? String(meta.billedTo) : undefined, notice: meta.notice ? String(meta.notice) : undefined, useSources: !!meta.useSources, groundedPassages: typeof meta.groundedPassages === "number" ? meta.groundedPassages : undefined });
             if (meta.billedTo === "institution") setAllowance((a) => (a ? { ...a } : a));
           },
           onDelta: (t) => setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: m.content + t } : m))),
@@ -401,14 +409,22 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     onClearSelection?.();
   };
 
-  const metaFor = (m: ChatMsg): InsertMeta => ({ provider: m.provider || "demo", model: m.model || "", mode: m.mode || mode, interactionId: m.interactionId, words: countWordsInText(m.content) });
+  const metaFor = (m: ChatMsg): InsertMeta => ({ provider: m.provider || "demo", model: m.model || "", mode: m.mode || mode, interactionId: m.interactionId, words: countWordsInText(m.content.replace(DEMO_NOTE_RE, "")) });
+  /** The cost card names who pays in the UI language; the editor passes the funding side as a plain token or legacy label. */
+  const payerLabel = (payer?: string) => {
+    if (!payer) return undefined;
+    const p = payer.toLowerCase();
+    if (p === "institution" || p === "university" || p === "your university") return t("assistant.cost.payer.university");
+    if (p === "student" || p === "you" || p === "your account") return t("assistant.cost.payer.you");
+    return payer;
+  };
 
   /** Runs the confirmed action from the cost card. Never called without it. */
   const confirmPending = () => {
     if (!pending) return;
     const m = messages.find((x) => x.id === pending.id);
     if (!m) return setPending(null);
-    const html = markdownToHtml(m.content);
+    const html = markdownToHtml(m.content.replace(DEMO_NOTE_RE, ""));
     const meta = metaFor(m);
     if (pending.action === "insert") onInsert?.(html, meta);
     else if (pending.action === "notes") onKeepAsNotes?.(html, meta);
@@ -426,7 +442,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
 
   const renderCostCard = (m: ChatMsg) => {
     if (!pending || pending.id !== m.id) return null;
-    const n = countWordsInText(m.content);
+    const n = countWordsInText(m.content.replace(DEMO_NOTE_RE, ""));
     const noun = t(`assistant.cost.noun.${INSERT_NOUN[m.mode || mode] || "answer"}`);
     const words = n === 1 ? t("assistant.cost.aiWords_one") : t("assistant.cost.aiWords", { n });
     const ctx = insertContext;
@@ -441,7 +457,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         </div>
         <div className="text-[12.5px] leading-normal text-gray-700">
           {ctx ? rich(t("assistant.cost.withLimit", { noun, words, cur, next, limit: ctx.limitPct })) : rich(t("assistant.cost.noLimit", { noun, words }))}
-          {ctx?.payer && <> {t("assistant.cost.billedTo", { payer: ctx.payer })}</>}
+          {ctx?.payer && <> {t("assistant.cost.billedTo", { payer: payerLabel(ctx.payer) })}</>}
           {over && ctx && <div className="mt-1.5 text-prov-ai-deep font-medium">{t("assistant.cost.over", { next, limit: ctx.limitPct })}</div>}
         </div>
         <div className="flex gap-1.5 mt-2.5 text-xs">
@@ -678,8 +694,15 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                 {m.demo && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">{t("assistant.msg.demo")}</span>}
                 {m.billedTo === "institution" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px] !py-0">{t("assistant.msg.paidByUniversity")}</span>}
                 {m.billedTo === "student" && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">{t("assistant.msg.yourAccount")}</span>}
+                {m.useSources && !m.error && (
+                  <span className={`badge !text-[10px] !py-0 inline-flex items-center gap-1 ${m.groundedPassages ? "bg-accent-50 text-accent-800" : "bg-gray-100 text-gray-500"}`}>
+                    <BookOpen className="w-3 h-3" aria-hidden />
+                    {m.groundedPassages ? t(m.groundedPassages === 1 ? "assistant.msg.passages_one" : "assistant.msg.passages", { n: m.groundedPassages }) : t("assistant.msg.noPassages")}
+                  </span>
+                )}
               </div>
               {m.notice && !m.error && <div className="mb-1 text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1">{m.notice}</div>}
+              {m.demo && !m.error && !m.streaming && <div className="mb-1 text-[11px] text-gray-500">{t("assistant.msg.demoNotice")}</div>}
               <div className={`text-sm leading-[1.55] px-3 py-2.5 rounded-[12px_12px_12px_2px] text-gray-900 ${m.blocked ? "bg-amber-50 border border-amber-100" : "bg-gray-100"}`}>
                 <Markdown text={m.content || (m.streaming ? "…" : "")} />
                 {m.error && <div className="mt-2 text-xs text-red-600">{m.error}</div>}

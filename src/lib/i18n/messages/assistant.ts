@@ -165,6 +165,12 @@ const en = {
   "assistant.sources.on": "Use my sources · on",
   "assistant.sources.title": "Answer only from the sources in this thesis's library, quoting passages",
   "assistant.sources.note": "Answers are grounded in your library and quote passages.",
+  "assistant.cost.payer.university": "your university",
+  "assistant.cost.payer.you": "your own account",
+  "assistant.msg.passages": "{n} passages from your library",
+  "assistant.msg.passages_one": "1 passage from your library",
+  "assistant.msg.noPassages": "no matching passage in your library",
+  "assistant.msg.demoNotice": "Demo mode: connect your Claude, GPT or Gemini account in AI Connections, or ask your university to provide a model, for live answers. This note is not part of the answer and is never inserted.",
 };
 
 export const assistant: Messages<typeof en> = {
@@ -317,6 +323,12 @@ export const assistant: Messages<typeof en> = {
     "assistant.sources.on": "Usar mis fuentes · activado",
     "assistant.sources.title": "Responder solo con las fuentes de la biblioteca de esta tesis, citando pasajes",
     "assistant.sources.note": "Las respuestas se basan en tu biblioteca y citan pasajes.",
+    "assistant.cost.payer.university": "tu universidad",
+    "assistant.cost.payer.you": "tu propia cuenta",
+    "assistant.msg.passages": "{n} pasajes de tu biblioteca",
+    "assistant.msg.passages_one": "1 pasaje de tu biblioteca",
+    "assistant.msg.noPassages": "ningún pasaje de tu biblioteca coincide",
+    "assistant.msg.demoNotice": "Modo demo: conecta tu cuenta de Claude, GPT o Gemini en Conexiones de IA, o pide a tu universidad que ofrezca un modelo, para obtener respuestas reales. Esta nota no forma parte de la respuesta y nunca se inserta.",
   },
   fr: {
     "assistant.mode.chat.label": "Demander",
@@ -466,5 +478,11 @@ export const assistant: Messages<typeof en> = {
     "assistant.sources.on": "Utiliser mes sources · activé",
     "assistant.sources.title": "Répondre uniquement à partir des sources de la bibliothèque de cette thèse, en citant des passages",
     "assistant.sources.note": "Les réponses s'appuient sur votre bibliothèque et citent des passages.",
+    "assistant.cost.payer.university": "votre université",
+    "assistant.cost.payer.you": "votre propre compte",
+    "assistant.msg.passages": "{n} passages de votre bibliothèque",
+    "assistant.msg.passages_one": "1 passage de votre bibliothèque",
+    "assistant.msg.noPassages": "aucun passage correspondant dans votre bibliothèque",
+    "assistant.msg.demoNotice": "Mode démo : connectez votre compte Claude, GPT ou Gemini dans Connexions IA, ou demandez à votre université de fournir un modèle, pour des réponses réelles. Cette note ne fait pas partie de la réponse et n'est jamais insérée.",
   },
 };

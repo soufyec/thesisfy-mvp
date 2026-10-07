@@ -102,8 +102,9 @@ export async function POST(request: NextRequest) {
   const candidates = retrieve(thesis.id, question, 12, sourceIds);
   if (!candidates.length) {
     const indexed = db.sourceChunks.listByThesis(thesis.id).length;
+    // `meta.code` lets the panel render these fixed messages in the UI language; `answer` stays in English for other clients.
     const answer = indexed ? "No passage in your library matches this question. Try other terms, or add the source you have in mind." : "Your library has no indexed text yet. Add a DOI, a URL, a PDF or pasted text, then ask again.";
-    return json({ answer, citations: [], meta: { ...meta, passages: 0, reranked: false, empty: true } });
+    return json({ answer, citations: [], meta: { ...meta, passages: 0, reranked: false, empty: true, code: indexed ? "no_match" : "no_index" } });
   }
 
   // Demo mode: extractive answer from the top three passages; quotes are their opening sentences, verified by construction.
@@ -112,7 +113,8 @@ export async function POST(request: NextRequest) {
     const citations: SourceCitation[] = top.map((p) => toCitation(p, splitSentences(p.text)[0] || p.text.slice(0, 200)));
     const answer = `The passages below are the closest matches in your library for this question (demo mode: no model call, so this is an extract, not a synthesis).\n\n${top.map((p, i) => `- ${citations[i].quote} [${p.ref}]`).join("\n")}\n\n_Connect a model in AI connections, or ask your university to provide one, for a grounded answer._`;
     const interactionId = log(answer, { inputTokens: 0, outputTokens: 0 }, false, citations.map((c) => c.sourceId));
-    return json({ answer, citations, meta: { ...meta, passages: top.length, reranked: false, interactionId, usage: { inputTokens: 0, outputTokens: 0 } } });
+    // `code: "demo_extract"`: the panel rebuilds this fixed wording from its own strings (the quotes come from `citations`).
+    return json({ answer, citations, meta: { ...meta, passages: top.length, reranked: false, interactionId, code: "demo_extract", usage: { inputTokens: 0, outputTokens: 0 } } });
   }
 
   // Rerank + contextual summary, then answer from the top five only.

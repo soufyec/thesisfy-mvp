@@ -35,7 +35,13 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export default function InvitePeople({ onToast }: { onToast: (message: string, kind?: "info" | "success" | "error") => void }) {
+interface InvitePeopleProps {
+  onToast: (message: string, kind?: "info" | "success" | "error") => void;
+  /** Secondary path: an account created by staff with a temporary password. Shown as a small link under the invite actions. */
+  onCreateManually?: () => void;
+}
+
+export default function InvitePeople({ onToast, onCreateManually }: InvitePeopleProps) {
   const t = useT();
   const fmt = useFormat();
   const [text, setText] = useState("");
@@ -126,6 +132,12 @@ export default function InvitePeople({ onToast }: { onToast: (message: string, k
         <button type="button" onClick={submit} disabled={busy || !parsed.length} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40 disabled:cursor-not-allowed"><Link2 className="w-4 h-4 mr-1" aria-hidden />{busy ? t("accounts.admin.inviteSubmitting") : t("accounts.admin.inviteSubmit")}</button>
         {pending.length > 1 && <button type="button" onClick={copyAll} className="btn-outline !py-2 !px-4 text-sm"><Copy className="w-4 h-4 mr-1" aria-hidden />{t("accounts.admin.copyAll")}</button>}
       </div>
+      {onCreateManually && (
+        <p className="text-xs text-gray-500 mt-3">
+          <button type="button" onClick={onCreateManually} className="text-brand-600 hover:text-brand-700 font-medium underline-offset-2 hover:underline">{t("accounts.admin.manualCreate")}</button>
+          <span className="ml-1">{t("accounts.admin.manualCreateHint")}</span>
+        </p>
+      )}
       {skipped.length > 0 && (
         <p className="text-xs text-amber-700 bg-amber-50 rounded-xl p-3 mt-3">{t("accounts.admin.skipped", { list: skipped.map((s) => `${s.email} (${t(`accounts.admin.skip.${s.reason}`)})`).join(", ") })}</p>
       )}

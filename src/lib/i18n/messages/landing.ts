@@ -191,6 +191,8 @@ const en = {
   "ui.pwa.body": "Write and chat with your assistant from your home screen.",
   "ui.pwa.install": "Install",
   "ui.pwa.dismiss": "Dismiss",
+  "landing.login.invalidCredentials": "The email address or password is not correct.",
+  "landing.login.missingFields": "Enter your email address and password.",
 };
 
 export const landing: Messages<typeof en> = {
@@ -372,6 +374,8 @@ export const landing: Messages<typeof en> = {
     "ui.pwa.body": "Escribe y conversa con tu asistente desde la pantalla de inicio.",
     "ui.pwa.install": "Instalar",
     "ui.pwa.dismiss": "Descartar",
+    "landing.login.invalidCredentials": "El correo o la contraseña no son correctos.",
+    "landing.login.missingFields": "Introduce tu correo y tu contraseña.",
   },
   fr: {
     "meta.title": "Thesisfic.edu · Provenance de la rédaction d'une thèse, pas détection d'IA",
@@ -550,5 +554,7 @@ export const landing: Messages<typeof en> = {
     "ui.pwa.body": "Rédigez et échangez avec votre assistant depuis votre écran d'accueil.",
     "ui.pwa.install": "Installer",
     "ui.pwa.dismiss": "Ignorer",
+    "landing.login.invalidCredentials": "L'adresse e-mail ou le mot de passe est incorrect.",
+    "landing.login.missingFields": "Saisissez votre adresse e-mail et votre mot de passe.",
   },
 };

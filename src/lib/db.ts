@@ -1092,7 +1092,11 @@ export function countWords(html: string): number {
 }
 
 /** Counts words inside provenance spans. Unmarked text is attributed to the student. */
-export function computeProvenance(html: string): ProvenanceStats {
+/** The AI-use declaration appendix (`data-declaration="true"`, see ProcessPanel) is a record, not thesis text: it is left out of every count. */
+const DECLARATION_RE = /<span[^>]*data-declaration="true"[^>]*>[\s\S]*?<\/span>/gi;
+
+export function computeProvenance(rawHtml: string): ProvenanceStats {
+  const html = rawHtml.replace(DECLARATION_RE, "");
   const total = countWords(html);
   let ai = 0;
   let paste = 0;
@@ -1162,8 +1166,11 @@ export const db = {
       return s.theses.filter((t) => ids.has(t.studentId));
     },
     getAll: () => load().theses,
-    create: (data: { title: string; description: string; studentId: string; professorId?: string; deadline?: string; targetWords?: number; citationStyle?: Thesis["citationStyle"]; content?: string }): Thesis => {
-      const content = data.content || `<h1>${escapeHtml(data.title)}</h1><h2>Abstract</h2><p></p><h2>1. Introduction</h2><p></p>`;
+    /** `headings` and `notesTitle` let the caller localise the starter document and the notes tab (defaults are English). */
+    create: (data: { title: string; description: string; studentId: string; professorId?: string; deadline?: string; targetWords?: number; citationStyle?: Thesis["citationStyle"]; content?: string; headings?: { abstract: string; introduction: string }; notesTitle?: string }): Thesis => {
+      const h = data.headings || { abstract: "Abstract", introduction: "1. Introduction" };
+      const notesTitle = data.notesTitle || "Notes";
+      const content = data.content || `<h1>${escapeHtml(data.title)}</h1><h2>${escapeHtml(h.abstract)}</h2><p></p><h2>${escapeHtml(h.introduction)}</h2><p></p>`;
       const thesis: Thesis = {
         id: uid("thesis"),
         title: data.title,
@@ -1183,7 +1190,7 @@ export const db = {
         updatedAt: now(),
         sessions: [],
         references: [],
-        tabs: [{ id: uid("tab"), title: "Notes", content: "<h2>Notes</h2><p></p>", updatedAt: now() }],
+        tabs: [{ id: uid("tab"), title: notesTitle, content: `<h2>${escapeHtml(notesTitle)}</h2><p></p>`, updatedAt: now() }],
         pageSetup: { orientation: "portrait", size: "A4", margin: 2.54, lineSpacing: 1.5 },
       };
       load().theses.push(thesis);
@@ -1341,6 +1348,18 @@ export const db = {
       s.endedAt = now();
       persist();
       return s;
+    },
+    /** Drops a session that recorded nothing (an editor opened and closed again): it would only inflate the minutes. */
+    remove: (id: string) => {
+      for (const t of load().theses) {
+        const idx = t.sessions.findIndex((x) => x.id === id);
+        if (idx !== -1) {
+          t.sessions.splice(idx, 1);
+          persist();
+          return true;
+        }
+      }
+      return false;
     },
   },
 

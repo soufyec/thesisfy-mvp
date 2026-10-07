@@ -2,13 +2,22 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
+import { getT } from "@/lib/i18n/server";
 
-const withNames = (c: ReturnType<typeof db.comments.list>[number]) => ({
-  ...c,
-  authorName: db.users.findById(c.authorId)?.name || "Unknown",
-  authorRole: db.users.findById(c.authorId)?.role,
-  replies: c.replies.map((rp) => ({ ...rp, authorName: db.users.findById(rp.authorId)?.name || "Unknown" })),
-});
+/**
+ * AI reviewer comments (`source: "ai"`) are shown as "AI reviewer" with `authorRole: "ai"`, not under the student's
+ * name: the student requested them but did not write them. `authorId` still records who ran the reviewer.
+ */
+const withNames = (c: ReturnType<typeof db.comments.list>[number]) => {
+  const ai = c.source === "ai";
+  const author = db.users.findById(c.authorId);
+  return {
+    ...c,
+    authorName: ai ? getT()("panelsReview.reviewer.author") : author?.name || "Unknown",
+    authorRole: ai ? ("ai" as const) : author?.role,
+    replies: c.replies.map((rp) => ({ ...rp, authorName: db.users.findById(rp.authorId)?.name || "Unknown" })),
+  };
+};
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const r = await requireUser(request);

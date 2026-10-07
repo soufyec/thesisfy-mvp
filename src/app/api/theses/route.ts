@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
+import { translate } from "@/lib/i18n/dictionary";
 
 export async function GET(request: NextRequest) {
   const r = await requireUser(request);
@@ -47,6 +48,8 @@ export async function POST(request: NextRequest) {
     body.professorId ||
     (user.role === "professor" ? user.id : db.users.getByUniversity(user.university).find((u) => u.role === "professor")?.id);
 
+  // Starter headings and the notes tab follow the student's language (the thesis is theirs, whoever creates it).
+  const lang = db.users.findById(studentId)?.preferences.language || "en";
   const thesis = db.theses.create({
     title: body.title.trim(),
     description: body.description?.trim() || "",
@@ -55,6 +58,8 @@ export async function POST(request: NextRequest) {
     deadline: body.deadline || undefined,
     targetWords: Number(body.targetWords) || 20000,
     citationStyle: body.citationStyle || "APA",
+    headings: { abstract: translate(lang, "dashboard.thesis.template.abstract"), introduction: translate(lang, "dashboard.thesis.template.introduction") },
+    notesTitle: translate(lang, "editor.notesTab"),
   });
   db.versions.create({ thesisId: thesis.id, authorId: user.id, content: thesis.content, wordCount: thesis.wordCount, kind: "milestone", label: "Created" });
   return json({ thesis }, 201);
