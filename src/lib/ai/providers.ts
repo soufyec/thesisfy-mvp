@@ -311,9 +311,14 @@ async function* streamOpenAICompatible(cfg: ResolvedProvider, system: string, me
   yield { type: "usage", ...usage };
 }
 
-async function* streamGemini(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens: number): AsyncGenerator<StreamChunk> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(cfg.apiKey!)}`;
-  const res = await fetch(url, {
+/** Gemini returns 503 "high demand" and 429 bursts on the free tier; retried with backoff, then on a fallback model. */
+const GEMINI_RETRIES = 3;
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function geminiRequest(apiKey: string, model: string, system: string, messages: ChatMessage[], maxTokens: number): Promise<Response> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+  return fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -322,10 +327,28 @@ async function* streamGemini(cfg: ResolvedProvider, system: string, messages: Ch
       generationConfig: { maxOutputTokens: maxTokens },
     }),
   });
-  if (!res.ok || !res.body) {
-    const text = await res.text().catch(() => "");
-    throw Object.assign(new Error(parseErr(text) || `Gemini error ${res.status}`), { status: res.status });
+}
+
+async function* streamGemini(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens: number): AsyncGenerator<StreamChunk> {
+  const models = cfg.model === GEMINI_FALLBACK_MODEL || cfg.institutionModel ? [cfg.model] : [cfg.model, GEMINI_FALLBACK_MODEL];
+  let res: Response | null = null;
+  let lastErr: { message: string; status: number } | null = null;
+  for (const model of models) {
+    for (let attempt = 0; attempt < GEMINI_RETRIES; attempt++) {
+      const r = await geminiRequest(cfg.apiKey!, model, system, messages, maxTokens);
+      if (r.ok && r.body) {
+        res = r;
+        break;
+      }
+      const text = await r.text().catch(() => "");
+      lastErr = { message: parseErr(text) || `Gemini error ${r.status}`, status: r.status };
+      const transient = r.status === 503 || r.status === 429 || /high demand|overloaded|try again later/i.test(lastErr.message);
+      if (!transient) throw Object.assign(new Error(lastErr.message), { status: r.status });
+      await sleep(1500 * (attempt + 1));
+    }
+    if (res) break;
   }
+  if (!res || !res.body) throw Object.assign(new Error(lastErr?.message || "Gemini request failed"), { status: lastErr?.status || 503 });
   let usage = { inputTokens: 0, outputTokens: 0 };
   for await (const data of sseLines(res.body)) {
     try {
