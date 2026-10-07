@@ -20,17 +20,17 @@ export default function Hero() {
 
   return (
     <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14">
-      <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[520px]">
+      <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[520px]">
         <HeroScene heroRef={heroRef} textRef={textRef} />
 
-        {/* Seal column: above the copy under 1024px, on the right from 1024px */}
-        <div className="relative z-[1] order-1 lg:order-2 flex flex-col items-center gap-1.5 w-full lg:w-[104px] lg:-mt-4 [&_figcaption]:hidden [&_svg]:w-20 [&_svg]:h-20 lg:[&_svg]:w-[100px] lg:[&_svg]:h-[100px]">
+        {/* Seal: on the right from 768px; on phones it sits inside the orbital scene below the copy */}
+        <div className="relative z-[1] order-2 hidden md:flex flex-col items-center gap-1.5 w-full lg:w-[104px] lg:-mt-4 [&_figcaption]:hidden [&_svg]:w-20 [&_svg]:h-20 lg:[&_svg]:w-[100px] lg:[&_svg]:h-[100px]">
           <QualitySeal size={100} className="!gap-0" />
           <span className="text-[11px] font-semibold text-gray-900 text-center leading-[1.3]">{t("glossary.qualitySeal")}</span>
         </div>
 
         {/* Copy */}
-        <div ref={textRef} className="relative z-[1] order-2 lg:order-1 min-w-0 max-w-[720px]">
+        <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
           <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-brand-50 text-brand-700 text-[13px] font-semibold mb-7">
             <Shield className="w-3.5 h-3.5" strokeWidth={2.2} aria-hidden="true" />
             {t("landing.hero.badge")}
@@ -60,6 +60,15 @@ export default function Hero() {
               </li>
             ))}
           </ul>
+        </div>
+      </div>
+
+      {/* Phones: the orbital scene gets its own band under the copy, with the seal inside it */}
+      <div className="md:hidden relative mt-6 h-[320px] -mx-5 overflow-hidden" aria-hidden="true">
+        <HeroScene heroRef={heroRef} textRef={textRef} compact />
+        <div className="absolute top-2 right-4 z-[1] flex flex-col items-center gap-1 [&_figcaption]:hidden [&_svg]:!w-[72px] [&_svg]:!h-[72px]">
+          <QualitySeal size={72} className="!gap-0" />
+          <span className="text-[10px] font-semibold text-gray-900 text-center leading-[1.3] max-w-[88px]">{t("glossary.qualitySeal")}</span>
         </div>
       </div>
 

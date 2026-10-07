@@ -49,7 +49,10 @@ function makeParticles(): Particle[] {
   });
 }
 
-export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObject<HTMLElement>; textRef: React.RefObject<HTMLElement> }) {
+/**
+ * `compact`: the scene fills its own box (phones), centred, instead of sitting behind the copy on the right.
+ */
+export default function HeroScene({ heroRef, textRef, compact = false }: { heroRef: React.RefObject<HTMLElement>; textRef: React.RefObject<HTMLElement>; compact?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tr = useT();
 
@@ -62,7 +65,7 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
     if (!stage || !ctx) return;
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const visible = window.matchMedia("(min-width: 768px)");
+    const visible = window.matchMedia(compact ? "(max-width: 767px)" : "(min-width: 768px)");
     const particles = makeParticles();
     const m = { x: 0, y: 0, tx: 0, ty: 0, px: -1, py: -1 };
     let raf = 0;
@@ -179,12 +182,12 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
       const pitch = -0.42 + m.y * 0.2;
       const F = 900;
       // The sun sits to the right of the text column so the orbit sweeps under the headline.
-      const te = textRef.current;
+      const te = compact ? null : textRef.current;
       const textRight = te ? te.getBoundingClientRect().right - stage.getBoundingClientRect().left : W * 0.6;
       // Keep the student orbit (300px) and its pill inside the hero on wide screens.
-      const cx = Math.min(W - 150, Math.max(W * 0.68, textRight + 90));
-      const cy = H * 0.55;
-      const S = Math.max(0.6, Math.min(W / 640, H / 330));
+      const cx = compact ? W / 2 : Math.min(W - 150, Math.max(W * 0.68, textRight + 90));
+      const cy = compact ? H * 0.52 : H * 0.55;
+      const S = compact ? Math.max(0.5, Math.min(W / 560, H / 330)) : Math.max(0.6, Math.min(W / 640, H / 330));
       const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
       const P = (x: number, y: number, z: number): Projected => {
         const x1 = x * cyw + z * syw;
@@ -331,7 +334,7 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
           ctx.restore();
           if (hA) {
             pill(qA, BODIES.sat, r + 10, true);
-          } else {
+          } else if (!compact) {
             ctx.font = `600 ${11 * Math.max(0.85, k)}px Inter, system-ui, sans-serif`;
             ctx.fillStyle = "#4263eb";
             ctx.textAlign = "center";
@@ -390,7 +393,7 @@ export default function HeroScene({ heroRef, textRef }: { heroRef: React.RefObje
       hero.removeEventListener("pointermove", onMove);
       hero.removeEventListener("pointerleave", onLeave);
     };
-  }, [heroRef, textRef, tr]);
+  }, [heroRef, textRef, tr, compact]);
 
-  return <canvas ref={canvasRef} aria-hidden="true" className="hidden md:block absolute inset-0 w-full h-full opacity-[.38] pointer-events-none" />;
+  return <canvas ref={canvasRef} aria-hidden="true" className={compact ? "block md:hidden absolute inset-0 w-full h-full opacity-[.75] pointer-events-none" : "hidden md:block absolute inset-0 w-full h-full opacity-[.38] pointer-events-none"} />;
 }

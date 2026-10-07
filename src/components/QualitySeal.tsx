@@ -1,11 +1,14 @@
 "use client";
 
+import { useId } from "react";
 import { useT } from "@/lib/i18n/client";
 
 // Quality seal shown on the landing page. Change SEAL_NAME to rebrand the seal in one place.
 export const SEAL_NAME = "thesisfic.edu";
 
 export default function QualitySeal({ size = 260, className = "" }: { size?: number; className?: string }) {
+  // Unique ids per instance: two seals on one page (desktop column + phone band) must not share gradient/path ids.
+  const uid = useId().replace(/:/g, "");
   const t = useT();
   // The ring and the "verified process" arc are the seal's brand marking and stay in English in every locale.
   const ring = "ACADEMIC QUALITY SEAL · AI ERA STANDARD · ";
@@ -15,16 +18,16 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
       <svg width={size} height={size} viewBox="0 0 260 260" role="img" className="drop-shadow-xl">
         <title>{sealLabel}</title>
         <defs>
-          <linearGradient id="seal-fill" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={`seal-fill-${uid}`} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#364fc7" />
             <stop offset="1" stopColor="#087f5b" />
           </linearGradient>
-          <path id="seal-ring" d="M130,130 m-96,0 a96,96 0 1,1 192,0 a96,96 0 1,1 -192,0" />
+          <path id={`seal-ring-${uid}`} d="M130,130 m-96,0 a96,96 0 1,1 192,0 a96,96 0 1,1 -192,0" />
           {/* lower inner arc, left to right through the bottom, for the "verified process" line */}
-          <path id="seal-arc" d="M66,130 a64,64 0 0,0 128,0" />
+          <path id={`seal-arc-${uid}`} d="M66,130 a64,64 0 0,0 128,0" />
         </defs>
         {/* scalloped outer edge */}
-        <g fill="url(#seal-fill)">
+        <g fill={`url(#seal-fill-${uid})`}>
           {Array.from({ length: 36 }).map((_, i) => {
             const a = (i / 36) * Math.PI * 2;
             return <circle key={i} cx={130 + Math.cos(a) * 118} cy={130 + Math.sin(a) * 118} r="11" />;
@@ -35,7 +38,7 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
         <circle cx="130" cy="130" r="80" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="1.5" />
         <g className="seal-spin" style={{ transformOrigin: "130px 130px" }}>
           <text fill="#ffffff" fontSize="12" fontWeight="700" fontFamily="Inter, system-ui, sans-serif">
-            <textPath href="#seal-ring" startOffset="0" textLength="600" lengthAdjust="spacing">{ring}</textPath>
+            <textPath href={`#seal-ring-${uid}`} startOffset="0" textLength="600" lengthAdjust="spacing">{ring}</textPath>
           </text>
         </g>
         {/* center */}
@@ -46,7 +49,7 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
           {SEAL_NAME}
         </text>
         <text fill="#ffffff" fillOpacity="0.85" fontSize="8.5" fontWeight="700" letterSpacing="1.8" fontFamily="Inter, system-ui, sans-serif">
-          <textPath href="#seal-arc" startOffset="50%" textAnchor="middle">
+          <textPath href={`#seal-arc-${uid}`} startOffset="50%" textAnchor="middle">
             · VERIFIED PROCESS ·
           </textPath>
         </text>
