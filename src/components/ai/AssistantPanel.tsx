@@ -657,13 +657,6 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             );
           })}
         </div>
-        {mode === "copilot" ? (
-          <div className="mt-2 mx-0.5 text-xs text-accent-800 bg-accent-50 rounded-lg px-2.5 py-1.5">
-            <strong>{t("glossary.copilot")}</strong>{t("assistant.copilot.noteRest")}
-          </div>
-        ) : (
-          <div className="mt-2 mx-0.5 text-xs text-gray-500">{modeDescription}</div>
-        )}
       </div>
         );
       })()}
@@ -692,6 +685,11 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               <strong className="text-gray-700">{placeholderLabel}</strong>
               {` — ${modeDescription.charAt(0).toLowerCase()}${modeDescription.slice(1)}.`} {mode === "copilot" ? t("assistant.empty.copilot") : t("assistant.empty.other")}
             </p>
+            {mode === "copilot" && (
+              <p className="text-xs text-accent-800 bg-accent-50 rounded-lg px-2.5 py-1.5">
+                <strong>{t("glossary.copilot")}</strong>{t("assistant.copilot.noteRest")}
+              </p>
+            )}
             <div className="flex flex-wrap gap-1.5">
               {Array.from({ length: QUICK_COUNT[mode] }, (_, i) => t(`assistant.mode.${mode}.suggestion${i + 1}`)).map((q) => (
                 <button key={q} onClick={() => send(q)} className="text-xs px-2.5 py-1.5 bg-brand-50 text-brand-700 rounded-lg hover:bg-brand-100 text-left">
