@@ -247,3 +247,15 @@ export function standaloneHtml(html: string, title: string) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, "&lt;")}</title>
 <style>body{font-family:Georgia,serif;max-width:17cm;margin:2.54cm auto;line-height:1.6;color:#111}h1{font-size:1.8em}h2{font-size:1.4em}h3{font-size:1.15em}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4px 8px}img{max-width:100%}.page-break{page-break-after:always}[data-provenance]{border-bottom:1px dotted #999}</style></head><body>${html}</body></html>`;
 }
+
+export type CsvCell = string | number | boolean | null | undefined;
+
+/** Serialises rows to RFC 4180 CSV (comma separated, quoted when needed, CRLF line ends). The first row is the header. */
+export function toCsv(rows: CsvCell[][]): string {
+  const cell = (v: CsvCell) => {
+    if (v === null || v === undefined) return "";
+    const s = typeof v === "number" ? (Number.isFinite(v) ? String(v) : "") : String(v);
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return rows.map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+}

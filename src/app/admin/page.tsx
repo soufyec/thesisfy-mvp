@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, Bot, Flag, ShieldCheck, Users } from "lucide-react";
+import { Activity, Bot, FileBarChart, Flag, ShieldCheck, Users } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useUser } from "@/components/useUser";
 import { api, statusColors } from "@/lib/client";
@@ -39,7 +39,10 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl">
-        <div className="mb-6"><h1 className="text-2xl font-bold">{user?.role === "professor" ? t("admin.dashboard.titleAdvisor") : t("admin.dashboard.titleInstitution")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.dashboard.subtitle", { university: user?.university || "", n: stats?.total ?? "…" })}</p></div>
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div><h1 className="text-2xl font-bold">{user?.role === "professor" ? t("admin.dashboard.titleAdvisor") : t("admin.dashboard.titleInstitution")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.dashboard.subtitle", { university: user?.university || "", n: stats?.total ?? "…" })}</p></div>
+          <Link href="/admin/report" className="btn-outline !py-2 !px-3 text-sm gap-1.5 self-start" title={t("report.overview.linkHelp")}><FileBarChart className="w-4 h-4" />{t("report.overview.link")}</Link>
+        </div>
         {loading ? <div className="p-12 text-center text-gray-400">{t("common.loading")}…</div> : (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">

@@ -3,7 +3,7 @@
 // JSON-file persistence (DATA_FILE env). Swap for Postgres/Prisma in production:
 // every access goes through the `db` object below, so the surface stays stable.
 
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import fs from "fs";
 import { ensureTable, readStore, readVersion, storeConfigured, writeStore } from "./store";
 
@@ -302,6 +302,8 @@ export interface IntegrityFlag {
   resolved: boolean;
   resolvedBy?: string;
   resolutionNote?: string;
+  /** Set when the notice is resolved; absent on notices resolved before this field existed. */
+  resolvedAt?: string;
 }
 
 export interface WritingSession {
@@ -494,6 +496,34 @@ export interface Lead {
   createdAt: string;
 }
 
+/**
+ * Invitation to join a university workspace. The link `/invite/{token}` is copied by the admin and sent by hand
+ * (no email provider yet); accepting it creates the account with this email, role and university.
+ */
+export interface Invitation {
+  id: string;
+  university: string;
+  email: string;
+  role: Role;
+  token: string; // 32 hex chars, single use
+  invitedBy: string; // user id
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt?: string;
+  acceptedUserId?: string;
+  revokedAt?: string;
+}
+
+/** Password reset issued by an admin of the same university; `/reset/{token}` sets a new password and signs in. */
+export interface PasswordReset {
+  id: string;
+  userId: string;
+  token: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string;
+}
+
 interface Store {
   users: User[];
   theses: Thesis[];
@@ -518,6 +548,8 @@ interface Store {
   declarations: Declaration[];
   evidenceChecks: EvidenceCheck[];
   languagePrefs: LanguagePrefs[];
+  invitations: Invitation[];
+  passwordResets: PasswordReset[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -825,6 +857,8 @@ function seed(): Store {
     declarations: [],
     evidenceChecks: [],
     languagePrefs: [],
+    invitations: [],
+    passwordResets: [],
     versions: [
       { id: "ver_1", thesisId: "thesis_1", authorId: "usr_1", content: thesis1Content, wordCount: 2847, kind: "milestone", label: "Chapter 4 draft", createdAt: "2026-03-12T11:30:00Z" },
     ],
@@ -1034,6 +1068,11 @@ function persist() {
 
 export const now = () => new Date().toISOString();
 export const uid = (prefix: string) => `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+/** Single-use link tokens (invitations, password resets): 32 hex chars from the CSPRNG. */
+export const linkToken = () => randomBytes(16).toString("hex");
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const INVITATION_TTL_MS = 14 * DAY_MS;
+export const PASSWORD_RESET_TTL_MS = 2 * DAY_MS;
 
 export function stripHtml(html: string): string {
   return html
@@ -1325,6 +1364,7 @@ export const db = {
       f.resolved = true;
       f.resolvedBy = resolvedBy;
       f.resolutionNote = note;
+      f.resolvedAt = now();
       persist();
       return f;
     },
@@ -1673,6 +1713,87 @@ export const db = {
       const since = start.toISOString();
       const ids = new Set(load().users.filter((u) => u.university === university).map((u) => u.id));
       return load().interactions.filter((i) => i.billedTo === "institution" && i.timestamp >= since && ids.has(i.userId) && (!userId || i.userId === userId));
+    },
+  },
+
+  invitations: {
+    findById: (id: string) => load().invitations.find((i) => i.id === id),
+    findByToken: (token: string) => load().invitations.find((i) => i.token === token),
+    /** Open invitation for this email (not accepted, not revoked, not expired), if any. */
+    findPendingByEmail: (email: string) => {
+      const e = email.toLowerCase();
+      const t = now();
+      return load().invitations.find((i) => i.email === e && !i.acceptedAt && !i.revokedAt && i.expiresAt > t);
+    },
+    listByUniversity: (university: string) => load().invitations.filter((i) => i.university === university && !i.revokedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    create: (data: { university: string; email: string; role: Role; invitedBy: string }): Invitation => {
+      const created = now();
+      const inv: Invitation = {
+        id: uid("inv"),
+        university: data.university,
+        email: data.email.toLowerCase().trim(),
+        role: data.role,
+        token: linkToken(),
+        invitedBy: data.invitedBy,
+        createdAt: created,
+        expiresAt: new Date(Date.parse(created) + INVITATION_TTL_MS).toISOString(),
+      };
+      load().invitations.push(inv);
+      persist();
+      return inv;
+    },
+    createMany: (items: { university: string; email: string; role: Role; invitedBy: string }[]): Invitation[] => {
+      const out: Invitation[] = [];
+      for (const it of items) {
+        const created = now();
+        const inv: Invitation = {
+          id: uid("inv"),
+          university: it.university,
+          email: it.email.toLowerCase().trim(),
+          role: it.role,
+          token: linkToken(),
+          invitedBy: it.invitedBy,
+          createdAt: created,
+          expiresAt: new Date(Date.parse(created) + INVITATION_TTL_MS).toISOString(),
+        };
+        load().invitations.push(inv);
+        out.push(inv);
+      }
+      if (out.length) persist();
+      return out;
+    },
+    accept: (id: string, userId: string) => {
+      const inv = load().invitations.find((i) => i.id === id);
+      if (!inv) return null;
+      inv.acceptedAt = now();
+      inv.acceptedUserId = userId;
+      persist();
+      return inv;
+    },
+    revoke: (id: string) => {
+      const inv = load().invitations.find((i) => i.id === id);
+      if (!inv || inv.acceptedAt) return null;
+      inv.revokedAt = now();
+      persist();
+      return inv;
+    },
+  },
+
+  passwordResets: {
+    findByToken: (token: string) => load().passwordResets.find((r) => r.token === token),
+    create: (userId: string): PasswordReset => {
+      const created = now();
+      const reset: PasswordReset = { id: uid("rst"), userId, token: linkToken(), createdAt: created, expiresAt: new Date(Date.parse(created) + PASSWORD_RESET_TTL_MS).toISOString() };
+      load().passwordResets.push(reset);
+      persist();
+      return reset;
+    },
+    use: (id: string) => {
+      const r = load().passwordResets.find((x) => x.id === id);
+      if (!r) return null;
+      r.usedAt = now();
+      persist();
+      return r;
     },
   },
 

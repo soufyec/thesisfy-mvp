@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db, publicUser, Role, User } from "./db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "thesisfy-mvp-dev-secret-key-2024";
@@ -18,20 +18,41 @@ export function signToken(user: User) {
 /** Seeded demo accounts; refused at login when DEMO_ACCOUNTS=off so a real pilot never exposes documented passwords. */
 export const DEMO_EMAILS = ["jane.cooper@stanford.edu", "admin@stanford.edu", "marie.dupont@sorbonne.fr", "prof.williams@stanford.edu"];
 
+/** Documented passwords of the seeded demo accounts (see README). Accepted alongside the stored hash unless DEMO_ACCOUNTS=off. */
+export const DEMO_PASSWORDS: Record<string, string> = {
+  "jane.cooper@stanford.edu": "demo123",
+  "admin@stanford.edu": "admin123",
+  "marie.dupont@sorbonne.fr": "demo123",
+  "prof.williams@stanford.edu": "demo123",
+};
+
+/** Checks a password against the stored hash, or against the documented demo password for seeded accounts. */
+export async function verifyPassword(user: User, password: string) {
+  if (!password) return false;
+  if (process.env.DEMO_ACCOUNTS !== "off" && DEMO_PASSWORDS[user.email] === password) return true;
+  return bcrypt.compare(password, user.password);
+}
+
+/** Same session cookie as /api/auth/login, reused by invitation acceptance and password reset. */
+export function setAuthCookie(response: NextResponse, token: string) {
+  response.cookies.set("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: "/",
+  });
+  return response;
+}
+
 export async function authenticateUser(email: string, password: string) {
   const user = db.users.findByEmail(email);
   if (!user) return null;
 
   // Demo accounts accept their documented passwords unless the deployment turns them off (DEMO_ACCOUNTS=off).
   if (process.env.DEMO_ACCOUNTS === "off" && DEMO_EMAILS.indexOf(user.email) !== -1) return null;
-  const demoPasswords: Record<string, string> = {
-    "jane.cooper@stanford.edu": "demo123",
-    "admin@stanford.edu": "admin123",
-    "marie.dupont@sorbonne.fr": "demo123",
-    "prof.williams@stanford.edu": "demo123",
-  };
 
-  const isValid = demoPasswords[user.email] === password || (await bcrypt.compare(password, user.password));
+  const isValid = await verifyPassword(user, password);
   if (!isValid) return null;
 
   db.users.touch(user.id);

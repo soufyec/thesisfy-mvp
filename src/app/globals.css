@@ -273,3 +273,15 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 .ProseMirror .lr-active { background: theme("colors.brand.100 / 60%"); border-radius: 2px; }
 .ProseMirror .lr-style.lr-active { background: theme("colors.prov.ai-soft"); }
 @media print { .ProseMirror .lr { text-decoration: none; border-bottom: none; background: none; } }
+
+/* pilot report print */
+@media print {
+  body.print-report * { visibility: visible; }
+  body.print-report aside, body.print-report header, body.print-report nav, body.print-report .report-controls { display: none !important; }
+  body.print-report, body.print-report .min-h-screen { background: #fff !important; min-height: 0; display: block; }
+  body.print-report main { padding: 0 !important; }
+  body.print-report .pilot-report { max-width: none; }
+  body.print-report .report-section { break-inside: avoid; box-shadow: none; border-color: theme("colors.gray.200"); }
+  body.print-report .overflow-x-auto { overflow: visible; }
+  body.print-report .min-w-\[480px\] { min-width: 0; }
+}

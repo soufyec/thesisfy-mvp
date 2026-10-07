@@ -67,8 +67,18 @@ Diferencias respecto al handoff original, decididas después y que prevalecen:
 ### Fase 5 · Onboarding y consentimiento
 Pendiente de propuesta de contenido y confirmación. Archivos: `ConsentModal.tsx`, `dashboard/page.tsx`, `admin/page.tsx`, `register/page.tsx`.
 
-### Fase 6 · Instrumentación para el piloto
-Pendiente. Archivos: `db.ts`, `api/stats`, nuevo `admin/report/page.tsx`, `export.ts`.
+### Fase 6 · Instrumentación para el piloto (hecha)
+**Archivos:** `src/app/api/admin/report/route.ts`, `src/app/admin/report/page.tsx`, `src/lib/export.ts` (`toCsv`), `src/lib/nav.tsx`, `globals.css` (print).
+- [x] `GET /api/admin/report?from&to`: adopción, escritura y procedencia agregada, IA (modo, proveedor, coste, quién paga), avisos, consentimiento, registro de proceso, serie semanal. Todo recuentos reales; sin cifras por persona.
+- [x] Página `/admin/report` con periodo, tarjetas, barras CSS, Export CSV / DOCX / Print.
+- [x] `IntegrityFlag.resolvedAt` para el tiempo de resolución (solo avisos resueltos desde ahora).
+
+### Fase 9 · Cuentas reales para el piloto (hecha)
+**Archivos:** `src/lib/invitations.ts`, `src/app/api/invitations/**`, `src/app/api/auth/password`, `src/app/api/users/[id]/reset-link`, `src/app/api/reset/[token]`, `src/app/invite/[token]`, `src/app/reset/[token]`, `src/components/accounts/*`, `admin/students`, `dashboard/settings`.
+- [x] Invitaciones por enlace (14 días, pegado masivo, copiar/revocar), aceptación con nombre y contraseña.
+- [x] Cambio de contraseña en Ajustes; enlaces de restablecimiento generados por administración (48 h).
+- [x] `DEMO_ACCOUNTS=off` + `NEXT_PUBLIC_DEMO_ACCOUNTS=off` apagan las cuentas demo en producción.
+- [ ] Envío de correo: `deliverInvitation()` devuelve el enlace; falta un proveedor (p. ej. Resend) cuando la institución lo pida.
 
 ---
 
@@ -82,7 +92,7 @@ Infraestructura `src/lib/i18n` (cookie `locale`, rutas `/es` `/fr` `/en`, `useT`
 Mobile nativo (Capacitor), migración a Postgres, SSO/LMS.
 
 ## 4. Pendiente
-- Fase 5 (onboarding y consentimiento) y Fase 6 (informe del piloto): no empezadas; la Fase 5 requiere confirmar antes el contenido de las tres pantallas de primer uso.
+- Fase 5 (onboarding y consentimiento): no empezada; requiere confirmar antes el contenido de las tres pantallas de primer uso.
 - Rutas `/privacy` y `/contact` no existen: el pie de la landing enlaza a `#model` y `#pilot`.
 - `MenuBar` (barra horizontal antigua) sigue exportado aunque ya no se renderiza; eliminar cuando nada lo use.
 - ESLint no está instalado en el proyecto; `npm run lint` pide instalarlo.

@@ -6,7 +6,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ConsentModal from "@/components/ConsentModal";
 import { Toast } from "@/components/ui";
 import { useUser, type Consent } from "@/components/useUser";
-import { api } from "@/lib/client";
+import { api, ApiError } from "@/lib/client";
+import { MIN_PASSWORD, PasswordField } from "@/components/accounts/PasswordField";
 import { LOCALES, LOCALE_NAMES, Locale } from "@/lib/i18n";
 import { useFormat, useLocale, useT } from "@/lib/i18n/client";
 import { downloadBlob } from "@/lib/export";
@@ -25,6 +26,9 @@ export default function SettingsPage() {
   const [history, setHistory] = useState<Consent[]>([]);
   const [toast, setToast] = useState<{ message: string; kind?: "info" | "success" | "error" } | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -42,6 +46,23 @@ export default function SettingsPage() {
     await refresh();
     setLocale(language);
     setToast({ message: t("dashboard.settings.profileSaved"), kind: "success" });
+  };
+
+  const changePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < MIN_PASSWORD) return setToast({ message: t("accounts.password.tooShort"), kind: "error" });
+    setPasswordBusy(true);
+    try {
+      const d = await api<{ ok: true; demoPasswordStillValid: boolean }>("/api/auth/password", { method: "POST", json: { currentPassword, newPassword } });
+      setCurrentPassword("");
+      setNewPassword("");
+      setToast({ message: t(d.demoPasswordStillValid ? "accounts.password.savedDemo" : "accounts.password.saved"), kind: "success" });
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : undefined;
+      setToast({ message: code === "wrong_password" ? t("accounts.password.wrongCurrent") : code === "password_short" ? t("accounts.password.tooShort") : t("common.error"), kind: "error" });
+    } finally {
+      setPasswordBusy(false);
+    }
   };
 
   const revokeConsent = async () => {
@@ -76,6 +97,19 @@ export default function SettingsPage() {
             <label className="text-xs text-gray-500">{t("dashboard.settings.institution")}<input value={user.university} readOnly className="input-field !py-2 mt-1 bg-gray-50" /></label>
           </div>
           <button onClick={saveProfile} className="btn-primary !py-2 !px-4 text-sm mt-4">{t("common.save")}</button>
+        </section>
+
+        <section id="password" className="card p-5 sm:p-6">
+          <h2 className="font-semibold mb-1">{t("accounts.password.title")}</h2>
+          <p className="text-xs text-gray-500 mb-4">{t("accounts.password.subtitle")}</p>
+          <form onSubmit={changePassword} className="grid sm:grid-cols-2 gap-3" noValidate>
+            <div>
+              <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">{t("accounts.password.current")}</label>
+              <input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="input-field" required autoComplete="current-password" />
+            </div>
+            <PasswordField id="new-password" value={newPassword} onChange={setNewPassword} label={t("accounts.password.new")} />
+            <div className="sm:col-span-2"><button type="submit" disabled={passwordBusy || !currentPassword || !newPassword} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40 disabled:cursor-not-allowed">{t("accounts.password.save")}</button></div>
+          </form>
         </section>
 
         <section id="privacy" className="card p-5 sm:p-6">

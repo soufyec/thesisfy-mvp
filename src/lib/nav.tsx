@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, Bot, CreditCard, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, BookOpen, Bot, CreditCard, FileBarChart, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users } from "lucide-react";
 
 export interface NavItem {
   /** i18n key, rendered with `t(item.label)`. */
@@ -30,4 +30,5 @@ export const adminNav: NavItem[] = [
   { label: "dashboard.nav.policies", href: "/admin/policies", icon: <ShieldCheck className={cls} /> },
   { label: "dashboard.nav.aiAccess", shortLabel: "dashboard.nav.short.aiAccess", href: "/admin/ai-access", icon: <CreditCard className={cls} /> },
   { label: "dashboard.nav.library", shortLabel: "dashboard.nav.short.library", href: "/admin/library", icon: <Library className={cls} /> },
+  { label: "report.nav.title", href: "/admin/report", icon: <FileBarChart className={cls} /> },
 ];
