@@ -7,8 +7,10 @@ import { editor } from "./messages/editor";
 import { assistant } from "./messages/assistant";
 import { panelsReview } from "./messages/panelsReview";
 import { panelsResearch } from "./messages/panelsResearch";
+import { accounts } from "./messages/accounts";
+import { report } from "./messages/report";
 
-const AREAS = [common, landing, dashboard, admin, editor, assistant, panelsReview, panelsResearch] as const;
+const AREAS = [common, landing, dashboard, admin, editor, assistant, panelsReview, panelsResearch, accounts, report] as const;
 
 function merge(locale: Locale): Record<string, string> {
   const out: Record<string, string> = {};

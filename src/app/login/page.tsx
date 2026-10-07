@@ -60,14 +60,14 @@ function LoginForm() {
       </div>
       <h1 className="text-2xl font-bold mb-2">{t("landing.login.title")}</h1>
       <p className="text-gray-500 mb-8">{t("landing.login.subtitle")}</p>
-      <div className="mb-6 p-4 bg-brand-50 rounded-xl">
+      {process.env.NEXT_PUBLIC_DEMO_ACCOUNTS !== "off" && <div className="mb-6 p-4 bg-brand-50 rounded-xl">
         <p className="text-xs font-medium text-brand-700 mb-3">{t("landing.login.demoTitle")}</p>
         <div className="flex flex-wrap gap-2">
           {([["student", "landing.login.demoStudent"], ["professor", "landing.login.demoAdvisor"], ["admin", "landing.login.demoAdmin"]] as const).map(([type, label]) => (
             <button key={type} type="button" onClick={() => fillDemo(type)} className="px-3 py-1.5 text-xs font-medium bg-white rounded-lg text-brand-700 hover:bg-brand-100 transition-colors border border-brand-200">{t(label)}</button>
           ))}
         </div>
-      </div>
+      </div>}
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>}
         <div>

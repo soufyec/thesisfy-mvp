@@ -15,11 +15,15 @@ export function signToken(user: User) {
   return jwt.sign({ userId: user.id, email: user.email, role: user.role } as AuthPayload, JWT_SECRET, { expiresIn: "7d" });
 }
 
+/** Seeded demo accounts; refused at login when DEMO_ACCOUNTS=off so a real pilot never exposes documented passwords. */
+export const DEMO_EMAILS = ["jane.cooper@stanford.edu", "admin@stanford.edu", "marie.dupont@sorbonne.fr", "prof.williams@stanford.edu"];
+
 export async function authenticateUser(email: string, password: string) {
   const user = db.users.findByEmail(email);
   if (!user) return null;
 
-  // Demo accounts accept their documented passwords.
+  // Demo accounts accept their documented passwords unless the deployment turns them off (DEMO_ACCOUNTS=off).
+  if (process.env.DEMO_ACCOUNTS === "off" && DEMO_EMAILS.indexOf(user.email) !== -1) return null;
   const demoPasswords: Record<string, string> = {
     "jane.cooper@stanford.edu": "demo123",
     "admin@stanford.edu": "admin123",
