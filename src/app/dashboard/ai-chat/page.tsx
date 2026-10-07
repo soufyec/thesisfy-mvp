@@ -73,7 +73,6 @@ function AIChatInner() {
             <option value="">{t("dashboard.chat.noThesis")}</option>
             {theses.map((th) => <option key={th.id} value={th.id}>{th.title}</option>)}
           </select>
-          <span className="text-[11px] text-gray-400 hidden sm:inline">{copilot ? t("dashboard.chat.helpCopilot") : t("dashboard.chat.helpDefault")}</span>
         </div>
         <div className="flex-1 min-h-0 flex">
           {/* History */}

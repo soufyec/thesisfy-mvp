@@ -692,13 +692,14 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       <div className={`flex-1 overflow-y-auto px-4 py-3.5 flex flex-col gap-3.5 min-h-0 ${column}`}>
         {messages.length === 0 && (
           <div className="text-sm text-gray-500 flex flex-col gap-3 pt-1">
-            <p>
-              <strong className="text-gray-700">{placeholderLabel}</strong>
-              {` — ${modeDescription.charAt(0).toLowerCase()}${modeDescription.slice(1)}.`} {mode === "copilot" ? t("assistant.empty.copilot") : t("assistant.empty.other")}
-            </p>
-            {mode === "copilot" && (
+            {mode === "copilot" ? (
               <p className="text-xs text-accent-800 bg-accent-50 rounded-lg px-2.5 py-1.5">
                 <strong>{t("glossary.copilot")}</strong>{t("assistant.copilot.noteRest")}
+              </p>
+            ) : (
+              <p>
+                <strong className="text-gray-700">{placeholderLabel}</strong>
+                {` — ${modeDescription.charAt(0).toLowerCase()}${modeDescription.slice(1)}.`}
               </p>
             )}
             <div className="flex flex-wrap gap-1.5">
