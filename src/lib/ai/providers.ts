@@ -6,7 +6,7 @@ import { decrypt } from "../crypto";
 export const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: process.env.CLAUDE_MODEL || "claude-opus-5-5",
   openai: process.env.OPENAI_MODEL || "gpt-4o-mini",
-  google: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  google: process.env.GEMINI_MODEL || "gemini-3.8-flash",
   mistral: process.env.MISTRAL_MODEL || "mistral-small-latest",
 };
 
@@ -16,7 +16,7 @@ export const PROVIDER_META: Record<
 > = {
   anthropic: { name: "Anthropic", product: "Claude", keyUrl: "https://console.anthropic.com/settings/keys", keyPrefix: "sk-ant-", models: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5"], sites: ["claude.ai"], color: "#d97757" },
   openai: { name: "OpenAI", product: "ChatGPT / GPT", keyUrl: "https://platform.openai.com/api-keys", keyPrefix: "sk-", models: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "o4-mini"], sites: ["chatgpt.com"], color: "#10a37f" },
-  google: { name: "Google", product: "Gemini", keyUrl: "https://aistudio.google.com/app/apikey", keyPrefix: "AIza", models: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"], sites: ["gemini.google.com"], color: "#4285f4" },
+  google: { name: "Google", product: "Gemini", keyUrl: "https://aistudio.google.com/app/apikey", keyPrefix: "AIza", models: ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview"], sites: ["gemini.google.com"], color: "#4285f4" },
   mistral: { name: "Mistral", product: "Le Chat / Mistral", keyUrl: "https://console.mistral.ai/api-keys", keyPrefix: "", models: ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest"], sites: ["chat.mistral.ai"], color: "#ff7000" },
 };
 
@@ -182,10 +182,29 @@ export function resolveProvider(user: User, policy: Policy, requested?: string |
 }
 
 /** Provider list cost of one request in USD, from the institution model's configured prices. */
+/** Public list prices in USD per million tokens (input, output), October 2026, used when no institution model sets its own. */
+export const LIST_PRICES: Record<string, [number, number]> = {
+  "gemini-3.8-flash": [0.75, 3.75],
+  "gemini-3.5-flash-lite": [0.3, 2.5],
+  "gemini-3.1-pro-preview": [2, 12],
+  "gemini-2.5-flash": [0.3, 2.5],
+  "claude-opus-5-5": [4, 20],
+  "claude-sonnet-5-5": [2, 10],
+  "claude-haiku-4-5": [1, 5],
+  "gpt-4.1": [2, 8],
+  "gpt-4.1-mini": [0.4, 1.6],
+  "gpt-4o": [2.5, 10],
+  "gpt-4o-mini": [0.15, 0.6],
+  "mistral-large-latest": [0.5, 1.5],
+  "mistral-medium-latest": [0.4, 2],
+  "mistral-small-latest": [0.1, 0.3],
+};
+
+/** Cost of one interaction in USD: the institution model's prices, else the public list price of the model (platform or own account), else 0. */
 export function costOf(cfg: ResolvedProvider, usage: { inputTokens: number; outputTokens: number }) {
   const m = cfg.institutionModel;
-  if (!m) return 0;
-  return (usage.inputTokens * m.inputPrice + usage.outputTokens * m.outputPrice) / 1e6;
+  const [inPrice, outPrice] = m ? [m.inputPrice, m.outputPrice] : LIST_PRICES[cfg.model] || [0, 0];
+  return (usage.inputTokens * inPrice + usage.outputTokens * outPrice) / 1e6;
 }
 
 export type StreamChunk = { type: "delta"; text: string } | { type: "usage"; inputTokens: number; outputTokens: number } | { type: "error"; message: string; code?: string };
