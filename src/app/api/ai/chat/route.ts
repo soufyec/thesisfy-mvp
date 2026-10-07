@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
 
   // Conversation persistence
   let conversation = body.conversationId ? db.conversations.findById(body.conversationId) : undefined;
+  // One assistant function per conversation: a message in another mode starts a new conversation instead of mixing histories.
+  if (conversation && conversation.messages.length && (conversation.messages[0].mode || "chat") !== mode) conversation = undefined;
   if (conversation && conversation.userId !== user.id) conversation = undefined;
   if (!conversation) conversation = db.conversations.create(user.id, thesis?.id, lastUser.slice(0, 60) || "New conversation");
   db.conversations.append(conversation.id, { role: "user", content: lastUser, mode });

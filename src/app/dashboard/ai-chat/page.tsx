@@ -84,7 +84,11 @@ function AIChatInner() {
             </div>
             <div className="flex-1 overflow-y-auto">
               {conversations.length === 0 && <div className="p-4 text-xs text-gray-400">{t("dashboard.chat.empty")} {copilot ? t("dashboard.chat.emptyCopilot") : t("dashboard.chat.emptyDefault")}</div>}
-              {conversations.map((c) => (
+              {/* One list per assistant function, copilot first */}
+              {["copilot", ...MODE_IDS.filter((m) => m !== "copilot")].filter((m) => conversations.some((c) => (c.mode || "chat") === m)).map((m) => (
+              <div key={m}>
+              <div className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[.06em] border-b border-gray-100 ${m === "copilot" ? "text-accent-700 bg-accent-50/60" : "text-gray-400 bg-gray-50"}`}>{modeLabel(m)}</div>
+              {conversations.filter((c) => (c.mode || "chat") === m).map((c) => (
                 <div key={c.id} className={`group flex items-start gap-1 px-3 py-2 border-b border-gray-100 hover:bg-white cursor-pointer ${c.id === conversationId ? "bg-white border-l-2 border-l-brand-500" : ""}`} onClick={() => open(c.id)}>
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-medium truncate">{c.title}</div>
@@ -95,6 +99,8 @@ function AIChatInner() {
                   </div>
                   <button onClick={(e) => { e.stopPropagation(); remove(c.id); }} className="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100" title={t("common.delete")} aria-label={t("common.delete")}><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
+              ))}
+              </div>
               ))}
             </div>
             {copilot && (

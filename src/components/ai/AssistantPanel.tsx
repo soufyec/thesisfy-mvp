@@ -213,7 +213,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const [useSelection, setUseSelection] = useState(true);
   const [useSources, setUseSources] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
-  const [conversations, setConversations] = useState<{ id: string; title: string; updatedAt: string; messageCount: number }[]>([]);
+  const [conversations, setConversations] = useState<{ id: string; title: string; updatedAt: string; messageCount: number; mode?: AIMode }[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [providerOpen, setProviderOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -382,12 +382,22 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     setPending(null);
   };
 
+  /** Each assistant function keeps its own history: changing mode mid-conversation starts a fresh one. */
+  const chooseMode = (id: AIMode) => {
+    if (id === mode) return;
+    setMode(id);
+    if (messages.length || conversationId) newChat();
+  };
+  const modeConversations = conversations.filter((c) => (c.mode || "chat") === mode);
+
   const openConversation = async (id: string) => {
     setHistoryOpen(false);
     try {
       const d = await api<{ conversation: { messages: ChatMsg[] } }>(`/api/ai/conversations/${id}`);
       setConversationId(id);
       setMessages(d.conversation.messages);
+      const first = d.conversation.messages[0]?.mode;
+      if (first && first !== mode) setMode(first);
       setPending(null);
     } catch {
       /* ignore */
@@ -585,8 +595,9 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               <button onClick={newChat} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-brand-600 font-medium border-b border-gray-100">
                 <Plus className="w-4 h-4" /> {t("assistant.history.new")}
               </button>
-              {conversations.length === 0 && <div className="px-3 py-4 text-xs text-gray-400">{t("assistant.history.empty")}</div>}
-              {conversations.map((c) => (
+              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-gray-400 border-b border-gray-100">{t("assistant.history.forMode", { mode: mode === "copilot" ? t("glossary.copilot") : t(`assistant.mode.${mode}.label`) })}</div>
+              {modeConversations.length === 0 && <div className="px-3 py-4 text-xs text-gray-400">{t("assistant.history.empty")}</div>}
+              {modeConversations.map((c) => (
                 <div key={c.id} className={`flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 ${c.id === conversationId ? "bg-brand-50" : ""}`}>
                   <button onClick={() => openConversation(c.id)} className="flex-1 text-left min-w-0">
                     <div className="truncate text-xs font-medium">{c.title}</div>
@@ -628,7 +639,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       <div className={`px-4 pt-3 flex-shrink-0 ${column}`}>
         {copilotMode && (
           <button
-            onClick={() => { setMode("copilot"); if (messages.length) setModesOpen(false); }}
+            onClick={() => { chooseMode("copilot"); if (messages.length) setModesOpen(false); }}
             aria-pressed={mode === "copilot"}
             className={`w-full mb-1.5 flex items-center gap-2.5 px-3 py-2 rounded-[10px] border text-left transition-colors ${mode === "copilot" ? "bg-accent-600 border-accent-600 text-white" : "bg-accent-50 border-accent-200 text-accent-800 hover:border-accent-400"}`}
           >
@@ -646,7 +657,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             return (
               <button
                 key={m.id}
-                onClick={() => { setMode(m.id); if (messages.length) setModesOpen(false); }}
+                onClick={() => { chooseMode(m.id); if (messages.length) setModesOpen(false); }}
                 title={t(`assistant.mode.${m.id}.description`)}
                 aria-pressed={active}
                 className={`flex flex-col items-center gap-1 px-0.5 pt-2 pb-1.5 rounded-[10px] border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-brand-300"}`}

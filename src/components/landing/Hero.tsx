@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { ArrowRight, Shield } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
 import HeroEditorPreview from "./HeroEditorPreview";
@@ -31,11 +31,7 @@ export default function Hero() {
 
         {/* Copy */}
         <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
-          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-brand-50 text-brand-700 text-[13px] font-semibold mb-7">
-            <Shield className="w-3.5 h-3.5" strokeWidth={2.2} aria-hidden="true" />
-            {t("landing.hero.badge")}
-          </div>
-          <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 [text-wrap:pretty]">
+          <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-2 [text-wrap:pretty]">
             {t("landing.hero.titleA")}
             <span className="gradient-text">{t("landing.hero.titleHi")}</span>
             {t("landing.hero.titleB")}
