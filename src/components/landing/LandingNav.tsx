@@ -43,9 +43,6 @@ export default function LandingNav() {
               {t(l.label)}
             </a>
           ))}
-          <Link href="/login" className="text-gray-600 hover:text-gray-900 transition-colors">
-            {t("common.signIn")}
-          </Link>
           <LanguageSwitcher variant="inline" />
           <a href="#pilot" className={CTA}>
             {t("landing.nav.requestPilot")}
@@ -69,9 +66,6 @@ export default function LandingNav() {
               {t(l.label)}
             </a>
           ))}
-          <Link href="/login" className="py-2 text-gray-600" onClick={() => setOpen(false)}>
-            {t("common.signIn")}
-          </Link>
           <LanguageSwitcher variant="inline" className="py-2" />
           <a href="#pilot" className={`${CTA} mt-2`} onClick={() => setOpen(false)}>
             {t("landing.nav.requestPilot")}

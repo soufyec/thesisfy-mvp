@@ -1,0 +1,1118 @@
+{
+  "title": "Thesisfic — L'IA dans les mémoires",
+  "description": "Projet académique du Master SMI (cours d'Entrepreneuriat), Université Paris-Saclay. Nous étudions comment l'IA générative est utilisée et encadrée dans la rédaction des mémoires et travaux de fin d'études.\n\nDurée : 10 minutes environ en ligne, 25 à 30 minutes en entretien. Les réponses sont anonymes et servent uniquement à ce projet académique. Vous pouvez arrêter à tout moment. Il n'y a pas de bonne ou de mauvaise réponse.",
+  "confirmation": "Merci pour votre participation ! Vos réponses nous aident à comprendre comment mieux encadrer l'IA dans les mémoires.",
+  "sections": [
+    {
+      "id": "start",
+      "title": "",
+      "items": [
+        {
+          "type": "cb",
+          "title": "Consentement",
+          "choices": [
+            "J'accepte de participer et que mes réponses soient utilisées de façon anonyme pour ce projet académique."
+          ],
+          "req": true,
+          "id": "start_1"
+        },
+        {
+          "type": "mc",
+          "title": "Comment ce questionnaire est-il rempli ?",
+          "choices": [
+            "Je réponds seul·e, en ligne",
+            "En entretien : un membre de l'équipe pose les questions et saisit les réponses"
+          ],
+          "req": true,
+          "id": "mode"
+        },
+        {
+          "type": "text",
+          "title": "Nom de l'enquêteur (entretien uniquement)",
+          "req": false,
+          "interviewerOnly": true,
+          "id": "start_3"
+        },
+        {
+          "type": "mc",
+          "title": "Vous êtes…",
+          "choices": [
+            "Enseignant·e, directeur·rice de mémoire ou responsable de formation",
+            "Étudiant·e"
+          ],
+          "nav": {
+            "Enseignant·e, directeur·rice de mémoire ou responsable de formation": "p_profil",
+            "Étudiant·e": "e_profil"
+          },
+          "req": true,
+          "id": "profil"
+        }
+      ]
+    },
+    {
+      "id": "p_profil",
+      "title": "Votre profil",
+      "items": [
+        {
+          "type": "cb",
+          "title": "Votre fonction",
+          "choices": [
+            "Enseignant·e-chercheur·e",
+            "Enseignant·e ou vacataire",
+            "Directeur·rice de mémoires",
+            "Responsable de formation ou de diplôme",
+            "Direction (doyen, direction des études, vice-présidence)"
+          ],
+          "other": true,
+          "req": true,
+          "id": "p_profil_1"
+        },
+        {
+          "type": "text",
+          "title": "Établissement",
+          "req": false,
+          "id": "p_profil_2"
+        },
+        {
+          "type": "text",
+          "title": "Discipline",
+          "req": false,
+          "id": "p_profil_3"
+        },
+        {
+          "type": "cb",
+          "title": "Niveaux des mémoires ou travaux que vous encadrez ou corrigez",
+          "choices": [
+            "Licence / Bachelor",
+            "Licence professionnelle",
+            "Master 1",
+            "Master 2",
+            "Doctorat"
+          ],
+          "req": true,
+          "id": "p_profil_4"
+        },
+        {
+          "type": "mc",
+          "title": "Nombre de mémoires ou travaux de fin d'études encadrés ou corrigés par an",
+          "choices": [
+            "0",
+            "1 à 5",
+            "6 à 15",
+            "16 à 30",
+            "Plus de 30"
+          ],
+          "req": true,
+          "id": "p_profil_5"
+        }
+      ]
+    },
+    {
+      "id": "p_probleme",
+      "title": "L'IA dans les mémoires aujourd'hui",
+      "description": "Nous parlons ici de situations récentes et concrètes.\n\nEntretien : ne présentez pas encore Thesisfic.",
+      "items": [
+        {
+          "type": "mc",
+          "title": "Au cours de la dernière année universitaire, combien de fois avez-vous eu un doute sur l'usage de l'IA dans un mémoire ou un travail que vous corrigiez ?",
+          "choices": [
+            "Jamais",
+            "1 ou 2 fois",
+            "3 à 5 fois",
+            "6 à 10 fois",
+            "Plus de 10 fois"
+          ],
+          "req": true,
+          "id": "p_probleme_1"
+        },
+        {
+          "type": "para",
+          "title": "Racontez la dernière fois que c'est arrivé : qu'avez-vous remarqué, qu'avez-vous fait, comment cela s'est-il terminé ?",
+          "help": "Entretien : relancez avec « Et ensuite ? » et « Combien de temps cela vous a-t-il pris ? ».",
+          "req": false,
+          "id": "p_probleme_2"
+        },
+        {
+          "type": "mc",
+          "title": "Combien de temps avez-vous consacré à ce type de vérification sur la dernière année ?",
+          "choices": [
+            "Aucun",
+            "Moins de 2 heures",
+            "2 à 5 heures",
+            "5 à 10 heures",
+            "Plus de 10 heures",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_probleme_3"
+        },
+        {
+          "type": "mc",
+          "title": "Votre formation ou votre établissement a-t-il des règles sur l'usage de l'IA dans les mémoires ?",
+          "choices": [
+            "Oui, une charte de l'établissement",
+            "Oui, des consignes propres à la formation",
+            "Les deux",
+            "Non",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_probleme_4"
+        },
+        {
+          "type": "mc",
+          "title": "Indiquez-vous à vos étudiants ce qui est autorisé ou non avec l'IA pour leur mémoire ?",
+          "choices": [
+            "Oui, par écrit",
+            "Oui, à l'oral",
+            "Pas encore, mais je compte le faire",
+            "Non"
+          ],
+          "req": true,
+          "id": "p_probleme_5"
+        },
+        {
+          "type": "mc",
+          "title": "Vos étudiants doivent-ils déclarer leur usage de l'IA (déclaration, carnet de bord) ?",
+          "choices": [
+            "Oui, pour tous les mémoires",
+            "Oui, pour certains travaux",
+            "Non",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_probleme_6"
+        },
+        {
+          "type": "para",
+          "title": "Si oui : comment utilisez-vous ou vérifiez-vous ces déclarations ?",
+          "req": false,
+          "id": "p_probleme_7"
+        },
+        {
+          "type": "cb",
+          "title": "Qu'est-ce qui vous préoccupe le plus avec l'IA dans les mémoires ? (3 réponses maximum)",
+          "max": 3,
+          "choices": [
+            "Le texte rédigé par l'IA à la place de l'étudiant",
+            "La perte d'apprentissage et d'esprit critique",
+            "Les sources ou citations inventées",
+            "L'inégalité entre étudiants",
+            "Le risque d'accuser un étudiant à tort",
+            "L'absence de preuve en cas de litige",
+            "Le temps passé à vérifier",
+            "Le flou des règles",
+            "Rien de particulier"
+          ],
+          "req": true,
+          "id": "p_probleme_8"
+        },
+        {
+          "type": "scale",
+          "title": "À quel point l'usage de l'IA dans les mémoires est-il un problème pour vous aujourd'hui ?",
+          "low": "Pas du tout",
+          "high": "Un problème majeur",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_probleme_9"
+        },
+        {
+          "type": "para",
+          "title": "Notes de l'enquêteur (entretien uniquement)",
+          "help": "Citations exactes, relances, réactions observées.",
+          "interviewerOnly": true,
+          "id": "p_probleme_10"
+        }
+      ]
+    },
+    {
+      "id": "p_outils",
+      "title": "Logiciels de détection",
+      "items": [
+        {
+          "type": "mc",
+          "title": "Utilisez-vous actuellement un logiciel pour détecter le plagiat et/ou l'usage de l'IA dans les mémoires que vous corrigez ?",
+          "choices": [
+            "Oui",
+            "Non",
+            "Je ne sais pas"
+          ],
+          "nav": {
+            "Oui": "p_outils_detail",
+            "Non": "p_controle",
+            "Je ne sais pas": "p_controle"
+          },
+          "req": true,
+          "id": "p_outils_1"
+        }
+      ]
+    },
+    {
+      "id": "p_outils_detail",
+      "title": "Votre logiciel actuel",
+      "items": [
+        {
+          "type": "cb",
+          "title": "Lequel ou lesquels ?",
+          "choices": [
+            "Compilatio (Magister ou Magister+)",
+            "Turnitin",
+            "Ouriginal / Urkund",
+            "GPTZero",
+            "Un détecteur gratuit en ligne"
+          ],
+          "other": true,
+          "req": true,
+          "id": "p_outils_detail_1"
+        },
+        {
+          "type": "cb",
+          "title": "Dans quel but ?",
+          "choices": [
+            "Détecter le plagiat",
+            "Détecter un texte généré par l'IA",
+            "Vérifier les citations et les références"
+          ],
+          "other": true,
+          "req": true,
+          "id": "p_outils_detail_2"
+        },
+        {
+          "type": "mc",
+          "title": "Le contrôle est-il…",
+          "choices": [
+            "Systématique, pour tous les mémoires",
+            "Seulement en cas de soupçon",
+            "Variable selon les cas"
+          ],
+          "req": true,
+          "id": "p_outils_detail_3"
+        },
+        {
+          "type": "mc",
+          "title": "Depuis combien de temps utilisez-vous ce ou ces logiciels ?",
+          "choices": [
+            "Moins d'un an",
+            "1 à 3 ans",
+            "Plus de 3 ans",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_outils_detail_4"
+        },
+        {
+          "type": "mc",
+          "title": "Qui encadre l'usage de ce logiciel ?",
+          "choices": [
+            "L'établissement, avec des règles communes",
+            "L'établissement le fournit, chaque enseignant l'utilise librement",
+            "C'est un choix personnel",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_outils_detail_5"
+        },
+        {
+          "type": "scale",
+          "title": "Êtes-vous satisfait·e de ce logiciel ?",
+          "low": "Pas du tout satisfait·e",
+          "high": "Très satisfait·e",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_outils_detail_6"
+        },
+        {
+          "type": "para",
+          "title": "Qu'appréciez-vous dans ce logiciel, et que faudrait-il améliorer ?",
+          "req": false,
+          "id": "p_outils_detail_7"
+        },
+        {
+          "type": "mc",
+          "title": "Avez-vous constaté des erreurs (texte humain signalé comme IA, ou IA non détectée) ?",
+          "choices": [
+            "Oui, souvent",
+            "Oui, parfois",
+            "Jamais",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_outils_detail_8"
+        },
+        {
+          "type": "mc",
+          "title": "Le résultat du logiciel vous suffit-il pour prendre une décision (note, signalement, sanction) ?",
+          "choices": [
+            "Oui",
+            "Seulement avec d'autres éléments",
+            "Non",
+            "Je ne l'utilise pas pour décider"
+          ],
+          "req": true,
+          "id": "p_outils_detail_9"
+        },
+        {
+          "type": "para",
+          "title": "Quelles fonctionnalités aimeriez-vous trouver dans ce type de logiciel ?",
+          "req": false,
+          "id": "p_outils_detail_10"
+        },
+        {
+          "type": "para",
+          "title": "Notes de l'enquêteur (entretien uniquement)",
+          "help": "Citations exactes, relances, réactions observées.",
+          "interviewerOnly": true,
+          "id": "p_probleme_10"
+        }
+      ]
+    },
+    {
+      "id": "p_controle",
+      "title": "Comment encadrer l'usage de l'IA ?",
+      "items": [
+        {
+          "type": "scale",
+          "title": "Que vous les utilisiez ou non : les logiciels de détection sont-ils une démarche adaptée pour encadrer le plagiat et l'usage de l'IA dans les mémoires ?",
+          "low": "Pas du tout adaptée",
+          "high": "Tout à fait adaptée",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_controle_1"
+        },
+        {
+          "type": "para",
+          "title": "Pourquoi ?",
+          "req": false,
+          "id": "p_controle_2"
+        },
+        {
+          "type": "mc",
+          "title": "À quel moment un suivi de l'usage de l'IA vous semble-t-il le plus utile ?",
+          "choices": [
+            "Après le rendu du mémoire",
+            "Tout au long de la rédaction",
+            "Les deux",
+            "Ni l'un ni l'autre",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_controle_3"
+        },
+        {
+          "type": "grid",
+          "title": "Pour un mémoire que vous encadrez, quels usages de l'IA autoriseriez-vous ?",
+          "rows": [
+            "Trouver des idées (brainstorming)",
+            "Construire le plan",
+            "Chercher des sources",
+            "Résumer des articles",
+            "Reformuler / paraphraser",
+            "Rédiger des passages",
+            "Corriger l'orthographe et la grammaire",
+            "Traduire",
+            "Mettre en forme les citations et la bibliographie"
+          ],
+          "cols": [
+            "Autorisé",
+            "Autorisé si déclaré",
+            "Interdit",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_controle_4"
+        },
+        {
+          "type": "para",
+          "title": "Notes de l'enquêteur (entretien uniquement)",
+          "help": "Citations exactes, relances, réactions observées.",
+          "interviewerOnly": true,
+          "id": "p_probleme_10"
+        }
+      ]
+    },
+    {
+      "id": "p_solution",
+      "title": "Une autre approche",
+      "description": "Imaginez un outil dans lequel l'étudiant rédige son mémoire. L'outil applique les règles d'usage de l'IA fixées par la formation, garde une trace de chaque usage et génère automatiquement la déclaration demandée. L'enseignant voit comment le texte a été construit (ce qui vient de l'étudiant, de l'IA ou des sources), sans détecteur ni note automatique.\n\nEntretien : lisez ce texte à voix haute, sans montrer le logiciel.",
+      "items": [
+        {
+          "type": "scale",
+          "title": "Un tel outil vous serait-il utile ?",
+          "low": "Pas du tout utile",
+          "high": "Très utile",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_solution_1"
+        },
+        {
+          "type": "mc",
+          "title": "Souhaiteriez-vous pouvoir autoriser ou restreindre certains usages de l'IA selon vos attentes, pour chaque formation ou chaque mémoire ?",
+          "choices": [
+            "Oui",
+            "Peut-être",
+            "Non"
+          ],
+          "req": true,
+          "id": "p_solution_2"
+        },
+        {
+          "type": "scale",
+          "title": "Une recherche de sources intégrée (Google Scholar, OpenAlex, catalogue de la BU…) qui génère les citations et les références vous semblerait-elle utile pour limiter le plagiat ?",
+          "low": "Pas du tout utile",
+          "high": "Très utile",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_solution_3"
+        },
+        {
+          "type": "cb",
+          "title": "Quelles fonctionnalités seraient les plus utiles pour vous ? (3 réponses maximum)",
+          "max": 3,
+          "choices": [
+            "Règles d'usage de l'IA par formation ou par mémoire",
+            "Journal automatique de chaque usage de l'IA",
+            "Déclaration officielle générée automatiquement",
+            "Historique de rédaction (voir le texte se construire)",
+            "Origine du texte : étudiant, IA ou citation",
+            "Assistant IA qui conseille et critique sans rédiger à la place de l'étudiant",
+            "Recherche et vérification des sources",
+            "Commentaires et suivi entre directeur et étudiant",
+            "Tableau de bord de la promotion",
+            "Intégration à Moodle ou à l'ENT"
+          ],
+          "req": true,
+          "id": "p_solution_4"
+        },
+        {
+          "type": "scale",
+          "title": "Voir en temps réel son propre usage de l'IA aiderait-il les étudiants à l'utiliser de façon plus responsable ?",
+          "low": "Pas du tout",
+          "high": "Tout à fait",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_solution_5"
+        },
+        {
+          "type": "scale",
+          "title": "Un tel outil faciliterait-il votre travail de suivi des mémoires ?",
+          "low": "Pas du tout",
+          "high": "Tout à fait",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_solution_6"
+        },
+        {
+          "type": "cb",
+          "title": "Qu'est-ce qui pourrait vous freiner ?",
+          "choices": [
+            "Le sentiment de surveillance pour les étudiants",
+            "La protection des données (RGPD)",
+            "Le temps de prise en main",
+            "Une charge de travail supplémentaire",
+            "Le coût pour l'établissement",
+            "La validation par la DSI ou l'administration",
+            "Rien"
+          ],
+          "other": true,
+          "req": true,
+          "id": "p_solution_7"
+        },
+        {
+          "type": "mc",
+          "title": "Une démonstration de Thesisfic a-t-elle eu lieu pendant cet entretien ?",
+          "choices": [
+            "Oui, j'ai vu ou testé le logiciel",
+            "Non"
+          ],
+          "nav": {
+            "Oui, j'ai vu ou testé le logiciel": "p_demo",
+            "Non": "p_adoption"
+          },
+          "req": true,
+          "interviewerOnly": true,
+          "id": "p_solution_8"
+        },
+        {
+          "type": "para",
+          "title": "Notes de l'enquêteur (entretien uniquement)",
+          "help": "Citations exactes, relances, réactions observées.",
+          "interviewerOnly": true,
+          "id": "p_probleme_10"
+        }
+      ]
+    },
+    {
+      "id": "p_demo",
+      "title": "Après la démonstration",
+      "description": "Entretien uniquement. Faites tester, sans commenter ni défendre le produit : 1) une règle d'usage de l'IA définie pour la formation ; 2) demander à l'assistant une critique d'argument, puis lui demander de rédiger un paragraphe (il refuse) ; 3) chercher une source, la vérifier et la citer ; 4) coller un texte externe ; 5) le carnet de bord et la déclaration générée ; 6) la vue enseignant : historique de rédaction et origine du texte. Puis posez les questions ci-dessous.",
+      "items": [
+        {
+          "type": "scale",
+          "title": "Thesisfic répond-il au problème que vous avez décrit au début de l'entretien ?",
+          "low": "Pas du tout",
+          "high": "Tout à fait",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_demo_1"
+        },
+        {
+          "type": "scale",
+          "title": "Est-il adapté à votre façon d'encadrer les mémoires ?",
+          "low": "Pas du tout",
+          "high": "Tout à fait",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "p_demo_2"
+        },
+        {
+          "type": "para",
+          "title": "Qu'est-ce qui vous a le plus convaincu·e ?",
+          "req": false,
+          "id": "p_demo_3"
+        },
+        {
+          "type": "para",
+          "title": "Qu'est-ce qui vous a le moins convaincu·e, ou que manque-t-il ?",
+          "req": false,
+          "id": "p_demo_4"
+        },
+        {
+          "type": "mc",
+          "title": "Combien de temps pensez-vous gagner par mémoire encadré ?",
+          "choices": [
+            "Aucun",
+            "Moins de 30 minutes",
+            "30 minutes à 1 heure",
+            "1 à 2 heures",
+            "Plus de 2 heures",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_demo_5"
+        },
+        {
+          "type": "mc",
+          "title": "Si vous ne pouviez plus utiliser Thesisfic après un essai, vous seriez…",
+          "choices": [
+            "Très déçu·e",
+            "Un peu déçu·e",
+            "Pas déçu·e"
+          ],
+          "req": true,
+          "id": "p_demo_6"
+        },
+        {
+          "type": "scale",
+          "title": "Recommanderiez-vous Thesisfic à un·e collègue ?",
+          "low": "Pas du tout probable",
+          "high": "Très probable",
+          "min": 0,
+          "max": 10,
+          "req": true,
+          "id": "p_demo_7"
+        },
+        {
+          "type": "para",
+          "title": "Notes de l'enquêteur : réactions observées, questions posées, moments d'hésitation",
+          "req": false,
+          "interviewerOnly": true,
+          "id": "p_demo_8"
+        }
+      ]
+    },
+    {
+      "id": "p_adoption",
+      "title": "Mise en place",
+      "next": "SUBMIT",
+      "items": [
+        {
+          "type": "mc",
+          "title": "Seriez-vous prêt·e à tester Thesisfic gratuitement avec votre promotion, dans le cadre d'un projet pilote ?",
+          "choices": [
+            "Oui",
+            "Oui, sous conditions",
+            "Non",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_adoption_1"
+        },
+        {
+          "type": "para",
+          "title": "Si « sous conditions » : lesquelles ?",
+          "req": false,
+          "id": "p_adoption_2"
+        },
+        {
+          "type": "cb",
+          "title": "Qui décide réellement d'adopter ou de payer un logiciel pédagogique dans votre formation ou votre faculté ?",
+          "choices": [
+            "Le ou la responsable de formation",
+            "La commission pédagogique",
+            "Le doyen ou la direction de la composante",
+            "La DSI",
+            "La vice-présidence formation ou numérique",
+            "Le service des achats",
+            "Je ne sais pas"
+          ],
+          "other": true,
+          "req": true,
+          "id": "p_adoption_3"
+        },
+        {
+          "type": "mc",
+          "title": "Savez-vous combien votre établissement paie aujourd'hui pour Compilatio, Turnitin ou un outil similaire ?",
+          "help": "Entretien : si oui, notez le montant.",
+          "choices": [
+            "Oui",
+            "Non"
+          ],
+          "req": true,
+          "id": "p_adoption_4"
+        },
+        {
+          "type": "mc",
+          "title": "Quel budget par étudiant et par an vous semblerait acceptable et réaliste pour l'établissement, pour ce type de service ?",
+          "choices": [
+            "0 € (seulement si c'est gratuit)",
+            "Moins de 2 €",
+            "2 à 5 €",
+            "5 à 10 €",
+            "10 à 15 €",
+            "Plus de 15 €",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "p_adoption_5"
+        },
+        {
+          "type": "text",
+          "title": "Pouvons-nous vous recontacter pour la suite du projet ? Si oui, indiquez votre e-mail (facultatif).",
+          "req": false,
+          "id": "p_adoption_6"
+        },
+        {
+          "type": "para",
+          "title": "Souhaitez-vous ajouter quelque chose ?",
+          "req": false,
+          "id": "p_adoption_7"
+        }
+      ]
+    },
+    {
+      "id": "e_profil",
+      "title": "Votre profil",
+      "items": [
+        {
+          "type": "mc",
+          "title": "Votre niveau d'études",
+          "choices": [
+            "Licence ou Bachelor, dernière année",
+            "Licence ou Bachelor, autre année",
+            "Licence professionnelle",
+            "Master 1",
+            "Master 2",
+            "Doctorat"
+          ],
+          "other": true,
+          "req": true,
+          "id": "e_profil_1"
+        },
+        {
+          "type": "text",
+          "title": "Établissement",
+          "req": false,
+          "id": "e_profil_2"
+        },
+        {
+          "type": "text",
+          "title": "Discipline",
+          "req": false,
+          "id": "e_profil_3"
+        },
+        {
+          "type": "mc",
+          "title": "Rédigez-vous un mémoire ou un travail de fin d'études cette année ?",
+          "choices": [
+            "Oui, je suis en train de le rédiger",
+            "Oui, je vais bientôt commencer",
+            "Non, mais j'en ai déjà rédigé un",
+            "Non"
+          ],
+          "req": true,
+          "id": "e_profil_4"
+        }
+      ]
+    },
+    {
+      "id": "e_probleme",
+      "title": "Votre usage de l'IA",
+      "description": "Nous parlons ici de situations récentes et concrètes.\n\nEntretien : ne présentez pas encore Thesisfic.",
+      "items": [
+        {
+          "type": "mc",
+          "title": "À quelle fréquence utilisez-vous l'IA générative pour vos études ?",
+          "choices": [
+            "Jamais",
+            "Moins d'une fois par mois",
+            "Chaque semaine",
+            "Plusieurs fois par semaine",
+            "Tous les jours"
+          ],
+          "req": true,
+          "id": "e_probleme_1"
+        },
+        {
+          "type": "cb",
+          "title": "Quels outils utilisez-vous ?",
+          "choices": [
+            "ChatGPT",
+            "Claude",
+            "Gemini",
+            "Microsoft Copilot",
+            "Le Chat (Mistral)",
+            "Perplexity",
+            "NotebookLM",
+            "DeepL",
+            "Grammarly",
+            "Aucun"
+          ],
+          "other": true,
+          "req": true,
+          "id": "e_probleme_2"
+        },
+        {
+          "type": "cb",
+          "title": "Pour quoi utilisez-vous (ou utiliseriez-vous) l'IA dans votre mémoire ?",
+          "choices": [
+            "Trouver des idées (brainstorming)",
+            "Construire le plan",
+            "Chercher des sources",
+            "Résumer des articles",
+            "Reformuler / paraphraser",
+            "Rédiger des passages",
+            "Corriger l'orthographe et la grammaire",
+            "Traduire",
+            "Mettre en forme les citations et la bibliographie",
+            "Je ne l'utilise pas pour mon mémoire"
+          ],
+          "other": true,
+          "req": true,
+          "id": "e_probleme_3"
+        },
+        {
+          "type": "mc",
+          "title": "Savez-vous précisément ce qui est autorisé avec l'IA pour votre mémoire ?",
+          "choices": [
+            "Oui, c'est clair",
+            "Plus ou moins",
+            "Non",
+            "Il n'y a pas de règle"
+          ],
+          "req": true,
+          "id": "e_probleme_4"
+        },
+        {
+          "type": "mc",
+          "title": "Connaissez-vous la charte d'usage de l'IA de votre université ?",
+          "choices": [
+            "Oui, je l'ai lue",
+            "J'en ai entendu parler",
+            "Non",
+            "Il n'y en a pas"
+          ],
+          "req": true,
+          "id": "e_probleme_5"
+        },
+        {
+          "type": "para",
+          "title": "Racontez la dernière fois où vous avez hésité à utiliser l'IA pour un travail, ou où vous ne saviez pas si c'était autorisé. Qu'avez-vous fait ?",
+          "help": "Entretien : relancez avec « Et ensuite ? ».",
+          "req": false,
+          "id": "e_probleme_6"
+        },
+        {
+          "type": "mc",
+          "title": "Devez-vous déclarer votre usage de l'IA (déclaration, carnet de bord) ?",
+          "choices": [
+            "Oui",
+            "Non",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "e_probleme_7"
+        },
+        {
+          "type": "mc",
+          "title": "Si oui : combien de temps cela vous prend-il (ou vous a-t-il pris) ?",
+          "choices": [
+            "Moins de 15 minutes",
+            "15 à 30 minutes",
+            "30 minutes à 1 heure",
+            "Plus d'une heure",
+            "Pas concerné·e"
+          ],
+          "req": false,
+          "id": "e_probleme_8"
+        },
+        {
+          "type": "scale",
+          "title": "Avez-vous peur d'être accusé·e à tort d'avoir utilisé l'IA ?",
+          "low": "Pas du tout",
+          "high": "Beaucoup",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "e_probleme_9"
+        },
+        {
+          "type": "mc",
+          "title": "Vous ou un·e camarade avez-vous déjà été signalé·e par un détecteur d'IA ?",
+          "choices": [
+            "Oui, moi",
+            "Oui, un·e camarade",
+            "Non",
+            "Je ne sais pas"
+          ],
+          "req": true,
+          "id": "e_probleme_10"
+        },
+        {
+          "type": "scale",
+          "title": "À quel point l'encadrement de l'IA dans les mémoires est-il un problème pour vous ?",
+          "low": "Pas du tout",
+          "high": "Un problème majeur",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "e_probleme_11"
+        },
+        {
+          "type": "para",
+          "title": "Notes de l'enquêteur (entretien uniquement)",
+          "help": "Citations exactes, relances, réactions observées.",
+          "interviewerOnly": true,
+          "id": "p_probleme_10"
+        }
+      ]
+    },
+    {
+      "id": "e_solution",
+      "title": "Une autre approche",
+      "description": "Imaginez un outil dans lequel l'étudiant rédige son mémoire. L'outil applique les règles d'usage de l'IA fixées par la formation, garde une trace de chaque usage et génère automatiquement la déclaration demandée. L'enseignant voit comment le texte a été construit (ce qui vient de l'étudiant, de l'IA ou des sources), sans détecteur ni note automatique.\n\nEntretien : lisez ce texte à voix haute, sans montrer le logiciel.",
+      "items": [
+        {
+          "type": "scale",
+          "title": "Un espace de rédaction qui garde la trace de votre usage de l'IA et génère votre déclaration vous serait-il utile ?",
+          "low": "Pas du tout utile",
+          "high": "Très utile",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "e_solution_1"
+        },
+        {
+          "type": "scale",
+          "title": "Un assistant IA qui respecte les règles de votre formation (il conseille et critique, mais ne rédige pas à votre place) vous serait-il utile ?",
+          "low": "Pas du tout utile",
+          "high": "Très utile",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "e_solution_2"
+        },
+        {
+          "type": "scale",
+          "title": "Une recherche de sources intégrée qui génère automatiquement les citations et la bibliographie vous serait-elle utile ?",
+          "low": "Pas du tout utile",
+          "high": "Très utile",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "e_solution_3"
+        },
+        {
+          "type": "scale",
+          "title": "Pouvoir montrer comment vous avez rédigé votre mémoire vous rassurerait-il en cas de doute de votre enseignant ?",
+          "low": "Pas du tout",
+          "high": "Tout à fait",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "e_solution_4"
+        },
+        {
+          "type": "cb",
+          "title": "Quelles fonctionnalités seraient les plus utiles pour vous ? (3 réponses maximum)",
+          "max": 3,
+          "choices": [
+            "Savoir clairement ce qui est autorisé",
+            "Déclaration générée automatiquement",
+            "Assistant IA qui critique mes arguments",
+            "Recherche et vérification des sources",
+            "Citations et bibliographie automatiques",
+            "Preuve de mon travail (historique de rédaction)",
+            "Commentaires de mon directeur dans le document",
+            "Mise en forme du mémoire"
+          ],
+          "req": true,
+          "id": "e_solution_5"
+        },
+        {
+          "type": "cb",
+          "title": "Qu'est-ce qui pourrait vous freiner ?",
+          "choices": [
+            "Le sentiment d'être surveillé·e",
+            "La protection de mes données",
+            "Je préfère mes outils actuels (Word, Google Docs, ChatGPT…)",
+            "Le temps de prise en main",
+            "Un assistant moins libre qu'un chatbot classique",
+            "Rien"
+          ],
+          "other": true,
+          "req": true,
+          "id": "e_solution_6"
+        },
+        {
+          "type": "mc",
+          "title": "Une démonstration de Thesisfic a-t-elle eu lieu pendant cet entretien ?",
+          "choices": [
+            "Oui, j'ai vu ou testé le logiciel",
+            "Non"
+          ],
+          "nav": {
+            "Oui, j'ai vu ou testé le logiciel": "e_demo",
+            "Non": "e_fin"
+          },
+          "req": true,
+          "interviewerOnly": true,
+          "id": "e_solution_7"
+        },
+        {
+          "type": "para",
+          "title": "Notes de l'enquêteur (entretien uniquement)",
+          "help": "Citations exactes, relances, réactions observées.",
+          "interviewerOnly": true,
+          "id": "p_probleme_10"
+        }
+      ]
+    },
+    {
+      "id": "e_demo",
+      "title": "Après la démonstration",
+      "description": "Entretien uniquement. Faites tester, sans commenter ni défendre le produit : 1) une règle d'usage de l'IA définie pour la formation ; 2) demander à l'assistant une critique d'argument, puis lui demander de rédiger un paragraphe (il refuse) ; 3) chercher une source, la vérifier et la citer ; 4) coller un texte externe ; 5) le carnet de bord et la déclaration générée ; 6) la vue enseignant : historique de rédaction et origine du texte. Puis posez les questions ci-dessous.",
+      "items": [
+        {
+          "type": "scale",
+          "title": "Thesisfic répond-il au problème que vous avez décrit au début de l'entretien ?",
+          "low": "Pas du tout",
+          "high": "Tout à fait",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "e_demo_1"
+        },
+        {
+          "type": "scale",
+          "title": "Est-il facile à utiliser ?",
+          "low": "Pas du tout",
+          "high": "Très facile",
+          "min": 1,
+          "max": 5,
+          "req": true,
+          "id": "e_demo_2"
+        },
+        {
+          "type": "para",
+          "title": "Qu'est-ce qui vous a le plus convaincu·e ?",
+          "req": false,
+          "id": "e_demo_3"
+        },
+        {
+          "type": "para",
+          "title": "Qu'est-ce qui vous a le moins convaincu·e, ou que manque-t-il ?",
+          "req": false,
+          "id": "e_demo_4"
+        },
+        {
+          "type": "mc",
+          "title": "L'utiliseriez-vous même s'il n'était pas obligatoire ?",
+          "choices": [
+            "Oui",
+            "Peut-être",
+            "Non"
+          ],
+          "req": true,
+          "id": "e_demo_5"
+        },
+        {
+          "type": "mc",
+          "title": "Si vous ne pouviez plus utiliser Thesisfic après un essai, vous seriez…",
+          "choices": [
+            "Très déçu·e",
+            "Un peu déçu·e",
+            "Pas déçu·e"
+          ],
+          "req": true,
+          "id": "e_demo_6"
+        },
+        {
+          "type": "scale",
+          "title": "Recommanderiez-vous Thesisfic à un·e camarade ?",
+          "low": "Pas du tout probable",
+          "high": "Très probable",
+          "min": 0,
+          "max": 10,
+          "req": true,
+          "id": "e_demo_7"
+        },
+        {
+          "type": "mc",
+          "title": "Seriez-vous prêt·e à payer vous-même pour ce service ?",
+          "choices": [
+            "Non, l'université devrait le fournir",
+            "Moins de 3 € par mois",
+            "3 à 5 € par mois",
+            "Plus de 5 € par mois"
+          ],
+          "req": true,
+          "id": "e_demo_8"
+        },
+        {
+          "type": "para",
+          "title": "Notes de l'enquêteur : réactions observées, questions posées, moments d'hésitation",
+          "req": false,
+          "interviewerOnly": true,
+          "id": "e_demo_9"
+        }
+      ]
+    },
+    {
+      "id": "e_fin",
+      "title": "Pour finir",
+      "items": [
+        {
+          "type": "text",
+          "title": "Pouvons-nous vous recontacter (par exemple pour tester la prochaine version) ? Si oui, indiquez votre e-mail (facultatif).",
+          "req": false,
+          "id": "e_fin_1"
+        },
+        {
+          "type": "para",
+          "title": "Souhaitez-vous ajouter quelque chose ?",
+          "req": false,
+          "id": "e_fin_2"
+        }
+      ]
+    }
+  ]
+}

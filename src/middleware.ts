@@ -5,7 +5,9 @@ import { isLocale, Locale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from "@/lib/i1
  * 1. Language entry points: `/es`, `/es/login`, `/fr/dashboard`, … and `?lang=es`. The prefix is stripped by a rewrite
  *    (so `/es` keeps showing in the address bar for shareable links) and the choice is stored in the `locale` cookie,
  *    which every later request and client navigation reads.
- * 2. Page guard: `/dashboard` and `/admin` need the auth cookie. API routes verify the JWT themselves.
+ * 2. Page guard: `/dashboard` and `/admin` need the auth cookie; without it the visitor goes back to the home page
+ *    (the MVP is not public while the validation study runs: the team signs in at /login by its URL). API routes
+ *    verify the JWT themselves.
  */
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
@@ -25,11 +27,10 @@ export function middleware(request: NextRequest) {
 
   const token = request.cookies.get("token")?.value;
   if ((pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) && !token) {
-    const login = request.nextUrl.clone();
-    login.pathname = "/login";
-    login.search = "";
-    login.searchParams.set("next", pathname);
-    const res = NextResponse.redirect(login);
+    const home = request.nextUrl.clone();
+    home.pathname = "/";
+    home.search = "";
+    const res = NextResponse.redirect(home);
     if (chosen) res.cookies.set(LOCALE_COOKIE, chosen, { path: "/", maxAge: LOCALE_COOKIE_MAX_AGE, sameSite: "lax" });
     return res;
   }

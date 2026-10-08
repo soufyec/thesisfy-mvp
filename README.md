@@ -50,6 +50,18 @@ Spend is metered per request from the model's configured prices; administrators 
 
 Set `DATABASE_URL` (Neon's Vercel integration creates it, along with `POSTGRES_URL`). The whole store is kept as one JSONB document in `thesisfic_store` (`src/lib/store.ts`): each server instance loads it at start (`src/instrumentation.ts`), re-checks the row version every few seconds through `db.ready()` (called by `requireUser`), and writes the document after every mutation. Without the variable, `DATA_FILE` keeps a local JSON file and otherwise the demo seed lives in memory. `GET /api/health` reports which tier is active and the current version. On the first boot against an empty database the demo seed becomes the initial document; delete the row to reseed. Two instances writing in the same second can overwrite each other, which is acceptable for a pilot and the reason this is a document, not a schema.
 
+### Validation questionnaire (Master SMI, Université Paris-Saclay)
+
+A public French questionnaire validates the problem with teachers and students before the MVP goes further.
+
+- `/questionnaire` — online mode (about 10 minutes). `/questionnaire/enseignant` and `/questionnaire/etudiant` preselect the profile. `/fr`, `/es` and `/en` do not apply: the questionnaire is French only.
+- `/questionnaire?mode=entretien` — interview mode for the team (25 to 30 minutes): interviewer notes, interviewer name, and the post-demo section appear; help lines starting with « Entretien : » are shown.
+- Content lives in `src/data/questionnaire.json` (sections, items, conditional `nav`, `next: "SUBMIT"`) and is rendered as is. The interviewer notes block reuses one id in several sections; answers are keyed by `sectionId.itemId` for those.
+- `/equipe` — team sign-in with `TEAM_PASSWORD` (cookie, 30 days). `/equipe/resultats` — counts, filters by profile and mode, decision indicators with their targets, one block per question, free answers, CSV export (`/api/equipe/responses?format=csv`, one column per question).
+- Team editing: with the team cookie, the questionnaire shows « Modifier le questionnaire ». The team can add questions to any section (single or multiple choice, scale, short or free text; optional, required, interview-only) and alternative phrasings under any question. Additions are stored with the responses, appear at once for everyone, show in the results and the CSV, and can be removed by the team. Base questions are not editable from the site.
+- Responses are anonymous: no IP, no account. A hidden honeypot field and a per-minute limit stop simple bots. Everything is persisted in the same store as the rest of the platform (Neon Postgres when `DATABASE_URL` is set).
+- While the study runs the MVP is not public: the landing has no sign-in link and `/dashboard` and `/admin` redirect to the home page without a session. The team signs in at `/login` by its URL.
+
 ### Languages
 
 The UI ships in English, Spanish and French. Entry links set a `locale` cookie and keep working for every later page: `/en`, `/es`, `/fr` (or `?lang=es`). The switcher in the landing nav, the login page and the dashboard sidebar changes the language in place and stores it on the account, so the assistant answers in the same language. Strings live in `src/lib/i18n/messages/<area>.ts`; English defines the keys and the other two locales are typed against it, so a missing translation fails `tsc`. Text that comes from data (thesis titles, notices, API errors, institution rubric) is shown as stored.
@@ -123,5 +135,5 @@ mobile/                              Capacitor wrapper + README
 ## Deploy to Vercel
 
 1. Import the repository in Vercel.
-2. Set `JWT_SECRET`, `ENCRYPTION_KEY` and optionally provider keys.
+2. Set `JWT_SECRET`, `ENCRYPTION_KEY`, `DATABASE_URL` (Neon) and `TEAM_PASSWORD` (questionnaire results and editing), and optionally provider keys.
 3. Deploy. The PWA is served from the same deployment; point `mobile/capacitor.config.ts` (`THESISFIC_URL`) at it for native builds.

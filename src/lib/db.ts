@@ -533,6 +533,30 @@ export interface PasswordReset {
   usedAt?: string;
 }
 
+/** A filled-in validation questionnaire (public form at /questionnaire). No IP, no user: anonymous by design. */
+export interface QuestionnaireResponse {
+  id: string;
+  createdAt: string;
+  mode: "en_ligne" | "entretien";
+  profil: "enseignant" | "etudiant";
+  interviewer: string | null;
+  answers: Record<string, string | string[] | number | Record<string, string>>;
+  durationSeconds: number;
+  path: string[];
+}
+
+/** A question or an alternative phrasing the team added to the questionnaire from the form itself. */
+export interface QuestionnaireEditRow {
+  id: string;
+  kind: "item" | "phrasing";
+  sectionId: string;
+  targetKey?: string;
+  item?: Record<string, unknown>;
+  text?: string;
+  author?: string;
+  createdAt: string;
+}
+
 interface Store {
   users: User[];
   theses: Thesis[];
@@ -559,6 +583,8 @@ interface Store {
   languagePrefs: LanguagePrefs[];
   invitations: Invitation[];
   passwordResets: PasswordReset[];
+  questionnaireResponses: QuestionnaireResponse[];
+  questionnaireEdits: QuestionnaireEditRow[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -868,6 +894,8 @@ function seed(): Store {
     languagePrefs: [],
     invitations: [],
     passwordResets: [],
+    questionnaireResponses: [],
+    questionnaireEdits: [],
     versions: [
       { id: "ver_1", thesisId: "thesis_1", authorId: "usr_1", content: thesis1Content, wordCount: 2847, kind: "milestone", label: "Chapter 4 draft", createdAt: "2026-03-12T11:30:00Z" },
     ],
@@ -1823,6 +1851,32 @@ export const db = {
       r.usedAt = now();
       persist();
       return r;
+    },
+  },
+
+  questionnaire: {
+    responses: () => load().questionnaireResponses.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    addResponse: (data: Omit<QuestionnaireResponse, "id" | "createdAt">) => {
+      const r: QuestionnaireResponse = { ...data, id: uid("qr"), createdAt: now() };
+      load().questionnaireResponses.push(r);
+      persist();
+      return r;
+    },
+    edits: () => load().questionnaireEdits.slice(),
+    addEdit: (data: Omit<QuestionnaireEditRow, "id" | "createdAt">) => {
+      const e: QuestionnaireEditRow = { ...data, id: uid("qe"), createdAt: now() };
+      load().questionnaireEdits.push(e);
+      persist();
+      return e;
+    },
+    removeEdit: (id: string) => {
+      const st = load();
+      const before = st.questionnaireEdits.length;
+      // a removed question takes its phrasings with it
+      st.questionnaireEdits = st.questionnaireEdits.filter((e) => e.id !== id && e.targetKey !== id);
+      if (st.questionnaireEdits.length === before) return false;
+      persist();
+      return true;
     },
   },
 
