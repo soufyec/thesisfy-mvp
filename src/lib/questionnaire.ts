@@ -26,6 +26,8 @@ export interface Item {
   cols?: string[];
   nav?: Record<string, string>;
   interviewerOnly?: boolean;
+  /** Short answers with a shape to check when filled in. */
+  format?: "email";
   /** Set on items added by the team (id of the edit), never on base items. */
   addedBy?: string;
   /** Alternative ways of asking the question, added by the team for the interviewer. */
@@ -83,6 +85,7 @@ export const OTHER = "Autre";
 export const OTHER_PREFIX = "Autre : ";
 export const MAX_TEXT = 4000;
 export const MAX_OTHER = 300;
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export const ENTRETIEN_CHOICE = BASE.sections[0].items.find((i) => i.id === MODE_ITEM)!.choices![1];
 export const PROFIL_CHOICES = BASE.sections[0].items.find((i) => i.id === PROFIL_ITEM)!.choices!;
 
@@ -170,7 +173,8 @@ export function isValidValue(item: Item, value: AnswerValue): boolean {
       return typeof value === "object" && !Array.isArray(value) && Object.entries(value).every(([r, c]) => (item.rows || []).includes(r) && (item.cols || []).includes(c));
     case "text":
     case "para":
-      return typeof value === "string" && value.length <= MAX_TEXT;
+      if (typeof value !== "string" || value.length > MAX_TEXT) return false;
+      return item.format !== "email" || value.trim() === "" || EMAIL.test(value.trim());
   }
 }
 

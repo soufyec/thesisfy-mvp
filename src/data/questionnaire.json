@@ -1,5 +1,5 @@
 {
-  "title": "Thesisfic — L'IA dans les mémoires",
+  "title": "L'IA dans les mémoires",
   "description": "Projet académique du Master SMI (cours d'Entrepreneuriat), Université Paris-Saclay. Nous étudions comment l'IA générative est utilisée et encadrée dans la rédaction des mémoires et travaux de fin d'études.\n\nDurée : 10 minutes environ en ligne, 25 à 30 minutes en entretien. Les réponses sont anonymes et servent uniquement à ce projet académique. Vous pouvez arrêter à tout moment. Il n'y a pas de bonne ou de mauvaise réponse.",
   "confirmation": "Merci pour votre participation ! Vos réponses nous aident à comprendre comment mieux encadrer l'IA dans les mémoires.",
   "sections": [
@@ -46,6 +46,20 @@
           },
           "req": true,
           "id": "profil"
+        },
+        {
+          "type": "text",
+          "title": "Nom et prénom",
+          "help": "Uniquement si vous souhaitez être recontacté·e. Les résultats restent analysés de façon anonyme.",
+          "req": false,
+          "id": "start_nom"
+        },
+        {
+          "type": "text",
+          "title": "E-mail universitaire",
+          "format": "email",
+          "req": false,
+          "id": "start_email"
         }
       ]
     },

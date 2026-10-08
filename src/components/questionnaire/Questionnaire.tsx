@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Plus, Trash2 } from "lucide-react";
-import { Logo } from "@/components/landing/LandingNav";
 import { useT } from "@/lib/i18n/client";
 import {
   Answers,
@@ -221,8 +220,8 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="bg-white border-b border-gray-100">
         <div className="mx-auto max-w-[720px] px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
-          <Logo />
-          <div className="flex items-center gap-2 text-[12px]">
+          <p className="text-[13px] text-gray-500 truncate">{t("q.subtitle")}</p>
+          <div className="flex items-center gap-2 text-[12px] flex-shrink-0">
             {mode === "entretien" && <span className="rounded-full bg-amber-50 text-amber-800 px-2.5 py-1 font-medium">{t("q.mode.entretien")}</span>}
             {team ? (
               <>
@@ -238,11 +237,7 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
                   {t("q.team.edit")}
                 </button>
               </>
-            ) : (
-              <Link href={`/equipe?next=${encodeURIComponent(`/questionnaire${mode === "entretien" ? "?mode=entretien" : ""}`)}`} className="text-gray-400 hover:text-gray-700 px-2 py-1">
-                {t("q.team.link")}
-              </Link>
-            )}
+            ) : null}
           </div>
         </div>
       </header>
@@ -261,9 +256,6 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
                   {t("q.done.again")}
                 </button>
               )}
-              <Link href="/" className="btn-outline">
-                {t("q.done.home")}
-              </Link>
             </div>
           </section>
         ) : (

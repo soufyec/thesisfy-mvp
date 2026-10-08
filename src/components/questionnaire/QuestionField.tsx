@@ -172,7 +172,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
       break;
     }
     case "text":
-      field = <input id={`${id}-input`} type="text" className="input-field" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder={t("q.textPlaceholder")} maxLength={4000} aria-labelledby={`${id}-title`} />;
+      field = <input id={`${id}-input`} type={item.format === "email" ? "email" : "text"} inputMode={item.format === "email" ? "email" : undefined} autoComplete={item.format === "email" ? "email" : undefined} className="input-field" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder={item.format === "email" ? t("q.emailPlaceholder") : t("q.textPlaceholder")} maxLength={4000} aria-labelledby={`${id}-title`} />;
       break;
     case "para":
       field = <textarea id={`${id}-input`} className="input-field min-h-[110px] resize-y" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder={t("q.textPlaceholder")} maxLength={4000} aria-labelledby={`${id}-title`} />;
@@ -214,7 +214,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
         )}
       </div>
       {field}
-      {error && <p className="mt-2 text-[12px] text-red-600">{t("q.required")}</p>}
+      {error && <p className="mt-2 text-[12px] text-red-600">{item.format === "email" && typeof value === "string" && value.trim() ? t("q.invalidEmail") : t("q.required")}</p>}
     </div>
   );
 }
