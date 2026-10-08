@@ -1331,8 +1331,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
             <div className={`docs-page ${ws.numberHeadings ? "num-headings" : ""}`} ref={sheetRef}>
               <FirstPageHeader setup={ws} pages={pageCount} />
               <EditorContent editor={editor} spellCheck={spellcheck} />
-              {showProvenance && !isMobile && <ProvenanceGutter editor={editor} sheetRef={sheetRef} interactions={interactions} alwaysAnnotate={reviewMode} zoom={zoom / 100} />}
-              {!isMobile && <TableBubble editor={editor} canEdit={canEdit} />}
+              {/* Stable wrappers: tippy moves the bubble elements into its popper, so React must never use them as sibling references. */}
+              <div className="contents">{!isMobile && <TableBubble editor={editor} canEdit={canEdit} />}</div>
+              <div className="contents">
               <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom" }} shouldShow={({ state }) => !state.selection.empty && !isMobile && (state.selection as { node?: { type: { name: string } } }).node?.type.name !== "image" && !(state.selection instanceof CellSelection)}>
                 <div className="bubble-menu" role="toolbar" aria-label={t("editor.bubble.label")}>
                   {canEdit && (
@@ -1350,6 +1351,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
                   {isOwner && <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />{t("editor.askAi")}</button>}
                 </div>
               </BubbleMenu>
+              </div>
+              {showProvenance && !isMobile && <ProvenanceGutter editor={editor} sheetRef={sheetRef} interactions={interactions} alwaysAnnotate={reviewMode} zoom={zoom / 100} />}
             </div>
           </div>
         </main>
