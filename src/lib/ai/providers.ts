@@ -99,18 +99,80 @@ export interface Allowance {
   spentInstitution: number;
   atLimit: "block" | "own_account";
   exhausted: "none" | "student" | "institution";
+  /** What the figures mean for this student, in interactions rather than money (principle 5: cost before use). */
+  usage: AllowanceUsage;
 }
+
+export interface AllowanceUsage {
+  /** Interactions billed to the institution this month, this student. */
+  requests: number;
+  /** Typical cost of one interaction for this student (own average when there is enough data), institution currency. */
+  costPerRequest: number;
+  /** Remaining amount this month under the tightest limit that applies (student allowance or shared budget), or null when nothing is capped. */
+  remaining: number | null;
+  /** Interactions the student can still make this month at the typical cost, or null when nothing is capped. */
+  remainingRequests: number | null;
+  /** Share of the student allowance used (0–100), or null without a per-student limit. */
+  usedPercent: number | null;
+  /** Share of the shared institution budget used, or null without one. */
+  institutionPercent: number | null;
+  /** First day of next month (ISO) and whole days until then. */
+  resetsAt: string;
+  daysLeft: number;
+  /** At the current daily pace, the share of the allowance that would be used by the end of the month (0–100+), or null. */
+  projectedPercent: number | null;
+  /** When the allowance would run out at the current pace, if before the reset (ISO date), else null. */
+  runsOutAt: string | null;
+}
+
+/** Tokens of a typical interaction (a question with some thesis context, a focused answer), used before a student has history. */
+const TYPICAL_INTERACTION = { inputTokens: 1800, outputTokens: 500 };
 
 export function allowanceFor(user: User): Allowance {
   const f = db.aiAccess.funding(user.university);
   const all = db.aiAccess.monthUsage(user.university);
   const toLocal = (usd: number) => usd * f.usdRate;
   const spentInstitution = toLocal(all.reduce((a, i) => a + (i.costUsd || 0), 0));
-  const spentStudent = toLocal(all.filter((i) => i.userId === user.id).reduce((a, i) => a + (i.costUsd || 0), 0));
+  const mine = all.filter((i) => i.userId === user.id);
+  const spentStudent = toLocal(mine.reduce((a, i) => a + (i.costUsd || 0), 0));
   let exhausted: Allowance["exhausted"] = "none";
   if (f.monthlyBudget > 0 && spentInstitution >= f.monthlyBudget) exhausted = "institution";
   else if (f.perStudentMonthly > 0 && spentStudent >= f.perStudentMonthly) exhausted = "student";
-  return { institutionPays: f.institutionPays, currency: f.currency, perStudentMonthly: f.perStudentMonthly, spentStudent, monthlyBudget: f.monthlyBudget, spentInstitution, atLimit: f.atLimit, exhausted };
+
+  // Typical cost of one interaction: the student's own average once there are a few, else a typical exchange at the
+  // default model's prices (the institution's configured model, or the platform's default Gemini).
+  const defaultModel = db.aiAccess.models(user.university).find((m) => m.enabled && m.isDefault) || db.aiAccess.models(user.university).find((m) => m.enabled);
+  const [inPrice, outPrice] = defaultModel ? [defaultModel.inputPrice, defaultModel.outputPrice] : LIST_PRICES[DEFAULT_MODELS.google] || [0.75, 3.75];
+  const typical = toLocal((TYPICAL_INTERACTION.inputTokens * inPrice + TYPICAL_INTERACTION.outputTokens * outPrice) / 1e6);
+  const costPerRequest = mine.length >= 3 && spentStudent > 0 ? spentStudent / mine.length : typical;
+
+  const nowDate = new Date();
+  const monthStart = new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), 1));
+  const reset = new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth() + 1, 1));
+  const daysInMonth = Math.round((reset.getTime() - monthStart.getTime()) / 86400000);
+  const daysElapsed = Math.max(1, (nowDate.getTime() - monthStart.getTime()) / 86400000);
+  const daysLeft = Math.max(0, Math.ceil((reset.getTime() - nowDate.getTime()) / 86400000));
+
+  const caps: number[] = [];
+  if (f.perStudentMonthly > 0) caps.push(Math.max(0, f.perStudentMonthly - spentStudent));
+  if (f.monthlyBudget > 0) caps.push(Math.max(0, f.monthlyBudget - spentInstitution));
+  const remaining = caps.length ? Math.min(...caps) : null;
+  const remainingRequests = remaining === null ? null : costPerRequest > 0 ? Math.floor(remaining / costPerRequest) : null;
+  const usedPercent = f.perStudentMonthly > 0 ? Math.min(100, Math.round((spentStudent / f.perStudentMonthly) * 100)) : null;
+  const institutionPercent = f.monthlyBudget > 0 ? Math.min(100, Math.round((spentInstitution / f.monthlyBudget) * 100)) : null;
+  const projectedSpend = (spentStudent / daysElapsed) * daysInMonth;
+  const projectedPercent = f.perStudentMonthly > 0 ? Math.round((projectedSpend / f.perStudentMonthly) * 100) : null;
+  let runsOutAt: string | null = null;
+  if (f.perStudentMonthly > 0 && spentStudent > 0 && exhausted === "none") {
+    const perDay = spentStudent / daysElapsed;
+    const daysToLimit = (f.perStudentMonthly - spentStudent) / perDay;
+    if (daysToLimit < daysLeft) runsOutAt = new Date(nowDate.getTime() + daysToLimit * 86400000).toISOString();
+  }
+
+  return {
+    institutionPays: f.institutionPays, currency: f.currency, perStudentMonthly: f.perStudentMonthly, spentStudent, monthlyBudget: f.monthlyBudget, spentInstitution, atLimit: f.atLimit, exhausted,
+    usage: { requests: mine.length, costPerRequest, remaining, remainingRequests, usedPercent, institutionPercent, resetsAt: reset.toISOString(), daysLeft, projectedPercent, runsOutAt },
+  };
 }
 
 function fromInstitutionModel(m: InstitutionModel): ResolvedProvider {
