@@ -443,3 +443,28 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
   .img-view.is-selected .img-frame { outline: none; }
   .ProseMirror figure[data-image] { page-break-inside: avoid; }
 }
+
+/* Tab outline: a translucent cloud that floats under the tab, no border, soft brand-tinted glow */
+.tab-outline-cloud {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62) 55%, rgba(237, 242, 255, 0.72));
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 18px 50px -18px rgba(76, 110, 245, 0.35), 0 10px 30px -12px rgba(60, 64, 67, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.6);
+  animation: outline-cloud-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: top left;
+}
+@keyframes outline-cloud-in { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: none; } }
+.tab-outline-item {
+  position: relative;
+  border-radius: 10px;
+  margin: 0 6px;
+  transition: background-color 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+.tab-outline-item:hover,
+.tab-outline-item:focus-visible {
+  background: linear-gradient(90deg, rgba(76, 110, 245, 0.14), rgba(32, 201, 151, 0.10));
+  color: theme("colors.brand.700");
+  transform: translateX(3px);
+  box-shadow: 0 6px 16px -10px rgba(76, 110, 245, 0.45);
+}
+@media (prefers-reduced-motion: reduce) { .tab-outline-cloud { animation: none; } .tab-outline-item { transition: none; } .tab-outline-item:hover { transform: none; } }

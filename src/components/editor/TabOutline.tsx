@@ -255,7 +255,7 @@ export function TabOutline({
       {mobile && (
         <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
           <div className="text-[13px] font-semibold text-gray-900 truncate">{heading}</div>
-          <button type="button" onClick={() => close(true)} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100" aria-label={t("common.close")}>
+          <button type="button" onClick={() => close(true)} className="p-1.5 rounded-md text-gray-500 hover:bg-white/70" aria-label={t("common.close")}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -270,7 +270,7 @@ export function TabOutline({
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("editor.tabs.outlineFilter")}
               aria-label={t("editor.tabs.outlineFilter")}
-              className="w-full text-[13px] bg-white/70 border border-gray-200 rounded-lg pl-8 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full text-[13px] bg-white/60 rounded-lg pl-8 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-300/70"
             />
           </div>
         </div>
@@ -291,7 +291,7 @@ export function TabOutline({
               role="menuitem"
               tabIndex={-1}
               onClick={() => goTo(it)}
-              className={`block w-full text-left text-[13px] py-1.5 pr-3 truncate text-gray-700 hover:bg-brand-50 hover:text-brand-700 focus-visible:bg-brand-50 focus-visible:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 ${it.level === 1 ? "font-semibold text-gray-900" : it.level === 2 ? "font-medium" : "font-normal"}`}
+              className={`block w-full text-left text-[13px] py-1.5 pr-3 truncate text-gray-700 tab-outline-item focus-visible:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500 ${it.level === 1 ? "font-semibold text-gray-900" : it.level === 2 ? "font-medium" : "font-normal"}`}
               style={{ paddingLeft: `${12 + (it.level - 1) * 14}px` }}
               title={it.text}
             >
@@ -323,12 +323,12 @@ export function TabOutline({
           mobile ? (
             <div className="fixed inset-0 z-[80] md:hidden">
               <div className="absolute inset-0 bg-black/30" onClick={() => close(false)} aria-hidden="true" />
-              <div className="absolute inset-x-0 bottom-0 max-h-[70vh] flex flex-col bg-white/90 backdrop-blur-md border-t border-gray-200/70 rounded-t-2xl shadow-xl pb-[env(safe-area-inset-bottom)]">{body}</div>
+              <div className="tab-outline-cloud absolute inset-x-0 bottom-0 max-h-[70vh] flex flex-col rounded-t-2xl pb-[env(safe-area-inset-bottom)]">{body}</div>
             </div>
           ) : (
             pos && (
               <div
-                className="fixed z-[80] w-[320px] max-h-[60vh] flex flex-col bg-white/85 backdrop-blur-md border border-gray-200/70 shadow-xl rounded-xl overflow-hidden"
+                className="tab-outline-cloud fixed z-[80] w-[320px] max-h-[60vh] flex flex-col rounded-2xl overflow-hidden"
                 style={{ left: pos.left, top: pos.top }}
               >
                 {body}
