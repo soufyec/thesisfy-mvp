@@ -33,7 +33,7 @@ export default function Hero() {
         <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
           <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-2 [text-wrap:pretty]">
             {t("landing.hero.titleA")}
-            <span className="gradient-text">{t("landing.hero.titleHi")}</span>
+            <span className="hero-properly gradient-text">{t("landing.hero.titleHi")}</span>
             {t("landing.hero.titleB")}
           </h1>
           <p className="text-[17px] sm:text-[19px] leading-[1.6] text-gray-600 max-w-[560px] mb-9 [text-wrap:pretty]">

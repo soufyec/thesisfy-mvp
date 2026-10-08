@@ -28,9 +28,9 @@ const en = {
 
   // Hero
   "landing.hero.badge": "Evidence of the process, not suspicion of the result",
-  "landing.hero.titleA": "Bringing academic work into the AI era: ",
-  "landing.hero.titleHi": "a better writing process",
-  "landing.hero.titleB": ", AI used well.",
+  "landing.hero.titleA": "We teach your students how to use AI, ",
+  "landing.hero.titleHi": "properly",
+  "landing.hero.titleB": ".",
   "landing.hero.body":
     "Thesisfic attributes every sentence of a thesis as it is written: typed, quoted or AI-assisted. Advisors receive a provenance report. Students use the AI tools your policy allows, inside the editor, with their consent and under your budget.",
   "landing.hero.cta": "Request a pilot",
@@ -122,7 +122,7 @@ const en = {
   "landing.seal.description": "Awarded to theses written in a transparent process: every AI contribution declared, every source attributed.",
 
   // Login
-  "landing.login.headline": "Bringing academic work into the AI era: a better writing process, AI used well.",
+  "landing.login.headline": "We teach your students how to use AI, properly.",
   "landing.login.lead": "Every sentence is attributed as it is written: typed, quoted or AI-assisted. Your advisor reads the process, not just the draft.",
   "landing.login.title": "Welcome back",
   "landing.login.subtitle": "Sign in to continue to your dashboard",
@@ -218,9 +218,9 @@ export const landing: Messages<typeof en> = {
     "landing.footer.contact": "Contacto",
 
     "landing.hero.badge": "Evidencia del proceso, no sospecha sobre el resultado",
-    "landing.hero.titleA": "Llevando el trabajo académico a la era de la IA: ",
-    "landing.hero.titleHi": "mejor proceso de escritura",
-    "landing.hero.titleB": ", uso óptimo de la IA.",
+    "landing.hero.titleA": "Enseñamos a tus estudiantes a usar la IA, ",
+    "landing.hero.titleHi": "como es debido",
+    "landing.hero.titleB": ".",
     "landing.hero.body":
       "Thesisfic atribuye cada frase de una tesis mientras se escribe: tecleada, citada o con ayuda de IA. Los tutores reciben un informe de procedencia. Los estudiantes usan las herramientas de IA que permite vuestra política, dentro del editor, con su consentimiento y con cargo a vuestro presupuesto.",
     "landing.hero.cta": "Solicitar un piloto",
@@ -308,7 +308,7 @@ export const landing: Messages<typeof en> = {
     "landing.seal.aria": "Sello de calidad académica de {name}",
     "landing.seal.description": "Se concede a las tesis escritas en un proceso transparente: cada aportación de IA declarada, cada fuente atribuida.",
 
-    "landing.login.headline": "Llevando el trabajo académico a la era de la IA: mejor proceso de escritura, uso óptimo de la IA.",
+    "landing.login.headline": "Enseñamos a tus estudiantes a usar la IA, como es debido.",
     "landing.login.lead": "Cada frase se atribuye mientras se escribe: tecleada, citada o con ayuda de IA. Tu tutor lee el proceso, no solo el borrador.",
     "landing.login.title": "Te damos la bienvenida de nuevo",
     "landing.login.subtitle": "Inicia sesión para continuar en tu panel",
@@ -398,9 +398,9 @@ export const landing: Messages<typeof en> = {
     "landing.footer.contact": "Contact",
 
     "landing.hero.badge": "La preuve du processus, pas le soupçon sur le résultat",
-    "landing.hero.titleA": "Le travail académique à l'ère de l'IA : ",
-    "landing.hero.titleHi": "un meilleur processus d'écriture",
-    "landing.hero.titleB": ", un usage optimisé de l'IA.",
+    "landing.hero.titleA": "Nous apprenons à vos étudiants à utiliser l'IA, ",
+    "landing.hero.titleHi": "comme il faut",
+    "landing.hero.titleB": ".",
     "landing.hero.body":
       "Thesisfic attribue chaque phrase d'une thèse au moment où elle est rédigée : saisie, citée ou assistée par IA. Les directeurs de thèse reçoivent un rapport de provenance. Les étudiants utilisent les outils d'IA que votre politique autorise, dans l'éditeur, avec leur consentement et dans le cadre de votre budget.",
     "landing.hero.cta": "Demander un pilote",
@@ -488,7 +488,7 @@ export const landing: Messages<typeof en> = {
     "landing.seal.aria": "Sceau de qualité académique de {name}",
     "landing.seal.description": "Décerné aux thèses rédigées dans un processus transparent : chaque apport d'IA déclaré, chaque source attribuée.",
 
-    "landing.login.headline": "Le travail académique à l'ère de l'IA : un meilleur processus d'écriture, un usage optimisé de l'IA.",
+    "landing.login.headline": "Nous apprenons à vos étudiants à utiliser l'IA, comme il faut.",
     "landing.login.lead": "Chaque phrase est attribuée au moment où elle est rédigée : saisie, citée ou assistée par IA. Votre directeur de thèse lit le processus, pas seulement le brouillon.",
     "landing.login.title": "Bon retour",
     "landing.login.subtitle": "Connectez-vous pour accéder à votre tableau de bord",
