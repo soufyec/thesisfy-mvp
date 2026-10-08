@@ -68,7 +68,16 @@ export interface Thesis {
   references: Reference[];
   /** Working tabs (notes, drafts). The submission tab is `content`; only it is submitted, reviewed and scored. */
   tabs: ThesisTab[];
-  pageSetup: { orientation: "portrait" | "landscape"; size: "A4" | "Letter"; margin: number; lineSpacing: number };
+  pageSetup: {
+    orientation: "portrait" | "landscape";
+    size: "A4" | "Letter";
+    margin: number;
+    lineSpacing: number;
+    headerText?: string;
+    footerText?: string;
+    pageNumbers?: "none" | "footerCenter" | "footerRight" | "headerRight";
+    numberHeadings?: boolean;
+  };
 }
 
 export interface ThesisTab {
@@ -1087,7 +1096,8 @@ export function stripHtml(html: string): string {
 }
 
 export function countWords(html: string): number {
-  const text = stripHtml(html);
+  // Image captions live in <figcaption>; they are not thesis words, like the editor's own counter (it only sees text nodes).
+  const text = stripHtml(html.replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " "));
   return text ? text.split(/\s+/).filter(Boolean).length : 0;
 }
 

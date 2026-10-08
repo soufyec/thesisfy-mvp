@@ -193,7 +193,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
       <span className="tb-sep" />
       <Btn onClick={() => editor.chain().focus().toggleSuperscript().run()} active={editor.isActive("superscript")} title={t("editor.fmt.superscript")}><Superscript className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().toggleSubscript().run()} active={editor.isActive("subscript")} title={t("editor.fmt.subscript")}><Subscript className="w-4 h-4" /></Btn>
-      <Btn onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title={`${t("editor.fmt.clear")} (Ctrl+\\)`}><RemoveFormatting className="w-4 h-4" /></Btn>
+      <Btn onClick={() => editor.chain().focus().clearFormatting().clearNodes().run()} title={`${t("editor.fmt.clear")} (Ctrl+\\)`}><RemoveFormatting className="w-4 h-4" /></Btn>
       {provenance && <ProvenanceToggle on={provenance.on} onToggle={provenance.onToggle} locked={provenance.locked} />}
     </div>
   );

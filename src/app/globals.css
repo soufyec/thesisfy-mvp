@@ -208,7 +208,8 @@
 @media print {
   body * { visibility: hidden; }
   .docs-workspace, .docs-workspace * { visibility: visible; }
-  .docs-workspace { position: absolute; inset: 0; background: #fff !important; }
+  .docs-workspace { position: absolute; inset: 0 0 auto 0; height: auto; overflow: visible; background: #fff !important; }
+  .docs-workspace > div { padding: 0 !important; }
   .docs-page { box-shadow: none; margin: 0; width: auto; min-height: 0; zoom: 1; padding: 0; }
   .show-provenance .prov-ai, .show-provenance .prov-paste, .thesisfic-comment { background: none !important; border-bottom: none !important; }
   .page-break { page-break-after: always; border: none !important; }
@@ -314,3 +315,115 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
   color: #9aa0a6;
 }
 @media print { .ProseMirror .page-gap { display: none; } }
+
+/* tables */
+.ProseMirror .tableWrapper { overflow-x: auto; margin: 0.8em 0; }
+.ProseMirror .tableWrapper table { margin: 0; }
+.ProseMirror td, .ProseMirror th { overflow-wrap: anywhere; }
+.ProseMirror .selectedCell::after { z-index: 2; background: theme("colors.brand.600 / 14%"); }
+.ProseMirror .selectedCell { outline: 1px solid theme("colors.brand.600 / 45%"); outline-offset: -1px; }
+.ProseMirror .column-resize-handle { z-index: 3; bottom: -1px; width: 4px; right: -2px; background-color: theme("colors.brand.600 / 55%"); pointer-events: none; }
+.ProseMirror.resize-cursor { cursor: col-resize; }
+.ProseMirror table td:hover, .ProseMirror table th:hover { cursor: text; }
+@media print { .ProseMirror .selectedCell::after { display: none; } .ProseMirror .selectedCell { outline: none; } .ProseMirror .column-resize-handle { display: none; } }
+
+/* page header / footer / page numbers (on screen: pagination widgets, first-page header; in print: @page margin boxes) */
+.page-hf {
+  position: absolute;
+  left: var(--page-margin, 2.54cm);
+  right: var(--page-margin, 2.54cm);
+  height: var(--page-margin, 2.54cm);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font: 400 9pt/1.2 Inter, system-ui, sans-serif;
+  color: theme("colors.gray.500");
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+.page-hf .hf-l { flex: 1 1 auto; min-width: 0; text-align: left; }
+.page-hf .hf-c { flex: 0 1 auto; text-align: center; }
+.page-hf .hf-r { flex: 0 0 auto; margin-left: auto; text-align: right; }
+.page-hf .hf-c:empty { display: none; }
+/* with a centred text, left and right take equal room so it stays centred */
+.page-hf:has(.hf-c:not(:empty)) .hf-l, .page-hf:has(.hf-c:not(:empty)) .hf-r { flex: 1 1 0; }
+.page-hf-first { top: 0; }
+.page-gap .page-hf-footer { top: calc(var(--gap-fill) - var(--page-margin, 2.54cm)); }
+.page-gap .page-hf-header { top: calc(var(--gap-fill) + var(--gap-size)); }
+.ProseMirror .page-end { position: relative; margin: 0 calc(-1 * var(--page-margin, 2.54cm)); pointer-events: none; user-select: none; }
+.page-end .page-hf-footer { top: 100%; }
+@media (max-width: 767px) { .page-hf, .ProseMirror .page-end { display: none; } }
+@media print { .page-hf, .ProseMirror .page-end { display: none; } }
+
+/* heading numbering: 1 / 1.1 / 1.1.1 on Heading 2 / 3 / 4 (Title stays unnumbered); display only, the content is untouched */
+.docs-page.num-headings .ProseMirror { counter-reset: hn2 hn3 hn4; }
+.docs-page.num-headings .ProseMirror h2 { counter-increment: hn2; counter-reset: hn3 hn4; }
+.docs-page.num-headings .ProseMirror h3 { counter-increment: hn3; counter-reset: hn4; }
+.docs-page.num-headings .ProseMirror h4 { counter-increment: hn4; }
+.docs-page.num-headings .ProseMirror h2::before { content: counter(hn2) ".\00a0\00a0"; }
+.docs-page.num-headings .ProseMirror h3::before { content: counter(hn2) "." counter(hn3) "\00a0\00a0"; }
+.docs-page.num-headings .ProseMirror h4::before { content: counter(hn2) "." counter(hn3) "." counter(hn4) "\00a0\00a0"; }
+
+/* bookmarks (inline anchors) */
+.ProseMirror .doc-bookmark {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.95em;
+  margin: 0 0.1em;
+  vertical-align: -0.1em;
+  background: theme("colors.brand.600 / 75%");
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+  cursor: default;
+}
+.ProseMirror .doc-bookmark.ProseMirror-selectednode { background: theme("colors.brand.700"); }
+@media print { .ProseMirror .doc-bookmark { display: none; } }
+.ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h1 { scroll-margin-top: 80px; }
+
+/* images */
+.ProseMirror::after { content: ""; display: block; clear: both; }
+.ProseMirror figure.img-node { position: relative; }
+.ProseMirror figure.img-node > [data-node-view-wrapper] { display: block; }
+.ProseMirror figure.ProseMirror-selectednode { outline: none; }
+.ProseMirror figure[data-image] { break-inside: avoid; }
+.ProseMirror figure[data-image] img { margin: 0; }
+.ProseMirror figure[data-image] a { display: block; }
+.ProseMirror figure[data-image] figcaption, .img-caption { margin-top: 0.35em; font-size: 10pt; line-height: 1.4; color: theme("colors.gray.600"); text-align: center; }
+.img-frame { position: relative; display: block; line-height: 0; }
+.img-view.is-selected .img-frame { outline: 2px solid theme("colors.brand.600"); }
+.img-caption textarea { display: block; width: 100%; resize: none; overflow: hidden; border: 0; border-radius: 6px; padding: 2px 4px; background: transparent; color: inherit; font: inherit; text-align: center; line-height: inherit; outline: none; }
+.img-caption textarea:focus { background: theme("colors.gray.50"); box-shadow: 0 0 0 2px theme("colors.brand.100"); }
+.img-handle { position: absolute; z-index: 2; width: 10px; height: 10px; border-radius: 3px; background: theme("colors.white"); border: 2px solid theme("colors.brand.600"); transform: translate(-50%, -50%); touch-action: none; }
+.img-handle::after { content: ""; position: absolute; inset: -9px; }
+.img-handle:focus-visible { outline: 2px solid theme("colors.brand.600"); outline-offset: 2px; }
+.img-handle-nw { left: 0; top: 0; cursor: nwse-resize; }
+.img-handle-n { left: 50%; top: 0; cursor: ns-resize; }
+.img-handle-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.img-handle-e { left: 100%; top: 50%; cursor: ew-resize; }
+.img-handle-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.img-handle-s { left: 50%; top: 100%; cursor: ns-resize; }
+.img-handle-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.img-handle-w { left: 0; top: 50%; cursor: ew-resize; }
+.img-bar { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 20; display: flex; flex-direction: column; gap: 4px; width: max-content; max-width: min(92vw, 560px); padding: 4px; border-radius: 10px; background: theme("colors.gray.900"); color: theme("colors.white"); font: 500 12px/1.2 Inter, system-ui, sans-serif; text-align: left; user-select: none; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.4); }
+.img-bar-mid { left: 50%; transform: translateX(-50%); }
+.img-bar-end { left: auto; right: 0; }
+.img-bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.img-btn { display: inline-flex; align-items: center; justify-content: center; height: 28px; min-width: 28px; padding: 0 6px; border-radius: 6px; }
+.img-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.img-btn.active { background: rgba(255, 255, 255, 0.2); }
+.img-btn:focus-visible { outline: 2px solid theme("colors.white"); outline-offset: -2px; }
+.img-btn-text { font-size: 11px; font-weight: 600; }
+.img-btn-wide { padding: 0 10px; font-size: 12px; font-weight: 600; }
+.img-sep { width: 1px; height: 16px; margin: 0 3px; background: rgba(255, 255, 255, 0.2); }
+.img-bar-panel input { flex: 1; min-width: 160px; height: 28px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: theme("colors.white"); font-size: 13px; outline: none; }
+.img-bar-panel input::placeholder { color: rgba(255, 255, 255, 0.6); }
+@media (max-width: 767px) {
+  .img-handle { width: 14px; height: 14px; }
+  .img-handle::after { inset: -7px; }
+  .img-bar { bottom: auto; top: calc(100% + 8px); }
+}
+@media print {
+  .img-bar, .img-handle { display: none !important; }
+  .img-view.is-selected .img-frame { outline: none; }
+  .ProseMirror figure[data-image] { page-break-inside: avoid; }
+}

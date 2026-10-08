@@ -5,6 +5,7 @@ import type { Editor } from "@tiptap/react";
 import { Check, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import type { Translate } from "@/lib/i18n/dictionary";
+import { tableMenuItems } from "./TableMenu";
 
 export type MenuAction =
   | "new" | "open" | "rename" | "save" | "saveVersion" | "versions" | "share" | "submit" | "dl-docx" | "dl-html" | "dl-md" | "dl-txt" | "print" | "pageSetup" | "wordCount"
@@ -13,9 +14,11 @@ export type MenuAction =
   | "image" | "table" | "link" | "comment" | "pageBreak" | "hr" | "date" | "citation" | "toc" | "footnote"
   | "bold" | "italic" | "underline" | "strike" | "superscript" | "subscript" | "h1" | "h2" | "h3" | "h4" | "p" | "alignLeft" | "alignCenter" | "alignRight" | "alignJustify" | "ls-1" | "ls-1.15" | "ls-1.5" | "ls-2" | "bullets" | "numbers" | "checklist" | "indent" | "outdent" | "clearFormat" | "blockquote" | "codeBlock"
   | "spellcheck" | "references" | "integrity" | "privacy" | "shortcuts" | "about" | "copilot"
-  | "reviewer" | "language" | "cite" | "process" | "sources" | "evidence";
+  | "reviewer" | "language" | "cite" | "process" | "sources" | "evidence"
+  | "specialChars" | "bookmark" | "caseUpper" | "caseLower" | "caseTitle" | "caseCycle" | "indentFirst" | "indentHanging" | "indentNone" | "numberHeadings"
+  | `table:${string}`;
 
-interface Item {
+export interface Item {
   label: string;
   action?: MenuAction;
   shortcut?: string;
@@ -23,12 +26,24 @@ interface Item {
   disabled?: boolean;
   children?: Item[];
   sep?: boolean;
+  /** Colour chip drawn before the label (cell background menu). */
+  swatch?: string;
 }
 
 interface Props {
   editor: Editor;
   onAction: (a: MenuAction) => void;
-  state: { showProvenance: boolean; sidebar: string; spellcheck: boolean; zoom: number; focus: boolean; canEdit: boolean };
+  state: { showProvenance: boolean; sidebar: string; spellcheck: boolean; zoom: number; focus: boolean; canEdit: boolean; numberHeadings?: boolean };
+}
+
+function ItemLabel({ item }: { item: Item }) {
+  return (
+    <span className="flex items-center gap-2">
+      {item.checked !== undefined && <Check className={`w-3.5 h-3.5 ${item.checked ? "" : "invisible"}`} />}
+      {item.swatch !== undefined && <span className="inline-block w-3.5 h-3.5 rounded border border-gray-300 flex-shrink-0" style={item.swatch ? { background: item.swatch } : undefined} aria-hidden="true" />}
+      {item.label}
+    </span>
+  );
 }
 
 function Menu({ title, items, onAction, open, setOpen }: { title: string; items: Item[]; onAction: (a: MenuAction) => void; open: boolean; setOpen: (v: boolean) => void }) {
@@ -56,7 +71,7 @@ function Menu({ title, items, onAction, open, setOpen }: { title: string; items:
                         <div key={j} className="sep" />
                       ) : (
                         <button key={j} disabled={c.disabled} onMouseDown={(e) => e.preventDefault()} onClick={() => { if (c.action) onAction(c.action); setOpen(false); }}>
-                          <span className="flex items-center gap-2">{c.checked !== undefined && <Check className={`w-3.5 h-3.5 ${c.checked ? "" : "invisible"}`} />}{c.label}</span>
+                          <ItemLabel item={c} />
                           {c.shortcut && <kbd>{c.shortcut}</kbd>}
                         </button>
                       )
@@ -66,7 +81,7 @@ function Menu({ title, items, onAction, open, setOpen }: { title: string; items:
               </div>
             ) : (
               <button key={i} disabled={it.disabled} onMouseDown={(e) => e.preventDefault()} onClick={() => { if (it.action) onAction(it.action); setOpen(false); }}>
-                <span className="flex items-center gap-2">{it.checked !== undefined && <Check className={`w-3.5 h-3.5 ${it.checked ? "" : "invisible"}`} />}{it.label}</span>
+                <ItemLabel item={it} />
                 {it.shortcut && <kbd>{it.shortcut}</kbd>}
               </button>
             )
@@ -164,6 +179,8 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
         { label: t("editor.menu.horizontalLine"), action: "hr", disabled: ro },
         { label: t("editor.menu.date"), action: "date", disabled: ro },
         { label: t("editor.menu.footnote"), action: "footnote", disabled: ro },
+        { label: t("editor.menu.bookmark"), action: "bookmark", shortcut: `${mod}⌥B`, disabled: ro },
+        { label: t("editor.menu.specialChars"), action: "specialChars", disabled: ro },
         { sep: true, label: "" },
         { label: t("editor.menu.citation"), action: "citation", shortcut: `${mod}⌥E`, disabled: ro },
         { label: t("editor.menu.toc"), action: "toc", disabled: ro },
@@ -181,6 +198,11 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
             { label: t("editor.fmt.strike"), action: "strike", checked: editor.isActive("strike") },
             { label: t("editor.fmt.superscript"), action: "superscript", checked: editor.isActive("superscript") },
             { label: t("editor.fmt.subscript"), action: "subscript", checked: editor.isActive("subscript") },
+            { sep: true, label: "" },
+            { label: t("editor.menu.caseUpper"), action: "caseUpper", disabled: ro },
+            { label: t("editor.menu.caseLower"), action: "caseLower", disabled: ro },
+            { label: t("editor.menu.caseTitle"), action: "caseTitle", disabled: ro },
+            { label: t("editor.menu.caseCycle"), action: "caseCycle", shortcut: "⇧F3", disabled: ro },
           ],
         },
         {
@@ -194,6 +216,8 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
             { sep: true, label: "" },
             { label: t("editor.menu.blockQuote"), action: "blockquote", checked: editor.isActive("blockquote") },
             { label: t("editor.menu.codeBlock"), action: "codeBlock", checked: editor.isActive("codeBlock") },
+            { sep: true, label: "" },
+            { label: t("editor.menu.numberHeadings"), action: "numberHeadings", checked: !!state.numberHeadings, disabled: ro },
           ],
         },
         {
@@ -224,6 +248,16 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
         },
         { label: t("editor.fmt.increaseIndent"), action: "indent", shortcut: "Tab" },
         { label: t("editor.fmt.decreaseIndent"), action: "outdent", shortcut: "⇧Tab" },
+        {
+          label: t("editor.menu.specialIndent"),
+          children: [
+            { label: t("editor.menu.indentFirst"), action: "indentFirst", checked: editor.getAttributes("paragraph").indentMode === "first", disabled: ro },
+            { label: t("editor.menu.indentHanging"), action: "indentHanging", checked: editor.getAttributes("paragraph").indentMode === "hanging", disabled: ro },
+            { label: t("editor.menu.indentNone"), action: "indentNone", disabled: ro },
+          ],
+        },
+        { sep: true, label: "" },
+        { label: t("editor.table.menu.title"), disabled: ro || !editor.isActive("table"), children: tableMenuItems(editor, t, !ro) },
         { sep: true, label: "" },
         { label: t("editor.fmt.clear"), action: "clearFormat", shortcut: `${mod}\\` },
       ],
@@ -295,7 +329,7 @@ function OverflowItems({ items, onAction, depth = 0 }: { items: Item[]; onAction
           </div>
         ) : (
           <button key={i} disabled={it.disabled} onMouseDown={(e) => e.preventDefault()} onClick={() => it.action && onAction(it.action)}>
-            <span className="flex items-center gap-2">{it.checked !== undefined && <Check className={`w-3.5 h-3.5 ${it.checked ? "" : "invisible"}`} />}{it.label}</span>
+            <ItemLabel item={it} />
             {it.shortcut && <kbd>{it.shortcut}</kbd>}
           </button>
         )

@@ -22,7 +22,18 @@ export interface ThesisDoc {
   professorName: string;
   references: Reference[];
   tabs?: ThesisTab[];
-  pageSetup: { orientation: "portrait" | "landscape"; size: "A4" | "Letter"; margin: number; lineSpacing: number };
+  pageSetup: {
+    orientation: "portrait" | "landscape";
+    size: "A4" | "Letter";
+    margin: number;
+    lineSpacing: number;
+    /** Header / footer text; `{page}` and `{pages}` are replaced on each page. */
+    headerText?: string;
+    footerText?: string;
+    pageNumbers?: "none" | "footerCenter" | "footerRight" | "headerRight";
+    /** Display-only numbering 1 / 1.1 / 1.1.1 of Heading 2 / 3 / 4. */
+    numberHeadings?: boolean;
+  };
 }
 
 export interface ThesisTab {

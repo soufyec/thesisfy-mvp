@@ -70,7 +70,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
     patch.tabs = tabs;
   }
-  if (body.pageSetup && typeof body.pageSetup === "object" && isOwner) patch.pageSetup = { ...thesis.pageSetup, ...body.pageSetup };
+  if (body.pageSetup && typeof body.pageSetup === "object" && isOwner) {
+    const ps = { ...thesis.pageSetup, ...body.pageSetup };
+    // Header / footer texts are plain text of at most 200 characters; page numbering is one of four positions.
+    ps.headerText = typeof ps.headerText === "string" ? ps.headerText.slice(0, 200) : undefined;
+    ps.footerText = typeof ps.footerText === "string" ? ps.footerText.slice(0, 200) : undefined;
+    if (!["none", "footerCenter", "footerRight", "headerRight"].includes(String(ps.pageNumbers))) ps.pageNumbers = "none";
+    ps.numberHeadings = ps.numberHeadings === true;
+    patch.pageSetup = ps;
+  }
   if (body.citationStyle && isOwner) patch.citationStyle = body.citationStyle;
   if (body.targetWords && isOwner) patch.targetWords = Number(body.targetWords);
   if (body.deadline !== undefined && isOwner) patch.deadline = body.deadline || undefined;

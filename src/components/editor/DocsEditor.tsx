@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BubbleMenu, EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { EditorState } from "@tiptap/pm/state";
+import { CellSelection } from "@tiptap/pm/tables";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -13,7 +14,7 @@ import { Color } from "@tiptap/extension-color";
 import TextStyle from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
 import LinkExt from "@tiptap/extension-link";
-import Image from "@tiptap/extension-image";
+import { IMAGE_EDIT_META, imageFilesOf, insertImage, insertImageFiles, patchImage, ResizableImage } from "./image";
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableHeader from "@tiptap/extension-table-header";
@@ -28,6 +29,12 @@ import Typography from "@tiptap/extension-typography";
 import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, FileText, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
 import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, ProvenanceStats, Search } from "./extensions";
 import { Pagination } from "./pagination";
+import { TableExtras } from "./tableExtras";
+import { TextTools } from "./textTools";
+import { anchorHref, Bookmark, findAnchorPos, HeadingAnchors, listAnchors, type AnchorItem } from "./anchors";
+import { TableBubble, TableContextMenu, runTableAction } from "./TableMenu";
+import { SpecialCharsDialog } from "./SpecialCharsDialog";
+import { FirstPageHeader, PrintHeaderFooter } from "./PageHeaderFooter";
 import CitationDialog, { CitationInsert } from "./CitationDialog";
 import Toolbar from "./Toolbar";
 import { MenuAction, MenuOverflow } from "./MenuBar";
@@ -183,7 +190,13 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const [pendingComment, setPendingComment] = useState<{ anchorId: string; quote: string } | null>(null);
   const [confirmPromote, setConfirmPromote] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent">(null);
+  const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent" | "specialChars" | "bookmark">(null);
+  const [anchors, setAnchors] = useState<AnchorItem[]>([]);
+  const [tableMenuAt, setTableMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const goToAnchorRef = useRef<(href: string) => void>(() => {});
+  const onActionRef = useRef<(a: MenuAction) => void>(() => {});
+  /** Position of the image being replaced while the image dialog is open (null = inserting a new one). */
+  const [imageReplacePos, setImageReplacePos] = useState<number | null>(null);
   const [linkInitial, setLinkInitial] = useState("");
   const [paste, setPaste] = useState<{ words: number; text: string; html: string; matched: PasteMatchInfo | null; fingerprint: string | null } | null>(null);
   const [preview, setPreview] = useState<{ id: string; html: string; label: string } | null>(null);
@@ -266,6 +279,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     }
   }, []);
 
+  const imageFileError = useCallback(
+    (reason: "type" | "size" | "read", name: string) => notify(t(reason === "size" ? "editor.image.tooLargeNamed" : reason === "type" ? "editor.image.notAnImage" : "editor.image.readError", { name }), "error"),
+    [notify, t]
+  );
+
   // ---------- editor ----------
   const editor = useEditor({
     immediatelyRender: false,
@@ -281,7 +299,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       LinkExt.configure({ openOnClick: false, autolink: true, defaultProtocol: "https" }),
-      Image.configure({ inline: false, allowBase64: true }),
+      ResizableImage.configure({ inline: false, allowBase64: true, onReplace: (pos: number) => { setImageReplacePos(pos); setDialog("image"); } }),
       Table.configure({ resizable: true }),
       TableRow,
       TableHeader,
@@ -303,6 +321,10 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       Search,
       CitedPassage,
       CitationMark,
+      TableExtras,
+      TextTools,
+      Bookmark,
+      HeadingAnchors,
     ],
     content: initial.thesis.content,
     editorProps: {
@@ -313,9 +335,26 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           setActiveCommentId(el.getAttribute("data-comment-id"));
           setSidebar("comments");
         }
+        // Links open with Ctrl/Cmd+click (always in read-only review); `#…` links jump to a heading or bookmark.
+        const link = (event.target as HTMLElement).closest?.("a[href]") as HTMLAnchorElement | null;
+        if (link && (!canEdit || event.ctrlKey || event.metaKey)) {
+          const href = link.getAttribute("href") || "";
+          if (href.startsWith("#")) goToAnchorRef.current(href);
+          else window.open(link.href, "_blank", "noopener,noreferrer");
+          return true;
+        }
         return false;
       },
       handleDOMEvents: {
+        contextmenu: (view, event) => {
+          const target = event.target as HTMLElement;
+          if (!canEdit || !target.closest?.("td, th")) return false;
+          const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (at && !editorRef.current?.isActive("table")) editorRef.current?.commands.setTextSelection(at.pos);
+          event.preventDefault();
+          setTableMenuAt({ x: event.clientX, y: event.clientY });
+          return true;
+        },
         copy: (view) => {
           const { from, to } = view.state.selection;
           internalCopy.current = norm(view.state.doc.textBetween(from, to, " "));
@@ -327,8 +366,26 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           return false;
         },
       },
+      handleDrop: (view, event) => {
+        // Image files dropped from the desktop: inserted where they land. Moving a node inside the page has no files and is left to ProseMirror.
+        const files = imageFilesOf((event as DragEvent).dataTransfer?.files);
+        if (!files.length) return false;
+        event.preventDefault();
+        if (!canEdit) return true;
+        const at = view.posAtCoords({ left: (event as DragEvent).clientX, top: (event as DragEvent).clientY });
+        if (editorRef.current) insertImageFiles(editorRef.current, files, { pos: at?.pos, onError: imageFileError });
+        return true;
+      },
       handlePaste: (view, event) => {
         if (!canEdit) return false;
+        // Pasted pictures (screenshots, copied images): no provenance dialog and no words, the image is simply inserted.
+        // Word and Excel also put a picture of the selection next to the text: with text on the clipboard, the text path wins.
+        const pastedImages = event.clipboardData?.getData("text/plain").trim() ? [] : imageFilesOf(event.clipboardData?.files);
+        if (pastedImages.length) {
+          event.preventDefault();
+          if (editorRef.current) insertImageFiles(editorRef.current, pastedImages, { onError: imageFileError });
+          return true;
+        }
         const text = event.clipboardData?.getData("text/plain") || "";
         const html = event.clipboardData?.getData("text/html") || "";
         const words = countWordsInText(text);
@@ -361,7 +418,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       },
       handleKeyDown: (_view, event) => {
         const mod = event.ctrlKey || event.metaKey;
+        if (event.key === "F3" && event.shiftKey && canEdit) { event.preventDefault(); onActionRef.current("caseCycle"); return true; }
         if (!mod) return false;
+        if (event.code === "KeyB" && event.altKey && canEdit) { event.preventDefault(); onActionRef.current("bookmark"); return true; }
         const k = event.key.toLowerCase();
         if (k === "s") { event.preventDefault(); saveNowRef.current(); return true; }
         if (k === "h") { event.preventDefault(); setSidebar("find"); return true; }
@@ -387,7 +446,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       const charDelta = chars - lastCounts.current.chars;
       // Typing is counted only for what the student types: not pastes, not editor commands (insertions, citations,
       // declarations) and not a single transaction that adds more text than any keystroke or IME composition can.
-      const isTyping = !isPaste && !transaction.getMeta("ai-insert") && programmaticDepth.current === 0 && charDelta <= 40;
+      const isTyping = !isPaste && !transaction.getMeta("ai-insert") && !transaction.getMeta(IMAGE_EDIT_META) && programmaticDepth.current === 0 && charDelta <= 40;
       if (isTyping) monitorRef.current?.recordTyping(charDelta, words - lastCounts.current.words);
       lastCounts.current = { chars, words };
       if (activeTabRef.current === SUBMISSION) scheduleProvenance(ed);
@@ -808,7 +867,26 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const openLink = () => {
     if (!editor) return;
     setLinkInitial((editor.getAttributes("link").href as string) || "");
+    setAnchors(listAnchors(editor.state.doc));
     setDialog("link");
+  };
+
+  /** Scrolls to the heading or bookmark a `#…` link points to and puts the cursor there. */
+  const goToAnchor = (href: string) => {
+    if (!editor) return;
+    const pos = findAnchorPos(editor.state.doc, href);
+    if (pos === null) return notify(t("editor.toast.anchorMissing"), "info");
+    editor.commands.setTextSelection(Math.min(pos + 1, editor.state.doc.content.size));
+    const dom = editor.view.nodeDOM(pos);
+    (dom instanceof HTMLElement ? dom : null)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  goToAnchorRef.current = goToAnchor;
+
+  const insertBookmark = (name: string) => {
+    if (!editor) return;
+    if (listAnchors(editor.state.doc).some((a) => a.kind === "bookmark" && a.label.toLowerCase() === name.toLowerCase())) return notify(t("editor.toast.bookmarkExists", { name }), "error");
+    programmatic(() => editor.chain().focus().setBookmark(name).run());
+    notify(t("editor.toast.bookmarkAdded", { name }), "success");
   };
 
   const startComment = () => {
@@ -883,7 +961,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     const tabTitle = activeTab === SUBMISSION ? "" : tabs.find((t) => t.id === activeTab)?.title || "";
     const name = safeFileName(tabTitle ? `${thesis.title} - ${tabTitle}` : thesis.title);
     try {
-      if (fmt === "docx") downloadBlob(`${name}.docx`, await htmlToDocx(html, { title: thesis.title, author: thesis.studentName, orientation: thesis.pageSetup.orientation, marginCm: thesis.pageSetup.margin, lineSpacing: thesis.pageSetup.lineSpacing }));
+      if (fmt === "docx") downloadBlob(`${name}.docx`, await htmlToDocx(html, { title: thesis.title, author: thesis.studentName, orientation: thesis.pageSetup.orientation, marginCm: thesis.pageSetup.margin, lineSpacing: thesis.pageSetup.lineSpacing, headerText: thesis.pageSetup.headerText, footerText: thesis.pageSetup.footerText, pageNumbers: thesis.pageSetup.pageNumbers, numberHeadings: thesis.pageSetup.numberHeadings }));
       if (fmt === "html") downloadBlob(`${name}.html`, new Blob([standaloneHtml(html, thesis.title)], { type: "text/html" }));
       if (fmt === "md") downloadBlob(`${name}.md`, new Blob([htmlToMarkdown(html)], { type: "text/markdown" }));
       if (fmt === "txt") downloadBlob(`${name}.txt`, new Blob([htmlToText(html)], { type: "text/plain" }));
@@ -944,8 +1022,19 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     });
   };
 
+  /** Upper / lower / Title case of the selection; marks (provenance included) are kept. */
+  const changeCase = (mode: "upper" | "lower" | "title" | "cycle") => {
+    if (!editor || !canEdit) return;
+    if (editor.state.selection.empty) return notify(t("editor.toast.selectTextToChange"), "info");
+    programmatic(() => (mode === "cycle" ? editor.chain().focus().cycleCase().run() : editor.chain().focus().changeCase(mode).run()));
+  };
+
   const onAction = (a: MenuAction) => {
     if (!editor) return;
+    if (a.startsWith("table:")) {
+      runTableAction(editor, a.slice(6));
+      return;
+    }
     const c = () => editor.chain().focus();
     const map: Partial<Record<MenuAction, () => void>> = {
       new: () => router.push("/dashboard/theses?new=1"),
@@ -997,7 +1086,13 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       alignLeft: () => c().setTextAlign("left").run(), alignCenter: () => c().setTextAlign("center").run(), alignRight: () => c().setTextAlign("right").run(), alignJustify: () => c().setTextAlign("justify").run(),
       "ls-1": () => c().setLineHeight("1").run(), "ls-1.15": () => c().setLineHeight("1.15").run(), "ls-1.5": () => c().setLineHeight("1.5").run(), "ls-2": () => c().setLineHeight("2").run(),
       bullets: () => c().toggleBulletList().run(), numbers: () => c().toggleOrderedList().run(), checklist: () => c().toggleTaskList().run(), indent: () => c().indent().run(), outdent: () => c().outdent().run(),
-      clearFormat: () => c().unsetAllMarks().clearNodes().run(),
+      // Formatting only: provenance, comment and citation marks are records and survive "Clear formatting".
+      clearFormat: () => c().clearFormatting().clearNodes().run(),
+      specialChars: () => setDialog("specialChars"),
+      bookmark: () => setDialog("bookmark"),
+      caseUpper: () => changeCase("upper"), caseLower: () => changeCase("lower"), caseTitle: () => changeCase("title"), caseCycle: () => changeCase("cycle"),
+      indentFirst: () => c().setIndentMode("first").run(), indentHanging: () => c().setIndentMode("hanging").run(), indentNone: () => c().setIndentMode(null).run(),
+      numberHeadings: () => (canEdit ? updateThesis({ pageSetup: { ...thesis.pageSetup, numberHeadings: !thesis.pageSetup.numberHeadings } }) : setThesis((x) => ({ ...x, pageSetup: { ...x.pageSetup, numberHeadings: !x.pageSetup.numberHeadings } }))),
       spellcheck: () => setSpellcheck((v) => !v),
       privacy: () => setDialog("consent"),
       copilot: () => { setSidebar("ai"); },
@@ -1012,6 +1107,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     };
     map[a]?.();
   };
+  onActionRef.current = onAction;
 
   const restoreSubmission = (t: ThesisDoc) => {
     contentsRef.current[SUBMISSION] = t.content;
@@ -1047,6 +1143,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const pastePct = thesis.wordCount ? Math.round((thesis.provenance.paste / thesis.wordCount) * 100) : 0;
   const ws = thesis.pageSetup;
   const workspaceClass = `docs-workspace ${ws.orientation === "landscape" ? "landscape" : ""} ${ws.size === "Letter" ? "letter" : ""} ${showProvenance ? "show-provenance" : ""}`;
+  // Header / footer settings reach the pagination plugin through data-hf-* on the workspace; a no-op transaction makes it re-read them.
+  useEffect(() => {
+    const ed = editorRef.current;
+    if (ed && !ed.isDestroyed) ed.view.dispatch(ed.state.tr.setMeta("addToHistory", false));
+  }, [ws.headerText, ws.footerText, ws.pageNumbers]);
 
   if (!editor) return <div className="min-h-screen bg-[#f1f3f4] flex items-center justify-center text-gray-400 text-sm">{t("editor.preparing")}</div>;
 
@@ -1146,7 +1247,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const saveLabel = saveState === "saving" ? t("editor.save.saving") : saveState === "unsaved" ? t("editor.save.unsavedChanges") : saveState === "error" ? t("editor.save.failedRetry") : t("editor.save.savedAgo", { ago: formatTimeAgo(lastSaved, t, (d) => fmt.date(d)) });
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-white overflow-hidden" style={{ ["--doc-zoom" as string]: zoom / 100, ["--page-margin" as string]: `${ws.margin}cm`, ["--doc-line-height" as string]: ws.lineSpacing }}>
+    <div className="h-[100dvh] flex flex-col bg-white overflow-hidden print:!block print:!h-auto print:!overflow-visible" style={{ ["--doc-zoom" as string]: zoom / 100, ["--page-margin" as string]: `${ws.margin}cm`, ["--doc-line-height" as string]: ws.lineSpacing }}>
       {/* Header (52px) */}
       <header className="h-[52px] flex items-center gap-2 md:gap-3 pl-2 pr-3 bg-white border-b border-gray-200 flex-shrink-0" style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(52px + env(safe-area-inset-top, 0px))" }}>
         <Link href={userRole === "student" ? "/dashboard" : "/admin/theses"} className="w-8 h-8 inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg flex-shrink-0" aria-label={t("common.back")}><ArrowLeft className="w-[18px] h-[18px]" /></Link>
@@ -1165,7 +1266,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         {/* The assistant thinks with the author: a reviewer reads the thesis, so the panel is not offered in review. */}
         {isOwner && <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />{t("glossary.aiAssistant")}</button>}
         <button onClick={() => setDialog("share")} className="hidden md:inline-flex items-center px-3.5 py-[7px] rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 flex-shrink-0">{t("editor.share")}</button>
-        {!isMobile && <MenuOverflow editor={editor} onAction={onAction} state={{ showProvenance, sidebar, spellcheck, zoom, focus, canEdit }} />}
+        {!isMobile && <MenuOverflow editor={editor} onAction={onAction} state={{ showProvenance, sidebar, spellcheck, zoom, focus, canEdit, numberHeadings: !!ws.numberHeadings }} />}
         <button onClick={() => setMobileMenu(true)} className="md:hidden p-2 text-gray-600" aria-label={t("common.more")}><MoreVertical className="w-5 h-5" /></button>
       </header>
 
@@ -1224,13 +1325,15 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         </div>
       )}
       {/* Body */}
-      <div className="flex-1 flex min-h-0">
-        <main className={`flex-1 overflow-auto ${workspaceClass}`} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
+      <div className="flex-1 flex min-h-0 print:!block print:!overflow-visible">
+        <main className={`flex-1 overflow-auto print:!overflow-visible ${workspaceClass}`} data-hf-header={ws.headerText || ""} data-hf-footer={ws.footerText || ""} data-hf-num={ws.pageNumbers || "none"} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
           <div className="px-0 md:px-4 min-h-full">
-            <div className="docs-page" ref={sheetRef}>
+            <div className={`docs-page ${ws.numberHeadings ? "num-headings" : ""}`} ref={sheetRef}>
+              <FirstPageHeader setup={ws} pages={pageCount} />
               <EditorContent editor={editor} spellCheck={spellcheck} />
               {showProvenance && !isMobile && <ProvenanceGutter editor={editor} sheetRef={sheetRef} interactions={interactions} alwaysAnnotate={reviewMode} zoom={zoom / 100} />}
-              <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom" }} shouldShow={({ state }) => !state.selection.empty && !isMobile}>
+              {!isMobile && <TableBubble editor={editor} canEdit={canEdit} />}
+              <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom" }} shouldShow={({ state }) => !state.selection.empty && !isMobile && (state.selection as { node?: { type: { name: string } } }).node?.type.name !== "image" && !(state.selection instanceof CellSelection)}>
                 <div className="bubble-menu" role="toolbar" aria-label={t("editor.bubble.label")}>
                   {canEdit && (
                     <>
@@ -1320,8 +1423,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       </Modal>
 
       {/* Dialogs */}
-      <LinkDialog open={dialog === "link"} onClose={() => setDialog(null)} initial={linkInitial} onSubmit={(url) => editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run()} onRemove={() => editor.chain().focus().extendMarkRange("link").unsetLink().run()} />
-      <ImageDialog open={dialog === "image"} onClose={() => setDialog(null)} onSubmit={(src, alt) => editor.chain().focus().setImage({ src, alt }).run()} />
+      <LinkDialog open={dialog === "link"} onClose={() => setDialog(null)} initial={linkInitial} onSubmit={(url) => editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run()} onRemove={() => editor.chain().focus().extendMarkRange("link").unsetLink().run()} anchors={anchors} onPickAnchor={(a) => { const href = anchorHref(editor, a); const chain = editor.chain().focus(); if (editor.state.selection.empty && !editor.isActive("link")) chain.insertContent({ type: "text", text: a.label, marks: [{ type: "link", attrs: { href } }] }).run(); else chain.extendMarkRange("link").setLink({ href }).run(); }} />
+      <SpecialCharsDialog open={dialog === "specialChars"} onClose={() => setDialog(null)} onInsert={(ch) => programmatic(() => editor.chain().focus().insertContent(ch).run())} />
+      <TextPromptDialog open={dialog === "bookmark"} onClose={() => setDialog(null)} title={t("editor.bookmark.title")} label={t("editor.bookmark.label")} onSubmit={insertBookmark} submitLabel={t("editor.insert")} />
+      <TableContextMenu editor={editor} at={tableMenuAt} onAction={(a) => runTableAction(editor, a)} onClose={() => setTableMenuAt(null)} />
+      <PrintHeaderFooter setup={ws} page={{ size: ws.size, orientation: ws.orientation, margin: ws.margin }} />
+      <ImageDialog open={dialog === "image"} replacing={imageReplacePos !== null} onClose={() => { setDialog(null); setImageReplacePos(null); }} onSubmit={(src, alt, caption) => { if (imageReplacePos !== null) patchImage(editor, imageReplacePos, { src, ...(alt ? { alt } : {}), ...(caption ? { caption } : {}) }); else insertImage(editor, { src, alt: alt || null, caption: caption || null }); }} />
       <TableDialog open={dialog === "table"} onClose={() => setDialog(null)} onSubmit={(rows, cols, header) => editor.chain().focus().insertTable({ rows, cols, withHeaderRow: header }).run()} />
       <PageSetupDialog open={dialog === "pageSetup"} onClose={() => setDialog(null)} value={ws} onSubmit={(v) => (canEdit ? updateThesis({ pageSetup: v }) : setThesis((t) => ({ ...t, pageSetup: v })))} />
       <WordCountDialog open={dialog === "wordCount"} onClose={() => setDialog(null)} stats={stats} thesis={thesis} />

@@ -1,6 +1,7 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, EditorView } from "@tiptap/pm/view";
+import { hfLayout, renderHfBand, type HfLayout, type HfSetup, type PageNumberPos } from "./headerFooter";
 
 /**
  * Visual pagination for the continuous sheet: measures each top-level block and, when a block would
@@ -20,6 +21,15 @@ function cm(value: string): number {
 }
 
 type Options = { onPages?: (pages: number) => void };
+
+/** Header / footer / page-number settings, read from `data-hf-*` on `.docs-workspace` (set by DocsEditor from the page setup). */
+function readHf(ws: HTMLElement): HfSetup {
+  return { headerText: ws.dataset.hfHeader || "", footerText: ws.dataset.hfFooter || "", pageNumbers: (ws.dataset.hfNum as PageNumberPos) || "none" };
+}
+const hfSignature = (view: EditorView) => {
+  const ws = view.dom.closest(".docs-workspace") as HTMLElement | null;
+  return ws ? JSON.stringify(readHf(ws)) : "";
+};
 
 export const Pagination = Extension.create<Options>({
   name: "pagination",
@@ -44,6 +54,19 @@ export const Pagination = Extension.create<Options>({
       if (contentH < 200) return null;
       const decos: Decoration[] = [];
       const parts: string[] = [];
+      const hfSetup = readHf(ws);
+      const layout: HfLayout | null = hfLayout(hfSetup);
+      const gaps: { pos: number; fill: number; el: HTMLElement }[] = [];
+      const bands: { el: HTMLElement; kind: "header" | "footer"; page: number }[] = [];
+      const addBand = (host: HTMLElement, kind: "header" | "footer", page: number) => {
+        if (!layout) return;
+        const s = layout[kind];
+        if (!s.l && !s.c && !s.r) return;
+        const el = document.createElement("div");
+        el.className = `page-hf page-hf-${kind}`;
+        host.appendChild(el);
+        bands.push({ el, kind, page });
+      };
       let y = 0;
       let pages = 1;
       const gapBefore = (pos: number, fill: number) => {
@@ -59,7 +82,9 @@ export const Pagination = Extension.create<Options>({
         label.className = "page-gap-label";
         label.textContent = String(pages + 1);
         el.appendChild(label);
-        decos.push(Decoration.widget(pos, el, { side: -1, key: `pg-${pos}-${Math.round(fill)}` }));
+        addBand(el, "footer", pages);
+        addBand(el, "header", pages + 1);
+        gaps.push({ pos, fill, el });
         parts.push(`${pos}:${Math.round(fill)}`);
         pages += 1;
         y = 0;
@@ -83,7 +108,23 @@ export const Pagination = Extension.create<Options>({
           pages += 1;
         }
       });
-      return { decos, pages, sig: parts.join("|") + `#${pages}` };
+      // The last page is filled up to its bottom margin so its footer sits where a printed one would.
+      let hfSig = "";
+      if (layout) {
+        hfSig = `${JSON.stringify(hfSetup)}~${pages}`;
+        const endFill = Math.round(Math.max(0, contentH - y));
+        const end = document.createElement("div");
+        end.className = "page-end";
+        end.contentEditable = "false";
+        end.setAttribute("aria-hidden", "true");
+        end.style.height = `${endFill}px`;
+        addBand(end, "footer", pages);
+        bands.forEach((b) => renderHfBand(b.el, layout[b.kind], b.page, pages));
+        decos.push(Decoration.widget(view.state.doc.content.size, end, { side: 1, key: `pg-end-${endFill}-${hfSig}` }));
+        parts.push(`end:${endFill}`);
+      }
+      gaps.forEach((g) => decos.push(Decoration.widget(g.pos, g.el, { side: -1, key: `pg-${g.pos}-${Math.round(g.fill)}-${hfSig}` })));
+      return { decos, pages, sig: parts.join("|") + `#${pages}${hfSig}` };
     };
 
     const apply = (view: EditorView) => {
@@ -121,13 +162,18 @@ export const Pagination = Extension.create<Options>({
             timer = setTimeout(() => apply(view), 140);
           };
           const sheet = view.dom.closest(".docs-page");
+          let lastHf = hfSignature(view);
           const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(schedule) : null;
           if (sheet && ro) ro.observe(sheet);
           window.addEventListener("resize", schedule);
           schedule();
           return {
             update(_v, prev) {
-              if (!prev.doc.eq(view.state.doc)) schedule();
+              const hf = hfSignature(view);
+              if (hf !== lastHf) {
+                lastHf = hf;
+                schedule();
+              } else if (!prev.doc.eq(view.state.doc)) schedule();
             },
             destroy() {
               if (timer) clearTimeout(timer);

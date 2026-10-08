@@ -3,32 +3,70 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../ui";
 import { useFormat, useT } from "@/lib/i18n/client";
+import { Bookmark, Heading } from "lucide-react";
 import { richText, type ThesisDoc } from "./types";
+import type { AnchorItem } from "./anchors";
+import { PAGE_NUMBER_OPTIONS } from "./headerFooter";
+import { prepareImageFile } from "./image";
 
-export function LinkDialog({ open, onClose, initial, onSubmit, onRemove }: { open: boolean; onClose: () => void; initial: string; onSubmit: (url: string) => void; onRemove: () => void }) {
+export function LinkDialog({ open, onClose, initial, onSubmit, onRemove, anchors = [], onPickAnchor }: { open: boolean; onClose: () => void; initial: string; onSubmit: (url: string) => void; onRemove: () => void; anchors?: AnchorItem[]; onPickAnchor?: (a: AnchorItem) => void }) {
   const t = useT();
   const [url, setUrl] = useState(initial);
-  useEffect(() => setUrl(initial), [initial, open]);
+  const [tab, setTab] = useState<"web" | "doc">("web");
+  useEffect(() => {
+    setUrl(initial);
+    setTab(initial.startsWith("#") ? "doc" : "web");
+  }, [initial, open]);
+  const canPick = !!onPickAnchor;
   return (
-    <Modal open={open} onClose={onClose} title={t("editor.link.title")} size="sm" footer={<><button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button>{initial && <button onClick={() => { onRemove(); onClose(); }} className="btn-outline !py-2 !px-4 text-sm text-red-600">{t("common.remove")}</button>}<button onClick={() => { onSubmit(url.trim()); onClose(); }} disabled={!url.trim()} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">{t("editor.apply")}</button></>}>
-      <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && url.trim()) { onSubmit(url.trim()); onClose(); } }} placeholder="https://…" className="input-field" />
+    <Modal open={open} onClose={onClose} title={t("editor.link.title")} size="sm" footer={<><button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button>{initial && <button onClick={() => { onRemove(); onClose(); }} className="btn-outline !py-2 !px-4 text-sm text-red-600">{t("common.remove")}</button>}{tab === "web" && <button onClick={() => { onSubmit(url.trim()); onClose(); }} disabled={!url.trim()} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">{t("editor.apply")}</button>}</>}>
+      {canPick && (
+        <div className="flex gap-1 mb-3 p-0.5 bg-gray-100 rounded-lg text-[13px]" role="tablist" aria-label={t("editor.link.title")}>
+          {(["web", "doc"] as const).map((k) => (
+            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 py-1.5 rounded-md ${tab === k ? "bg-white shadow-sm font-medium text-gray-900" : "text-gray-500"}`}>
+              {t(k === "web" ? "editor.link.tabWeb" : "editor.link.tabDocument")}
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === "web" || !canPick ? (
+        <>
+          <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && url.trim()) { onSubmit(url.trim()); onClose(); } }} placeholder="https://…" aria-label={t("editor.link.title")} className="input-field" />
+          <p className="mt-2 text-xs text-gray-500">{t("editor.link.openHint")}</p>
+        </>
+      ) : (
+        <div className="max-h-[260px] overflow-y-auto -mx-1" role="listbox" aria-label={t("editor.link.tabDocument")}>
+          {anchors.length === 0 && <p className="px-2 py-4 text-sm text-gray-500">{t("editor.link.noAnchors")}</p>}
+          {anchors.map((a) => (
+            <button key={`${a.kind}-${a.pos}`} role="option" aria-selected={false} onClick={() => { onPickAnchor?.(a); onClose(); }} className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-sm" style={a.kind === "heading" ? { paddingLeft: `${0.5 + Math.max(0, (a.level || 1) - 1) * 0.75}rem` } : undefined}>
+              {a.kind === "heading" ? <Heading className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" aria-hidden="true" /> : <Bookmark className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" aria-hidden="true" />}
+              <span className="truncate">{a.label}</span>
+              <span className="ml-auto text-[11px] text-gray-400 flex-shrink-0">{a.kind === "heading" ? t("editor.link.heading") : t("editor.link.bookmark")}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </Modal>
   );
 }
 
-export function ImageDialog({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (src: string, alt: string) => void }) {
+export function ImageDialog({ open, onClose, onSubmit, replacing = false }: { open: boolean; onClose: () => void; onSubmit: (src: string, alt: string, caption: string) => void; replacing?: boolean }) {
   const t = useT();
   const [url, setUrl] = useState("");
   const [alt, setAlt] = useState("");
+  const [caption, setCaption] = useState("");
   const [preview, setPreview] = useState("");
-  const file = (f: File) => {
-    if (f.size > 2 * 1024 * 1024) return alert(t("editor.image.tooLarge"));
-    const r = new FileReader();
-    r.onload = () => { setPreview(String(r.result)); setUrl(String(r.result)); };
-    r.readAsDataURL(f);
+  const [error, setError] = useState("");
+  useEffect(() => { if (open) { setUrl(""); setAlt(""); setCaption(""); setPreview(""); setError(""); } }, [open]);
+  const file = async (f: File) => {
+    setError("");
+    const res = await prepareImageFile(f);
+    if (!res.ok) return setError(res.reason === "size" ? t("editor.image.tooLarge") : res.reason === "type" ? t("editor.image.notAnImage", { name: f.name }) : t("editor.image.readError", { name: f.name }));
+    setPreview(res.src);
+    setUrl(res.src);
   };
   return (
-    <Modal open={open} onClose={onClose} title={t("editor.image.title")} size="md" footer={<><button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button><button disabled={!url} onClick={() => { onSubmit(url, alt); setUrl(""); setAlt(""); setPreview(""); onClose(); }} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">{t("editor.insert")}</button></>}>
+    <Modal open={open} onClose={onClose} title={replacing ? t("editor.image.replaceTitle") : t("editor.image.title")} size="md" footer={<><button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button><button disabled={!url} onClick={() => { onSubmit(url, alt.trim(), caption.trim()); setUrl(""); setAlt(""); setCaption(""); setPreview(""); onClose(); }} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40">{replacing ? t("editor.image.replaceConfirm") : t("editor.insert")}</button></>}>
       <div className="space-y-3">
         <label className="block border-2 border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-500 hover:border-brand-300 cursor-pointer" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) file(f); }}>
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && file(e.target.files[0])} />
@@ -36,7 +74,9 @@ export function ImageDialog({ open, onClose, onSubmit }: { open: boolean; onClos
         </label>
         <div className="text-xs text-gray-400 text-center">{t("editor.image.or")}</div>
         <input value={url.startsWith("data:") ? "" : url} onChange={(e) => { setUrl(e.target.value); setPreview(""); }} placeholder={t("editor.image.urlPlaceholder")} className="input-field" />
-        <input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder={t("editor.image.altPlaceholder")} className="input-field" />
+        {error && <div className="text-xs text-red-600" role="alert">{error}</div>}
+        <input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder={t("editor.image.altPlaceholder")} aria-label={t("editor.image.altText")} className="input-field" />
+        <input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder={t("editor.image.dialogCaption")} aria-label={t("editor.image.captionLabel")} className="input-field" />
       </div>
     </Modal>
   );
@@ -77,6 +117,14 @@ export function PageSetupDialog({ open, onClose, value, onSubmit }: { open: bool
         <div><div className="text-xs font-medium text-gray-500 mb-1">{t("editor.pageSetup.paperSize")}</div><div className="flex gap-2">{(["A4", "Letter"] as const).map((o) => <button key={o} onClick={() => setV({ ...v, size: o })} className={`flex-1 py-2 rounded-xl border ${v.size === o ? "border-brand-500 bg-brand-50" : "border-gray-200"}`}>{o}</button>)}</div></div>
         <label className="block"><div className="text-xs font-medium text-gray-500 mb-1">{t("editor.pageSetup.margins")}</div><input type="number" step={0.1} min={1} max={5} value={v.margin} onChange={(e) => setV({ ...v, margin: Number(e.target.value) })} className="input-field !py-1.5" /></label>
         <label className="block"><div className="text-xs font-medium text-gray-500 mb-1">{t("editor.pageSetup.lineSpacing")}</div><select value={v.lineSpacing} onChange={(e) => setV({ ...v, lineSpacing: Number(e.target.value) })} className="input-field !py-1.5">{[1, 1.15, 1.5, 2].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+        <fieldset className="border-t border-gray-100 pt-3 space-y-3">
+          <legend className="sr-only">{t("editor.pageSetup.hfTitle")}</legend>
+          <div className="text-xs font-semibold text-gray-700">{t("editor.pageSetup.hfTitle")}</div>
+          <label className="block"><div className="text-xs font-medium text-gray-500 mb-1">{t("editor.pageSetup.headerText")}</div><input maxLength={200} value={v.headerText || ""} onChange={(e) => setV({ ...v, headerText: e.target.value })} className="input-field !py-1.5" /></label>
+          <label className="block"><div className="text-xs font-medium text-gray-500 mb-1">{t("editor.pageSetup.footerText")}</div><input maxLength={200} value={v.footerText || ""} onChange={(e) => setV({ ...v, footerText: e.target.value })} placeholder={t("editor.pageSetup.footerPlaceholder")} className="input-field !py-1.5" /></label>
+          <label className="block"><div className="text-xs font-medium text-gray-500 mb-1">{t("editor.pageSetup.pageNumbers")}</div><select value={v.pageNumbers || "none"} onChange={(e) => setV({ ...v, pageNumbers: e.target.value as NonNullable<ThesisDoc["pageSetup"]["pageNumbers"]> })} className="input-field !py-1.5">{PAGE_NUMBER_OPTIONS.map((o) => <option key={o} value={o}>{t(`editor.pageSetup.num.${o}`)}</option>)}</select></label>
+          <p className="text-xs text-gray-500">{t("editor.pageSetup.hfHelp")}</p>
+        </fieldset>
       </div>
     </Modal>
   );
@@ -202,7 +250,7 @@ export function PasteAttributionDialog({ open, words, matched, onDecide, onDismi
 
 export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT();
-  const rows = [["Ctrl+B / I / U", t("editor.shortcuts.formatting")], ["Ctrl+Shift+X", t("editor.shortcuts.strike")], ["Ctrl+Alt+0…4", t("editor.shortcuts.headings")], ["Ctrl+Shift+7 / 8 / 9", t("editor.shortcuts.lists")], ["Tab / Shift+Tab", t("editor.shortcuts.indent")], ["Ctrl+K", t("editor.shortcuts.link")], ["Ctrl+Alt+M", t("editor.shortcuts.comment")], ["Ctrl+Alt+E", t("editor.shortcuts.cite")], ["Ctrl+H", t("editor.shortcuts.find")], ["Ctrl+S", t("editor.shortcuts.save")], ["Ctrl+P", t("editor.shortcuts.print")], ["Ctrl+Enter", t("editor.shortcuts.pageBreak")], ["Ctrl+Shift+C", t("editor.shortcuts.wordCount")], ["Ctrl+/", t("editor.shortcuts.thisDialog")], ["Ctrl+Z / Y", t("editor.shortcuts.undoRedo")]];
+  const rows = [["Ctrl+B / I / U", t("editor.shortcuts.formatting")], ["Ctrl+Shift+X", t("editor.shortcuts.strike")], ["Ctrl+Alt+0…4", t("editor.shortcuts.headings")], ["Ctrl+Shift+7 / 8 / 9", t("editor.shortcuts.lists")], ["Tab / Shift+Tab", t("editor.shortcuts.indent")], ["Ctrl+K", t("editor.shortcuts.link")], ["Ctrl+Alt+M", t("editor.shortcuts.comment")], ["Ctrl+Alt+E", t("editor.shortcuts.cite")], ["Ctrl+H", t("editor.shortcuts.find")], ["Ctrl+S", t("editor.shortcuts.save")], ["Ctrl+P", t("editor.shortcuts.print")], ["Ctrl+Enter", t("editor.shortcuts.pageBreak")], ["Ctrl+Alt+B", t("editor.shortcuts.bookmark")], ["Shift+F3", t("editor.shortcuts.changeCase")], ["Tab (table)", t("editor.shortcuts.tableCells")], ["Ctrl+click", t("editor.shortcuts.openLink")], ["Ctrl+Shift+C", t("editor.shortcuts.wordCount")], ["Ctrl+/", t("editor.shortcuts.thisDialog")], ["Ctrl+Z / Y", t("editor.shortcuts.undoRedo")]];
   return (
     <Modal open={open} onClose={onClose} title={t("editor.shortcuts.title")} size="sm" footer={<button onClick={onClose} className="btn-primary !py-2 !px-4 text-sm">{t("common.close")}</button>}>
       <table className="w-full text-sm"><tbody>{rows.map(([k, v]) => <tr key={k} className="border-b border-gray-50"><td className="py-1.5"><kbd className="text-xs bg-gray-100 rounded px-1.5 py-0.5">{k}</kbd></td><td className="py-1.5 text-gray-600 text-right">{v}</td></tr>)}</tbody></table>

@@ -84,6 +84,7 @@ export function countWords(text: string) {
 /** Plain-text paragraphs of a TipTap document, one per block, whitespace collapsed, empty blocks dropped. */
 export function htmlToParagraphs(html: string): string[] {
   return html
+    .replace(/<figcaption[\s\S]*?<\/figcaption>/gi, "") // image captions are not thesis text
     .replace(BLOCK_END, "\n")
     .replace(/<[^>]*>/g, "")
     .split("\n")
