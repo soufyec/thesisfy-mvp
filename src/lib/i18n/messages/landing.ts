@@ -398,8 +398,8 @@ export const landing: Messages<typeof en> = {
     "landing.footer.contact": "Contact",
 
     "landing.hero.badge": "La preuve du processus, pas le soupçon sur le résultat",
-    "landing.hero.titleA": "Nous apprenons à vos étudiants à utiliser l'IA, ",
-    "landing.hero.titleHi": "comme il faut",
+    "landing.hero.titleA": "Nous apprenons à vos étudiants comment utiliser l'IA, ",
+    "landing.hero.titleHi": "correctement",
     "landing.hero.titleB": ".",
     "landing.hero.body":
       "Thesisfic attribue chaque phrase d'une thèse au moment où elle est rédigée : saisie, citée ou assistée par IA. Les directeurs de thèse reçoivent un rapport de provenance. Les étudiants utilisent les outils d'IA que votre politique autorise, dans l'éditeur, avec leur consentement et dans le cadre de votre budget.",
@@ -488,7 +488,7 @@ export const landing: Messages<typeof en> = {
     "landing.seal.aria": "Sceau de qualité académique de {name}",
     "landing.seal.description": "Décerné aux thèses rédigées dans un processus transparent : chaque apport d'IA déclaré, chaque source attribuée.",
 
-    "landing.login.headline": "Nous apprenons à vos étudiants à utiliser l'IA, comme il faut.",
+    "landing.login.headline": "Nous apprenons à vos étudiants comment utiliser l'IA, correctement.",
     "landing.login.lead": "Chaque phrase est attribuée au moment où elle est rédigée : saisie, citée ou assistée par IA. Votre directeur de thèse lit le processus, pas seulement le brouillon.",
     "landing.login.title": "Bon retour",
     "landing.login.subtitle": "Connectez-vous pour accéder à votre tableau de bord",
