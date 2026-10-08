@@ -27,6 +27,7 @@ import Superscript from "@tiptap/extension-superscript";
 import Typography from "@tiptap/extension-typography";
 import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, FileText, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
 import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, ProvenanceStats, Search } from "./extensions";
+import { Pagination } from "./pagination";
 import CitationDialog, { CitationInsert } from "./CitationDialog";
 import Toolbar from "./Toolbar";
 import { MenuAction, MenuOverflow } from "./MenuBar";
@@ -140,6 +141,38 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const [payer, setPayer] = useState<string | undefined>(undefined);
   const sheetRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(100);
+  /** Pages measured by the pagination plugin (desktop); the word estimate is the fallback on phones. */
+  const [pageCount, setPageCount] = useState(0);
+  /** Assistant/side panel width, draggable from its left edge and remembered per browser. */
+  const [panelWidth, setPanelWidth] = useState(400);
+  const panelDrag = useRef<{ startX: number; startW: number } | null>(null);
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem("assistant_width"));
+      if (saved >= 320) setPanelWidth(Math.min(saved, Math.floor(window.innerWidth * 0.6)));
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  const onPanelResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    panelDrag.current = { startX: e.clientX, startW: panelWidth };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+  const onPanelResizeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!panelDrag.current) return;
+    const max = Math.max(360, Math.floor(window.innerWidth * 0.6));
+    setPanelWidth(Math.min(max, Math.max(320, panelDrag.current.startW + (panelDrag.current.startX - e.clientX))));
+  };
+  const onPanelResizeEnd = () => {
+    if (!panelDrag.current) return;
+    panelDrag.current = null;
+    try {
+      localStorage.setItem("assistant_width", String(panelWidth));
+    } catch {
+      /* ignore */
+    }
+  };
   const [spellcheck, setSpellcheck] = useState(true);
   const [focus, setFocus] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -266,6 +299,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       LineHeight,
       Indent,
       PageBreak,
+      Pagination.configure({ onPages: (n: number) => setPageCount(n) }),
       Search,
       CitedPassage,
       CitationMark,
@@ -1216,7 +1250,25 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
             </div>
           </div>
         </main>
-        {sidebar !== "none" && !focus && !isMobile && <aside className="w-[400px] border-l border-gray-200 bg-white flex flex-col flex-shrink-0 min-h-0">{sidebarPanel()}</aside>}
+        {sidebar !== "none" && !focus && !isMobile && (
+          <aside className="relative border-l border-gray-200 bg-white flex flex-col flex-shrink-0 min-h-0" style={{ width: panelWidth }}>
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t("editor.panel.resize")}
+              title={t("editor.panel.resize")}
+              onPointerDown={onPanelResizeStart}
+              onPointerMove={onPanelResizeMove}
+              onPointerUp={onPanelResizeEnd}
+              onPointerCancel={onPanelResizeEnd}
+              onDoubleClick={() => { setPanelWidth(400); try { localStorage.setItem("assistant_width", "400"); } catch { /* ignore */ } }}
+              className="absolute top-0 bottom-0 -left-1 w-2 cursor-col-resize z-10 group"
+            >
+              <span className="absolute top-0 bottom-0 left-[3px] w-[2px] bg-transparent group-hover:bg-brand-400 transition-colors" />
+            </div>
+            {sidebarPanel()}
+          </aside>
+        )}
       </div>
 
       {/* Session bar (30px) */}
@@ -1230,7 +1282,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         advisorName={thesis.professorName && thesis.professorName !== "Unassigned" ? thesis.professorName : undefined}
         words={activeTab === SUBMISSION ? thesis.wordCount : tabWords}
         targetWords={thesis.targetWords}
-        pages={Math.max(1, Math.ceil((activeTab === SUBMISSION ? thesis.wordCount : tabWords) / 350))}
+        pages={!isMobile && pageCount > 0 ? pageCount : Math.max(1, Math.ceil((activeTab === SUBMISSION ? thesis.wordCount : tabWords) / 350))}
         citationStyle={thesis.citationStyle}
         zoom={zoom}
         onWordCount={() => setDialog("wordCount")}

@@ -285,3 +285,32 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
   body.print-report .overflow-x-auto { overflow: visible; }
   body.print-report .min-w-\[480px\] { min-width: 0; }
 }
+
+/* Visual pagination: a widget that fills the rest of the page, draws the grey gap and starts the next page */
+.ProseMirror .page-gap {
+  position: relative;
+  margin: 0 calc(-1 * var(--page-margin, 2.54cm));
+  background: linear-gradient(to bottom, #fff 0, #fff var(--gap-fill), #f1f3f4 var(--gap-fill), #f1f3f4 calc(var(--gap-fill) + var(--gap-size)), #fff calc(var(--gap-fill) + var(--gap-size)), #fff 100%);
+  pointer-events: none;
+  user-select: none;
+}
+.ProseMirror .page-gap::before,
+.ProseMirror .page-gap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  pointer-events: none;
+}
+.ProseMirror .page-gap::before { top: calc(var(--gap-fill) - 6px); background: linear-gradient(to bottom, rgba(60, 64, 67, 0), rgba(60, 64, 67, 0.12)); }
+.ProseMirror .page-gap::after { top: calc(var(--gap-fill) + var(--gap-size)); background: linear-gradient(to bottom, rgba(60, 64, 67, 0.12), rgba(60, 64, 67, 0)); }
+.ProseMirror .page-gap-label {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--gap-fill) + var(--gap-size) / 2);
+  transform: translate(-50%, -50%);
+  font: 500 10px/1 Inter, system-ui, sans-serif;
+  color: #9aa0a6;
+}
+@media print { .ProseMirror .page-gap { display: none; } }
