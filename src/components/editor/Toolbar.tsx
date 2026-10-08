@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import {
-  AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookMarked, CheckSquare, ChevronDown, Highlighter, Image as ImageIcon, Indent, Italic, Link2, List, ListOrdered, MessageSquarePlus, Minus, Outdent, Plus, Printer, Redo2, RemoveFormatting, SpellCheck, Strikethrough, Subscript, Superscript, Table as TableIcon, Underline, Undo2, ZoomIn,
+  AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, BookMarked, CheckSquare, ChevronDown, Eye, EyeOff, Highlighter, Image as ImageIcon, Indent, Italic, Link2, List, ListOrdered, MessageSquarePlus, Minus, Outdent, Plus, Printer, Redo2, RemoveFormatting, SpellCheck, Strikethrough, Subscript, Superscript, Table as TableIcon, Underline, Undo2, ZoomIn,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { COLORS, FONT_SIZES, FONTS, HIGHLIGHTS } from "./types";
@@ -22,30 +22,53 @@ interface Props {
   onSpellcheck: (v: boolean) => void;
   compact?: boolean;
   /**
-   * Provenance gutter + highlights switch, shown at the far right. `locked` keeps it on (review mode). Below
-   * 1500px only the switch is shown (the name stays in the tooltip and the aria-label) so the toolbar never clips it.
+   * Provenance gutter + highlights switch, shown at the far right. `locked` keeps it on (review mode). Always a pill with
+   * icon + name; the small switch graphic is drawn from 1180px up and the name is hidden below 640px (it stays in the aria-label and tooltip).
    */
   provenance?: { on: boolean; onToggle: (v: boolean) => void; locked?: boolean };
 }
 
 function ProvenanceToggle({ on, onToggle, locked }: { on: boolean; onToggle: (v: boolean) => void; locked?: boolean }) {
   const t = useT();
+  const tipId = useId();
+  // The toolbar clips its overflow, so the one-line tooltip is positioned `fixed` from the button's rectangle.
+  const [tip, setTip] = useState<{ top: number; right: number } | null>(null);
+  const showTip = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    setTip({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+  };
+  const Icon = on ? Eye : EyeOff;
+  const stateLabel = on ? t("editor.toolbar.provenanceVisible") : t("editor.toolbar.provenanceHidden");
   return (
-    <label className={`ml-auto pl-3 flex items-center gap-2 text-[12px] text-gray-500 flex-shrink-0 select-none ${locked ? "cursor-default" : "cursor-pointer"}`} title={`${t("glossary.provenance")} · ${locked ? t("editor.toolbar.provenanceAlways") : t("editor.toolbar.provenanceShow")}`}>
+    <div className="ml-auto pl-3 flex items-center flex-shrink-0">
       <button
         type="button"
         role="switch"
         aria-checked={on}
-        aria-label={t("glossary.provenanceGutter")}
-        disabled={locked}
+        aria-disabled={locked || undefined}
+        aria-label={`${t("glossary.provenance")}: ${stateLabel}`}
+        aria-describedby={tip ? tipId : undefined}
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => onToggle(!on)}
-        className={`relative inline-block w-7 h-4 rounded-full transition-colors ${on ? "bg-brand-600" : "bg-gray-300"} ${locked ? "opacity-70" : ""}`}
+        onMouseEnter={(e) => showTip(e.currentTarget)}
+        onMouseLeave={() => setTip(null)}
+        onFocus={(e) => showTip(e.currentTarget)}
+        onBlur={() => setTip(null)}
+        onKeyDown={(e) => { if (e.key === "Escape") setTip(null); }}
+        onClick={() => { if (!locked) onToggle(!on); }}
+        className={`inline-flex items-center gap-1.5 h-7 pl-2 pr-2.5 rounded-full border text-[12px] font-medium select-none transition-colors ${on ? "bg-brand-50 border-brand-100 text-brand-700 hover:bg-brand-100" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-100"} ${locked ? "cursor-default opacity-80" : "cursor-pointer"}`}
       >
-        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-[left] ${on ? "left-[14px]" : "left-0.5"}`} />
+        <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+        <span className="hidden min-[640px]:inline">{t("glossary.provenance")}</span>
+        <span aria-hidden="true" className={`hidden min-[1180px]:inline-block relative w-6 h-3.5 rounded-full transition-colors ${on ? "bg-brand-600" : "bg-gray-300"}`}>
+          <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-[left] ${on ? "left-[12px]" : "left-0.5"}`} />
+        </span>
       </button>
-      <span className="hidden min-[1500px]:inline">{t("glossary.provenance")}</span>
-    </label>
+      {tip && (
+        <span id={tipId} role="tooltip" className="fixed z-50 px-2.5 py-1.5 rounded-lg bg-gray-900 text-white text-[12px] leading-none whitespace-nowrap shadow-lg pointer-events-none" style={{ top: tip.top, right: tip.right }}>
+          {locked ? t("editor.toolbar.provenanceAlways") : t("editor.toolbar.provenanceTip")}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -57,25 +80,82 @@ function Btn({ onClick, active, disabled, title, children }: { onClick: () => vo
   );
 }
 
+/**
+ * Popover anchored under a toolbar button. The toolbar clips its overflow, so the panel is `position: fixed` from the
+ * button's rectangle; it closes on outside click, scroll and resize.
+ */
+function useToolbarPopover() {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  useEffect(() => {
+    if (!pos) return;
+    const close = () => setPos(null);
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest("[data-tb-pop]")) close();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [pos]);
+  const toggle = (el: HTMLElement, width: number) => {
+    if (pos) return setPos(null);
+    const r = el.getBoundingClientRect();
+    setPos({ top: r.bottom + 2, left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)) });
+  };
+  return { pos, toggle, close: () => setPos(null) };
+}
+
 function ColorPicker({ colors, value, onPick, title, icon, onClear }: { colors: string[]; value?: string; onPick: (c: string) => void; title: string; icon: React.ReactNode; onClear: () => void }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const { pos, toggle, close } = useToolbarPopover();
   return (
-    <div className="relative">
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)} title={title} aria-label={title} className="tb-btn flex-col !gap-0 !px-1">
+    <div data-tb-pop>
+      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={(e) => toggle(e.currentTarget, 188)} title={title} aria-label={title} aria-expanded={!!pos} className="tb-btn flex-col !gap-0 !px-1">
         {icon}
         <span className="block h-[3px] w-4 rounded-sm mt-px" style={{ background: value || "currentColor" }} />
       </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 p-2 z-50 w-[188px]" onMouseLeave={() => setOpen(false)}>
+      {pos && (
+        <div data-tb-pop className="fixed bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-50 w-[188px]" style={{ top: pos.top, left: pos.left }}>
           <div className="grid grid-cols-8 gap-1">
             {colors.map((c) => (
-              <button key={c} onMouseDown={(e) => e.preventDefault()} onClick={() => { onPick(c); setOpen(false); }} className="w-5 h-5 rounded border border-gray-200" style={{ background: c }} title={c} />
+              <button key={c} onMouseDown={(e) => e.preventDefault()} onClick={() => { onPick(c); close(); }} className="w-5 h-5 rounded border border-gray-200" style={{ background: c }} title={c} aria-label={c} />
             ))}
           </div>
-          <button onMouseDown={(e) => e.preventDefault()} onClick={() => { onClear(); setOpen(false); }} className="mt-2 text-xs text-gray-500 hover:text-gray-800 w-full text-left">
+          <button onMouseDown={(e) => e.preventDefault()} onClick={() => { onClear(); close(); }} className="mt-2 text-xs text-gray-500 hover:text-gray-800 w-full text-left">
             {t("editor.toolbar.colorNone")}
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ALIGNS = [
+  { a: "left", Icon: AlignLeft, label: "editor.fmt.alignLeft", keys: "Ctrl+Shift+L" },
+  { a: "center", Icon: AlignCenter, label: "editor.fmt.alignCenter", keys: "Ctrl+Shift+E" },
+  { a: "right", Icon: AlignRight, label: "editor.fmt.alignRight", keys: "Ctrl+Shift+R" },
+  { a: "justify", Icon: AlignJustify, label: "editor.fmt.justify", keys: "Ctrl+Shift+J" },
+] as const;
+
+function AlignMenu({ editor }: { editor: Editor }) {
+  const t = useT();
+  const { pos, toggle, close } = useToolbarPopover();
+  const current = ALIGNS.find((x) => x.a !== "left" && editor.isActive({ textAlign: x.a })) || ALIGNS[0];
+  return (
+    <div data-tb-pop>
+      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={(e) => toggle(e.currentTarget, 148)} title={t("editor.toolbar.align")} aria-label={t("editor.toolbar.align")} aria-expanded={!!pos} aria-haspopup="true" className={`tb-btn ${pos ? "active" : ""}`}>
+        <current.Icon className="w-4 h-4" />
+        <ChevronDown className="w-3 h-3 ml-0.5" />
+      </button>
+      {pos && (
+        <div data-tb-pop className="fixed flex bg-white rounded-lg shadow-xl border border-gray-200 p-1 z-50" style={{ top: pos.top, left: pos.left }} role="group" aria-label={t("editor.toolbar.align")}>
+          {ALIGNS.map(({ a, Icon, label, keys }) => (
+            <Btn key={a} onClick={() => { editor.chain().focus().setTextAlign(a).run(); close(); }} active={editor.isActive({ textAlign: a })} title={`${t(label)} (${keys})`}><Icon className="w-4 h-4" /></Btn>
+          ))}
         </div>
       )}
     </div>
@@ -115,7 +195,9 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
   };
 
   return (
-    <div className={`flex items-center gap-px px-2.5 h-10 bg-white border-b border-gray-200 whitespace-nowrap flex-shrink-0 ${compact ? "overflow-x-auto no-scrollbar" : "overflow-hidden"}`} role="toolbar" aria-label={t("editor.toolbar.label")}>
+    <div className="flex items-center px-2.5 h-10 bg-white border-b border-gray-200 whitespace-nowrap flex-shrink-0" role="toolbar" aria-label={t("editor.toolbar.label")}>
+      {/* The tools scroll sideways when the window is narrow; the Provenance pill stays pinned at the right. */}
+      <div className="flex items-center gap-px flex-1 min-w-0 h-full overflow-x-auto no-scrollbar">
       <Btn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title={`${t("editor.fmt.undo")} (Ctrl+Z)`}><Undo2 className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title={`${t("editor.fmt.redo")} (Ctrl+Y)`}><Redo2 className="w-4 h-4" /></Btn>
       {!compact && <Btn onClick={onPrint} title={`${t("editor.fmt.print")} (Ctrl+P)`}><Printer className="w-4 h-4" /></Btn>}
@@ -167,18 +249,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
       <Btn onClick={onImage} title={t("editor.toolbar.insertImage")}><ImageIcon className="w-4 h-4" /></Btn>
       <Btn onClick={onTable} title={t("editor.toolbar.insertTable")}><TableIcon className="w-4 h-4" /></Btn>
       <span className="tb-sep" />
-      <div className="relative group">
-        <Btn onClick={() => {}} title={t("editor.toolbar.align")}>
-          {editor.isActive({ textAlign: "center" }) ? <AlignCenter className="w-4 h-4" /> : editor.isActive({ textAlign: "right" }) ? <AlignRight className="w-4 h-4" /> : editor.isActive({ textAlign: "justify" }) ? <AlignJustify className="w-4 h-4" /> : <AlignLeft className="w-4 h-4" />}
-          <ChevronDown className="w-3 h-3 ml-0.5" />
-        </Btn>
-        <div className="absolute left-0 top-full hidden group-hover:flex bg-white rounded-lg shadow-xl border border-gray-100 p-1 z-50">
-          <Btn onClick={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title={t("editor.fmt.alignLeft")}><AlignLeft className="w-4 h-4" /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} title={t("editor.fmt.alignCenter")}><AlignCenter className="w-4 h-4" /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })} title={t("editor.fmt.alignRight")}><AlignRight className="w-4 h-4" /></Btn>
-          <Btn onClick={() => editor.chain().focus().setTextAlign("justify").run()} active={editor.isActive({ textAlign: "justify" })} title={t("editor.fmt.justify")}><AlignJustify className="w-4 h-4" /></Btn>
-        </div>
-      </div>
+      <AlignMenu editor={editor} />
       <select value={lineHeight} onChange={(e) => editor.chain().focus().setLineHeight(e.target.value).run()} className="tb-select w-[84px]" title={t("editor.fmt.lineSpacing")} aria-label={t("editor.fmt.lineSpacing")}>
         <option value="">{t("editor.toolbar.spacing")}</option>
         {["1", "1.15", "1.5", "2", "2.5"].map((v) => (
@@ -194,6 +265,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
       <Btn onClick={() => editor.chain().focus().toggleSuperscript().run()} active={editor.isActive("superscript")} title={t("editor.fmt.superscript")}><Superscript className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().toggleSubscript().run()} active={editor.isActive("subscript")} title={t("editor.fmt.subscript")}><Subscript className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().clearFormatting().clearNodes().run()} title={`${t("editor.fmt.clear")} (Ctrl+\\)`}><RemoveFormatting className="w-4 h-4" /></Btn>
+      </div>
       {provenance && <ProvenanceToggle on={provenance.on} onToggle={provenance.onToggle} locked={provenance.locked} />}
     </div>
   );

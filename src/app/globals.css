@@ -263,6 +263,22 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 .bubble-menu .bm-btn { @apply h-7 min-w-7 px-1.5 inline-flex items-center justify-center gap-1.5 rounded-md hover:bg-white/10; }
 .bubble-menu .bm-btn.active { @apply bg-white/20; }
 .bubble-menu .bm-sep { @apply w-px h-4 bg-white/20 mx-[3px]; }
+.bubble-menu .bm-row { @apply flex items-center gap-0.5; }
+.bubble-menu .bm-row + .bm-row { @apply border-t border-white/10 pt-1 mt-0.5; }
+.bubble-menu .bm-select { @apply h-7 rounded-md bg-transparent text-white text-[12px] px-1.5 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer; color-scheme: dark; }
+.bubble-menu .bm-select option { @apply bg-gray-900 text-white; }
+
+/* overflow menu (`⋯` of the editor header): compact accordion anchored to the button */
+.ovf-menu { @apply absolute right-0 top-full mt-1.5 z-50 w-[280px] max-w-[calc(100vw-16px)] max-h-[70vh] overflow-y-auto bg-white border border-gray-200 rounded-[12px] shadow-xl py-1 text-[13px] text-gray-800; overscroll-behavior: contain; }
+.ovf-row { @apply w-full min-h-[34px] pr-3 py-1.5 flex items-center justify-between gap-4 text-left text-[13px] text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:bg-gray-100 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/40 disabled:opacity-40 disabled:hover:bg-transparent; }
+.ovf-row kbd { @apply text-[11px] text-gray-400 font-sans flex-shrink-0; }
+.ovf-top { @apply font-medium text-gray-800; }
+.ovf-group[aria-expanded="true"] { @apply bg-gray-50 text-gray-900; }
+.ovf-chev { transition: transform 120ms ease; }
+.ovf-group[aria-expanded="true"] > .ovf-chev { transform: rotate(180deg); }
+.ovf-sub { @apply bg-gray-50 border-y border-gray-100 py-0.5; }
+.ovf-sub .ovf-row:hover { @apply bg-gray-100; }
+.ovf-sep { @apply my-1 border-t border-gray-100; }
 
 /* Language review */
 .ProseMirror .lr { cursor: pointer; text-decoration-skip-ink: none; text-underline-offset: 3px; text-decoration-thickness: 2px; }

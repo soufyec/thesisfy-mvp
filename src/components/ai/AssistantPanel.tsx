@@ -232,6 +232,9 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         setModes(ordered);
         if (!initialMode && !initialConversationId && d.policy?.researchCopilot) setMode("copilot");
         setInstitutionModels(d.institutionModels || []);
+        const ready = (d.institutionModels || []).filter((m) => m.ready);
+        const preset = ready.find((m) => m.isDefault) || ready[0];
+        if (preset && d.allowance?.institutionPays) setProviderChoice((c) => (c === "auto" ? preset.id : c));
         setAllowance(d.allowance || null);
       })
       .catch(() => {});
@@ -299,7 +302,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   // Provider chip: "Claude · your account" / "Claude Sonnet 5.5 · your university" / "Demo assistant".
   const shortLabel = (s: string) => s.split(" (")[0];
   const firstWord = (s: string) => s.split(/[\s/]/)[0];
-  let chipText = t("assistant.chip.demo");
+  let chipText = t("assistant.chip.none");
   let chipColor: string | null = null;
   if (providerChoice === "auto") {
     if (allowance?.institutionPays && defaultInstitution && allowance.exhausted === "none") {
@@ -314,7 +317,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     chipColor = activeInstitution.color;
   } else if (activeProvider) {
     const name = firstWord(activeProvider.product);
-    chipText = activeProvider.connection?.status === "active" ? t("assistant.chip.account", { name }) : activeProvider.platformKey ? t("assistant.chip.institution", { name }) : t("assistant.chip.demoProvider", { name });
+    chipText = activeProvider.connection?.status === "active" ? t("assistant.chip.account", { name }) : activeProvider.platformKey ? t("assistant.chip.institution", { name }) : t("assistant.chip.none");
     chipColor = activeProvider.color;
   }
 
@@ -340,7 +343,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           thesisId,
           sessionId,
           conversationId,
-          provider: providerChoice === "auto" ? null : providerChoice,
+          provider: providerChoice === "auto" ? null : providerChoice.startsWith("platform:") ? providerChoice.slice(9) : providerChoice,
           selection: workingOn ? selection : undefined,
           useSources: useSources && !!thesisId ? true : undefined,
         },
@@ -551,9 +554,11 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           </button>
           {providerOpen && (
             <div className="absolute right-0 mt-1 w-64 bg-white rounded-[10px] shadow-xl border border-gray-100 z-20 py-1 text-sm">
-              <button onClick={() => { setProviderChoice("auto"); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${providerChoice === "auto" ? "text-brand-600 font-medium" : ""}`}>
-                {allowance?.institutionPays && readyInstitution.length ? t("assistant.provider.autoUniversity") : t("assistant.provider.autoAccount")}
-              </button>
+              {!(allowance?.institutionPays && readyInstitution.length) && (
+                <button onClick={() => { setProviderChoice("auto"); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${providerChoice === "auto" ? "text-brand-600 font-medium" : ""}`}>
+                  {t("assistant.provider.autoAccount")}
+                </button>
+              )}
               {allowance?.institutionPays && institutionModels.length > 0 && (
                 <>
                   <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{t("glossary.providedByUniversity")}</div>
@@ -565,17 +570,17 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                     <button key={m.id} disabled={!m.ready || allowance.exhausted !== "none"} onClick={() => { setProviderChoice(m.id); setProviderOpen(false); }} title={`${m.backendName} · ${m.region}`} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === m.id ? "text-brand-600 font-medium" : ""}`}>
                       <span className="w-2 h-2 rounded-full" style={{ background: m.color }} />
                       <span className="flex-1 truncate">{m.label}</span>
-                      <span className="text-[10px] text-gray-400">{!m.ready ? t("assistant.provider.notConfigured") : allowance.exhausted !== "none" ? t("assistant.provider.allowanceUsed") : m.region}</span>
+                      <span className="text-[10px] text-gray-400">{!m.ready ? t("assistant.provider.unavailable") : allowance.exhausted !== "none" ? t("assistant.provider.allowanceUsed") : m.region}</span>
                     </button>
                   ))}
                   <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{t("assistant.provider.ownAccounts")}</div>
                 </>
               )}
-              {providers.map((p) => (
-                <button key={p.id} disabled={!p.allowedByPolicy} onClick={() => { setProviderChoice(p.id); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === p.id ? "text-brand-600 font-medium" : ""}`}>
+              {providers.filter((p) => !institutionModels.some((m) => m.id === `platform:${p.id}`)).map((p) => (
+                <button key={p.id} disabled={!p.allowedByPolicy || !(p.connection?.status === "active" || p.platformKey)} onClick={() => { setProviderChoice(p.id); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === p.id ? "text-brand-600 font-medium" : ""}`}>
                   <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
                   <span className="flex-1">{p.product}</span>
-                  <span className="text-[10px] text-gray-400">{p.connection ? t("assistant.provider.yourAccount") : p.platformKey ? t("assistant.provider.institution") : !p.allowedByPolicy ? t("assistant.provider.notAllowed") : t("assistant.provider.demo")}</span>
+                  <span className="text-[10px] text-gray-400">{p.connection?.status === "active" ? t("assistant.provider.yourAccount") : p.platformKey ? t("assistant.provider.institution") : t("assistant.provider.unavailable")}</span>
                 </button>
               ))}
               <div className="border-t border-gray-100 mt-1 pt-1">

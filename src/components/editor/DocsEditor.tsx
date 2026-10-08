@@ -38,9 +38,11 @@ import { FirstPageHeader, PrintHeaderFooter } from "./PageHeaderFooter";
 import CitationDialog, { CitationInsert } from "./CitationDialog";
 import Toolbar from "./Toolbar";
 import { MenuAction, MenuOverflow } from "./MenuBar";
+import { TypographyRow, TypographyToggle } from "./BubbleTypography";
 import SessionBar from "./SessionBar";
 import ProvenanceGutter from "./ProvenanceGutter";
 import { CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, ReferencesPanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
+import { TabOutline } from "./TabOutline";
 import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, PasteMatchInfo } from "./Dialogs";
 import { CommentItem, FlagItem, formatReference, formatTimeAgo, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, richText, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { InsertMeta } from "../ai/AssistantPanel";
@@ -183,6 +185,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const [spellcheck, setSpellcheck] = useState(true);
   const [focus, setFocus] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [bubbleTypo, setBubbleTypo] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [toast, setToast] = useState<{ message: string; kind?: "info" | "success" | "error" } | null>(null);
   const [selectionText, setSelectionText] = useState("");
@@ -215,6 +218,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const [tabs, setTabs] = useState<ThesisTab[]>(initial.thesis.tabs || []);
   const [activeTab, setActiveTab] = useState<string>(SUBMISSION);
   const [tabMenu, setTabMenu] = useState<string | null>(null);
+  const [outlineTab, setOutlineTab] = useState<string | null>(null);
+  const getTabHtml = useCallback((id: string) => contentsRef.current[id] ?? "", []);
   const [tabWords, setTabWords] = useState(0);
   const activeTabRef = useRef<string>(SUBMISSION);
   const tabsRef = useRef<ThesisTab[]>(tabs);
@@ -297,7 +302,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       FontFamily,
       FontSize,
       Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      TextAlign.configure({ types: ["heading", "paragraph"], alignments: ["left", "center", "right", "justify"] }),
       LinkExt.configure({ openOnClick: false, autolink: true, defaultProtocol: "https" }),
       ResizableImage.configure({ inline: false, allowBase64: true, onReplace: (pos: number) => { setImageReplacePos(pos); setDialog("image"); } }),
       Table.configure({ resizable: true }),
@@ -1278,14 +1283,17 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       {/* Document tabs */}
       {!focus && (
         <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-[#f1f3f4] border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label={t("editor.tabs.label")}>
-          <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => switchTab(SUBMISSION)} className={`doc-tab submission ${activeTab === SUBMISSION ? "active" : ""}`} title={t("editor.tabs.submissionHint")}>
-            <FileCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
-            <span className="truncate">{finalSubmission}</span>
-            <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-          </button>
+          <div className="relative flex-shrink-0" data-tab-anchor={SUBMISSION}>
+            <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => { if (activeTab === SUBMISSION) setOutlineTab(outlineTab === SUBMISSION ? null : SUBMISSION); else { setOutlineTab(null); switchTab(SUBMISSION); } }} className={`doc-tab submission !pr-7${activeTab === SUBMISSION ? "active" : ""}`} title={t("editor.tabs.submissionHint")}>
+              <FileCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
+              <span className="truncate">{finalSubmission}</span>
+              <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+            </button>
+            <TabOutline tabId={SUBMISSION} title={finalSubmission} active={activeTab === SUBMISSION} open={outlineTab === SUBMISSION} onOpenChange={(o) => setOutlineTab(o ? SUBMISSION : null)} editor={editor} getHtml={getTabHtml} switchTab={switchTab} mobile={isMobile} triggerClassName="absolute right-1 top-1/2 -translate-y-1/2" />
+          </div>
           {tabs.map((tb) => (
-            <div key={tb.id} className="relative flex-shrink-0">
-              <button role="tab" aria-selected={activeTab === tb.id} onClick={() => switchTab(tb.id)} onDoubleClick={() => canEdit && setTabMenu(`rename:${tb.id}`)} className={`doc-tab ${activeTab === tb.id ? "active" : ""} ${activeTab === tb.id && canEdit ? "pr-7" : ""}`}>
+            <div key={tb.id} className="relative flex-shrink-0" data-tab-anchor={tb.id}>
+              <button role="tab" aria-selected={activeTab === tb.id} onClick={() => { if (activeTab === tb.id) setOutlineTab(outlineTab === tb.id ? null : tb.id); else { setOutlineTab(null); switchTab(tb.id); } }} onDoubleClick={() => canEdit && setTabMenu(`rename:${tb.id}`)} className={`doc-tab ${activeTab === tb.id && canEdit ? "!pr-12" : "!pr-7"} ${activeTab === tb.id ? "active" : ""}`}>
                 <File className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 {tabMenu === `rename:${tb.id}` ? (
                   <input
@@ -1301,6 +1309,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
                   <span className="truncate">{tb.title}</span>
                 )}
               </button>
+              {tabMenu !== `rename:${tb.id}` && (
+                <TabOutline tabId={tb.id} title={tb.title} active={activeTab === tb.id} open={outlineTab === tb.id} onOpenChange={(o) => setOutlineTab(o ? tb.id : null)} editor={editor} getHtml={getTabHtml} switchTab={switchTab} mobile={isMobile} triggerClassName={`absolute top-1/2 -translate-y-1/2 ${activeTab === tb.id && canEdit ? "right-6" : "right-1"}`} />
+              )}
               {activeTab === tb.id && canEdit && tabMenu !== `rename:${tb.id}` && (
                 <button onClick={() => setTabMenu(tabMenu === tb.id ? null : tb.id)} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label={t("editor.tabs.options", { title: tb.title })}>
                   <MoreHorizontal className="w-3.5 h-3.5" />
@@ -1334,13 +1345,15 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
               {/* Stable wrappers: tippy moves the bubble elements into its popper, so React must never use them as sibling references. */}
               <div className="contents">{!isMobile && <TableBubble editor={editor} canEdit={canEdit} />}</div>
               <div className="contents">
-              <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom" }} shouldShow={({ state }) => !state.selection.empty && !isMobile && (state.selection as { node?: { type: { name: string } } }).node?.type.name !== "image" && !(state.selection instanceof CellSelection)}>
-                <div className="bubble-menu" role="toolbar" aria-label={t("editor.bubble.label")}>
+              <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom", maxWidth: "none", popperOptions: { modifiers: [{ name: "keepOnSheet", enabled: true, phase: "main", requiresIfExists: ["preventOverflow"], fn: ({ state }) => { const sheet = sheetRef.current; const o = state.modifiersData.popperOffsets; if (!sheet || !o) return; const s = sheet.getBoundingClientRect(); const base = (state.elements.popper.offsetParent as HTMLElement | null)?.getBoundingClientRect().left || 0; const w = state.rects.popper.width; if (w < s.width) o.x = Math.max(s.left + 4, Math.min(o.x + base, s.right - w - 4)) - base; } }] } }} shouldShow={({ state }) => !state.selection.empty && !isMobile && (state.selection as { node?: { type: { name: string } } }).node?.type.name !== "image" && !(state.selection instanceof CellSelection)}>
+                <div className="bubble-menu !flex-col !items-stretch !gap-0" role="toolbar" aria-label={t("editor.bubble.label")}>
+                  <div className="bm-row">
                   {canEdit && (
                     <>
                       <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleBold().run()} className={`bm-btn font-bold ${editor.isActive("bold") ? "active" : ""}`} aria-label={t("editor.fmt.bold")}>B</button>
                       <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleItalic().run()} className={`bm-btn italic font-serif text-[15px] ${editor.isActive("italic") ? "active" : ""}`} aria-label={t("editor.fmt.italic")}>I</button>
                       <button onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().toggleUnderline().run()} className={`bm-btn underline ${editor.isActive("underline") ? "active" : ""}`} aria-label={t("editor.fmt.underline")}>U</button>
+                      <TypographyToggle open={bubbleTypo} onToggle={() => setBubbleTypo((v) => !v)} />
                       <span className="bm-sep" />
                       <button onMouseDown={(e) => e.preventDefault()} onClick={() => openCite()} className="bm-btn !px-[9px]"><BookMarked className="w-[13px] h-[13px]" />{t("editor.cite")}</button>
                     </>
@@ -1349,6 +1362,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("cite")} className="bm-btn !px-[9px]" title={t("editor.bubble.supportTitle")}><SearchIcon className="w-[13px] h-[13px]" />{t("editor.support")}</button>
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("evidence")} className="bm-btn !px-[9px]" title={t("editor.bubble.evidenceTitle")}><Scale className="w-[13px] h-[13px]" />{t("editor.evidence")}</button>
                   {isOwner && <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />{t("editor.askAi")}</button>}
+                  </div>
+                  {canEdit && bubbleTypo && <TypographyRow editor={editor} />}
                 </div>
               </BubbleMenu>
               </div>

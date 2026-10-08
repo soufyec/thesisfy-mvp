@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { Check, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import type { Translate } from "@/lib/i18n/dictionary";
 import { tableMenuItems } from "./TableMenu";
@@ -316,89 +316,129 @@ export default function MenuBar({ editor, onAction, state }: Props) {
   );
 }
 
-function OverflowItems({ items, onAction, depth = 0 }: { items: Item[]; onAction: (a: MenuAction) => void; depth?: number }) {
+/** One level of the `⋯` accordion: rows with `children` unfold their next level downwards (one open at a time per level). */
+function OverflowRows({ items, onAction, depth = 0 }: { items: Item[]; onAction: (a: MenuAction) => void; depth?: number }) {
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const pad = { paddingLeft: 12 + depth * 14 };
   return (
     <>
-      {items.map((it, i) =>
-        it.sep ? (
-          <div key={i} className="sep" />
-        ) : it.children ? (
-          <div key={i}>
-            <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{it.label}</div>
-            <OverflowItems items={it.children} onAction={onAction} depth={depth + 1} />
-          </div>
-        ) : (
-          <button key={i} disabled={it.disabled} onMouseDown={(e) => e.preventDefault()} onClick={() => it.action && onAction(it.action)}>
+      {items.map((it, i) => {
+        if (it.sep) return <div key={i} className="ovf-sep" role="separator" />;
+        if (it.children) {
+          const isOpen = openIdx === i;
+          return (
+            <div key={i}>
+              <button type="button" role="menuitem" aria-haspopup="true" aria-expanded={isOpen} disabled={it.disabled} tabIndex={-1} style={pad} className={`ovf-row ovf-group ${depth === 0 ? "ovf-top" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={() => setOpenIdx(isOpen ? null : i)}>
+                <span className="min-w-0 truncate">{it.label}</span>
+                <ChevronDown className="ovf-chev w-3.5 h-3.5 text-gray-400 flex-shrink-0" aria-hidden="true" />
+              </button>
+              {isOpen && (
+                <div role="group" aria-label={it.label} className="ovf-sub">
+                  <OverflowRows items={it.children} onAction={onAction} depth={depth + 1} />
+                </div>
+              )}
+            </div>
+          );
+        }
+        const act = it.action;
+        return (
+          <button key={i} type="button" role={it.checked !== undefined ? "menuitemcheckbox" : "menuitem"} aria-checked={it.checked !== undefined ? it.checked : undefined} disabled={it.disabled} tabIndex={-1} style={pad} className="ovf-row" onMouseDown={(e) => e.preventDefault()} onClick={() => act && onAction(act)}>
             <ItemLabel item={it} />
             {it.shortcut && <kbd>{it.shortcut}</kbd>}
           </button>
-        )
-      )}
+        );
+      })}
     </>
   );
 }
 
 /**
- * The `⋯` button of the editor header: the same File / Edit / View / Insert / Format / Tools / Help menus as a
- * vertical list. Every `MenuAction` and shortcut hint is preserved; submenus are flattened under a small heading.
+ * The `⋯` button of the editor header: a compact dropdown (280px, max 70vh, scrolls) anchored to the button. File / Edit /
+ * View / Insert / Format / Tools / Help are rows that unfold their items downwards (accordion); submenus such as
+ * Format › Align unfold one level further. Every `MenuAction` and shortcut hint is preserved. Keyboard: arrows move,
+ * → / ← open / close a group, Home / End jump, Enter activates, Esc closes and returns focus to the button.
  */
 export function MenuOverflow({ editor, onAction, state }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [group, setGroup] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const viaKeyboard = useRef(false);
+  const items = (): HTMLElement[] => (panelRef.current ? Array.from(panelRef.current.querySelectorAll<HTMLElement>('[role^="menuitem"]:not(:disabled)')) : []);
   useEffect(() => {
     if (!open) return;
+    if (viaKeyboard.current) {
+      viaKeyboard.current = false;
+      const first = items()[0];
+      if (first) first.focus();
+    }
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setGroup(null);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setGroup(null);
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
-  const menus = buildMenus(editor, state, t);
-  const current = menus.find((m) => m.title === group) || null;
+  const groups: Item[] = buildMenus(editor, state, t).map((m) => ({ label: m.title, children: m.items }));
   const act = (a: MenuAction) => {
     onAction(a);
     setOpen(false);
-    setGroup(null);
+  };
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!open) {
+      if (e.key === "ArrowDown" && e.target === btnRef.current) {
+        e.preventDefault();
+        viaKeyboard.current = true;
+        setOpen(true);
+      }
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      btnRef.current?.focus();
+      return;
+    }
+    if (e.key === "Tab") {
+      setOpen(false);
+      return;
+    }
+    const list = items();
+    if (!list.length) return;
+    const active = document.activeElement as HTMLElement | null;
+    const idx = active ? list.indexOf(active) : -1;
+    const focusAt = (n: number) => {
+      e.preventDefault();
+      list[(n + list.length) % list.length].focus();
+    };
+    if (e.key === "ArrowDown") focusAt(idx < 0 ? 0 : idx + 1);
+    else if (e.key === "ArrowUp") focusAt(idx < 0 ? list.length - 1 : idx - 1);
+    else if (e.key === "Home") focusAt(0);
+    else if (e.key === "End") focusAt(list.length - 1);
+    else if (e.key === "ArrowRight" && active && active.getAttribute("aria-expanded") === "false") {
+      e.preventDefault();
+      active.click();
+    } else if (e.key === "ArrowLeft" && active) {
+      if (active.getAttribute("aria-expanded") === "true") {
+        e.preventDefault();
+        active.click();
+      } else {
+        const parent = active.closest('[role="group"]')?.previousElementSibling as HTMLElement | null;
+        if (parent) {
+          e.preventDefault();
+          parent.focus();
+        }
+      }
+    }
   };
   return (
-    <div ref={ref} className="relative flex-shrink-0">
-      <button type="button" onClick={() => { setOpen((o) => !o); setGroup(null); }} className={`w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 ${open ? "bg-gray-100" : ""}`} aria-label={t("editor.menu.moreOptions")} aria-haspopup="menu" aria-expanded={open}>
+    <div ref={ref} className="relative flex-shrink-0" onKeyDown={onKeyDown}>
+      <button ref={btnRef} type="button" onClick={(e) => { viaKeyboard.current = e.detail === 0; setOpen((o) => !o); }} className={`w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 ${open ? "bg-gray-100" : ""}`} aria-label={t("editor.menu.moreOptions")} aria-haspopup="menu" aria-expanded={open}>
         <MoreHorizontal className="w-[18px] h-[18px]" />
       </button>
       {open && (
-        <div className="docs-menu !left-auto right-0 !mt-1 !min-w-[260px] max-h-[70vh] overflow-y-auto" role="menu">
-          {current ? (
-            <>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => setGroup(null)} className="!justify-start !gap-2 text-gray-500">
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span className="font-semibold text-gray-800">{current.title}</span>
-              </button>
-              <div className="sep" />
-              <OverflowItems items={current.items} onAction={act} />
-            </>
-          ) : (
-            menus.map((m) => (
-              <button key={m.title} onMouseDown={(e) => e.preventDefault()} onClick={() => setGroup(m.title)} role="menuitem">
-                <span>{m.title}</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-              </button>
-            ))
-          )}
+        <div ref={panelRef} className="ovf-menu" role="menu" aria-label={t("editor.menu.moreOptions")}>
+          <OverflowRows items={groups} onAction={act} />
         </div>
       )}
     </div>
