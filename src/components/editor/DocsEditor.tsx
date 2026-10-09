@@ -741,10 +741,15 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     if (sidebar === "integrity") refreshLedger();
   }, [sidebar, flags.length, refreshLedger]);
 
-  // Escape closes the mobile bottom sheet (the desktop panels keep their own close button).
+  // Escape closes the mobile bottom sheet and, on any screen, the find & replace panel (the other desktop panels
+  // keep their own close button so Escape in the editor does not swallow them).
   useEffect(() => {
-    if (!isMobile || sidebar === "none") return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSidebar("none"); };
+    if (sidebar === "none" || (!isMobile && sidebar !== "find")) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setSidebar("none");
+      if (sidebar === "find") editorRef.current?.commands.focus();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isMobile, sidebar]);
@@ -1006,6 +1011,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     });
     for (const e of edits.reverse()) tr.replaceWith(e.from, e.to, ed.state.schema.text(e.text, [e.mark]));
     if (edits.length) programmatic(() => ed.view.dispatch(tr));
+  };
+
+  /** Closes a dialog that was reached from the text (Ctrl+K, Ctrl+Alt+B, special characters) and returns the caret. */
+  const closeDialogToEditor = () => {
+    setDialog(null);
+    setTimeout(() => editorRef.current?.commands.focus(), 0);
   };
 
   const insertBibliography = () => {
@@ -1488,9 +1499,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       </Modal>
 
       {/* Dialogs */}
-      <LinkDialog open={dialog === "link"} onClose={() => setDialog(null)} initial={linkInitial} onSubmit={(url) => editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run()} onRemove={() => editor.chain().focus().extendMarkRange("link").unsetLink().run()} anchors={anchors} onPickAnchor={(a) => { const href = anchorHref(editor, a); const chain = editor.chain().focus(); if (editor.state.selection.empty && !editor.isActive("link")) chain.insertContent({ type: "text", text: a.label, marks: [{ type: "link", attrs: { href } }] }).run(); else chain.extendMarkRange("link").setLink({ href }).run(); }} />
-      <SpecialCharsDialog open={dialog === "specialChars"} onClose={() => setDialog(null)} onInsert={(ch) => programmatic(() => editor.chain().focus().insertContent(ch).run())} />
-      <TextPromptDialog open={dialog === "bookmark"} onClose={() => setDialog(null)} title={t("editor.bookmark.title")} label={t("editor.bookmark.label")} onSubmit={insertBookmark} submitLabel={t("editor.insert")} />
+      <LinkDialog open={dialog === "link"} onClose={closeDialogToEditor} initial={linkInitial} onSubmit={(url) => editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run()} onRemove={() => editor.chain().focus().extendMarkRange("link").unsetLink().run()} anchors={anchors} onPickAnchor={(a) => { const href = anchorHref(editor, a); const chain = editor.chain().focus(); if (editor.state.selection.empty && !editor.isActive("link")) chain.insertContent({ type: "text", text: a.label, marks: [{ type: "link", attrs: { href } }] }).run(); else chain.extendMarkRange("link").setLink({ href }).run(); }} />
+      <SpecialCharsDialog open={dialog === "specialChars"} onClose={closeDialogToEditor} onInsert={(ch) => programmatic(() => editor.chain().focus().insertContent(ch).run())} />
+      <TextPromptDialog open={dialog === "bookmark"} onClose={closeDialogToEditor} title={t("editor.bookmark.title")} label={t("editor.bookmark.label")} onSubmit={insertBookmark} submitLabel={t("editor.insert")} />
       <TableContextMenu editor={editor} at={tableMenuAt} onAction={(a) => runTableAction(editor, a)} onClose={() => setTableMenuAt(null)} />
       <PrintHeaderFooter setup={ws} page={{ size: ws.size, orientation: ws.orientation, margin: ws.margin }} />
       <ImageDialog open={dialog === "image"} replacing={imageReplacePos !== null} onClose={() => { setDialog(null); setImageReplacePos(null); }} onSubmit={(src, alt, caption) => { if (imageReplacePos !== null) patchImage(editor, imageReplacePos, { src, ...(alt ? { alt } : {}), ...(caption ? { caption } : {}) }); else insertImage(editor, { src, alt: alt || null, caption: caption || null }); }} />
@@ -1499,7 +1510,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       <WordCountDialog open={dialog === "wordCount"} onClose={() => setDialog(null)} stats={stats} thesis={thesis} />
       <ShareDialog open={dialog === "share"} onClose={() => setDialog(null)} thesis={thesis} />
       <TextPromptDialog open={dialog === "rename"} onClose={() => setDialog(null)} title={t("editor.dialog.renameTitle")} initial={thesis.title} onSubmit={(title) => updateThesis({ title }, t("editor.toast.renamed"))} submitLabel={t("editor.rename")} />
-      <TextPromptDialog open={dialog === "saveVersion"} onClose={() => setDialog(null)} title={t("editor.dialog.versionTitle")} label={t("editor.dialog.versionPlaceholder")} onSubmit={async (label) => { await saveNow(); await api(`/api/theses/${thesisId}/versions`, { method: "POST", json: { label } }).catch(() => {}); notify(t("editor.toast.versionSaved"), "success"); loadVersions(); }} submitLabel={t("editor.dialog.versionSubmit")} />
+      <TextPromptDialog open={dialog === "saveVersion"} onClose={closeDialogToEditor} title={t("editor.dialog.versionTitle")} label={t("editor.dialog.versionPlaceholder")} onSubmit={async (label) => { await saveNow(); await api(`/api/theses/${thesisId}/versions`, { method: "POST", json: { label } }).catch(() => {}); notify(t("editor.toast.versionSaved"), "success"); loadVersions(); }} submitLabel={t("editor.dialog.versionSubmit")} />
       <ConfirmDialog open={dialog === "submit"} onClose={() => setDialog(null)} title={t("editor.dialog.submitTitle")} body={richText(t("editor.dialog.submitBody"), { finalSubmission: <strong>{finalSubmission}</strong>, advisor: <strong>{thesis.professorName}</strong> })} confirmLabel={t("editor.dialog.submitConfirm")} onConfirm={async () => { await saveNow(); updateThesis({ status: "under_review" }, t("editor.toast.submitted")); }} />
       <ShortcutsDialog open={dialog === "shortcuts"} onClose={() => setDialog(null)} />
       <ConfirmDialog open={!!confirmPromote} onClose={() => setConfirmPromote(null)} title={t("editor.dialog.promoteTitle", { finalSubmission })} confirmLabel={t("editor.tabs.useAsSubmission", { finalSubmission })} body={t("editor.dialog.promoteBody", { title: tabs.find((tb) => tb.id === confirmPromote)?.title || "", finalSubmission })} onConfirm={() => confirmPromote && promoteTab(confirmPromote)} />
