@@ -1,0 +1,45 @@
+1
+00:00:02,541 --> 00:00:08,686
+L'éditeur Thesisfic : votre mémoire,
+comme dans Docs ou Word
+
+2
+00:00:08,686 --> 00:00:16,294
+Vous écrivez normalement :
+ce texte compte comme « Rédigé »
+
+3
+00:00:16,294 --> 00:00:21,382
+Vous collez un passage :
+l'éditeur demande d'où il vient
+
+4
+00:00:21,382 --> 00:00:28,653
+Déclaré comme cité : marqué en orange.
+Jamais une accusation, une attribution.
+
+5
+00:00:28,653 --> 00:00:37,341
+Thesisfic AI pense avec vous :
+plan, critique, sources… jamais la rédaction
+
+6
+00:00:37,341 --> 00:00:43,774
+Avant d'insérer : le coût en mots et en % d'IA,
+visible par vous et par votre tuteur
+
+7
+00:00:43,774 --> 00:00:49,798
+Inséré et marqué « Assisté par IA »,
+en violet, dans le document
+
+8
+00:00:49,798 --> 00:00:57,646
+Le registre d'intégrité : étudiant et tuteur
+voient exactement la même chose
+
+9
+00:00:57,646 --> 00:01:02,926
+Thesisfic.edu
+We teach your students how to use AI, properly.
+
