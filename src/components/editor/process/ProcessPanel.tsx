@@ -76,6 +76,7 @@ const ATTRIBUTION_LABELS: Record<NonNullable<TimelineEvent["attribution"]>, stri
   assistant: "panelsResearch.process.attr.assistant",
   unattributed: "panelsResearch.process.attr.unattributed",
   own: "panelsResearch.process.attr.own",
+  ai_tool: "panelsResearch.process.attr.aiTool",
 };
 
 type Fmt = ReturnType<typeof useFormat>;

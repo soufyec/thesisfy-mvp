@@ -228,6 +228,26 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const [conversations, setConversations] = useState<{ id: string; title: string; updatedAt: string; messageCount: number; mode?: AIMode }[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [providerOpen, setProviderOpen] = useState(false);
+  const headerMenusRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!providerOpen && !historyOpen) return;
+    const close = () => {
+      setProviderOpen(false);
+      setHistoryOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    const onDown = (e: MouseEvent) => {
+      if (headerMenusRef.current && !headerMenusRef.current.contains(e.target as Node)) close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [providerOpen, historyOpen]);
   const [copied, setCopied] = useState<string | null>(null);
   const [inserted, setInserted] = useState<string | null>(null);
   const [pending, setPending] = useState<{ id: string; action: PendingAction } | null>(null);
@@ -370,7 +390,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             update({ streaming: false, interactionId: d.interactionId });
             if (allowance) api<{ allowance?: AllowanceInfo | null }>("/api/ai/providers").then((x) => setAllowance(x.allowance || null)).catch(() => {});
           },
-          onError: (e) => update({ streaming: false, error: e.message }),
+          onError: (e) => update({ streaming: false, error: providerErrorText(e) }),
         },
         controller.signal
       );
@@ -466,6 +486,9 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const modeLabel = (id?: AIMode) => t(`assistant.mode.${id || "chat"}.short`);
   const modeDescription = t(`assistant.mode.${mode}.description`);
   const placeholderLabel = modeLabel(mode);
+  /** A provider failure in words the student can act on; the raw provider payload stays in the server log. */
+  const providerErrorText = (e: { message: string; code?: string }) =>
+    e.code === "auth" ? t("assistant.msg.errorAuth") : e.code === "rate_limit" ? t("assistant.msg.errorRateLimit") : e.code === "refusal" ? e.message : e.code === "provider" ? t("assistant.msg.errorProvider") : e.message;
 
   const renderCostCard = (m: ChatMsg) => {
     if (!pending || pending.id !== m.id) return null;
@@ -474,8 +497,10 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     const words = n === 1 ? t("assistant.cost.aiWords_one") : t("assistant.cost.aiWords", { n });
     const ctx = insertContext;
     const cur = ctx && ctx.wordCount > 0 ? Math.round((ctx.aiWords / ctx.wordCount) * 100) : 0;
-    const next = ctx ? Math.round(((ctx.aiWords + n) / (ctx.wordCount + n || 1)) * 100) : 0;
-    const over = !!ctx && next > ctx.limitPct;
+    const nextExact = ctx ? ((ctx.aiWords + n) / (ctx.wordCount + n || 1)) * 100 : 0;
+    const next = Math.round(nextExact);
+    // Notes live in the Research notes tab, which does not count toward the Final submission's AI share.
+    const over = !!ctx && pending.action !== "notes" && nextExact > ctx.limitPct;
     return (
       <div className="mt-2 border border-prov-ai-line bg-prov-ai-soft rounded-xl p-3" role="dialog" aria-label={t("assistant.cost.title")}>
         <div className="flex items-center gap-2 mb-2">
@@ -558,8 +583,9 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           <div className="text-sm font-semibold leading-tight whitespace-nowrap">{t("glossary.assistant")}</div>
           <div className="text-xs text-gray-400 truncate">{t("glossary.tagline")}</div>
         </div>
+        <div ref={headerMenusRef} className="contents">
         <div className="relative flex-shrink-0">
-          <button onClick={() => setProviderOpen((o) => !o)} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1.5 max-w-[150px]" aria-label={t("assistant.provider.aria")} aria-expanded={providerOpen}>
+          <button onClick={() => { setHistoryOpen(false); setProviderOpen((o) => !o); }} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1.5 max-w-[150px]" aria-label={t("assistant.provider.aria")} aria-expanded={providerOpen}>
             <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 ${chipColor ? "" : "bg-gray-400"}`} style={chipColor ? { background: chipColor } : undefined} />
             <span className="truncate">{chipText}</span>
             <ChevronDown className="w-3 h-3 flex-shrink-0" />
@@ -610,7 +636,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           )}
         </div>
         <div className="relative flex-shrink-0">
-          <button onClick={() => setHistoryOpen((o) => !o)} className="w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center" aria-label={t("assistant.history.aria")} aria-expanded={historyOpen}>
+          <button onClick={() => { setProviderOpen(false); setHistoryOpen((o) => !o); }} className="w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center" aria-label={t("assistant.history.aria")} aria-expanded={historyOpen}>
             <History className="w-4 h-4" />
           </button>
           {historyOpen && (
@@ -633,6 +659,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               ))}
             </div>
           )}
+        </div>
         </div>
         <button onClick={newChat} className="w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0" aria-label={t("assistant.history.new")}>
           <Plus className="w-4 h-4" />
@@ -722,7 +749,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             ) : (
               <p>
                 <strong className="text-gray-700">{placeholderLabel}</strong>
-                {` — ${modeDescription.charAt(0).toLowerCase()}${modeDescription.slice(1)}.`}
+                {` — ${modeDescription.charAt(0).toLowerCase()}${modeDescription.slice(1)}${/[.?!…]$/.test(modeDescription) ? "" : "."}`}
               </p>
             )}
             <div className="flex flex-wrap gap-1.5">

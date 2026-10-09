@@ -673,6 +673,20 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       { type: "text", text: c.inText, marks: [{ type: "citation", attrs: { refId: c.reference.id } }] },
     ];
     programmatic(() => chain.insertContentAt(at, nodes).run());
+    // A pasted passage that now carries a citation is attributed: its provenance mark names the source, so the
+    // ledger's "pasted text without attribution" line and the related notice can close.
+    if (mode === "selection" && b > a) {
+      const tr = ed.state.tr;
+      let changed = false;
+      ed.state.doc.nodesBetween(a, b, (node, pos) => {
+        if (!node.isText) return;
+        const m = node.marks.find((mk) => mk.type.name === "provenance" && mk.attrs.source === "paste" && !mk.attrs.label);
+        if (!m) return;
+        tr.addMark(Math.max(pos, a), Math.min(pos + node.nodeSize, b), m.type.create({ ...m.attrs, label: c.inText }));
+        changed = true;
+      });
+      if (changed) programmatic(() => ed.view.dispatch(tr));
+    }
     notify(t(c.isNew ? "editor.toast.citationInsertedNew" : "editor.toast.citationInserted", { cite: c.inText }), "success");
   };
 
@@ -975,11 +989,44 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     }
   };
 
+  /** Re-renders every in-text citation chip in the new style; the reference list is regenerated on demand. */
+  const restyleCitations = (style: Parameters<typeof formatReference>[1]) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const tr = ed.state.tr;
+    const edits: { from: number; to: number; text: string; mark: import("prosemirror-model").Mark }[] = [];
+    ed.state.doc.descendants((node, pos) => {
+      if (!node.isText) return;
+      const m = node.marks.find((mk) => mk.type.name === "citation");
+      if (!m) return;
+      const ref = thesis.references.find((r) => r.id === m.attrs.refId);
+      if (!ref) return;
+      const text = formatReference(ref, style).inText;
+      if (text && text !== node.text) edits.push({ from: pos, to: pos + node.nodeSize, text, mark: m });
+    });
+    for (const e of edits.reverse()) tr.replaceWith(e.from, e.to, ed.state.schema.text(e.text, [e.mark]));
+    if (edits.length) programmatic(() => ed.view.dispatch(tr));
+  };
+
   const insertBibliography = () => {
     if (!editor) return;
     const refs = [...thesis.references].sort((a, b) => a.authors.localeCompare(b.authors));
     const items = refs.map((r, i) => `<p>${thesis.citationStyle === "IEEE" ? `[${i + 1}] ` : ""}${formatReference(r, thesis.citationStyle).full}</p>`).join("");
-    programmatic(() => editor.chain().focus().insertContent(`<h2>${t("editor.doc.references")}</h2>${items}`).run());
+    const title = t("editor.doc.references");
+    programmatic(() => {
+      // Replace an existing References block (heading plus the paragraphs under it) instead of adding a second one.
+      let from = -1;
+      let to = -1;
+      editor.state.doc.forEach((node, offset) => {
+        if (from === -1 && node.type.name === "heading" && node.textContent.trim() === title) {
+          from = offset;
+          to = offset + node.nodeSize;
+        } else if (from !== -1 && to === offset && node.type.name === "paragraph") to = offset + node.nodeSize;
+      });
+      const chain = editor.chain().focus();
+      if (from !== -1) chain.deleteRange({ from, to });
+      chain.command(({ tr, commands }) => commands.insertContentAt(tr.doc.content.size, `<h2>${title}</h2>${items}`)).run();
+    });
   };
 
   const insertToc = () => {
@@ -1175,7 +1222,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       );
       case "references": return (
         <ReferencesPanel references={thesis.references} style={thesis.citationStyle} canEdit={canEdit} onClose={() => setSidebar("none")}
-          onChangeStyle={(s) => updateThesis({ citationStyle: s })}
+          onChangeStyle={(s) => { updateThesis({ citationStyle: s }); restyleCitations(s); }}
           onAdd={(r: Reference) => updateThesis({ references: [...thesis.references, r] }, t("editor.toast.referenceAddedShort"))}
           onRemove={(id) => updateThesis({ references: thesis.references.filter((r) => r.id !== id) })}
           onInsertInText={(r) => programmatic(() => editor.chain().focus().insertContent(formatReference(r, thesis.citationStyle).inText).run())}

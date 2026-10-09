@@ -167,6 +167,9 @@ const en = {
   // Message meta
   "assistant.msg.logged": "logged",
   "assistant.msg.blocked": "blocked by policy",
+  "assistant.msg.errorAuth": "Your university's model did not accept its credentials. Ask your administrator to check the model in AI access & billing; you can connect your own account meanwhile.",
+  "assistant.msg.errorRateLimit": "The model is busy right now. Wait a moment and send again.",
+  "assistant.msg.errorProvider": "The model did not answer. Try again; if it keeps failing, tell your administrator.",
   "assistant.msg.demo": "demo",
   "assistant.msg.paidByUniversity": "paid by university",
   "assistant.msg.yourAccount": "your account",
@@ -343,6 +346,9 @@ export const assistant: Messages<typeof en> = {
 
     "assistant.msg.logged": "registrado",
     "assistant.msg.blocked": "bloqueado por la política",
+    "assistant.msg.errorAuth": "El modelo de tu universidad no ha aceptado sus credenciales. Pide a tu administración que revise el modelo en Acceso a IA y facturación; mientras tanto puedes conectar tu propia cuenta.",
+    "assistant.msg.errorRateLimit": "El modelo está saturado ahora mismo. Espera un momento y vuelve a enviar.",
+    "assistant.msg.errorProvider": "El modelo no ha respondido. Inténtalo de nuevo; si sigue fallando, avisa a tu administración.",
     "assistant.msg.demo": "demo",
     "assistant.msg.paidByUniversity": "pagado por la universidad",
     "assistant.msg.yourAccount": "tu cuenta",
@@ -515,6 +521,9 @@ export const assistant: Messages<typeof en> = {
 
     "assistant.msg.logged": "enregistré",
     "assistant.msg.blocked": "bloqué par la politique",
+    "assistant.msg.errorAuth": "Le modèle de votre université n'a pas accepté ses identifiants. Demandez à votre administration de vérifier le modèle dans Accès IA et facturation ; vous pouvez connecter votre propre compte en attendant.",
+    "assistant.msg.errorRateLimit": "Le modèle est saturé pour le moment. Attendez un instant et renvoyez.",
+    "assistant.msg.errorProvider": "Le modèle n'a pas répondu. Réessayez ; si le problème persiste, prévenez votre administration.",
     "assistant.msg.demo": "démo",
     "assistant.msg.paidByUniversity": "payé par l'université",
     "assistant.msg.yourAccount": "votre compte",

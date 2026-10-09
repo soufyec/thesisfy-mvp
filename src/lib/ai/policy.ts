@@ -1,10 +1,12 @@
 import { AIMode, Policy } from "../db";
 
 // Requests that ask the assistant to produce thesis text. Multilingual, deliberately conservative.
+// Accented letters are not word characters for \b (no `u` flag on the ES5 target), so Spanish and French use explicit
+// letter boundaries.
 const GENERATION_PATTERNS: RegExp[] = [
   /\b(write|draft|compose|generate|produce)\b.{0,40}\b(for me|my (thesis|chapter|section|introduction|abstract|conclusion|literature review|methodology|paragraph)|the (introduction|abstract|conclusion|chapter|section))\b/i,
-  /\b(escribe|redacta|genera|elabora|hazme|escríbeme|redáctame)\b.{0,40}\b(por mí|mi (tesis|capítulo|sección|introducción|resumen|conclusión|marco teórico|metodología|párrafo)|la (introducción|conclusión)|el (resumen|capítulo|marco teórico))\b/i,
-  /\b(écris|rédige|génère|produis)\b.{0,40}\b(pour moi|mon (mémoire|chapitre|introduction|résumé|conclusion)|ma (thèse|section|méthodologie)|l'introduction|la conclusion)\b/i,
+  /\b(escribe|escríbeme|redacta|redáctame|genera|elabora|hazme)(?![a-zA-ZÀ-ÿ]).{0,40}(?:^|[^a-zA-ZÀ-ÿ])(por mí|en mi lugar|mi (tesis|capítulo|sección|introducción|resumen|conclusión|marco teórico|metodología|párrafo)|la (introducción|conclusión)|el (resumen|capítulo|marco teórico))(?![a-zA-ZÀ-ÿ])/i,
+  /(?:^|[^a-zA-ZÀ-ÿ])(écris|écrire|rédige|rédiger|génère|générer|produis)(?![a-zA-ZÀ-ÿ]).{0,40}(?:^|[^a-zA-ZÀ-ÿ])(pour moi|à ma place|mon (mémoire|chapitre|introduction|résumé|conclusion|paragraphe)|ma (thèse|section|méthodologie)|l'introduction|la conclusion)(?![a-zA-ZÀ-ÿ])/i,
   /\b(write|draft)\s+(me\s+)?(a|an|the)\s+\d*\s*[-\s]?(word|page)s?\b/i,
   /\b(rewrite|reword|paraphrase)\s+(this|it|the following)\s+so\s+(it|that)\s+(isn'?t|is not|won'?t be)\s+detected/i,
 ];

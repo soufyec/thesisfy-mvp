@@ -371,7 +371,7 @@ export function makeSnapshot(input: SnapshotInput, chain?: Snapshot[]): Omit<Sna
 // Timeline
 // ---------------------------------------------------------------------------------------------
 
-export type EventAttribution = "source" | "copilot" | "assistant" | "unattributed" | "own";
+export type EventAttribution = "source" | "copilot" | "assistant" | "ai_tool" | "unattributed" | "own";
 export type TimelineEventKind = "paste" | "ai_insert" | "ai_prompt" | "snapshot" | "version";
 
 export interface TimelineSegment {
@@ -429,10 +429,20 @@ export interface ProcessTimeline {
 
 const minutesBetween = (a: string, b: string) => Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000));
 
+/**
+ * What the student (or the editor) said about a paste, in the order the facts arrive: recognised from an assistant
+ * answer, recognised from a library source, declared in the dialog (own text, a source, an AI tool), or nothing.
+ * Short pastes under the dialog threshold carry no declaration: they stay in the student's own words.
+ */
 function pasteAttribution(data: Record<string, unknown>): EventAttribution {
   const matched = data.matchedAi as { mode?: string } | undefined;
   if (matched) return matched.mode === "copilot" ? "copilot" : "assistant";
-  if (data.attributed || data.sourceId || data.label) return "source";
+  if (data.matchedSource) return "source";
+  const declared = typeof data.attribution === "string" ? data.attribution : data.attributed ? "own" : "none";
+  if (declared === "own") return "own";
+  if (declared === "ai") return "ai_tool";
+  if (declared === "source" || data.sourceId || data.label) return "source";
+  if (Number(data.words || 0) < 30) return "own";
   return "unattributed";
 }
 
@@ -507,7 +517,7 @@ export interface LedgerSummary {
   interactions: { total: number; blocked: number; copilot: number; byMode: { mode: string; count: number }[]; providers: string[] };
   aiInserts: { events: number; words: number; interactionsWithText: number };
   aiChapters: string[];
-  pastes: { events: number; words: number; attributedToSource: number; recognisedFromAssistant: number; unattributed: number; attributedWords: number };
+  pastes: { events: number; words: number; attributedToSource: number; recognisedFromAssistant: number; declaredAiTool: number; ownText: number; unattributed: number; attributedWords: number };
   budget: { currency: string; institutionUsd: number; institutionLocal: number; requests: number; studentPaidRequests: number } | null;
   scopes: Consent["scopes"] | null;
   consent: { version: string; grantedAt: string } | null;
@@ -557,6 +567,8 @@ export function ledgerSummary(
       words: pastes.reduce((a, e) => a + (e.words || 0), 0),
       attributedToSource: pastes.filter((e) => e.attribution === "source").length,
       recognisedFromAssistant: pastes.filter((e) => e.attribution === "assistant" || e.attribution === "copilot").length,
+      declaredAiTool: pastes.filter((e) => e.attribution === "ai_tool").length,
+      ownText: pastes.filter((e) => e.attribution === "own").length,
       unattributed: pastes.filter((e) => e.attribution === "unattributed").length,
       attributedWords: scan.pasteAttributed,
     },

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { SYSTEM_RESOLVER } from "@/lib/integrity";
 import { db } from "@/lib/db";
 import { json, requireUser } from "@/lib/api";
 
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   const enriched = flags
     .map((f) => {
       const t = db.theses.findById(f.thesisId);
-      return { ...f, thesisTitle: t?.title || "Unknown", studentName: t ? db.users.findById(t.studentId)?.name : undefined, resolvedByName: f.resolvedBy ? db.users.findById(f.resolvedBy)?.name : undefined };
+      return { ...f, thesisTitle: t?.title || "Unknown", studentName: t ? db.users.findById(t.studentId)?.name : undefined, resolvedByName: f.resolvedBy === SYSTEM_RESOLVER ? "Thesisfic" : f.resolvedBy ? db.users.findById(f.resolvedBy)?.name : undefined };
     })
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   return json({ flags: enriched });

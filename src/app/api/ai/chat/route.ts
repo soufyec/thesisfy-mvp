@@ -47,11 +47,13 @@ export async function POST(request: NextRequest) {
     .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-30)
     .map((m) => ({ role: m.role, content: m.content.slice(0, 20000) }));
+  // What the student typed: the language, the conversation title and the saved message come from it, not from the
+  // selected passage that is prepended as context for the model.
+  const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
   if (body.selection && messages.length) {
     const last = messages[messages.length - 1];
     last.content = `Selected passage from my thesis:\n"""\n${body.selection.slice(0, 12000)}\n"""\n\n${last.content}`;
   }
-  const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
   const lang = user.preferences.language !== "en" ? user.preferences.language : detectLang(lastUser);
 
   // Conversation persistence

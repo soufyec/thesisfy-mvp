@@ -166,6 +166,24 @@ function notifyFlags(session: WritingSession, created: IntegrityFlag[]) {
   if (created.length) refreshThesisMetrics(session.thesisId);
 }
 
+/** Who resolves a notice when the document itself no longer gives a reason for it. */
+export const SYSTEM_RESOLVER = "system";
+
+/**
+ * Closes open notices whose cause has disappeared from the saved document: `policy_limit` once the AI share is back
+ * under the limit, `bulk_paste` once no pasted text is left without attribution. A notice resolved this way names
+ * the editor itself, so the student's actions, not a person, close it (ledger: "every deduction maps to an action").
+ */
+export function reconcileNotices(thesis: Thesis, aiPct: number, policy: Policy) {
+  const open = db.flags.listByThesis(thesis.id).filter((f) => !f.resolved);
+  if (!open.length) return;
+  const unattributed = countUnattributedPaste(thesis.content);
+  for (const f of open) {
+    if (f.type === "policy_limit" && aiPct <= policy.maxAiUsagePercent) db.flags.resolve(f.id, SYSTEM_RESOLVER, `AI share is back at ${formatPercent(aiPct, policy.maxAiUsagePercent)}%, within the ${policy.maxAiUsagePercent}% limit.`);
+    if (f.type === "bulk_paste" && unattributed === 0) db.flags.resolve(f.id, SYSTEM_RESOLVER, "The pasted text now names its source or was rewritten.");
+  }
+}
+
 /**
  * Opens a `policy_limit` notice when the saved document's AI share is above the institution limit and no such
  * notice is open. Called after AI insertions and after each save, so the notice follows the real document.
@@ -174,6 +192,7 @@ export function evaluatePolicyLimit(session: WritingSession, policy: Policy): In
   const thesis = db.theses.findById(session.thesisId);
   if (!thesis) return [];
   const aiPct = (thesis.provenance.ai / Math.max(1, thesis.wordCount)) * 100;
+  reconcileNotices(thesis, aiPct, policy);
   if (!(aiPct > policy.maxAiUsagePercent)) return [];
   if (db.flags.listByThesis(thesis.id).some((f) => f.type === "policy_limit" && !f.resolved)) return [];
   const created = [
