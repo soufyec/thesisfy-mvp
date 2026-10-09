@@ -35,3 +35,4 @@ next-env.d.ts
 # research notes and reports (local only)
 /research_notes/
 /reports/
+docs/academy/*.mp4
