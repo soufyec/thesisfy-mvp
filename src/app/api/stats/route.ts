@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { json, requireStaff } from "@/lib/api";
+import { json, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const r = await requireStaff(request);
+  const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
   const theses = user.role === "student" ? db.theses.getByStudent(user.id) : user.role === "professor" ? db.theses.getByProfessor(user.id) : db.theses.getByUniversity(user.university);
-  const users = db.users.getByUniversity(user.university);
+  // A student sees only their own figures: the institution's people counts are staff information.
+  const users = user.role === "student" ? [user] : db.users.getByUniversity(user.university);
   const flags = theses.flatMap((t) => db.flags.listByThesis(t.id));
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
   const sessions = theses.flatMap((t) => t.sessions);

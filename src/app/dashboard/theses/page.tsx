@@ -69,9 +69,9 @@ function ThesesInner() {
       {loading ? <div className="card p-12 text-center text-gray-400">{t("common.loading")}…</div> : theses.length === 0 ? (
         <div className="card p-12 text-center"><div className="text-gray-400 mb-4">{t("dashboard.theses.empty")}</div><button onClick={() => setOpen(true)} className="btn-primary">{t("dashboard.theses.createFirst")}</button></div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
           {theses.map((th) => (
-            <div key={th.id} className="card p-5 sm:p-6 hover:shadow-lg transition-all group relative">
+            <div key={th.id} className="card p-5 sm:p-6 hover:shadow-lg transition-all group relative min-w-0">
               <Link href={`/dashboard/editor/${th.id}`} className="absolute inset-0" aria-label={th.title} />
               <div className="flex items-start justify-between gap-3 sm:gap-4 min-w-0">
                 <div className="flex-1 min-w-0">

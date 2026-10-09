@@ -221,7 +221,6 @@ export default function AdminAIAccessPage() {
                       <h3 className="font-semibold">{m.label}</h3>
                       {m.isDefault && <span className="badge bg-emerald-50 text-emerald-700">{t("admin.access.defaultAuto")}</span>}
                       {m.ready ? <span className="badge-success flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{t("admin.access.ready")}</span> : <span className="badge-warning">{!m.enabled ? t("admin.access.disabledBadge") : m.lastError ? t("admin.access.lastError") : m.backend === "thesisfic" ? t("admin.access.keyMissingServer") : t("admin.access.keyMissing")}</span>}
-                      {m.lastError && <span className="badge-danger">{t("admin.access.lastError")}</span>}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">{backendName(m)} · <span className="font-mono">{m.model}</span>{m.endpoint && <> · <span className="font-mono">{m.endpoint}</span></>} · {m.region}</div>
                     <div className="text-xs text-gray-500">{t("admin.access.listPrice", { billedBy: billedBy(m), input: m.inputPrice, output: m.outputPrice })}{m.secretHint && <> · {t("admin.access.keyHint", { hint: m.secretHint })}</>}{m.lastTestedAt && <> · {t("admin.access.tested", { date: fmt.date(m.lastTestedAt) })}</>}</div>

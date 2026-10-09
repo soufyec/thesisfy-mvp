@@ -1,3 +1,4 @@
+import { isLocale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from "@/lib/i18n";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { authenticateUser } from "@/lib/auth";
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({ user: result.user, token: result.token });
+    if (isLocale(result.user.preferences?.language)) response.cookies.set(LOCALE_COOKIE, result.user.preferences.language, { path: "/", maxAge: LOCALE_COOKIE_MAX_AGE, sameSite: "lax" });
     response.cookies.set("token", result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
