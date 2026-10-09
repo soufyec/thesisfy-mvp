@@ -25,7 +25,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: form.name, email: form.email, password: form.password, university: form.university === "Other" ? form.other || "Other" : form.university }) });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || t("landing.register.errorFailed"));
+        setError(data.code === "email_exists" ? t("landing.register.errorExists") : data.code === "password_short" ? t("landing.register.errorPasswordShort") : data.code === "missing_fields" ? t("landing.register.errorMissing") : data.error || t("landing.register.errorFailed"));
         setLoading(false);
         return;
       }
@@ -56,7 +56,7 @@ export default function RegisterPage() {
             {UNIVERSITIES.map((u) => <option key={u} value={u}>{u === "Other" ? t("landing.register.other") : u}</option>)}
           </select>
           {form.university === "Other" && <input value={form.other} onChange={(e) => setForm({ ...form, other: e.target.value })} className="input-field" placeholder={t("landing.register.universityName")} />}
-          <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input-field" placeholder={t("landing.register.passwordPlaceholder")} minLength={6} required />
+          <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input-field" placeholder={t("landing.register.passwordPlaceholder")} minLength={8} required />
           <button type="submit" disabled={loading} className="btn-primary w-full !py-3 disabled:opacity-50">{loading ? t("landing.register.submitting") : t("landing.register.submit")}</button>
         </form>
         <p className="mt-6 text-center text-sm text-gray-500">{t("landing.register.already")} <Link href="/login" className="text-brand-600 font-medium">{t("common.signIn")}</Link></p>

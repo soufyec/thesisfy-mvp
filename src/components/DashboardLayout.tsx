@@ -58,6 +58,16 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
     if (me) setUnread(me.unreadNotifications);
   }, [me]);
 
+  // The off-canvas sidebar must leave the tab order on small screens (inert), never on desktop where it is visible.
+  const [isDesktop, setIsDesktop] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setIsDesktop(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
   useEffect(() => {
     try {
       setCollapsed(localStorage.getItem("sidebar_collapsed") === "1");
@@ -70,8 +80,15 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
     const onClick = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNotifOpen(false);
+    };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const openNotifications = async () => {
@@ -116,7 +133,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 ${collapsed ? "lg:w-[76px]" : "w-64"} w-72 bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside {...(sidebarOpen || isDesktop ? {} : ({ inert: "" } as Record<string, string>))} className={`fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 ${collapsed ? "lg:w-[76px]" : "w-64"} w-72 bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className={`p-4 lg:p-5 border-b border-gray-100 flex items-center ${collapsed ? "lg:justify-center" : "justify-between"}`}>
           <Link href="/" className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">

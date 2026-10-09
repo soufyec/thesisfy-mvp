@@ -32,7 +32,7 @@ function LoginForm() {
       localStorage.setItem("user", JSON.stringify(data.user));
       setMeCache(null);
       const next = params.get("next");
-      if (next && next.startsWith("/")) router.push(next);
+      if (next && next.startsWith("/") && !next.startsWith("//")) router.push(next);
       else router.push(data.user.role === "admin" || data.user.role === "professor" ? "/admin" : "/dashboard");
     } catch {
       setError(t("landing.login.errorNetwork"));

@@ -59,10 +59,13 @@ export async function authenticateUser(email: string, password: string) {
   return { user: publicUser(user), token: signToken(user) };
 }
 
+/** One rule for sign-up and password change. */
+export const MIN_PASSWORD_LENGTH = 8;
+
 /** `language` is the UI locale at sign-up (cookie or `/es`, `/fr` entry), stored as the account's preference; defaults to English. */
 export async function registerUser(data: { email: string; password: string; name: string; university: string; role?: Role; language?: User["preferences"]["language"] }) {
-  if (db.users.findByEmail(data.email)) return { error: "An account with this email already exists" };
-  if (data.password.length < 6) return { error: "Password must be at least 6 characters" };
+  if (db.users.findByEmail(data.email)) return { error: "An account with this email already exists", code: "email_exists" };
+  if (data.password.length < MIN_PASSWORD_LENGTH) return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`, code: "password_short" };
   const hashed = await bcrypt.hash(data.password, 10);
   const user = db.users.create({
     email: data.email.toLowerCase(),

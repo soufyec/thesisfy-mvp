@@ -52,7 +52,7 @@ function ThesesInner() {
     setSaving(true);
     setError("");
     try {
-      const d = await api<{ thesis: { id: string } }>("/api/theses", { method: "POST", json: { ...form, deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined } });
+      const d = await api<{ thesis: { id: string } }>("/api/theses", { method: "POST", json: { ...form, deadline: form.deadline ? `${form.deadline}T12:00:00.000Z` : undefined } });
       router.push(`/dashboard/editor/${d.thesis.id}`);
     } catch (e) {
       setError((e as Error).message);
@@ -73,10 +73,10 @@ function ThesesInner() {
           {theses.map((th) => (
             <div key={th.id} className="card p-5 sm:p-6 hover:shadow-lg transition-all group relative">
               <Link href={`/dashboard/editor/${th.id}`} className="absolute inset-0" aria-label={th.title} />
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start justify-between gap-3 sm:gap-4 min-w-0">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap"><h3 className="font-semibold group-hover:text-brand-600 transition-colors truncate">{th.title}</h3><span className={statusColors[th.status]}>{t(`dashboard.status.${th.status}`)}</span>{th.openFlags > 0 && <span className="badge-warning">{th.openFlags === 1 ? t("dashboard.notices_one") : t("dashboard.notices", { n: th.openFlags })}</span>}</div>
-                  <p className="text-sm text-gray-500 line-clamp-2 mb-2">{th.description}</p>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap"><h3 className="font-semibold group-hover:text-brand-600 transition-colors truncate max-w-full break-words">{th.title}</h3><span className={statusColors[th.status]}>{t(`dashboard.status.${th.status}`)}</span>{th.openFlags > 0 && <span className="badge-warning">{th.openFlags === 1 ? t("dashboard.notices_one") : t("dashboard.notices", { n: th.openFlags })}</span>}</div>
+                  <p className="text-sm text-gray-500 line-clamp-2 mb-2 break-words">{th.description}</p>
                   <div className="flex items-center gap-x-3 gap-y-1 text-xs text-gray-400 flex-wrap"><span>{t("dashboard.advisorLine", { name: th.professorName })}</span><span>{t("dashboard.progressWords", { n: format.number(th.wordCount), target: format.number(th.targetWords) })}</span><span>{t("dashboard.theses.aiPct", { n: th.aiUsagePercent })}</span><span>{th.sessionCount === 1 ? t("dashboard.theses.sessions_one") : t("dashboard.theses.sessions", { n: th.sessionCount })}</span>{th.deadline && <span>{t("dashboard.theses.due", { date: format.date(th.deadline) })}</span>}<span>{t("dashboard.theses.updated", { time: timeAgo(th.updatedAt) })}</span></div>
                   <div className="w-full bg-gray-100 rounded-full h-1.5 mt-3"><div className="bg-brand-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, (th.wordCount / th.targetWords) * 100)}%` }} /></div>
                 </div>

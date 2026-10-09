@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db, Provider } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
 import { encrypt } from "@/lib/crypto";
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   if (apiKey.length < 12) return error("API key looks too short");
 
   const test = await testConnection(provider, apiKey);
-  if (!test.ok) return error(`Could not validate the key with ${PROVIDER_META[provider].name}: ${test.error}`, 422);
+  if (!test.ok) return NextResponse.json({ error: `Could not validate the key with ${PROVIDER_META[provider].name}: ${test.error}`, code: "key_invalid", provider: PROVIDER_META[provider].name, detail: test.error }, { status: 422 });
 
   const requestedModel = typeof body.model === "string" && body.model.trim() ? body.model.trim() : undefined;
   const conn = db.connections.create({

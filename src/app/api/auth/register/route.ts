@@ -8,10 +8,10 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password, name, university } = await request.json();
     if (!email || !password || !name || !university) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+      return NextResponse.json({ error: "All fields are required", code: "missing_fields" }, { status: 400 });
     }
     const result = await registerUser({ email, password, name, university, language: getLocale() });
-    if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
+    if ("error" in result) return NextResponse.json({ error: result.error, code: result.code }, { status: 400 });
 
     const response = NextResponse.json({ user: result.user, token: result.token });
     response.cookies.set("token", result.token, {

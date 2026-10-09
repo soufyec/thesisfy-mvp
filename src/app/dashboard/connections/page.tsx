@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Building2, CheckCircle2, ExternalLink, KeyRound, LogIn, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Modal, Toast } from "@/components/ui";
-import { api } from "@/lib/client";
+import { api, ApiError } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
 
 interface Provider {
@@ -47,7 +47,8 @@ function ConnectionsInner() {
 
   useEffect(() => {
     const o = params.get("oauth");
-    const provider = params.get("provider") || "";
+    const id = params.get("provider") || "";
+    const provider = PRODUCT_NAMES[id] || id;
     if (o === "unavailable") setToast({ message: t("dashboard.connections.oauthUnavailable", { provider }), kind: "info" });
     if (o === "connected") setToast({ message: t("dashboard.connections.oauthConnected", { provider }), kind: "success" });
     if (o === "error" || o === "state_mismatch") setToast({ message: params.get("message") ? t("dashboard.connections.oauthFailedMsg", { message: params.get("message") || "" }) : t("dashboard.connections.oauthFailed"), kind: "error" });
@@ -65,7 +66,8 @@ function ConnectionsInner() {
       setForm({ apiKey: "", model: "", label: "" });
       load();
     } catch (e) {
-      setError((e as Error).message);
+      const err = e as ApiError;
+      setError(err.code === "key_invalid" ? t("dashboard.connections.keyRejected", { provider: connect.product }) : err.message);
     } finally {
       setBusy(false);
     }
@@ -115,7 +117,7 @@ function ConnectionsInner() {
           </div>
           <div className="grid sm:grid-cols-2 gap-2 mt-4">
             {institutionModels.map((m) => (
-              <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 ${!m.ready ? "opacity-60" : ""}`}>
+              <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 min-w-0 ${!m.ready ? "opacity-60" : ""}`}>
                 <span className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold" style={{ background: m.color }}>{m.label[0]}</span>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{m.label}{m.isDefault && <span className="ml-2 badge bg-emerald-50 text-emerald-700 !text-[10px] !py-0">{t("dashboard.connections.defaultTag")}</span>}</div>
@@ -191,6 +193,9 @@ function ConnectionsInner() {
     </div>
   );
 }
+
+/** Product names for provider ids in OAuth redirects (PROVIDER_META lives server side). */
+const PRODUCT_NAMES: Record<string, string> = { anthropic: "Claude", openai: "ChatGPT", google: "Gemini", mistral: "Le Chat" };
 
 export default function ConnectionsPage() {
   return (

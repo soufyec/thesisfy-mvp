@@ -63,7 +63,7 @@ export default function StudentDashboard() {
     <DashboardLayout>
       <div className="max-w-6xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">{user ? t("dashboard.home.welcomeName", { name: user.name.split(" ")[0] }) : t("dashboard.home.welcome")}</h1>
+          <h1 className="text-2xl font-bold">{user ? t(Date.now() - Date.parse((user as { createdAt?: string }).createdAt || "") < 86400000 ? "dashboard.home.welcomeNew" : "dashboard.home.welcomeName", { name: user.name.split(" ")[0] }) : t("dashboard.home.welcome")}</h1>
           <p className="text-gray-500 mt-1">{t("dashboard.home.subtitle")}</p>
         </div>
 

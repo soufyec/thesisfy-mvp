@@ -66,6 +66,7 @@ export default function SettingsPage() {
   };
 
   const revokeConsent = async () => {
+    if (!window.confirm(t("dashboard.settings.withdrawConfirm"))) return;
     await api("/api/monitor/consent", { method: "DELETE" }).catch(() => {});
     await refresh();
     setToast({ message: t("dashboard.settings.consentWithdrawn"), kind: "info" });

@@ -58,6 +58,7 @@ function AIChatInner() {
     setPanelKey((k) => k + 1);
   };
   const remove = async (id: string) => {
+    if (!window.confirm(t("dashboard.chat.deleteConfirm"))) return;
     await api(`/api/ai/conversations?id=${id}`, { method: "DELETE" }).catch(() => {});
     if (id === conversationId) open(undefined);
     loadConversations();
