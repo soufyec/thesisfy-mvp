@@ -55,7 +55,7 @@ import { recordSnapshot } from "./process/useSnapshots";
 import SourcesPanel from "./sources/SourcesPanel";
 import EvidencePanel from "./evidence/EvidencePanel";
 import ConsentModal from "../ConsentModal";
-import { IntegrityPill, Modal, Toast } from "../ui";
+import { DeadlineDialog, IntegrityPill, Modal, Toast } from "../ui";
 import { useUser, type Consent } from "../useUser";
 import { api, ApiError, countWordsInText } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
@@ -197,7 +197,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   const [pendingComment, setPendingComment] = useState<{ anchorId: string; quote: string } | null>(null);
   const [confirmPromote, setConfirmPromote] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent" | "specialChars" | "bookmark">(null);
+  const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent" | "specialChars" | "bookmark" | "deadline">(null);
   const [anchors, setAnchors] = useState<AnchorItem[]>([]);
   const [tableMenuAt, setTableMenuAt] = useState<{ x: number; y: number } | null>(null);
   const goToAnchorRef = useRef<(href: string) => void>(() => {});
@@ -1127,6 +1127,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       print: () => window.print(),
       pageSetup: () => setDialog("pageSetup"),
       wordCount: () => setDialog("wordCount"),
+      deadline: () => setDialog(canEdit ? "deadline" : "wordCount"),
       undo: () => c().undo().run(),
       redo: () => c().redo().run(),
       cut: () => document.execCommand("cut"),
@@ -1477,6 +1478,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
         citationStyle={thesis.citationStyle}
         zoom={zoom}
         onWordCount={() => setDialog("wordCount")}
+        deadline={thesis.deadline}
+        onDeadline={canEdit ? () => setDialog("deadline") : undefined}
         workingTab={activeTab !== SUBMISSION ? { title: tabs.find((tb) => tb.id === activeTab)?.title || t("editor.untitledTab"), onGoToSubmission: () => switchTab(SUBMISSION) } : null}
       />
 
@@ -1520,6 +1523,15 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       <TableDialog open={dialog === "table"} onClose={() => setDialog(null)} onSubmit={(rows, cols, header) => editor.chain().focus().insertTable({ rows, cols, withHeaderRow: header }).run()} />
       <PageSetupDialog open={dialog === "pageSetup"} onClose={() => setDialog(null)} value={ws} onSubmit={(v) => (canEdit ? updateThesis({ pageSetup: v }) : setThesis((t) => ({ ...t, pageSetup: v })))} />
       <WordCountDialog open={dialog === "wordCount"} onClose={() => setDialog(null)} stats={stats} thesis={thesis} />
+      <DeadlineDialog
+        open={dialog === "deadline"}
+        onClose={() => setDialog(null)}
+        deadline={thesis.deadline}
+        onSave={async (iso) => {
+          await updateThesis({ deadline: iso || "" }, t(iso ? "deadline.saved" : "deadline.removed"));
+          setThesis((th) => ({ ...th, deadline: iso }));
+        }}
+      />
       <ShareDialog open={dialog === "share"} onClose={() => setDialog(null)} thesis={thesis} />
       <TextPromptDialog open={dialog === "rename"} onClose={() => setDialog(null)} title={t("editor.dialog.renameTitle")} initial={thesis.title} onSubmit={(title) => updateThesis({ title }, t("editor.toast.renamed"))} submitLabel={t("editor.rename")} />
       <TextPromptDialog open={dialog === "saveVersion"} onClose={closeDialogToEditor} title={t("editor.dialog.versionTitle")} label={t("editor.dialog.versionPlaceholder")} onSubmit={async (label) => { await saveNow(); await api(`/api/theses/${thesisId}/versions`, { method: "POST", json: { label } }).catch(() => {}); notify(t("editor.toast.versionSaved"), "success"); loadVersions(); }} submitLabel={t("editor.dialog.versionSubmit")} />

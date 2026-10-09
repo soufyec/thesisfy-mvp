@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Bot, CheckCircle2, ExternalLink, FileText, Flag, Monitor, Smartphone } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Modal, ScoreRing, Toast } from "@/components/ui";
+import { DeadlineChip, Modal, ScoreRing, Toast } from "@/components/ui";
 import { useUser } from "@/components/useUser";
 import { api, statusColors } from "@/lib/client";
 import { useT, useFormat } from "@/lib/i18n/client";
@@ -56,7 +56,7 @@ export default function AdminThesisDetail() {
       <div className="max-w-6xl">
         <div className="text-xs text-gray-400 mb-2"><Link href="/admin/theses" className="hover:text-brand-600">{t("admin.theses.title")}</Link> / {th.studentName}</div>
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
-          <div className="min-w-0"><h1 className="text-2xl font-bold">{th.title}</h1><p className="text-gray-500 mt-1 text-sm">{th.description}</p><div className="flex items-center gap-2 mt-2 flex-wrap text-xs text-gray-500"><span className={statusColors[th.status]}>{statusLabel(t, th.status)}</span><span>{th.studentName}</span><span>· {t("admin.detail.advisor", { name: th.professorName })}</span><span>· {t("admin.detail.wordsOfTarget", { n: fmt.number(th.wordCount), target: fmt.number(th.targetWords) })}</span><span>· {th.citationStyle}</span>{th.deadline && <span>· {t("admin.detail.due", { date: fmt.date(th.deadline) })}</span>}<span>· {t("admin.detail.updated", { ago: ago(th.updatedAt) })}</span></div></div>
+          <div className="min-w-0"><h1 className="text-2xl font-bold">{th.title}</h1><p className="text-gray-500 mt-1 text-sm">{th.description}</p><div className="flex items-center gap-2 mt-2 flex-wrap text-xs text-gray-500"><span className={statusColors[th.status]}>{statusLabel(t, th.status)}</span><span>{th.studentName}</span><span>· {t("admin.detail.advisor", { name: th.professorName })}</span><span>· {t("admin.detail.wordsOfTarget", { n: fmt.number(th.wordCount), target: fmt.number(th.targetWords) })}</span><span>· {th.citationStyle}</span>{th.deadline && <span>· {t("admin.detail.due", { date: fmt.date(th.deadline) })}</span>}{th.deadline && <DeadlineChip deadline={th.deadline} wordCount={th.wordCount} targetWords={th.targetWords} />}<span>· {t("admin.detail.updated", { ago: ago(th.updatedAt) })}</span></div></div>
           <div className="flex items-center gap-3 flex-shrink-0">
             <ScoreRing value={th.integrityScore} size={64} />
             <Link href={`/admin/theses/${th.id}/document`} className="btn-primary !py-2 !px-4 text-sm"><FileText className="w-4 h-4 mr-1" />{t("admin.detail.openDocument")}</Link>

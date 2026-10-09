@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import { DeadlineChip } from "@/components/ui";
 import { api, statusColors } from "@/lib/client";
 import { useT, useFormat } from "@/lib/i18n/client";
 import { plural, statusLabel, timeAgoLabel } from "@/lib/i18n/messages/admin";
 
-interface Thesis { id: string; title: string; status: string; wordCount: number; aiUsagePercent: number; integrityScore: number; studentName: string; professorName: string; updatedAt: string; deadline?: string; openFlags: number; sessionCount: number }
+interface Thesis { id: string; title: string; status: string; wordCount: number; targetWords: number; aiUsagePercent: number; integrityScore: number; studentName: string; professorName: string; updatedAt: string; deadline?: string; openFlags: number; sessionCount: number }
 
 export default function AdminThesesPage() {
   const t = useT();
@@ -42,7 +43,7 @@ export default function AdminThesesPage() {
               <tbody className="divide-y divide-gray-50">
                 {filtered.map((th) => (
                   <tr key={th.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-5"><Link href={`/admin/theses/${th.id}`} className="text-sm font-medium max-w-xs truncate block hover:text-brand-600">{th.title}</Link><div className="text-xs text-gray-400 mt-0.5">{t("admin.theses.meta", { advisor: th.professorName, sessions: plural(t, "admin.sessions", th.sessionCount), ago: timeAgoLabel(t, fmt.date, th.updatedAt) })}</div></td>
+                    <td className="py-3 px-5"><Link href={`/admin/theses/${th.id}`} className="text-sm font-medium max-w-xs truncate block hover:text-brand-600">{th.title}</Link><div className="text-xs text-gray-400 mt-0.5">{t("admin.theses.meta", { advisor: th.professorName, sessions: plural(t, "admin.sessions", th.sessionCount), ago: timeAgoLabel(t, fmt.date, th.updatedAt) })}</div>{th.deadline && <div className="mt-1"><DeadlineChip deadline={th.deadline} wordCount={th.wordCount} targetWords={th.targetWords} withDate /></div>}</td>
                     <td className="py-3 px-5 text-sm text-gray-600">{th.studentName}</td>
                     <td className="py-3 px-5"><span className={statusColors[th.status]}>{statusLabel(t, th.status)}</span></td>
                     <td className="py-3 px-5 text-center"><span className={`text-sm font-bold ${th.integrityScore >= 90 ? "text-green-600" : th.integrityScore >= 70 ? "text-amber-600" : "text-red-600"}`}>{th.integrityScore}%</span></td>

@@ -1,9 +1,11 @@
 "use client";
 
-import { ShieldCheck, StickyNote } from "lucide-react";
+import { CalendarClock, ShieldCheck, StickyNote } from "lucide-react";
 import type { ConsentScopes } from "../useUser";
 import { useFormat, useT } from "@/lib/i18n/client";
 import { richText } from "./types";
+import { deadlineState } from "@/lib/deadline";
+import { DEADLINE_TEXT, useDeadlineLabel } from "../ui";
 
 interface Props {
   /** True while a writing session is recording for the owner. */
@@ -24,6 +26,9 @@ interface Props {
   citationStyle: string;
   zoom: number;
   onWordCount: () => void;
+  /** Thesis deadline (ISO); the chip shows the days left and opens the deadline dialog for the owner. */
+  deadline?: string;
+  onDeadline?: () => void;
   /** Shown instead of the recording phrase while a working tab (not the Final submission) is open. */
   workingTab?: { title: string; onGoToSubmission: () => void } | null;
 }
@@ -44,9 +49,11 @@ function joinList(items: string[], and: string) {
  * Session bar (30px, bottom of the editor): what the current session records, in the student's own consent
  * terms, and the document facts an advisor glances at (status, words, page, citation style).
  */
-export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, advisorName, words, targetWords, pages, citationStyle, zoom, onWordCount, workingTab }: Props) {
+export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, advisorName, words, targetWords, pages, citationStyle, zoom, onWordCount, deadline, onDeadline, workingTab }: Props) {
   const t = useT();
   const fmt = useFormat();
+  const deadlineLabel = useDeadlineLabel();
+  const dl = deadlineState(deadline, words, targetWords);
   const granted = scopes ? SCOPE_WORDS.filter((s) => scopes[s.key]).map((s) => t(s.label)) : [];
   const finalSubmission = t("glossary.finalSubmission");
   const recording = sessionActive && scopes;
@@ -106,6 +113,15 @@ export default function SessionBar({ sessionActive, scopes, onChange, isOwner, r
         {t("editor.session.wordsOf", { words: fmt.number(words), target: fmt.number(targetWords) })}
       </button>
       <span className="flex-shrink-0">{pages === 1 ? t("editor.session.pages_one") : t("editor.session.pages", { n: pages })}</span>
+      {dl ? (
+        <button onClick={onDeadline || onWordCount} className={`flex items-center gap-1 flex-shrink-0 font-medium hover:underline ${DEADLINE_TEXT[dl.tone]}`} title={t("deadline.due", { date: fmt.date(deadline as string) })} aria-label={`${t("deadline.title")}: ${deadlineLabel(dl)}`} data-testid="session-deadline">
+          <CalendarClock className="w-3.5 h-3.5" />{deadlineLabel(dl)}
+        </button>
+      ) : onDeadline ? (
+        <button onClick={onDeadline} className="flex items-center gap-1 flex-shrink-0 hover:text-gray-900" data-testid="session-deadline">
+          <CalendarClock className="w-3.5 h-3.5" />{t("deadline.add")}
+        </button>
+      ) : null}
       <span className="flex-shrink-0">{citationStyle}</span>
       {zoom !== 100 && <span className="flex-shrink-0">{zoom}%</span>}
     </footer>

@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bot, FileText, Plug, Smartphone, Sparkles } from "lucide-react";
 import DashboardLayout, { useTimeAgo } from "@/components/DashboardLayout";
-import { ScoreRing } from "@/components/ui";
+import { DeadlineChip, DeadlineDialog, DEADLINE_TEXT, ScoreRing, useDeadlineLabel } from "@/components/ui";
 import { useUser } from "@/components/useUser";
 import { api, statusColors } from "@/lib/client";
 import { useFormat, useLocale, useT } from "@/lib/i18n/client";
+import { deadlineState } from "@/lib/deadline";
 
 interface Thesis {
   id: string;
@@ -18,6 +19,7 @@ interface Thesis {
   aiUsagePercent: number;
   integrityScore: number;
   deadline?: string;
+  createdAt?: string;
   updatedAt: string;
   professorName: string;
   openFlags: number;
@@ -45,6 +47,14 @@ export default function StudentDashboard() {
   const [theses, setTheses] = useState<Thesis[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deadlineFor, setDeadlineFor] = useState<Thesis | null>(null);
+  const deadlineLabel = useDeadlineLabel();
+
+  const saveDeadline = async (iso: string | undefined) => {
+    if (!deadlineFor) return;
+    await api(`/api/theses/${deadlineFor.id}`, { method: "PUT", json: { deadline: iso || "" } });
+    setTheses((list) => list.map((x) => (x.id === deadlineFor.id ? { ...x, deadline: iso } : x)));
+  };
 
   useEffect(() => {
     Promise.all([api<{ theses: Thesis[] }>("/api/theses"), api<{ stats: Stats }>("/api/stats")])
@@ -97,6 +107,34 @@ export default function StudentDashboard() {
               <div className="flex justify-between text-xs text-gray-500 mb-1"><span>{t("dashboard.home.progress")}</span><span>{t("dashboard.progressWords", { n: format.number(active.wordCount), target: format.number(active.targetWords) })}</span></div>
               <div className="w-full bg-gray-100 rounded-full h-2"><div className="bg-brand-500 h-2 rounded-full transition-all" style={{ width: `${Math.min((active.wordCount / active.targetWords) * 100, 100)}%` }} /></div>
             </div>
+            {(() => {
+              const d = deadlineState(active.deadline, active.wordCount, active.targetWords, active.createdAt);
+              if (!d) {
+                return (
+                  <div className="mt-4 flex items-center justify-between gap-3 text-xs text-gray-500 flex-wrap">
+                    <span>{t("deadline.timeLeft")} · {t("deadline.none")}</span>
+                    <DeadlineChip deadline={undefined} wordCount={active.wordCount} targetWords={active.targetWords} onClick={() => setDeadlineFor(active)} />
+                  </div>
+                );
+              }
+              const bar = { ok: "bg-accent-500", soon: "bg-amber-500", urgent: "bg-red-500", overdue: "bg-red-600" }[d.tone];
+              return (
+                <div className="mt-4" data-testid="deadline-block">
+                  <div className="flex justify-between items-end text-xs text-gray-500 mb-1 gap-3 flex-wrap">
+                    <span>{t("deadline.timeLeft")}</span>
+                    <span className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${DEADLINE_TEXT[d.tone]}`}>{deadlineLabel(d)}</span>
+                      <span>· {t("deadline.due", { date: format.date(active.deadline as string) })}</span>
+                      <button type="button" onClick={() => setDeadlineFor(active)} className="text-brand-600 font-medium hover:underline">{t("deadline.change")}</button>
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2" aria-hidden="true"><div className={`${bar} h-2 rounded-full transition-all`} style={{ width: `${Math.round(d.elapsed * 100)}%` }} /></div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {d.wordsLeft === 0 ? t("deadline.paceDone") : d.daysLeft > 0 ? t("deadline.pace", { n: format.number(d.perDay), week: format.number(d.perWeek) }) : t("deadline.paceNoDays", { n: format.number(d.wordsLeft) })}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -144,7 +182,7 @@ export default function StudentDashboard() {
                 <Link key={th.id} href={`/dashboard/editor/${th.id}`} className="flex items-center justify-between p-4 sm:p-5 hover:bg-gray-50 transition-colors">
                   <div className="min-w-0 flex-1">
                     <h3 className="font-medium text-sm truncate">{th.title}</h3>
-                    <div className="flex items-center gap-3 mt-1 flex-wrap"><span className={statusColors[th.status]}>{t(`dashboard.status.${th.status}`)}</span><span className="text-xs text-gray-400">{words(th.wordCount)}</span>{th.openFlags > 0 && <span className="badge-warning">{notices(th.openFlags)}</span>}</div>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap"><span className={statusColors[th.status]}>{t(`dashboard.status.${th.status}`)}</span><span className="text-xs text-gray-400">{words(th.wordCount)}</span><DeadlineChip deadline={th.deadline} wordCount={th.wordCount} targetWords={th.targetWords} />{th.openFlags > 0 && <span className="badge-warning">{notices(th.openFlags)}</span>}</div>
                   </div>
                   <div className="flex items-center gap-4 ml-4"><div className="text-right hidden sm:block"><div className="text-sm font-semibold text-green-600">{th.integrityScore}%</div><div className="text-xs text-gray-400">{t("glossary.integrity")}</div></div></div>
                 </Link>
@@ -153,6 +191,7 @@ export default function StudentDashboard() {
           )}
         </div>
       </div>
+      <DeadlineDialog open={!!deadlineFor} onClose={() => setDeadlineFor(null)} deadline={deadlineFor?.deadline} onSave={saveDeadline} />
     </DashboardLayout>
   );
 }

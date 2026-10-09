@@ -8,7 +8,7 @@ import type { Translate } from "@/lib/i18n/dictionary";
 import { tableMenuItems } from "./TableMenu";
 
 export type MenuAction =
-  | "new" | "open" | "rename" | "save" | "saveVersion" | "versions" | "share" | "submit" | "dl-docx" | "dl-html" | "dl-md" | "dl-txt" | "print" | "pageSetup" | "wordCount"
+  | "new" | "open" | "rename" | "save" | "saveVersion" | "versions" | "share" | "submit" | "dl-docx" | "dl-html" | "dl-md" | "dl-txt" | "print" | "pageSetup" | "wordCount" | "deadline"
   | "undo" | "redo" | "cut" | "copy" | "paste" | "pastePlain" | "selectAll" | "find"
   | "outline" | "comments" | "ai" | "provenance" | "zoom-50" | "zoom-75" | "zoom-100" | "zoom-125" | "zoom-150" | "fullscreen" | "focus"
   | "image" | "table" | "link" | "comment" | "pageBreak" | "hr" | "date" | "citation" | "toc" | "footnote"
@@ -131,6 +131,7 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
         { sep: true, label: "" },
         { label: t("editor.menu.pageSetup"), action: "pageSetup" },
         { label: t("editor.menu.documentDetails"), action: "wordCount" },
+        ...(ro ? [] : [{ label: t("editor.menu.deadline"), action: "deadline" as const }]),
       ],
     },
     {

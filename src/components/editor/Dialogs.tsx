@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Modal } from "../ui";
+import { Modal, useDeadlineLabel } from "../ui";
+import { deadlineState } from "@/lib/deadline";
 import { useFormat, useT } from "@/lib/i18n/client";
 import { Bookmark, Heading } from "lucide-react";
 import { richText, type ThesisDoc } from "./types";
@@ -138,11 +139,19 @@ export function WordCountDialog({ open, onClose, stats, thesis }: { open: boolea
   const t = useT();
   const fmt = useFormat();
   const total = Math.max(1, thesis.provenance.human + thesis.provenance.paste + thesis.provenance.ai);
+  const deadlineLabel = useDeadlineLabel();
+  const dl = deadlineState(thesis.deadline, thesis.wordCount, thesis.targetWords);
+  const deadlineRows: [string, React.ReactNode][] = dl
+    ? [
+        [t("deadline.title"), `${fmt.date(thesis.deadline as string)} · ${deadlineLabel(dl)}`],
+        [t("deadline.paceLabel"), dl.wordsLeft === 0 ? t("deadline.paceDone") : t("deadline.paceValue", { n: fmt.number(dl.perDay) })],
+      ]
+    : [[t("deadline.title"), t("deadline.notSet")]];
   return (
     <Modal open={open} onClose={onClose} title={t("editor.details.title")} size="sm" footer={<button onClick={onClose} className="btn-primary !py-2 !px-4 text-sm">{t("common.done")}</button>}>
       <table className="w-full text-sm">
         <tbody>
-          {[[t("editor.details.pages"), stats.pages], [t("editor.details.words"), fmt.number(stats.words)], [t("editor.details.characters"), fmt.number(stats.chars)], [t("editor.details.charactersNoSpaces"), fmt.number(stats.charsNoSpaces)], [t("editor.details.paragraphs"), stats.paragraphs], [t("editor.details.headings"), stats.headings], [t("editor.details.readingTime"), t("common.minutes", { n: stats.readingMin })], [t("editor.details.target"), t("editor.details.targetValue", { target: fmt.number(thesis.targetWords), pct: Math.min(100, Math.round((stats.words / thesis.targetWords) * 100)) })], [t("editor.details.aiShare"), `${Math.round((thesis.provenance.ai / total) * 100)}%`], [t("editor.details.pastedShare"), `${Math.round((thesis.provenance.paste / total) * 100)}%`]].map(([k, v]) => (
+          {[[t("editor.details.pages"), stats.pages], [t("editor.details.words"), fmt.number(stats.words)], [t("editor.details.characters"), fmt.number(stats.chars)], [t("editor.details.charactersNoSpaces"), fmt.number(stats.charsNoSpaces)], [t("editor.details.paragraphs"), stats.paragraphs], [t("editor.details.headings"), stats.headings], [t("editor.details.readingTime"), t("common.minutes", { n: stats.readingMin })], [t("editor.details.target"), t("editor.details.targetValue", { target: fmt.number(thesis.targetWords), pct: Math.min(100, Math.round((stats.words / thesis.targetWords) * 100)) })], [t("editor.details.aiShare"), `${Math.round((thesis.provenance.ai / total) * 100)}%`], [t("editor.details.pastedShare"), `${Math.round((thesis.provenance.paste / total) * 100)}%`], ...deadlineRows].map(([k, v]) => (
             <tr key={String(k)} className="border-b border-gray-50"><td className="py-1.5 text-gray-500">{k}</td><td className="py-1.5 text-right font-medium">{v}</td></tr>
           ))}
         </tbody>
