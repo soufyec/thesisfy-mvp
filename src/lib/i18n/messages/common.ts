@@ -80,6 +80,11 @@ const en = {
   "deadline.remove": "Remove deadline",
   "deadline.saved": "Deadline updated.",
   "deadline.removed": "Deadline removed.",
+  "deadline.perDayUnit": "words a day",
+  "deadline.perWeekUnit": "words a week",
+  "deadline.wordsToGo": "{n} words to go.",
+  "deadline.calendarAria": "{month}: past days crossed out, today ringed, deadline flagged",
+  "deadline.calendarEmpty": "Set the date your thesis is due and this calendar will count the days down with the pace you need.",
 
   // Glossary — CLAUDE.md §3
   "glossary.assistant": "Thesisfic AI",
@@ -178,6 +183,11 @@ export const common: Messages<typeof en> = {
     "deadline.remove": "Quitar la fecha de entrega",
     "deadline.saved": "Fecha de entrega actualizada.",
     "deadline.removed": "Fecha de entrega quitada.",
+    "deadline.perDayUnit": "palabras al día",
+    "deadline.perWeekUnit": "palabras a la semana",
+    "deadline.wordsToGo": "Te faltan {n} palabras.",
+    "deadline.calendarAria": "{month}: días pasados tachados, hoy marcado, fecha de entrega señalada",
+    "deadline.calendarEmpty": "Pon la fecha en que entregas la tesis y este calendario contará los días que quedan con el ritmo que necesitas.",
 
     "glossary.assistant": "Thesisfic AI",
     "glossary.aiAssistant": "Asistente de IA",
@@ -272,6 +282,11 @@ export const common: Messages<typeof en> = {
     "deadline.remove": "Retirer l'échéance",
     "deadline.saved": "Échéance mise à jour.",
     "deadline.removed": "Échéance retirée.",
+    "deadline.perDayUnit": "mots par jour",
+    "deadline.perWeekUnit": "mots par semaine",
+    "deadline.wordsToGo": "Il vous reste {n} mots.",
+    "deadline.calendarAria": "{month} : jours passés barrés, aujourd'hui entouré, échéance signalée",
+    "deadline.calendarEmpty": "Indiquez la date de dépôt de votre thèse et ce calendrier comptera les jours restants avec le rythme nécessaire.",
 
     "glossary.assistant": "Thesisfic AI",
     "glossary.aiAssistant": "Assistant IA",

@@ -247,6 +247,8 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 /* Session bar recording dot */
 @keyframes session-pulse { 50% { opacity: 0.45; } }
 .session-dot { animation: session-pulse 2.4s ease-in-out infinite; }
+/* Deadline calendar: a hand-struck diagonal line over the days already gone. */
+.day-crossed::after { content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 1.5px; background: theme("colors.gray.500"); transform: rotate(-40deg); border-radius: 1px; }
 @media (prefers-reduced-motion: reduce) { .session-dot { animation: none; } }
 
 /* Provenance gutter: labels and bars in the left margin, notes in the right margin of the sheet */
