@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
+import { canAccessThesis } from "@/lib/auth";
+import { notifyUser } from "@/lib/notify";
 import { refreshThesisMetrics } from "@/lib/integrity";
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
@@ -17,13 +19,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (typeof body.studentNote === "string") {
       flag.description += `\n\nStudent response: ${body.studentNote.trim()}`;
       db.persist();
-      if (thesis.professorId) db.notifications.create({ userId: thesis.professorId, title: "Student responded to a notice", message: body.studentNote.slice(0, 100), type: "flag", link: `/admin/theses/${thesis.id}` });
+      if (thesis.professorId) notifyUser(thesis.professorId, "notif.studentResponded", { name: r.user.name, note: body.studentNote.slice(0, 100) }, { type: "flag", link: `/admin/theses/${thesis.id}` });
     }
     return json({ flag });
   }
 
+  if (!thesis || !canAccessThesis(r.user, thesis.id)) return error("Forbidden", 403);
   const resolved = db.flags.resolve(flag.id, r.user.id, body.note);
   refreshThesisMetrics(flag.thesisId);
-  if (thesis) db.notifications.create({ userId: thesis.studentId, title: "Notice resolved", message: `${r.user.name} resolved a notice on "${thesis.title.slice(0, 40)}".`, type: "success", link: `/dashboard/editor/${thesis.id}` });
+  notifyUser(thesis.studentId, "notif.noticeResolved", { name: r.user.name, title: thesis.title.slice(0, 40) }, { type: "success", link: `/dashboard/editor/${thesis.id}` });
   return json({ flag: resolved });
 }

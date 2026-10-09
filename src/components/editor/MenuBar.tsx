@@ -105,7 +105,7 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
     {
       title: t("editor.menu.file"),
       items: [
-        { label: t("editor.menu.newThesis"), action: "new" },
+        ...(ro ? [] : [{ label: t("editor.menu.newThesis"), action: "new" as const }]),
         { label: t("editor.menu.openTheses"), action: "open" },
         { label: t("editor.rename"), action: "rename", disabled: ro },
         { sep: true, label: "" },
@@ -113,7 +113,7 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
         { label: t("editor.menu.saveVersion"), action: "saveVersion", disabled: ro },
         { label: t("editor.menu.versionHistory"), action: "versions", shortcut: `${mod}⌥⇧H` },
         { sep: true, label: "" },
-        { label: t("editor.menu.shareAdvisor"), action: "share" },
+        ...(ro ? [] : [{ label: t("editor.menu.shareAdvisor"), action: "share" as const }]),
         { label: t("editor.menu.submit"), action: "submit", disabled: ro },
         { sep: true, label: "" },
         {

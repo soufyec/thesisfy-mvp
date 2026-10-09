@@ -4,5 +4,5 @@ import { LocaleProvider } from "@/lib/i18n/client";
 export const metadata: Metadata = { title: "Thesisfic — Équipe", robots: { index: false } };
 
 export default function TeamLayout({ children }: { children: React.ReactNode }) {
-  return <LocaleProvider locale="fr">{children}</LocaleProvider>;
+  return <LocaleProvider locale="fr" lock>{children}</LocaleProvider>;
 }

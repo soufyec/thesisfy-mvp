@@ -1,3 +1,4 @@
+import { notifyUser } from "@/lib/notify";
 import { db, InstitutionModel, ModelBackend, Provider } from "../db";
 import { encrypt } from "../crypto";
 import { BACKEND_META, BACKEND_PROVIDERS, institutionModelReady, PROVIDER_META } from "./providers";
@@ -90,7 +91,7 @@ export function maybeAlertBudget(university: string) {
   if (spent < (f.monthlyBudget * f.alertPercent) / 100) return;
   db.aiAccess.updateFunding(university, { alertedMonth: month });
   for (const admin of db.users.getByUniversity(university).filter((u) => u.role === "admin")) {
-    db.notifications.create({ userId: admin.id, title: "AI budget alert", message: `Students have used ${Math.round((spent / f.monthlyBudget) * 100)}% of this month's AI budget (${spent.toFixed(2)} of ${f.monthlyBudget} ${f.currency}).`, type: "warning", link: "/admin/ai-access" });
+    notifyUser(admin.id, "notif.budgetAlert", { pct: Math.round((spent / f.monthlyBudget) * 100), spent: spent.toFixed(2), budget: f.monthlyBudget, currency: f.currency }, { type: "warning", link: "/admin/ai-access" });
   }
 }
 

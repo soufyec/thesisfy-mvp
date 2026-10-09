@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
+import { notifyUser } from "@/lib/notify";
 import { db } from "@/lib/db";
 import { error, json, requireStaff } from "@/lib/api";
 
@@ -46,6 +47,6 @@ export async function POST(request: NextRequest) {
     university: r.user.university,
     avatar: body.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase(),
   });
-  db.notifications.create({ userId: user.id, title: "Welcome to Thesisfic", message: `${r.user.name} invited you to ${r.user.university}'s Thesisfic workspace.`, type: "info" });
+  notifyUser(user.id, "notif.welcome", { name: r.user.name, university: r.user.university }, { type: "info" });
   return json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, temporaryPassword: temp }, 201);
 }

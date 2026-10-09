@@ -34,15 +34,17 @@ export default function AdminThesisDetail() {
   const [resolve, setResolve] = useState<{ id: string; note: string } | null>(null);
   const [review, setReview] = useState<{ status: string; note: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; kind?: "info" | "success" | "error" } | null>(null);
+  const [missing, setMissing] = useState(false);
 
   const load = useCallback(() => {
-    api<Detail>(`/api/theses/${params.id}`).then(setD).catch(() => {});
+    api<Detail>(`/api/theses/${params.id}`).then(setD).catch(() => setMissing(true));
     api<{ sessions: Session[] }>(`/api/theses/${params.id}/sessions`).then((r) => setSessions(r.sessions)).catch(() => {});
   }, [params.id]);
   useEffect(() => {
     load();
   }, [load]);
 
+  if (missing) return <DashboardLayout><div className="card p-8 max-w-lg"><h1 className="text-lg font-semibold mb-2">{t("admin.detail.notFound")}</h1><p className="text-sm text-gray-500 mb-4">{t("admin.detail.notFoundHelp")}</p><Link href="/admin/theses" className="btn-outline !py-2 !px-4 text-sm">{t("common.back")}</Link></div></DashboardLayout>;
   if (!d) return <DashboardLayout><div className="text-gray-400 text-sm">{t("common.loading")}…</div></DashboardLayout>;
   const th = d.thesis;
   const total = Math.max(1, th.provenance.human + th.provenance.paste + th.provenance.ai);

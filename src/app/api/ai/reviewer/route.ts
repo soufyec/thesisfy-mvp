@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notifyUser } from "@/lib/notify";
 import { db, Comment } from "@/lib/db";
 import { maybeAlertBudget } from "@/lib/ai/funding";
 import { canAccessThesis } from "@/lib/auth";
@@ -195,13 +196,7 @@ export async function PATCH(request: NextRequest) {
     if (run.userId !== r.user.id) return error("Only the person who requested the review can share it", 403);
     if (!thesis.professorId) return error("This thesis has no advisor assigned yet.", 409);
     const open = db.comments.list(thesis.id).filter((c) => c.source === "ai" && c.reviewRunId === run.id && !c.resolved).length;
-    db.notifications.create({
-      userId: thesis.professorId,
-      title: "AI review shared",
-      message: `${r.user.name} shared an AI review of ${run.scope === "document" ? "the submission" : run.scopeLabel ? `"${run.scopeLabel}"` : `a ${run.scope}`}: ${run.commentCount} comment${run.commentCount === 1 ? "" : "s"}, ${open} still open.`,
-      type: "comment",
-      link: `/admin/theses/${thesis.id}`,
-    });
+    notifyUser(thesis.professorId, "notif.reviewShared", { name: r.user.name, scope: run.scope === "document" ? "the submission" : run.scopeLabel ? `"${run.scopeLabel}"` : run.scope, n: run.commentCount }, { type: "comment", link: `/admin/theses/${thesis.id}` });
     return json({ shared: true, runId: run.id, sharedAt: new Date().toISOString() });
   }
 

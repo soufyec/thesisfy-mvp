@@ -66,7 +66,7 @@ export function useUser() {
   const refresh = useCallback(async () => {
     try {
       const data = await api<MeResponse>("/api/auth/me");
-      setMeCache(data);
+      setMeCache(data.user ? data : null);
       setError(null);
     } catch (e) {
       setError((e as Error).message);

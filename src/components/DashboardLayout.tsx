@@ -123,7 +123,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
 
   if (!user) return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 text-sm">{t("common.loading")}…</div>;
 
-  const items = navItems || (user.role === "student" ? studentNav : adminNav);
+  const items = (navItems || (user.role === "student" ? studentNav : adminNav)).filter((i) => !i.adminOnly || user.role === "admin");
   const mobileItems = items.filter((i) => i.mobile).slice(0, 5);
   const initials = user.avatar || user.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
   const isActive = (href: string) => (href === "/dashboard" || href === "/admin" ? pathname === href : pathname.startsWith(href));

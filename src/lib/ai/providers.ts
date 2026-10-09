@@ -87,7 +87,7 @@ function institutionKey(m: InstitutionModel): string | undefined {
 
 /** Is an institution model usable right now (configured and, for the thesisfic backend, backed by a Thesisfic key)? */
 export function institutionModelReady(m: InstitutionModel) {
-  return m.enabled && !!institutionKey(m);
+  return m.enabled && !!institutionKey(m) && !m.lastError;
 }
 
 export interface Allowance {

@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import { notifyUser } from "@/lib/notify";
+import { translator } from "@/lib/i18n/dictionary";
 import { db, ThesisStatus } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
@@ -87,10 +89,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const studentAllowed: ThesisStatus[] = ["draft", "in_progress", "under_review"];
     if (!isOwner || studentAllowed.includes(body.status)) patch.status = body.status;
     if (body.status === "under_review" && thesis.professorId) {
-      db.notifications.create({ userId: thesis.professorId, title: "Thesis submitted for review", message: `${db.users.findById(thesis.studentId)?.name} submitted "${thesis.title}" for review.`, type: "info", link: `/admin/theses/${thesis.id}` });
+      notifyUser(thesis.professorId, "notif.submitted", { name: db.users.findById(thesis.studentId)?.name || "", title: thesis.title }, { type: "info", link: `/admin/theses/${thesis.id}` });
     }
     if ((body.status === "revision_requested" || body.status === "approved") && !isOwner) {
-      db.notifications.create({ userId: thesis.studentId, title: body.status === "approved" ? "Thesis approved" : "Revision requested", message: body.reviewNote || `${r.user.name} updated the status of "${thesis.title}".`, type: body.status === "approved" ? "success" : "warning", link: `/dashboard/editor/${thesis.id}` });
+      notifyUser(thesis.studentId, body.status === "approved" ? "notif.approved" : "notif.revision", { note: body.reviewNote || translator((db.users.findById(thesis.studentId)?.preferences.language as "en") || "en")("notif.statusUpdated.message", { name: r.user.name, title: thesis.title }) }, { type: body.status === "approved" ? "success" : "warning", link: `/dashboard/editor/${thesis.id}` });
     }
   }
 

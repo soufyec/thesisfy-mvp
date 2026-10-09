@@ -4,7 +4,8 @@ import { error, json, requireUser } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
   const r = await requireUser(request);
-  if ("response" in r) return r.response;
+  // Public pages ask who is signed in; "nobody" is an answer, not an error.
+  if ("response" in r) return json({ user: null });
   const user = r.user;
   return json({
     user: publicUser(user),

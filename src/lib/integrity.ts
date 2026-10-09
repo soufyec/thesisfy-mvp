@@ -1,4 +1,5 @@
 import { countWords, db, IntegrityFlag, Policy, Thesis, WritingSession } from "./db";
+import { notifyUser } from "./notify";
 
 export type IntegrityFix = "attribute_paste" | "reduce_ai" | "open_notice" | "none";
 
@@ -159,8 +160,8 @@ function notifyFlags(session: WritingSession, created: IntegrityFlag[]) {
     db.sessions.addEvent(session.id, "flag", { flagId: f.id, type: f.type, severity: f.severity });
     const thesis = db.theses.findById(session.thesisId);
     if (thesis) {
-      db.notifications.create({ userId: thesis.studentId, title: "Integrity notice", message: f.description, type: "flag", link: `/dashboard/editor/${thesis.id}` });
-      if (thesis.professorId) db.notifications.create({ userId: thesis.professorId, title: `Notice on "${thesis.title.slice(0, 40)}…"`, message: f.description, type: "flag", link: `/admin/theses/${thesis.id}` });
+      notifyUser(thesis.studentId, "notif.newNotice", { description: f.description }, { type: "flag", link: `/dashboard/editor/${thesis.id}` });
+      if (thesis.professorId) notifyUser(thesis.professorId, "notif.newNoticeAdvisor", { title: thesis.title.slice(0, 40), description: f.description }, { type: "flag", link: `/admin/theses/${thesis.id}` });
     }
   }
   if (created.length) refreshThesisMetrics(session.thesisId);

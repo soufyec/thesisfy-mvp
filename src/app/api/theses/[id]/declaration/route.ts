@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { notifyUser } from "@/lib/notify";
 import { db } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
@@ -100,6 +101,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
   const updated = db.declarations.update(existing.id, patch);
   if (!updated) return error("Declaration not found", 404);
-  if (patch.signedAt && thesis.professorId) db.notifications.create({ userId: thesis.professorId, title: "AI-use declaration signed", message: `${r.user.name} signed the AI-use declaration (v${updated.version}) for "${thesis.title}".`, type: "info", link: `/admin/theses/${thesis.id}` });
+  if (patch.signedAt && thesis.professorId) notifyUser(thesis.professorId, "notif.declarationSigned", { name: r.user.name, version: updated.version, title: thesis.title }, { type: "info", link: `/admin/theses/${thesis.id}` });
   return json({ declaration: { ...updated, signedByName: updated.signedBy ? db.users.findById(updated.signedBy)?.name : undefined } });
 }

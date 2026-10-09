@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, Bot, CreditCard, FileBarChart, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, BookOpen, Bot, CreditCard, FileBarChart, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users, Inbox } from "lucide-react";
 
 export interface NavItem {
   /** i18n key, rendered with `t(item.label)`. */
@@ -8,6 +8,8 @@ export interface NavItem {
   href: string;
   icon: React.ReactNode;
   mobile?: boolean; // shown in the mobile bottom bar
+  /** Administrators only (professors share the rest of the admin navigation). */
+  adminOnly?: boolean;
 }
 
 const cls = "w-5 h-5";
@@ -31,4 +33,5 @@ export const adminNav: NavItem[] = [
   { label: "dashboard.nav.aiAccess", shortLabel: "dashboard.nav.short.aiAccess", href: "/admin/ai-access", icon: <CreditCard className={cls} /> },
   { label: "dashboard.nav.library", shortLabel: "dashboard.nav.short.library", href: "/admin/library", icon: <Library className={cls} /> },
   { label: "report.nav.title", href: "/admin/report", icon: <FileBarChart className={cls} /> },
+  { label: "admin.leads.nav", href: "/admin/pilot-requests", icon: <Inbox className={cls} />, adminOnly: true },
 ];

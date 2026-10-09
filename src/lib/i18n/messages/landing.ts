@@ -115,6 +115,8 @@ const en = {
   "landing.pilotForm.note": "Pilots are scoped per department. No public pricing yet.",
   "landing.pilotForm.sent": "Thanks. We will reply from a thesisfic.edu address within two working days.",
   "landing.pilotForm.errorGeneric": "We could not record your request. Try again in a moment.",
+  "landing.pilotForm.errorEmail": "Enter a valid work email address.",
+  "landing.pilotForm.errorInstitution": "Tell us which institution you are writing from.",
   "landing.pilotForm.errorNetwork": "Network error. Check your connection and try again.",
 
   // Quality seal
@@ -306,6 +308,8 @@ export const landing: Messages<typeof en> = {
     "landing.pilotForm.note": "Los pilotos se plantean por departamento. Todavía no hay precios públicos.",
     "landing.pilotForm.sent": "Gracias. Te responderemos desde una dirección de thesisfic.edu en un máximo de dos días laborables.",
     "landing.pilotForm.errorGeneric": "No hemos podido registrar tu solicitud. Inténtalo de nuevo en un momento.",
+    "landing.pilotForm.errorEmail": "Introduce un correo de trabajo válido.",
+    "landing.pilotForm.errorInstitution": "Indícanos desde qué institución escribes.",
     "landing.pilotForm.errorNetwork": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
 
     "landing.seal.aria": "Sello de calidad académica de {name}",
@@ -489,6 +493,8 @@ export const landing: Messages<typeof en> = {
     "landing.pilotForm.note": "Les pilotes sont définis par département. Pas encore de tarif public.",
     "landing.pilotForm.sent": "Merci. Nous vous répondrons depuis une adresse thesisfic.edu sous deux jours ouvrés.",
     "landing.pilotForm.errorGeneric": "Nous n'avons pas pu enregistrer votre demande. Réessayez dans un instant.",
+    "landing.pilotForm.errorEmail": "Saisissez une adresse e-mail professionnelle valide.",
+    "landing.pilotForm.errorInstitution": "Indiquez l'établissement depuis lequel vous écrivez.",
     "landing.pilotForm.errorNetwork": "Erreur réseau. Vérifiez votre connexion et réessayez.",
 
     "landing.seal.aria": "Sceau de qualité académique de {name}",

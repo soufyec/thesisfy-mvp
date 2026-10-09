@@ -1,5 +1,6 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { notifyUser } from "@/lib/notify";
 import { error, json, requireUser } from "@/lib/api";
 
 const ROLES = ["integrity_office", "dean", "library", "other"] as const;
@@ -11,12 +12,12 @@ export async function POST(request: NextRequest) {
   const institution = String(body.institution || "").trim().slice(0, 160);
   const email = String(body.email || "").trim().toLowerCase().slice(0, 160);
   const role = (ROLES as readonly string[]).includes(body.role) ? (body.role as (typeof ROLES)[number]) : "other";
-  if (institution.length < 2) return error("Tell us which institution you are writing from.");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return error("Enter a valid work email.");
+  if (institution.length < 2) return NextResponse.json({ error: "Tell us which institution you are writing from.", code: "institution" }, { status: 400 });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return NextResponse.json({ error: "Enter a valid work email.", code: "email" }, { status: 400 });
   const lead = db.leads.create({ institution, email, role, message: typeof body.message === "string" ? body.message.slice(0, 2000) : undefined });
   // Let the demo administrators know a pilot was requested.
   for (const admin of db.users.getAll().filter((u) => u.role === "admin")) {
-    db.notifications.create({ userId: admin.id, title: "Pilot request", message: `${institution} (${email}) asked for a pilot.`, type: "info" });
+    notifyUser(admin.id, "notif.pilotRequest", { institution, email }, { type: "info", link: "/admin/pilot-requests" });
   }
   return json({ ok: true, id: lead.id }, 201);
 }

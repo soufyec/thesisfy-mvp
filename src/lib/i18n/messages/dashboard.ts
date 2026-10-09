@@ -18,7 +18,7 @@ const en = {
   "dashboard.nav.aiAccess": "AI access & billing",
   "dashboard.nav.short.copilot": "Copilot",
   "dashboard.nav.short.settings": "Settings",
-  "dashboard.nav.short.notices": "Flags",
+  "dashboard.nav.short.notices": "Notices",
   "dashboard.nav.short.library": "Databases",
   "dashboard.nav.short.aiAccess": "AI billing",
   // Layout

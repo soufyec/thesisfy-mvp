@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { notifyUser } from "@/lib/notify";
 import { db } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
@@ -45,6 +46,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   // AI reviewer comments are the student's own request: no notification to the advisor until the student shares them.
   if (ai) return json({ comment: withNames(c) }, 201);
   const target = r.user.id === thesis.studentId ? thesis.professorId : thesis.studentId;
-  if (target) db.notifications.create({ userId: target, title: "New comment", message: `${r.user.name}: ${c.text.slice(0, 80)}`, type: "comment", link: r.user.id === thesis.studentId ? `/admin/theses/${thesis.id}` : `/dashboard/editor/${thesis.id}` });
+  if (target) notifyUser(target, "notif.newComment", { name: r.user.name, text: c.text.slice(0, 80) }, { type: "comment", link: r.user.id === thesis.studentId ? `/admin/theses/${thesis.id}` : `/dashboard/editor/${thesis.id}` });
   return json({ comment: withNames(c) }, 201);
 }

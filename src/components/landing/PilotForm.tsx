@@ -32,7 +32,7 @@ export default function PilotForm() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || t("landing.pilotForm.errorGeneric"));
+        setError(data.code === "email" ? t("landing.pilotForm.errorEmail") : data.code === "institution" ? t("landing.pilotForm.errorInstitution") : t("landing.pilotForm.errorGeneric"));
         setStatus("idle");
         return;
       }

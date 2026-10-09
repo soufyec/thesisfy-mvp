@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { DEFAULT_LOCALE, isLocale, Locale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, LOCALE_TAGS, Vars } from "./index";
 import { translate, Translate } from "./dictionary";
 
@@ -25,23 +25,39 @@ export function writeLocaleCookie(locale: Locale) {
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
 }
 
-export function LocaleProvider({ locale: initial, children }: { locale: Locale; children: React.ReactNode }) {
+export function LocaleProvider({ locale: initial, children, lock = false }: { locale: Locale; children: React.ReactNode; lock?: boolean }) {
   const [locale, setLocaleState] = useState<Locale>(isLocale(initial) ? initial : DEFAULT_LOCALE);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    document.documentElement.lang = locale;
-  }, [locale]);
+    // A nested provider (the French-only questionnaire) locks the document language; the root one then leaves it alone.
+    const el = document.documentElement;
+    if (lock) {
+      el.lang = locale;
+      el.dataset.langLock = locale;
+      return () => {
+        delete el.dataset.langLock;
+      };
+    }
+    if (!el.dataset.langLock) el.lang = locale;
+  }, [locale, lock]);
 
   const setLocale = useCallback(
     (next: Locale) => {
       if (!isLocale(next) || next === locale) return;
       writeLocaleCookie(next);
       setLocaleState(next);
+      // On a language-prefixed URL (/es, /fr/login) the prefix would rewrite the cookie back: move to the new prefix.
+      const m = (pathname || "").match(/^\/(en|es|fr)(\/.*)?$/);
+      if (m) {
+        router.push(`/${next}${m[2] || ""}`);
+        return;
+      }
       // Server components (landing, metadata) re-render with the new cookie; client components re-render from context.
       router.refresh();
     },
-    [locale, router],
+    [locale, router, pathname],
   );
 
   const value = useMemo<LocaleContextValue>(

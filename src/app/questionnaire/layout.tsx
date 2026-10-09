@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function QuestionnaireLayout({ children }: { children: React.ReactNode }) {
-  return <LocaleProvider locale="fr">{children}</LocaleProvider>;
+  return <LocaleProvider locale="fr" lock>{children}</LocaleProvider>;
 }

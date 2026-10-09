@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { AIFunding, db } from "@/lib/db";
-import { error, json, requireUser } from "@/lib/api";
+import { error, json, requireStaff } from "@/lib/api";
 import { allowanceFor } from "@/lib/ai/providers";
 import { publicModel, spendSummary } from "@/lib/ai/funding";
 
@@ -9,7 +9,7 @@ import { publicModel, spendSummary } from "@/lib/ai/funding";
  * Students see the models and their own allowance; administrators also see spend and can change the configuration.
  */
 export async function GET(request: NextRequest) {
-  const r = await requireUser(request);
+  const r = await requireStaff(request);
   if ("response" in r) return r.response;
   const uni = r.user.university;
   const funding = db.aiAccess.funding(uni);
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 /** Administrators update who pays and the limits. */
 export async function PUT(request: NextRequest) {
-  const r = await requireUser(request);
+  const r = await requireStaff(request);
   if ("response" in r) return r.response;
   if (r.user.role !== "admin") return error("Only administrators can change AI funding", 403);
   const body = await request.json().catch(() => null);
