@@ -110,6 +110,7 @@ const en = {
   "assistant.cost.aiWords_one": "1 AI-assisted word",
   "assistant.cost.withLimit": "Inserting {noun} adds **{words}**. Your AI share goes from **{cur}% to {next}%** of the {limit}% your institution allows. It is marked in the document and visible to your advisor.",
   "assistant.cost.noLimit": "Inserting {noun} adds **{words}**. It is marked as AI-assisted wherever it goes and counts toward your institution's AI limit.",
+  "assistant.cost.notes": "Keeping {noun} as notes adds **{words}** to your Research notes tab. It is marked as AI-assisted there and does not count toward the Final submission's AI share.",
   "assistant.cost.billedTo": "Billed to {payer} (AI budget).",
   "assistant.cost.over": "This insertion would take you to {next}%, above the {limit}% limit.",
 
@@ -294,6 +295,7 @@ export const assistant: Messages<typeof en> = {
     "assistant.cost.aiWords_one": "1 palabra con ayuda de IA",
     "assistant.cost.withLimit": "Insertar {noun} añade **{words}**. Tu porcentaje de IA pasa de **{cur}% a {next}%** del {limit}% que permite tu institución. Queda marcado en el documento y es visible para tu tutor.",
     "assistant.cost.noLimit": "Insertar {noun} añade **{words}**. Queda marcado como «Con ayuda de IA» dondequiera que se inserte y cuenta para el límite de IA de tu institución.",
+    "assistant.cost.notes": "Guardar {noun} como notas añade **{words}** a tu pestaña Research notes. Allí queda marcado como con ayuda de IA y no cuenta para la parte de IA de la Entrega final.",
     "assistant.cost.billedTo": "Se factura a {payer} (presupuesto de IA).",
     "assistant.cost.over": "Esta inserción te llevaría al {next}%, por encima del límite del {limit}%.",
 
@@ -469,6 +471,7 @@ export const assistant: Messages<typeof en> = {
     "assistant.cost.aiWords_one": "1 mot assisté par IA",
     "assistant.cost.withLimit": "Insérer {noun} ajoute **{words}**. Votre part d'IA passe de **{cur} % à {next} %** des {limit} % autorisés par votre établissement. Le texte est marqué dans le document et visible par votre directeur de thèse.",
     "assistant.cost.noLimit": "Insérer {noun} ajoute **{words}**. Le texte est marqué « Assisté par IA » où qu'il soit inséré et compte dans la limite d'IA de votre établissement.",
+    "assistant.cost.notes": "Conserver {noun} en notes ajoute **{words}** à votre onglet Research notes. Le texte y est marqué comme assisté par IA et ne compte pas dans la part d'IA du Dépôt final.",
     "assistant.cost.billedTo": "Facturé à {payer} (budget IA).",
     "assistant.cost.over": "Cette insertion vous porterait à {next} %, au-dessus de la limite de {limit} %.",
 

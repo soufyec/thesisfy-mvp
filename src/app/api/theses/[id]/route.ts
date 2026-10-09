@@ -99,6 +99,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   const updated = db.theses.update(thesis.id, patch);
   if (!updated) return error("Thesis not found", 404);
   const newFlags = [];
+  const openBefore = db.flags.listByThesis(thesis.id).filter((f) => !f.resolved).map((f) => f.id);
 
   if (patch.content !== undefined) {
     const last = db.versions.list(thesis.id)[0];
@@ -118,7 +119,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   // The pill and the ledger read these same numbers: the response carries them after every save.
   const metrics = thesisMetrics(thesis.id);
-  return json({ thesis: { ...updated, content: undefined, sessions: undefined, tabs: undefined, integrityScore: metrics?.integrityScore ?? updated.integrityScore, aiUsagePercent: metrics?.aiUsagePercent ?? updated.aiUsagePercent }, integrityBreakdown: metrics?.integrityBreakdown, flags: newFlags });
+  return json({ thesis: { ...updated, content: undefined, sessions: undefined, tabs: undefined, integrityScore: metrics?.integrityScore ?? updated.integrityScore, aiUsagePercent: metrics?.aiUsagePercent ?? updated.aiUsagePercent }, integrityBreakdown: metrics?.integrityBreakdown, flags: newFlags, resolvedFlagIds: openBefore.filter((id) => db.flags.listByThesis(thesis.id).some((f) => f.id === id && f.resolved)) });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {

@@ -109,7 +109,11 @@ export function TableDialog({ open, onClose, onSubmit }: { open: boolean; onClos
 export function PageSetupDialog({ open, onClose, value, onSubmit }: { open: boolean; onClose: () => void; value: ThesisDoc["pageSetup"]; onSubmit: (v: ThesisDoc["pageSetup"]) => void }) {
   const t = useT();
   const [v, setV] = useState(value);
-  useEffect(() => setV(value), [value, open]);
+  // Reset only when the dialog opens: an autosave that lands while it is open must not wipe what is being typed.
+  useEffect(() => {
+    if (open) setV(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   return (
     <Modal open={open} onClose={onClose} title={t("editor.pageSetup.title")} size="sm" footer={<><button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button><button onClick={() => { onSubmit(v); onClose(); }} className="btn-primary !py-2 !px-4 text-sm">{t("editor.ok")}</button></>}>
       <div className="space-y-4 text-sm">

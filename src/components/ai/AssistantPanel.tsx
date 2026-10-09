@@ -508,7 +508,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           <span className="text-xs font-semibold text-prov-ai-deep">{t("assistant.cost.title")}</span>
         </div>
         <div className="text-[12.5px] leading-normal text-gray-700">
-          {ctx ? rich(t("assistant.cost.withLimit", { noun, words, cur, next, limit: ctx.limitPct })) : rich(t("assistant.cost.noLimit", { noun, words }))}
+          {pending.action === "notes" ? rich(t("assistant.cost.notes", { noun, words })) : ctx ? rich(t("assistant.cost.withLimit", { noun, words, cur, next, limit: ctx.limitPct })) : rich(t("assistant.cost.noLimit", { noun, words }))}
           {ctx?.payer && <> {t("assistant.cost.billedTo", { payer: payerLabel(ctx.payer) })}</>}
           {over && ctx && <div className="mt-1.5 text-prov-ai-deep font-medium">{t("assistant.cost.over", { next, limit: ctx.limitPct })}</div>}
         </div>
@@ -749,7 +749,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             ) : (
               <p>
                 <strong className="text-gray-700">{placeholderLabel}</strong>
-                {` — ${modeDescription.charAt(0).toLowerCase()}${modeDescription.slice(1)}${/[.?!…]$/.test(modeDescription) ? "" : "."}`}
+                {` — ${modeDescription.replace(/^([^A-Za-zÀ-ÿ]*)([A-ZÀ-Ý])/, (_m, p, c) => p + c.toLowerCase())}${/[.?!…]$/.test(modeDescription) ? "" : "."}`}
               </p>
             )}
             <div className="flex flex-wrap gap-1.5">

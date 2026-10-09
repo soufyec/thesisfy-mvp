@@ -341,6 +341,8 @@ export async function htmlToDocx(html: string, opts: { title: string; author?: s
 
 /** Wraps document HTML in a printable standalone page (used for "Download as HTML" and print preview). */
 export function standaloneHtml(html: string, title: string) {
+  // Links to headings or bookmarks inside the document must not open a new tab in the exported file.
+  html = html.replace(/<a\b([^>]*href="#[^"]*"[^>]*)>/gi, (m, attrs: string) => `<a${attrs.replace(/\s+target="[^"]*"/i, "").replace(/\s+rel="[^"]*"/i, "")}>`);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, "&lt;")}</title>
 <style>body{font-family:Georgia,serif;max-width:17cm;margin:2.54cm auto;line-height:1.6;color:#111}h1{font-size:1.8em}h2{font-size:1.4em}h3{font-size:1.15em}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4px 8px}img{max-width:100%;height:auto}figcaption{font-size:.85em;color:#555;text-align:center;margin-top:.3em}.page-break{page-break-after:always}[data-provenance]{border-bottom:1px dotted #999}</style></head><body>${html}</body></html>`;
 }

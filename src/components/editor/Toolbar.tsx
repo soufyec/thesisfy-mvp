@@ -197,7 +197,9 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
   return (
     <div className="flex items-center px-2.5 h-10 bg-white border-b border-gray-200 whitespace-nowrap flex-shrink-0" role="toolbar" aria-label={t("editor.toolbar.label")}>
       {/* The tools scroll sideways when the window is narrow; the Provenance pill stays pinned at the right. */}
-      <div className="flex items-center gap-px flex-1 min-w-0 h-full overflow-x-auto no-scrollbar">
+      <div className="relative flex-1 min-w-0 h-full">
+      {compact && <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-white to-transparent z-[1]" aria-hidden="true" />}
+      <div className="flex items-center gap-px h-full overflow-x-auto no-scrollbar">
       <Btn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title={`${t("editor.fmt.undo")} (Ctrl+Z)`}><Undo2 className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title={`${t("editor.fmt.redo")} (Ctrl+Y)`}><Redo2 className="w-4 h-4" /></Btn>
       {!compact && <Btn onClick={onPrint} title={`${t("editor.fmt.print")} (Ctrl+P)`}><Printer className="w-4 h-4" /></Btn>}
@@ -265,6 +267,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
       <Btn onClick={() => editor.chain().focus().toggleSuperscript().run()} active={editor.isActive("superscript")} title={t("editor.fmt.superscript")}><Superscript className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().toggleSubscript().run()} active={editor.isActive("subscript")} title={t("editor.fmt.subscript")}><Subscript className="w-4 h-4" /></Btn>
       <Btn onClick={() => editor.chain().focus().clearFormatting().clearNodes().run()} title={`${t("editor.fmt.clear")} (Ctrl+\\)`}><RemoveFormatting className="w-4 h-4" /></Btn>
+      </div>
       </div>
       {provenance && <ProvenanceToggle on={provenance.on} onToggle={provenance.onToggle} locked={provenance.locked} />}
     </div>

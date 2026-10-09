@@ -183,6 +183,10 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     }
   };
   const [spellcheck, setSpellcheck] = useState(true);
+  useEffect(() => {
+    const dom = editorRef.current?.view.dom as HTMLElement | undefined;
+    if (dom) dom.spellcheck = spellcheck;
+  }, [spellcheck]);
   const [focus, setFocus] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [bubbleTypo, setBubbleTypo] = useState(false);
@@ -518,13 +522,18 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       tabsMetaDirty.current = false;
       setSaveState("saving");
       try {
-        const res = await api<{ thesis: ThesisDoc; integrityBreakdown?: IntegrityBreakdown; flags?: FlagItem[] }>(`/api/theses/${thesisId}`, { method: "PUT", json: payload });
+        const res = await api<{ thesis: ThesisDoc; integrityBreakdown?: IntegrityBreakdown; flags?: FlagItem[]; resolvedFlagIds?: string[] }>(`/api/theses/${thesisId}`, { method: "PUT", json: payload });
         dirtyRef.current = false;
         setThesis((t) => ({ ...t, ...res.thesis, content: t.content }));
         setLastSaved(new Date().toISOString());
         setSaveState("saved");
         // The saved document is what the server scores: the pill and the ledger update together from this answer.
         applyMetrics({ integrityScore: res.thesis.integrityScore, aiUsagePercent: res.thesis.aiUsagePercent, integrityBreakdown: res.integrityBreakdown });
+        // Notices the server closed with this save (cause gone: share under the limit, paste attributed) close here too.
+        if (res.resolvedFlagIds?.length) {
+          const done = res.resolvedFlagIds;
+          setFlags((prev) => prev.map((f) => (done.includes(f.id) && !f.resolved ? { ...f, resolved: true, resolvedAt: new Date().toISOString() } : f)));
+        }
         if (res.flags?.length) {
           const fresh = res.flags;
           setFlags((prev) => [...fresh.filter((f) => !prev.some((p) => p.id === f.id)), ...prev]);
@@ -1053,9 +1062,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
     if (!editor) return;
     const n = (editor.state.doc.textContent.match(/\[\d+\]/g) || []).length + 1;
     programmatic(() => {
+      // The marker goes at the caret; the note body at the end of the document. The caret stays after the marker so
+      // the student keeps writing where they were (the note text is reached by clicking it).
       editor.chain().focus().insertContent(`<sup>[${n}]</sup>`).run();
+      const after = editor.state.selection.to;
       const end = editor.state.doc.content.size;
-      editor.chain().insertContentAt(end, `<p><sup>[${n}]</sup> ${t("editor.doc.footnoteText")}</p>`).setTextSelection(editor.state.doc.content.size - t("editor.doc.footnoteText").length - 1).run();
+      editor.chain().insertContentAt(end, `<p><sup>[${n}]</sup> ${t("editor.doc.footnoteText")}</p>`).setTextSelection(after).run();
     });
   };
 
