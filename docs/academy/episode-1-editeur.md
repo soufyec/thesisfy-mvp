@@ -1,7 +1,8 @@
 # Academy · Épisode 1 · L'éditeur
 
-Deux versions :
+Trois versions :
 
+- `episode-1-editeur-creator.mp4` : **style créateur** (comme les reels simmmply) : fond indigo de marque, ta caméra dans une fenêtre 900 x 476 en haut (x 90–990, y 194–670) avec étiquette de prénom et curseur, sous-titres mot à mot en pastille au centre, et l'application en fenêtre flottante qui zoome sur ce qui compte à chaque scène. Même narration et même durée que la version narrée. Prénom et zones de zoom se changent dans `scripts/academy/compose-creator.py` (`NAME`, `ROIS`).
 - `episode-1-editeur-narre.mp4` : 1080 x 1920, 63 s, **avec narration** (voix neuronale française, Henri) et un fond sonore discret généré. Zone caméra : carré en bas à droite, 500 x 420, à 40 px des bords (x 540–1040, y 1460–1880). Sous-titres incrustés, aussi dans `episode-1-editeur-narre.srt`.
 - `episode-1-editeur.mp4` : même contenu sans son, 45 s, zone caméra large en bas (1080 x 640).
 
@@ -27,6 +28,7 @@ node scripts/academy/record-editor.mjs      # capture 1080 x 1280 via screencast
 python3 scripts/academy/compose.py          # version muette, zone caméra large
 # narration : edge-tts (pip install edge-tts), voix fr-FR-HenriNeural, un mp3 par scène (nar_0.mp3 …) depuis episode-1-narration.json
 python3 scripts/academy/compose-narrated.py # version narrée : scènes étirées pour la voix, carré caméra, fond sonore
+python3 scripts/academy/compose-creator.py  # style créateur : fenêtres flottantes, zooms, sous-titres mot à mot (edge-tts avec boundary=WordBoundary → episode-1-words.json)
 ```
 
 Les réponses de l'assistant viennent du mode démo (pas de clé Gemini en local) ; le chip du modèle est renommé « Gemini 3.8 Flash » comme en production. Pour une prise avec les vraies réponses, lancer le serveur avec `GEMINI_API_KEY` et retirer ce remplacement dans le script.
