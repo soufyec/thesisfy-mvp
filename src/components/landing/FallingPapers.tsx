@@ -61,7 +61,7 @@ export default function FallingPapers({ className = "" }: { className?: string }
       const zw = zoneWidth(W);
       return {
         x: rnd(w * 0.5, Math.max(w * 0.6, zw - w * 0.5)),
-        y: startY ?? -h - rnd(0, H * 0.3),
+        y: startY ?? -h * 1.2 - rnd(0, H * 0.3),
         w, h,
         vy: rnd(15, 50),
         phi: rnd(-0.35, 0.35), vphi: rnd(-0.5, 0.5),
@@ -210,6 +210,24 @@ export default function FallingPapers({ className = "" }: { className?: string }
         if (alpha < 0.004) continue;
         drawSheet(s, alpha, Math.cos(s.theta), Math.max(0, Math.min(1, s.y / H)));
       }
+      // Soft edges: whatever crosses the top or the sides of the column fades out instead of being cut.
+      ctx.save();
+      if ("filter" in ctx) ctx.filter = "none";
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "destination-in";
+      const top = ctx.createLinearGradient(0, 0, 0, H * 0.22);
+      top.addColorStop(0, "rgba(0,0,0,0)");
+      top.addColorStop(1, "rgba(0,0,0,1)");
+      ctx.fillStyle = top;
+      ctx.fillRect(0, 0, W, H);
+      const sides = ctx.createLinearGradient(0, 0, W, 0);
+      sides.addColorStop(0, "rgba(0,0,0,0)");
+      sides.addColorStop(Math.min(0.3, 90 / W), "rgba(0,0,0,1)");
+      sides.addColorStop(1 - Math.min(0.3, 90 / W), "rgba(0,0,0,1)");
+      sides.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = sides;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
       if (!reduce) raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
