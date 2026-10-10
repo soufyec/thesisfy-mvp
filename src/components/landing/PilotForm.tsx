@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 
 const ROLES = [
+  { value: "teacher", label: "landing.pilotForm.roleTeacher" },
+  { value: "school_head", label: "landing.pilotForm.roleSchoolHead" },
   { value: "integrity_office", label: "landing.pilotForm.roleIntegrity" },
   { value: "dean", label: "landing.pilotForm.roleDean" },
   { value: "library", label: "landing.pilotForm.roleLibrary" },

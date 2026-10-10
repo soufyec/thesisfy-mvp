@@ -500,7 +500,7 @@ export interface Lead {
   id: string;
   institution: string;
   email: string;
-  role: "integrity_office" | "dean" | "library" | "other";
+  role: "teacher" | "school_head" | "integrity_office" | "dean" | "library" | "other";
   message?: string;
   createdAt: string;
 }

@@ -1,7 +1,9 @@
 import { Check } from "lucide-react";
 import LandingNav, { Logo } from "@/components/landing/LandingNav";
 import Hero from "@/components/landing/Hero";
+import HowItWorks from "@/components/landing/HowItWorks";
 import PilotForm from "@/components/landing/PilotForm";
+import StatTiles from "@/components/landing/StatTiles";
 import { getT } from "@/lib/i18n/server";
 
 const CARD = "bg-white rounded-2xl border border-gray-100 shadow-sm p-7";
@@ -9,18 +11,16 @@ const CARD = "bg-white rounded-2xl border border-gray-100 shadow-sm p-7";
 export default function LandingPage() {
   const t = getT();
 
-  const pillars = [1, 2, 3].map((n) => ({ n: `0${n}`, title: t(`landing.pillar${n}.title`), body: t(`landing.pillar${n}.body`) }));
-
   const roles = [
-    { who: t("landing.role.integrity.who"), chip: "bg-brand-50 text-brand-700", title: t("landing.role.integrity.title"), items: [1, 2, 3].map((i) => t(`landing.role.integrity.item${i}`)) },
-    { who: t("landing.role.advisor.who"), chip: "bg-accent-50 text-accent-700", title: t("landing.role.advisor.title"), items: [1, 2, 3].map((i) => t(`landing.role.advisor.item${i}`)) },
-    { who: t("landing.role.student.who"), chip: "bg-prov-ai-soft text-prov-ai-deep", title: t("landing.role.student.title"), items: [1, 2, 3, 4].map((i) => t(`landing.role.student.item${i}`)) },
+    { who: t("landing.role.teacher.who"), chip: "bg-brand-50 text-brand-700", title: t("landing.role.teacher.title"), items: [1, 2, 3].map((i) => t(`landing.role.teacher.item${i}`)) },
+    { who: t("landing.role.student.who"), chip: "bg-prov-ai-soft text-prov-ai-deep", title: t("landing.role.student.title"), items: [1, 2, 3].map((i) => t(`landing.role.student.item${i}`)) },
+    { who: t("landing.role.institution.who"), chip: "bg-accent-50 text-accent-700", title: t("landing.role.institution.title"), items: [1, 2, 3].map((i) => t(`landing.role.institution.item${i}`)) },
   ];
 
   const footerLinks = [
-    { href: "#model", label: t("landing.footer.model") },
-    { href: "#model", label: t("landing.footer.data") },
-    { href: "#model", label: t("landing.footer.privacy") },
+    { href: "#how", label: t("landing.footer.model") },
+    { href: "#how", label: t("landing.footer.data") },
+    { href: "#how", label: t("landing.footer.privacy") },
     { href: "#pilot", label: t("landing.footer.contact") },
   ];
 
@@ -30,32 +30,35 @@ export default function LandingPage() {
 
       <Hero />
 
-      {/* Integrity model */}
-      <section id="model" className="py-20 px-5 sm:px-8 bg-gray-50 scroll-mt-16">
+      {/* The evidence: published figures with their sources */}
+      <section id="data" className="py-20 px-5 sm:px-8 bg-gray-50 scroll-mt-16">
+        <div className="mx-auto max-w-[1200px]">
+          <div className="text-center mb-12">
+            <h2 className="text-[30px] sm:text-[36px] font-bold tracking-[-0.02em] mb-3 [text-wrap:balance]">{t("landing.data.title")}</h2>
+            <p className="text-[16px] text-gray-600 max-w-[600px] mx-auto">{t("landing.data.subtitle")}</p>
+          </div>
+          <StatTiles />
+          <p className="mt-10 mx-auto max-w-[720px] text-center text-[17px] leading-[1.6] text-gray-800 [text-wrap:pretty]">{t("landing.data.takeaway")}</p>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how" className="py-20 px-5 sm:px-8 bg-white scroll-mt-16">
         <div className="mx-auto max-w-[1200px]">
           <div className="text-center mb-14">
             <h2 className="text-[30px] sm:text-[36px] font-bold tracking-[-0.02em] mb-3">
-              {t("landing.model.titleA")}
-              <span className="gradient-text">{t("landing.model.titleHi")}</span>
+              {t("landing.how.titleA")}
+              <span className="gradient-text">{t("landing.how.titleHi")}</span>
+              {t("landing.how.titleB")}
             </h2>
-            <p className="text-[16px] text-gray-600 max-w-[600px] mx-auto">{t("landing.model.subtitle")}</p>
+            <p className="text-[16px] text-gray-600 max-w-[600px] mx-auto">{t("landing.how.subtitle")}</p>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {pillars.map((p) => (
-              <article key={p.n} className={CARD}>
-                <div className="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-[15px] mb-[18px]" aria-hidden="true">
-                  {p.n}
-                </div>
-                <h3 className="text-[17px] font-semibold mb-2">{p.title}</h3>
-                <p className="text-[14px] leading-[1.65] text-gray-600 [text-wrap:pretty]">{p.body}</p>
-              </article>
-            ))}
-          </div>
+          <HowItWorks />
         </div>
       </section>
 
       {/* Three readers */}
-      <section id="roles" className="py-20 px-5 sm:px-8 bg-white scroll-mt-16">
+      <section id="roles" className="py-20 px-5 sm:px-8 bg-gray-50 scroll-mt-16">
         <div className="mx-auto max-w-[1200px]">
           <div className="text-center mb-14">
             <h2 className="text-[30px] sm:text-[36px] font-bold tracking-[-0.02em]">{t("landing.roles.title")}</h2>
@@ -85,9 +88,7 @@ export default function LandingPage() {
           <div>
             <div className="text-[12px] font-bold tracking-[0.14em] uppercase text-brand-200 mb-4">{t("landing.pilot.eyebrow")}</div>
             <h2 className="text-[30px] sm:text-[36px] leading-[1.15] font-bold tracking-[-0.02em] mb-4 [text-wrap:pretty]">{t("landing.pilot.title")}</h2>
-            <p className="text-[16px] leading-[1.6] text-brand-100 max-w-[520px] [text-wrap:pretty]">
-              {t("landing.pilot.body")}
-            </p>
+            <p className="text-[16px] leading-[1.6] text-brand-100 max-w-[520px] [text-wrap:pretty]">{t("landing.pilot.body")}</p>
           </div>
           <PilotForm />
         </div>

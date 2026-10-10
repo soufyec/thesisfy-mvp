@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, GraduationCap } from "lucide-react";
 import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
 import HeroEditorPreview from "./HeroEditorPreview";
@@ -31,7 +31,11 @@ export default function Hero() {
 
         {/* Copy */}
         <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
-          <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-2 [text-wrap:pretty]">
+          <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-brand-50 text-brand-700 text-[13px] font-semibold mb-6">
+            <GraduationCap className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
+            {t("landing.hero.badge")}
+          </span>
+          <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-0 [text-wrap:pretty]">
             {t("landing.hero.titleA")}
             <span className="hero-properly gradient-text">{t("landing.hero.titleHi")}</span>
             {t("landing.hero.titleB")}
@@ -44,7 +48,7 @@ export default function Hero() {
               {t("landing.hero.cta")}
               <ArrowRight className="w-[18px] h-[18px]" strokeWidth={2.2} aria-hidden="true" />
             </a>
-            <a href="#model" className="btn-outline !px-[26px] !py-[15px] !text-[16px]">
+            <a href="#how" className="btn-outline !px-[26px] !py-[15px] !text-[16px]">
               {t("landing.hero.ctaSecondary")}
             </a>
           </div>

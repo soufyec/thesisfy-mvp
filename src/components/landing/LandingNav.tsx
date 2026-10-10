@@ -7,7 +7,8 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n/client";
 
 const LINKS = [
-  { href: "#model", label: "landing.nav.model" },
+  { href: "#how", label: "landing.nav.how" },
+  { href: "#data", label: "landing.nav.data" },
   { href: "#roles", label: "landing.nav.institutions" },
   { href: "#pilot", label: "landing.nav.pilot" },
 ];

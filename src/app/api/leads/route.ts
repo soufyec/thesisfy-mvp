@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { notifyUser } from "@/lib/notify";
 import { error, json, requireUser } from "@/lib/api";
 
-const ROLES = ["integrity_office", "dean", "library", "other"] as const;
+const ROLES = ["teacher", "school_head", "integrity_office", "dean", "library", "other"] as const;
 
 /** Pilot request from the landing page. Public; rate limiting belongs to the edge in production. */
 export async function POST(request: NextRequest) {
