@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { ArrowRight, GraduationCap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
+import FallingPapers from "./FallingPapers";
 import HeroEditorPreview from "./HeroEditorPreview";
 import { useT } from "@/lib/i18n/client";
 
@@ -22,6 +23,8 @@ export default function Hero() {
   return (
     <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14">
       <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[560px]">
+        {/* Papers fall in the copy column and settle on an invisible floor at its bottom; the orbit keeps the right */}
+        <FallingPapers />
         <HeroScene heroRef={heroRef} textRef={textRef} />
 
         {/* Seal: on the right from 768px; on phones it sits inside the orbital scene below the copy */}
@@ -32,11 +35,7 @@ export default function Hero() {
 
         {/* Copy */}
         <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
-          <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-brand-50 text-brand-700 text-[13px] font-semibold mb-6">
-            <GraduationCap className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
-            {t("landing.hero.badge")}
-          </span>
-          <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-0 [text-wrap:pretty]">
+          <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-2 [text-wrap:pretty]">
             {t("landing.hero.titleA")}
             <span className="hero-properly gradient-text">{t("landing.hero.titleHi")}</span>
             {t("landing.hero.titleB")}
