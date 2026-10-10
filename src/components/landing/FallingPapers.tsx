@@ -52,6 +52,7 @@ export default function FallingPapers({ className = "" }: { className?: string }
     let raf = 0;
     let last = performance.now();
     let sinceSpawn = 0;
+    let seeded = false;
 
     const zoneWidth = (W: number) => (window.matchMedia("(min-width: 768px)").matches ? Math.min(W * 0.36, 460) : W);
 
@@ -179,8 +180,14 @@ export default function FallingPapers({ className = "" }: { className?: string }
       }
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (reduce && !sheets.length) {
-        for (let i = 0; i < 6; i++) sheets.push(spawn(W, H, rnd(H * 0.05, H * 0.8)));
+      if (!seeded) {
+        // The scene is full from the first frame: sheets already mid-fall at different heights.
+        seeded = true;
+        for (let i = 0; i < 6; i++) {
+          const sh = spawn(W, H, rnd(-H * 0.05, H * 0.75));
+          if (!reduce) sh.vy = rnd(40, 100);
+          sheets.push(sh);
+        }
       }
       if (!reduce) {
         sinceSpawn += dt;
