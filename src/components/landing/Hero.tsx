@@ -11,6 +11,7 @@ const BULLETS = [
   { dot: "bg-accent-500", text: "landing.hero.bullet1" },
   { dot: "bg-prov-ai", text: "landing.hero.bullet2" },
   { dot: "bg-prov-paste", text: "landing.hero.bullet3" },
+  { dot: "bg-brand-500", text: "landing.hero.bullet4" },
 ];
 
 export default function Hero() {

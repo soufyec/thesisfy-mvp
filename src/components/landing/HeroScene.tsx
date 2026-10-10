@@ -14,14 +14,14 @@ import { useT } from "@/lib/i18n/client";
 
 type Vec3 = { x: number; y: number; z: number };
 type Projected = { x: number; y: number; k: number; z: number };
-type Body = { label: string; sub: string; c0: string; c1: string; glow: string; r: number };
+type Body = { label: string; c0: string; c1: string; glow: string; r: number };
 type Item = { z: number; draw: () => void };
 
 const BODIES: Record<"sun" | "earth" | "moon" | "sat", Body> = {
-  sun: { label: "landing.scene.university", sub: "landing.scene.universitySub", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 54 }, // brand-400 → brand-900
-  earth: { label: "landing.scene.student", sub: "landing.scene.studentSub", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 24 }, // accent-300 → accent-700
-  moon: { label: "glossary.aiAssistant", sub: "landing.scene.assistantSub", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 10 }, // prov.ai range
-  sat: { label: "landing.scene.advisor", sub: "landing.scene.advisorSub", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 8 }, // brand-300 → brand-700
+  sun: { label: "landing.scene.university", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 54 }, // brand-400 → brand-900
+  earth: { label: "landing.scene.student", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 24 }, // accent-300 → accent-700
+  moon: { label: "glossary.aiAssistant", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 10 }, // prov.ai range
+  sat: { label: "landing.scene.advisor", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 8 }, // brand-300 → brand-700
 };
 
 const ORBIT = 300;
@@ -135,10 +135,8 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       const fs = (hover ? 13.5 : 12.5) * Math.max(0.85, Math.min(1.1, q.k));
       ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
       const tw = ctx.measureText(tr(body.label)).width;
-      ctx.font = `500 ${fs * 0.82}px Inter, system-ui, sans-serif`;
-      const sw = ctx.measureText(tr(body.sub)).width;
-      const pw = Math.max(tw, sw) + fs * 1.8;
-      const ph = fs * 3.1;
+      const pw = tw + fs * 1.8;
+      const ph = fs * 2.1;
       const x = q.x - pw / 2;
       const y = q.y + dy;
       ctx.save();
@@ -157,10 +155,7 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       ctx.textAlign = "center";
       ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
       ctx.fillStyle = hover ? "#fff" : "#111827"; // gray-900
-      ctx.fillText(tr(body.label), q.x, y + ph * 0.34);
-      ctx.font = `500 ${fs * 0.82}px Inter, system-ui, sans-serif`;
-      ctx.fillStyle = hover ? "rgba(255,255,255,.85)" : "#6b7280"; // gray-500
-      ctx.fillText(tr(body.sub), q.x, y + ph * 0.7);
+      ctx.fillText(tr(body.label), q.x, y + ph * 0.5);
       ctx.textAlign = "start";
     };
 

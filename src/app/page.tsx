@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Plug } from "lucide-react";
 import LandingNav, { Logo } from "@/components/landing/LandingNav";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
@@ -29,6 +29,27 @@ export default function LandingPage() {
       <LandingNav />
 
       <Hero />
+
+      {/* Integrated with the institution's digital workspace (ENT) */}
+      <section id="ent" className="px-5 sm:px-8 pb-16 scroll-mt-16">
+        <div className="mx-auto max-w-[1200px] rounded-2xl border border-brand-100 bg-brand-50 p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-6 items-center">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase text-brand-700 mb-3">
+              <Plug className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
+              {t("landing.ent.kicker")}
+            </div>
+            <h2 className="text-[22px] sm:text-[26px] font-bold leading-[1.25] tracking-[-0.02em] mb-3 [text-wrap:balance]">{t("landing.ent.title")}</h2>
+            <p className="text-[15px] leading-[1.6] text-gray-700 m-0 [text-wrap:pretty]">{t("landing.ent.body")}</p>
+          </div>
+          <ul className="flex flex-wrap lg:justify-end gap-2.5 list-none p-0 m-0">
+            {[1, 2, 3, 4].map((i) => (
+              <li key={i} className="inline-flex items-center px-3.5 py-2 rounded-full bg-white border border-brand-100 text-[13px] font-semibold text-gray-900 shadow-sm">
+                {t(`landing.ent.chip${i}`)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       {/* The evidence: published figures with their sources */}
       <section id="data" className="py-20 px-5 sm:px-8 bg-gray-50 scroll-mt-16">
