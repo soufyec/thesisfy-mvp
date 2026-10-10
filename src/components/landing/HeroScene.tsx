@@ -206,7 +206,7 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       // Keep the student orbit (380px) inside the hero on wide screens.
       // The sun sits right of the text column; the orbit is as large as the space to the right edge allows, so it
       // sweeps under the headline on the left while the student never leaves the canvas on the right.
-      const cx = compact ? W / 2 : Math.max(W * 0.55, textRight + 30);
+      const cx = compact ? W / 2 : Math.max(W * 0.6, textRight + 30);
       // The near side of the orbit projects largest: F / (F + 650 - ORBIT). Fitting that keeps the student on screen.
       const KN = F / (F + 650 - ORBIT);
       const S = compact ? Math.max(0.45, Math.min((W - 40) / (2 * ORBIT * KN), H / 300)) : Math.max(0.6, Math.min(W / 640, H / 330, (W - cx - 60) / (ORBIT * KN)));
