@@ -4,7 +4,6 @@ import { useRef } from "react";
 import { ArrowRight, GraduationCap } from "lucide-react";
 import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
-import ClassroomScene from "./ClassroomScene";
 import HeroEditorPreview from "./HeroEditorPreview";
 import { useT } from "@/lib/i18n/client";
 
@@ -24,10 +23,6 @@ export default function Hero() {
     <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14">
       <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[560px]">
         <HeroScene heroRef={heroRef} textRef={textRef} />
-        {/* Desktop: the classroom sits low in the left column, under the copy and clear of the orbit on the right */}
-        <div className="hidden md:block absolute left-0 bottom-0 w-[50%] max-w-[640px] h-[230px] pointer-events-none opacity-[0.6]" aria-hidden="true">
-          <ClassroomScene className="w-full h-full" />
-        </div>
 
         {/* Seal: on the right from 768px; on phones it sits inside the orbital scene below the copy */}
         <div className="relative z-[1] order-2 hidden md:flex flex-col items-center gap-1.5 w-full lg:w-[104px] lg:-mt-4 [&_figcaption]:hidden [&_svg]:w-20 [&_svg]:h-20 lg:[&_svg]:w-[100px] lg:[&_svg]:h-[100px]">
@@ -36,7 +31,7 @@ export default function Hero() {
         </div>
 
         {/* Copy */}
-        <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px] md:pb-[230px]">
+        <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
           <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-brand-50 text-brand-700 text-[13px] font-semibold mb-6">
             <GraduationCap className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
             {t("landing.hero.badge")}
@@ -67,11 +62,6 @@ export default function Hero() {
             ))}
           </ul>
         </div>
-      </div>
-
-      {/* Phones: the classroom gets its own band under the bullets, before the orbit */}
-      <div className="md:hidden mt-6 -mx-5 h-[190px] opacity-[0.7]" aria-hidden="true">
-        <ClassroomScene className="w-full h-full" />
       </div>
 
       {/* Phones: the orbital scene gets its own band under the copy, with the seal inside it */}
