@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { ArrowRight, GraduationCap } from "lucide-react";
 import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
+import FallingPapers from "./FallingPapers";
 import HeroEditorPreview from "./HeroEditorPreview";
 import { useT } from "@/lib/i18n/client";
 
@@ -21,6 +22,7 @@ export default function Hero() {
 
   return (
     <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14">
+      <FallingPapers />
       <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[560px]">
         <HeroScene heroRef={heroRef} textRef={textRef} />
 

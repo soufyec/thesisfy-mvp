@@ -96,7 +96,7 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 - [ ] `npm run build` y `npm run lint` pasan.
 - [ ] Captura antes/después para cualquier cambio visual.
 - [ ] Copy revisado contra la sección 6.
-- [ ] Sin hex sueltos: `grep -rn "#[0-9a-fA-F]\{6\}" src/components src/app --include=*.tsx` solo devuelve `QualitySeal.tsx`, paletas del editor en `types.ts`, el canvas de `HeroScene.tsx` y colores de proveedores.
+- [ ] Sin hex sueltos: `grep -rn "#[0-9a-fA-F]\{6\}" src/components src/app --include=*.tsx` solo devuelve `QualitySeal.tsx`, paletas del editor en `types.ts`, los canvas de `HeroScene.tsx` y `FallingPapers.tsx` y colores de proveedores.
 - [ ] Probado con las cuentas demo (estudiante, tutor, administración).
 - [ ] Si toca el editor: prueba manual de la sección 7.
 
