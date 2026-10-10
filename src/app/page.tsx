@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Check, Plug } from "lucide-react";
 import LandingNav, { Logo } from "@/components/landing/LandingNav";
 import Hero from "@/components/landing/Hero";
@@ -41,13 +42,20 @@ export default function LandingPage() {
             <h2 className="text-[22px] sm:text-[26px] font-bold leading-[1.25] tracking-[-0.02em] mb-3 [text-wrap:balance]">{t("landing.ent.title")}</h2>
             <p className="text-[15px] leading-[1.6] text-gray-700 m-0 [text-wrap:pretty]">{t("landing.ent.body")}</p>
           </div>
-          <ul className="flex flex-wrap lg:justify-end gap-2.5 list-none p-0 m-0">
-            {[1, 2, 3, 4].map((i) => (
-              <li key={i} className="inline-flex items-center px-3.5 py-2 rounded-full bg-white border border-brand-100 text-[13px] font-semibold text-gray-900 shadow-sm">
-                {t(`landing.ent.chip${i}`)}
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-3 lg:items-end">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-3 rounded-xl bg-white border border-brand-100 shadow-sm px-4 py-3">
+                {/* Official Moodle wordmark (Moodle Pty Ltd trademark), shown to name the platform the tool is tested with. */}
+                <Image src="/logos/moodle.svg" alt={t("landing.ent.moodleAlt")} width={117} height={30} className="h-7 w-auto" />
+                <span className="text-[12px] font-semibold text-gray-700 border-l border-gray-200 pl-3">{t("landing.ent.tested")}</span>
+              </span>
+              <span className="inline-flex items-center rounded-xl bg-white border border-brand-100 shadow-sm px-4 py-3 text-[14px] font-bold tracking-[-0.01em] text-gray-900">{t("landing.ent.standard")}</span>
+            </div>
+            <div className="text-[13px] text-gray-700 lg:text-right max-w-[460px]">
+              <span className="font-semibold">{t("landing.ent.others")}</span>
+              <span className="block text-gray-500 mt-0.5">{t("landing.ent.othersNote")}</span>
+            </div>
+          </div>
         </div>
       </section>
 

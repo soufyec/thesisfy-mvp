@@ -79,6 +79,8 @@ export default function HeroEditorPreview() {
   };
 
   const typing = step === 1 && typed < p1.length;
+  /** Hidden steps keep their box so the preview's height, and the page under it, never move. */
+  const show = (on: boolean) => `flex flex-col gap-3.5 ${on ? "" : "invisible"}`;
   const resolved = step >= 4;
   const score = resolved ? 100 : 94;
   const ledger: { label: string; value: string; tone: "green" | "amber" | "plain"; key: string }[] = [
@@ -106,12 +108,13 @@ export default function HeroEditorPreview() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
           {/* Sheet */}
-          <div className="relative flex flex-col gap-3.5 pt-7 pb-7 pr-6 pl-16 sm:pr-8 lg:border-r border-gray-100 font-serif text-[15px] leading-[1.7] text-gray-800 border-b lg:border-b-0 min-h-[260px]" aria-live="polite">
+          <div className="relative flex flex-col gap-3.5 pt-7 pb-7 pr-6 pl-16 sm:pr-8 lg:border-r border-gray-100 font-serif text-[15px] leading-[1.7] text-gray-800 border-b lg:border-b-0" aria-live="polite">
             <p className="relative m-0">
               <Gutter tag="¶1" tone="human" />
-              <span className={typing ? "land-caret" : ""}>{p1.slice(0, typed)}</span>
+              <span className="invisible" aria-hidden="true">{p1}</span>
+              <span className={`absolute inset-0 ${typing ? "land-caret" : ""}`}>{p1.slice(0, typed)}</span>
             </p>
-            {step >= 3 && (
+            <div className={show(step >= 3)}>
               <>
                 <div className="land-up flex items-center gap-2 font-sans text-[12px] text-prov-ai-deep bg-prov-ai-soft border border-prov-ai-line rounded-[10px] px-3 py-1.5 w-fit max-w-full">
                   <Sparkles className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
@@ -123,8 +126,8 @@ export default function HeroEditorPreview() {
                   <span className="font-sans text-[11px] font-semibold text-prov-ai">{t("landing.preview.p2Meta")}</span>
                 </p>
               </>
-            )}
-            {step >= 4 && (
+            </div>
+            <div className={show(step >= 4)}>
               <>
                 <div className="land-up flex flex-wrap items-center gap-2 font-sans text-[12px] text-gray-700 bg-white border border-gray-200 rounded-[10px] px-3 py-1.5 w-fit max-w-full shadow-sm">
                   <span className="font-semibold">{t("landing.preview.pasteTitle")}</span>
@@ -139,18 +142,18 @@ export default function HeroEditorPreview() {
                   <span className="font-sans text-[11px] font-semibold text-prov-paste-deep">{t("landing.preview.p3Meta")}</span>
                 </p>
               </>
-            )}
-            {step >= 5 && (
-              <div className="land-up mt-auto flex items-center gap-2 font-sans text-[12px] font-semibold text-green-700 bg-green-50 rounded-[10px] px-3 py-2 w-fit max-w-full">
+            </div>
+            <div className={show(step >= 5)}>
+              <div className="land-up flex items-center gap-2 font-sans text-[12px] font-semibold text-green-700 bg-green-50 rounded-[10px] px-3 py-2 w-fit max-w-full">
                 <CheckCircle2 className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                 {t("landing.preview.report")}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Assistant and ledger */}
           <div className="flex flex-col gap-4 p-5 bg-gray-50">
-            {step >= 2 && (
+            <div className={show(step >= 2)}>
               <div className="land-up rounded-xl bg-white border border-gray-200 p-3.5 text-[13px] leading-[1.5]">
                 <div className="flex items-center gap-2 text-[12px] font-semibold text-gray-900 mb-2">
                   <span className="w-5 h-5 rounded-md bg-brand-600 flex items-center justify-center"><Sparkles className="w-3 h-3 text-white" aria-hidden="true" /></span>
@@ -159,7 +162,7 @@ export default function HeroEditorPreview() {
                 <p className="m-0 mb-2 text-gray-500 italic">“{t("landing.preview.assistant.prompt")}”</p>
                 <p className="m-0 text-gray-800 [text-wrap:pretty]">{t("landing.preview.assistant.answer")}</p>
               </div>
-            )}
+            </div>
             <div>
               <div className="text-[12px] font-semibold text-gray-500 uppercase tracking-[0.08em] mb-1">{t("glossary.integrityLedger")}</div>
               {ledger.map((row) => (

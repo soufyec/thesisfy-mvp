@@ -131,14 +131,21 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       ctx.stroke();
     };
 
-    const pill = (q: Projected, body: Body, dy: number, hover: boolean) => {
+    /**
+     * Name pill of a body. `dy` places it under the body (negative: above, measured to the pill's bottom);
+     * `side` ±1 puts it beside the body instead, vertically centred, `gap` away from the body's edge.
+     */
+    const pill = (q: Projected, body: Body, dy: number, hover: boolean, side = 0, gap = 0) => {
       const fs = (hover ? 13.5 : 12.5) * Math.max(0.85, Math.min(1.1, q.k));
       ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
       const tw = ctx.measureText(tr(body.label)).width;
       const pw = tw + fs * 1.8;
       const ph = fs * 2.1;
-      const x = q.x - pw / 2;
-      const y = q.y + dy;
+      let cx = side ? q.x + side * (gap + pw / 2) : q.x;
+      // Keep the pill inside the canvas: a body near the edge still shows its whole name.
+      cx = Math.max(pw / 2 + 4, Math.min(canvas.clientWidth - pw / 2 - 4, cx));
+      const x = cx - pw / 2;
+      const y = side ? q.y - ph / 2 : dy < 0 ? q.y + dy - ph : q.y + dy;
       ctx.save();
       ctx.shadowColor = "rgba(17,24,39,.14)";
       ctx.shadowBlur = 16;
@@ -155,7 +162,7 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       ctx.textAlign = "center";
       ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
       ctx.fillStyle = hover ? "#fff" : "#111827"; // gray-900
-      ctx.fillText(tr(body.label), q.x, y + ph * 0.5);
+      ctx.fillText(tr(body.label), cx, y + ph * 0.5);
       ctx.textAlign = "start";
     };
 
@@ -296,16 +303,8 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
         z: qM.z,
         draw: () => {
           sphere(qM, BODIES.moon, BODIES.moon.r);
-          if (hM) {
-            pill(qM, BODIES.moon, BODIES.moon.r * qM.k + 8, true);
-          } else {
-            ctx.font = `600 ${11 * Math.max(0.85, qM.k)}px Inter, system-ui, sans-serif`;
-            ctx.fillStyle = "#6d28d9";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "top";
-            ctx.fillText(tr("landing.scene.aiShort"), qM.x, qM.y + BODIES.moon.r * qM.k + 4);
-            ctx.textAlign = "start";
-          }
+          // Beside the moon, on the side away from the student, so it never sits on the student's pill.
+          pill(qM, BODIES.moon, 0, hM, qM.x >= qE.x ? 1 : -1, BODIES.moon.r * qM.k + 6);
         },
       });
       // Advisor satellite
@@ -327,16 +326,10 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
           ctx.fill();
           ctx.stroke();
           ctx.restore();
-          if (hA) {
-            pill(qA, BODIES.sat, r + 10, true);
-          } else if (!compact) {
-            ctx.font = `600 ${11 * Math.max(0.85, k)}px Inter, system-ui, sans-serif`;
-            ctx.fillStyle = "#4263eb";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "bottom";
-            ctx.fillText(tr("landing.scene.advisor"), qA.x, qA.y - r * 2.2);
-            ctx.textAlign = "start";
-          }
+          // Above the satellite while it passes over the student, below it underneath, beside it on the student's row.
+          if (qA.y < qE.y - 12) pill(qA, BODIES.sat, -(r + 10), hA);
+          else if (qA.y > qE.y + 12) pill(qA, BODIES.sat, r + 10, hA);
+          else pill(qA, BODIES.sat, 0, hA, qA.x >= qE.x ? 1 : -1, r * 2.8 + 6);
         },
       });
 
