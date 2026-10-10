@@ -4,11 +4,11 @@ import { useEffect, useRef } from "react";
 import { useT } from "@/lib/i18n/client";
 
 /**
- * Hero background: sheets of written work (essays, reports, theses) fall from above, tumbling and swaying, and
- * come to rest on an invisible floor at the bottom of the copy column, where they pile up; the oldest fade away
- * to make room. Canvas 2D with soft shadows, paper shading and typeset-looking lines. The sheets stay in the
- * copy column: the left part of the hero on desktop (the orbit lives on the right), the whole column on phones
- * (the orbit has its own band below). One still frame under reduced motion.
+ * Hero background: sheets of written work (essays, reports, theses) fall from above, tumbling and swaying, soft
+ * and blurred, and dissolve gradually over the lower part of the copy column (no floor, no hard edge). Canvas 2D
+ * with paper shading, soft shadows and typeset-looking lines. The sheets stay in the copy column: the left part
+ * of the hero on desktop (the orbit lives on the right), the whole column on phones (the orbit has its own band
+ * below). One still frame under reduced motion.
  */
 
 type Sheet = {
@@ -18,15 +18,14 @@ type Sheet = {
   theta: number; vtheta: number; // tumble around the horizontal axis (foreshortening)
   sway: number; swayAmp: number; swaySpeed: number;
   kind: number; seed: number;
-  landed: boolean; restY: number; restPhi: number; age: number; fade: number;
 };
 
-const MAX_FALLING = 7;
-const MAX_PILE = 8;
-const SPAWN_EVERY = 1.35; // s
-const G = 220; // px/s²
-const V_MAX = 150; // px/s
-const PILE_STEP = 2.2; // px per settled sheet
+const MAX_SHEETS = 8;
+const SPAWN_EVERY = 1.3; // s
+const G = 160; // px/s²
+const V_MAX = 120; // px/s
+const BASE_ALPHA = 0.3;
+const BLUR_PX = 1.4;
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 // Deterministic pseudo-random per sheet, so the "typeset" lines do not flicker between frames.
@@ -54,7 +53,7 @@ export default function FallingPapers({ className = "" }: { className?: string }
     let last = performance.now();
     let sinceSpawn = 0;
 
-    const zoneWidth = (W: number) => (window.matchMedia("(min-width: 768px)").matches ? Math.min(W * 0.44, 560) : W);
+    const zoneWidth = (W: number) => (window.matchMedia("(min-width: 768px)").matches ? Math.min(W * 0.36, 460) : W);
 
     const spawn = (W: number, H: number, startY?: number): Sheet => {
       const w = rnd(118, 168);
@@ -62,29 +61,29 @@ export default function FallingPapers({ className = "" }: { className?: string }
       const zw = zoneWidth(W);
       return {
         x: rnd(w * 0.5, Math.max(w * 0.6, zw - w * 0.5)),
-        y: startY ?? -h - rnd(0, H * 0.4),
+        y: startY ?? -h - rnd(0, H * 0.3),
         w, h,
-        vy: rnd(20, 60),
+        vy: rnd(15, 50),
         phi: rnd(-0.35, 0.35), vphi: rnd(-0.5, 0.5),
         theta: rnd(0, Math.PI * 2), vtheta: rnd(0.8, 1.9) * (Math.random() < 0.5 ? -1 : 1),
         sway: rnd(0, Math.PI * 2), swayAmp: rnd(18, 48), swaySpeed: rnd(0.9, 1.6),
         kind: Math.floor(Math.random() * 3), seed: Math.floor(Math.random() * 1e9),
-        landed: false, restY: 0, restPhi: 0, age: 0, fade: 1,
       };
     };
 
-    const drawSheet = (s: Sheet, alpha: number, sy: number, shadow: number) => {
+    const drawSheet = (s: Sheet, alpha: number, sy: number, low: number) => {
       const r = prng(s.seed);
       const { w, h } = s;
       ctx.save();
+      if ("filter" in ctx) ctx.filter = `blur(${BLUR_PX}px)`;
       ctx.translate(s.x, s.y);
       ctx.rotate(s.phi);
       ctx.scale(1, Math.max(0.06, Math.abs(sy)));
       ctx.globalAlpha = alpha;
-      // Drop shadow: wide and soft in the air, tight on the floor
-      ctx.shadowColor = `rgba(17,24,39,${0.18 + 0.18 * shadow})`;
-      ctx.shadowBlur = 26 - 16 * shadow;
-      ctx.shadowOffsetY = 10 - 6 * shadow;
+      // Drop shadow: wide and soft high up, a little tighter lower down
+      ctx.shadowColor = `rgba(17,24,39,${0.18 + 0.12 * low})`;
+      ctx.shadowBlur = 26 - 10 * low;
+      ctx.shadowOffsetY = 10 - 4 * low;
       // Paper: a slightly warm white with a lighting gradient across the sheet
       const g = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
       g.addColorStop(0, "#ffffff");
@@ -125,7 +124,6 @@ export default function FallingPapers({ className = "" }: { className?: string }
       let line = 0;
       while (y < h / 2 - pad * 1.3) {
         if (s.kind !== 1 && para === 1 && line === 0 && r() < 0.6) {
-          // a figure block with a caption
           const fh = h * 0.14;
           const fg = ctx.createLinearGradient(left, y, left + width, y + fh);
           fg.addColorStop(0, "rgba(107,114,128,.18)");
@@ -139,7 +137,6 @@ export default function FallingPapers({ className = "" }: { className?: string }
           para++;
           continue;
         }
-        // one line = a run of words of varying width
         let x = left;
         const end = left + width * (line === 0 ? 1 : r() < 0.18 ? rnd(0.45, 0.8) : 1);
         ctx.fillStyle = "rgba(55,65,81,.72)";
@@ -182,70 +179,36 @@ export default function FallingPapers({ className = "" }: { className?: string }
       }
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const floor = H - 6;
       if (reduce && !sheets.length) {
-        // A still: a few sheets resting on the floor and two in the air.
-        for (let i = 0; i < 5; i++) {
-          const s = spawn(W, H, 0);
-          s.landed = true;
-          s.restY = floor - i * PILE_STEP;
-          s.y = s.restY;
-          s.restPhi = rnd(-0.3, 0.3);
-          s.phi = s.restPhi;
-          sheets.push(s);
-        }
-        for (let i = 0; i < 2; i++) {
-          const s = spawn(W, H, rnd(H * 0.2, H * 0.6));
-          sheets.push(s);
-        }
+        for (let i = 0; i < 6; i++) sheets.push(spawn(W, H, rnd(H * 0.05, H * 0.8)));
       }
       if (!reduce) {
         sinceSpawn += dt;
-        const falling = sheets.filter((s) => !s.landed).length;
-        if (sinceSpawn > SPAWN_EVERY && falling < MAX_FALLING) {
+        if (sinceSpawn > SPAWN_EVERY && sheets.length < MAX_SHEETS) {
           sinceSpawn = 0;
           sheets.push(spawn(W, H));
         }
-        const landed = sheets.filter((s) => s.landed);
         for (const s of sheets) {
-          s.age += dt;
-          if (!s.landed) {
-            s.vy = Math.min(V_MAX, s.vy + G * dt);
-            s.y += s.vy * dt;
-            s.sway += s.swaySpeed * dt;
-            s.x += Math.cos(s.sway) * s.swayAmp * dt;
-            s.phi += s.vphi * dt + Math.sin(s.sway) * 0.004;
-            s.theta += s.vtheta * dt;
-            if (s.y + s.h * 0.1 >= floor - landed.length * PILE_STEP) {
-              s.landed = true;
-              s.restY = floor - landed.length * PILE_STEP;
-              s.y = s.restY;
-              s.restPhi = s.phi + rnd(-0.08, 0.08);
-              landed.push(s);
-            }
-          } else {
-            // settle flat; the oldest sheets of a full pile fade and leave
-            s.phi += (s.restPhi - s.phi) * Math.min(1, dt * 6);
-            const idx = landed.indexOf(s);
-            if (landed.length > MAX_PILE && idx < landed.length - MAX_PILE) s.fade = Math.max(0, s.fade - dt / 2.2);
-          }
+          s.vy = Math.min(V_MAX, s.vy + G * dt);
+          s.y += s.vy * dt;
+          s.sway += s.swaySpeed * dt;
+          s.x += Math.cos(s.sway) * s.swayAmp * dt;
+          s.phi += s.vphi * dt + Math.sin(s.sway) * 0.004;
+          s.theta += s.vtheta * dt;
         }
-        for (let i = sheets.length - 1; i >= 0; i--) if (sheets[i].fade <= 0) sheets.splice(i, 1);
+        for (let i = sheets.length - 1; i >= 0; i--) if (sheets[i].y - sheets[i].h / 2 > H) sheets.splice(i, 1);
       }
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
-      // Floor first (oldest at the bottom), then the air, far to near by size
-      const landed = sheets.filter((s) => s.landed);
-      const air = sheets.filter((s) => !s.landed).sort((a, b) => a.w - b.w);
-      landed.forEach((s, i) => {
-        // On the floor the sheet is seen at a low angle: strongly foreshortened, nudged up by its place in the pile
-        s.y = s.restY - i * 0.4;
-        drawSheet(s, 0.42 * s.fade, 0.22, 1);
-      });
-      for (const s of air) {
-        const near = Math.max(0, Math.min(1, (s.y + s.h / 2) / H)); // closer to the floor: tighter shadow
-        drawSheet(s, 0.5, Math.cos(s.theta), near);
+      // Far to near by size. A sheet fades in under the top edge and dissolves over the lower part of the column.
+      for (const s of sheets.slice().sort((a, b) => a.w - b.w)) {
+        const bottom = s.y + s.h / 2;
+        const fadeIn = Math.max(0, Math.min(1, bottom / (H * 0.18)));
+        const fadeOut = Math.max(0, Math.min(1, (H * 0.98 - (s.y - s.h / 2)) / (H * 0.45)));
+        const alpha = BASE_ALPHA * fadeIn * fadeOut * fadeOut;
+        if (alpha < 0.004) continue;
+        drawSheet(s, alpha, Math.cos(s.theta), Math.max(0, Math.min(1, s.y / H)));
       }
       if (!reduce) raf = requestAnimationFrame(frame);
     };

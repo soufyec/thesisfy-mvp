@@ -23,7 +23,7 @@ export default function Hero() {
   return (
     <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14">
       <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[560px]">
-        {/* Papers fall in the copy column and settle on an invisible floor at its bottom; the orbit keeps the right */}
+        {/* Papers fall through the copy column and dissolve before its bottom; the orbit keeps the right */}
         <FallingPapers />
         <HeroScene heroRef={heroRef} textRef={textRef} />
 
