@@ -18,15 +18,15 @@ type Body = { label: string; c0: string; c1: string; glow: string; r: number };
 type Item = { z: number; draw: () => void };
 
 const BODIES: Record<"sun" | "earth" | "moon" | "sat", Body> = {
-  sun: { label: "landing.scene.university", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 54 }, // brand-400 → brand-900
-  earth: { label: "landing.scene.student", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 24 }, // accent-300 → accent-700
-  moon: { label: "glossary.aiAssistant", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 10 }, // prov.ai range
-  sat: { label: "landing.scene.advisor", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 8 }, // brand-300 → brand-700
+  sun: { label: "landing.scene.university", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 62 }, // brand-400 → brand-900
+  earth: { label: "landing.scene.student", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 30 }, // accent-300 → accent-700
+  moon: { label: "glossary.aiAssistant", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 13 }, // prov.ai range
+  sat: { label: "landing.scene.advisor", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 10 }, // brand-300 → brand-700
 };
 
-const ORBIT = 300;
-const MOON_R = 56;
-const SAT_R = 84;
+const ORBIT = 380;
+const MOON_R = 68;
+const SAT_R = 100;
 const PARTICLE_COLORS = ["#bac8ff", "#96f2d7", "#ddd6fe"]; // brand-200, accent-200, prov.ai-line
 
 // Fixed angles used when the visitor prefers reduced motion.
@@ -131,8 +131,25 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       ctx.stroke();
     };
 
+    /** The body's name, tight under it and in its own colour. */
+    const nameUnder = (q: Projected, body: Body, r: number) => {
+      const fs = 12.5 * Math.max(0.85, Math.min(1.15, q.k));
+      ctx.font = `700 ${fs}px Inter, system-ui, sans-serif`;
+      const tw = ctx.measureText(tr(body.label)).width;
+      const x = Math.max(tw / 2 + 4, Math.min(canvas.clientWidth - tw / 2 - 4, q.x));
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(255,255,255,.85)";
+      ctx.strokeText(tr(body.label), x, q.y + r + 4);
+      ctx.fillStyle = body.c1;
+      ctx.fillText(tr(body.label), x, q.y + r + 4);
+      ctx.textAlign = "start";
+    };
+
     /**
-     * Name pill of a body. `dy` places it under the body (negative: above, measured to the pill's bottom);
+     * Name pill of a body (shown on hover). `dy` places it under the body (negative: above, measured to the pill's bottom);
      * `side` ±1 puts it beside the body instead, vertically centred, `gap` away from the body's edge.
      */
     const pill = (q: Projected, body: Body, dy: number, hover: boolean, side = 0, gap = 0) => {
@@ -181,15 +198,19 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       m.y += (m.ty - m.y) * 0.05;
       const t = (now - start) / 1000;
       const yaw = (reduce ? STATIC.yaw : t * 0.02) + m.x * 0.5;
-      const pitch = -0.42 + m.y * 0.2;
+      const pitch = (compact ? -0.55 : -0.5) + m.y * 0.2;
       const F = 900;
       // The sun sits to the right of the text column so the orbit sweeps under the headline.
       const te = compact ? null : textRef.current;
       const textRight = te ? te.getBoundingClientRect().right - stage.getBoundingClientRect().left : W * 0.6;
-      // Keep the student orbit (300px) and its pill inside the hero on wide screens.
-      const cx = compact ? W / 2 : Math.min(W - 150, Math.max(W * 0.68, textRight + 90));
+      // Keep the student orbit (380px) inside the hero on wide screens.
+      // The sun sits right of the text column; the orbit is as large as the space to the right edge allows, so it
+      // sweeps under the headline on the left while the student never leaves the canvas on the right.
+      const cx = compact ? W / 2 : Math.max(W * 0.55, textRight + 30);
+      // The near side of the orbit projects largest: F / (F + 650 - ORBIT). Fitting that keeps the student on screen.
+      const KN = F / (F + 650 - ORBIT);
+      const S = compact ? Math.max(0.45, Math.min((W - 40) / (2 * ORBIT * KN), H / 300)) : Math.max(0.6, Math.min(W / 640, H / 330, (W - cx - 60) / (ORBIT * KN)));
       const cy = compact ? H * 0.52 : H * 0.55;
-      const S = compact ? Math.max(0.5, Math.min(W / 560, H / 330)) : Math.max(0.6, Math.min(W / 640, H / 330));
       const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
       const P = (x: number, y: number, z: number): Projected => {
         const x1 = x * cyw + z * syw;
@@ -273,7 +294,8 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
           ctx.lineTo(qS.x - r * 0.04, qS.y + r * 0.16);
           ctx.lineTo(qS.x + r * 0.2, qS.y - r * 0.12);
           ctx.stroke();
-          pill(qS, BODIES.sun, r + 12, hS);
+          if (hS) pill(qS, BODIES.sun, r + 12, true);
+          else nameUnder(qS, BODIES.sun, r);
         },
       });
       // Advisor sight line to the student
@@ -295,7 +317,8 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
         z: qE.z,
         draw: () => {
           sphere(qE, BODIES.earth, BODIES.earth.r);
-          pill(qE, BODIES.earth, BODIES.earth.r * qE.k + 10, hE);
+          if (hE) pill(qE, BODIES.earth, BODIES.earth.r * qE.k + 10, true);
+          else nameUnder(qE, BODIES.earth, BODIES.earth.r * qE.k);
         },
       });
       // AI assistant moon
@@ -303,8 +326,8 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
         z: qM.z,
         draw: () => {
           sphere(qM, BODIES.moon, BODIES.moon.r);
-          // Beside the moon, on the side away from the student, so it never sits on the student's pill.
-          pill(qM, BODIES.moon, 0, hM, qM.x >= qE.x ? 1 : -1, BODIES.moon.r * qM.k + 6);
+          if (hM) pill(qM, BODIES.moon, BODIES.moon.r * qM.k + 8, true);
+          else nameUnder(qM, BODIES.moon, BODIES.moon.r * qM.k);
         },
       });
       // Advisor satellite
@@ -326,10 +349,8 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
           ctx.fill();
           ctx.stroke();
           ctx.restore();
-          // Above the satellite while it passes over the student, below it underneath, beside it on the student's row.
-          if (qA.y < qE.y - 12) pill(qA, BODIES.sat, -(r + 10), hA);
-          else if (qA.y > qE.y + 12) pill(qA, BODIES.sat, r + 10, hA);
-          else pill(qA, BODIES.sat, 0, hA, qA.x >= qE.x ? 1 : -1, r * 2.8 + 6);
+          if (hA) pill(qA, BODIES.sat, r + 10, true);
+          else nameUnder(qA, BODIES.sat, r * 1.1);
         },
       });
 

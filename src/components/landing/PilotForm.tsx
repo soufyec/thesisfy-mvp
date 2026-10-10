@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
+import PhoneField from "./PhoneField";
 
 const ROLES = [
   { value: "teacher", label: "landing.pilotForm.roleTeacher" },
@@ -75,15 +76,12 @@ export default function PilotForm() {
           ))}
         </select>
       </label>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 gap-3.5">
         <label htmlFor="pilot-name" className={LABEL}>
           <span>{t("landing.pilotForm.name")} <span className="font-normal text-gray-400">({t("landing.pilotForm.optional")})</span></span>
           <input id="pilot-name" name="name" type="text" className={FIELD} placeholder={t("landing.pilotForm.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
         </label>
-        <label htmlFor="pilot-phone" className={LABEL}>
-          <span>{t("landing.pilotForm.phone")} <span className="font-normal text-gray-400">({t("landing.pilotForm.optional")})</span></span>
-          <input id="pilot-phone" name="phone" type="tel" className={FIELD} placeholder={t("landing.pilotForm.phonePlaceholder")} value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
-        </label>
+        <PhoneField value={phone} onChange={setPhone} fieldClass={FIELD} labelClass={LABEL} label={<span>{t("landing.pilotForm.phone")} <span className="font-normal text-gray-400">({t("landing.pilotForm.optional")})</span></span>} />
       </div>
       <button type="submit" disabled={status === "sending"} className="btn-primary mt-1.5 w-full !py-3.5 !text-[15px] !shadow-[0_10px_20px_-8px] !shadow-brand-600/50 disabled:opacity-60 disabled:cursor-not-allowed">
         {status === "sending" ? t("landing.pilotForm.sending") : t("landing.pilotForm.submit")}

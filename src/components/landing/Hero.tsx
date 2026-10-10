@@ -21,7 +21,7 @@ export default function Hero() {
 
   return (
     <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14">
-      <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[520px]">
+      <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[560px]">
         <HeroScene heroRef={heroRef} textRef={textRef} />
 
         {/* Seal: on the right from 768px; on phones it sits inside the orbital scene below the copy */}
@@ -65,7 +65,7 @@ export default function Hero() {
       </div>
 
       {/* Phones: the orbital scene gets its own band under the copy, with the seal inside it */}
-      <div className="md:hidden relative mt-6 h-[320px] -mx-5 overflow-hidden" aria-hidden="true">
+      <div className="md:hidden relative mt-6 h-[400px] -mx-5 overflow-hidden" aria-hidden="true">
         <HeroScene heroRef={heroRef} textRef={textRef} compact />
         <div className="absolute top-2 right-4 z-[1] flex flex-col items-center gap-1 [&_figcaption]:hidden [&_svg]:!w-[72px] [&_svg]:!h-[72px]">
           <QualitySeal size={72} className="!gap-0" />
