@@ -34,4 +34,5 @@ export const adminNav: NavItem[] = [
   { label: "dashboard.nav.library", shortLabel: "dashboard.nav.short.library", href: "/admin/library", icon: <Library className={cls} /> },
   { label: "report.nav.title", href: "/admin/report", icon: <FileBarChart className={cls} /> },
   { label: "admin.leads.nav", href: "/admin/pilot-requests", icon: <Inbox className={cls} />, adminOnly: true },
+  { label: "lti.nav", shortLabel: "lti.nav.short", href: "/admin/integrations", icon: <Plug className={cls} />, adminOnly: true },
 ];

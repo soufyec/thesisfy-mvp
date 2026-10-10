@@ -62,6 +62,10 @@ A public French questionnaire validates the problem with teachers and students b
 - Responses are anonymous: no IP, no account. A hidden honeypot field and a per-minute limit stop simple bots. Everything is persisted in the same store as the rest of the platform (Neon Postgres when `DATABASE_URL` is set).
 - While the study runs the MVP is not public: the landing has no sign-in link and `/dashboard` and `/admin` redirect to the home page without a session. The team signs in at `/login` by its URL.
 
+### Moodle (LTI 1.3)
+
+Thesisfic is an LTI 1.3 external tool. An administrator opens **Admin → Integrations**, copies the tool URLs into Moodle (*Site administration → Plugins → External tool → Manage tools → Configure a tool manually*, LTI 1.3, public key type "Keyset URL") and registers the Moodle site back in Thesisfic with the platform ID, client ID and endpoints Moodle shows. From then on a teacher adds Thesisfic to a course (deep linking offers the "Thesisfic workspace" item) and whoever opens it is signed in with the name, email and role Moodle sends: instructors become advisors, learners students. Routes: `/api/lti/login` (OIDC initiation), `/api/lti/launch` (id_token verification against the platform keyset, account provisioning, session), `/api/lti/jwks` (the tool's RSA key, generated once and stored encrypted). Grade return (AGS) is not implemented yet. `APP_URL` fixes the public origin behind a proxy.
+
 ### Languages
 
 The UI ships in English, Spanish and French. Entry links set a `locale` cookie and keep working for every later page: `/en`, `/es`, `/fr` (or `?lang=es`). The switcher in the landing nav, the login page and the dashboard sidebar changes the language in place and stores it on the account, so the assistant answers in the same language. Strings live in `src/lib/i18n/messages/<area>.ts`; English defines the keys and the other two locales are typed against it, so a missing translation fails `tsc`. Text that comes from data (thesis titles, notices, API errors, institution rubric) is shown as stored.

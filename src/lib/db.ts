@@ -557,6 +557,47 @@ export interface QuestionnaireEditRow {
   createdAt: string;
 }
 
+/** A Moodle (or any LTI 1.3 platform) registered by a university administrator. Thesisfic is the tool. */
+export interface LtiPlatform {
+  id: string;
+  university: string;
+  name: string;
+  /** Platform ID in Moodle's words: the issuer of its id_tokens (usually the site URL). */
+  issuer: string;
+  clientId: string;
+  /** Deployment IDs seen or declared; an empty list accepts the first launch and records it. */
+  deploymentIds: string[];
+  authLoginUrl: string;
+  tokenUrl: string;
+  jwksUrl: string;
+  createdBy: string;
+  createdAt: string;
+  launches: number;
+  lastLaunchAt?: string;
+}
+
+/** The link between a platform user (issuer + sub) and a Thesisfic account. */
+export interface LtiLink {
+  id: string;
+  platformId: string;
+  issuer: string;
+  sub: string;
+  userId: string;
+  contextId?: string;
+  contextTitle?: string;
+  createdAt: string;
+  lastLaunchAt: string;
+}
+
+/** The tool's RSA signing key (private part encrypted) published at /api/lti/jwks. */
+export interface LtiKey {
+  id: string;
+  kid: string;
+  privateKeyEnc: string;
+  publicJwk: Record<string, string>;
+  createdAt: string;
+}
+
 interface Store {
   users: User[];
   theses: Thesis[];
@@ -585,6 +626,9 @@ interface Store {
   passwordResets: PasswordReset[];
   questionnaireResponses: QuestionnaireResponse[];
   questionnaireEdits: QuestionnaireEditRow[];
+  ltiPlatforms: LtiPlatform[];
+  ltiLinks: LtiLink[];
+  ltiKeys: LtiKey[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -896,6 +940,9 @@ function seed(): Store {
     passwordResets: [],
     questionnaireResponses: [],
     questionnaireEdits: [],
+    ltiPlatforms: [],
+    ltiLinks: [],
+    ltiKeys: [],
     versions: [
       { id: "ver_1", thesisId: "thesis_1", authorId: "usr_1", content: thesis1Content, wordCount: 2847, kind: "milestone", label: "Chapter 4 draft", createdAt: "2026-03-12T11:30:00Z" },
     ],
@@ -1851,6 +1898,61 @@ export const db = {
       r.usedAt = now();
       persist();
       return r;
+    },
+  },
+
+  lti: {
+    platforms: {
+      listByUniversity: (university: string) => load().ltiPlatforms.filter((p) => p.university === university).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+      findById: (id: string) => load().ltiPlatforms.find((p) => p.id === id),
+      /** The platform a launch belongs to: same issuer and client id (a Moodle site can register the tool twice). */
+      findByIssuer: (issuer: string, clientId?: string) =>
+        load().ltiPlatforms.find((p) => p.issuer === issuer && (!clientId || p.clientId === clientId)) || load().ltiPlatforms.find((p) => p.issuer === issuer),
+      create: (data: Omit<LtiPlatform, "id" | "createdAt" | "launches">) => {
+        const p: LtiPlatform = { ...data, id: uid("lti"), createdAt: now(), launches: 0 };
+        load().ltiPlatforms.push(p);
+        persist();
+        return p;
+      },
+      update: (id: string, patch: Partial<LtiPlatform>) => {
+        const p = load().ltiPlatforms.find((x) => x.id === id);
+        if (!p) return null;
+        Object.assign(p, patch);
+        persist();
+        return p;
+      },
+      remove: (id: string) => {
+        const st = load();
+        st.ltiPlatforms = st.ltiPlatforms.filter((p) => p.id !== id);
+        st.ltiLinks = st.ltiLinks.filter((l) => l.platformId !== id);
+        persist();
+      },
+    },
+    links: {
+      find: (issuer: string, sub: string) => load().ltiLinks.find((l) => l.issuer === issuer && l.sub === sub),
+      listByPlatform: (platformId: string) => load().ltiLinks.filter((l) => l.platformId === platformId),
+      create: (data: Omit<LtiLink, "id" | "createdAt" | "lastLaunchAt">) => {
+        const l: LtiLink = { ...data, id: uid("ltil"), createdAt: now(), lastLaunchAt: now() };
+        load().ltiLinks.push(l);
+        persist();
+        return l;
+      },
+      touch: (id: string, patch: Partial<LtiLink> = {}) => {
+        const l = load().ltiLinks.find((x) => x.id === id);
+        if (l) {
+          Object.assign(l, patch, { lastLaunchAt: now() });
+          persist();
+        }
+      },
+    },
+    keys: {
+      current: () => load().ltiKeys[0],
+      create: (data: Omit<LtiKey, "id" | "createdAt">) => {
+        const k: LtiKey = { ...data, id: uid("ltik"), createdAt: now() };
+        load().ltiKeys.push(k);
+        persist();
+        return k;
+      },
     },
   },
 
