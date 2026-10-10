@@ -11,6 +11,8 @@ interface Lead {
   institution: string;
   email: string;
   role: "teacher" | "school_head" | "integrity_office" | "dean" | "library" | "other";
+  name?: string;
+  phone?: string;
   message?: string;
   createdAt: string;
 }
@@ -43,7 +45,9 @@ export default function PilotRequestsPage() {
                   <span className="text-xs text-gray-400">{fmt.dateTime(l.createdAt)}</span>
                 </div>
                 <div className="mt-1 text-sm text-gray-600 break-words">
+                  {l.name && <span className="font-medium text-gray-900">{l.name} · </span>}
                   <a href={`mailto:${l.email}`} className="text-brand-600 hover:underline">{l.email}</a>
+                  {l.phone && <> · <a href={`tel:${l.phone.replace(/[^\d+]/g, "")}`} className="text-brand-600 hover:underline">{l.phone}</a></>}
                   <span className="text-gray-400"> · {t(`admin.leads.role.${l.role}`)}</span>
                 </div>
                 {l.message && <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap break-words">{l.message}</p>}

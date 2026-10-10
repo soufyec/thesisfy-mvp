@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
   const role = (ROLES as readonly string[]).includes(body.role) ? (body.role as (typeof ROLES)[number]) : "other";
   if (institution.length < 2) return NextResponse.json({ error: "Tell us which institution you are writing from.", code: "institution" }, { status: 400 });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return NextResponse.json({ error: "Enter a valid work email.", code: "email" }, { status: 400 });
-  const lead = db.leads.create({ institution, email, role, message: typeof body.message === "string" ? body.message.slice(0, 2000) : undefined });
+  const name = String(body.name || "").trim().slice(0, 120) || undefined;
+  const phone = String(body.phone || "").trim().slice(0, 40) || undefined;
+  if (phone && !/^\+?[\d\s().-]{6,40}$/.test(phone)) return NextResponse.json({ error: "Enter a phone number with digits only, spaces, dots or dashes.", code: "phone" }, { status: 400 });
+  const lead = db.leads.create({ institution, email, role, name, phone, message: typeof body.message === "string" ? body.message.slice(0, 2000) : undefined });
   // Let the demo administrators know a pilot was requested.
   for (const admin of db.users.getAll().filter((u) => u.role === "admin")) {
     notifyUser(admin.id, "notif.pilotRequest", { institution, email }, { type: "info", link: "/admin/pilot-requests" });

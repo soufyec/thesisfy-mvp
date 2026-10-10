@@ -19,6 +19,8 @@ export default function PilotForm() {
   const [institution, setInstitution] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState(ROLES[0].value);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
 
@@ -30,11 +32,11 @@ export default function PilotForm() {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ institution, email, role }),
+        body: JSON.stringify({ institution, email, role, name, phone }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.code === "email" ? t("landing.pilotForm.errorEmail") : data.code === "institution" ? t("landing.pilotForm.errorInstitution") : t("landing.pilotForm.errorGeneric"));
+        setError(data.code === "email" ? t("landing.pilotForm.errorEmail") : data.code === "institution" ? t("landing.pilotForm.errorInstitution") : data.code === "phone" ? t("landing.pilotForm.errorPhone") : t("landing.pilotForm.errorGeneric"));
         setStatus("idle");
         return;
       }
@@ -73,6 +75,16 @@ export default function PilotForm() {
           ))}
         </select>
       </label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <label htmlFor="pilot-name" className={LABEL}>
+          <span>{t("landing.pilotForm.name")} <span className="font-normal text-gray-400">({t("landing.pilotForm.optional")})</span></span>
+          <input id="pilot-name" name="name" type="text" className={FIELD} placeholder={t("landing.pilotForm.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+        </label>
+        <label htmlFor="pilot-phone" className={LABEL}>
+          <span>{t("landing.pilotForm.phone")} <span className="font-normal text-gray-400">({t("landing.pilotForm.optional")})</span></span>
+          <input id="pilot-phone" name="phone" type="tel" className={FIELD} placeholder={t("landing.pilotForm.phonePlaceholder")} value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
+        </label>
+      </div>
       <button type="submit" disabled={status === "sending"} className="btn-primary mt-1.5 w-full !py-3.5 !text-[15px] !shadow-[0_10px_20px_-8px] !shadow-brand-600/50 disabled:opacity-60 disabled:cursor-not-allowed">
         {status === "sending" ? t("landing.pilotForm.sending") : t("landing.pilotForm.submit")}
       </button>

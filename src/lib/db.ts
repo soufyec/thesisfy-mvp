@@ -501,6 +501,9 @@ export interface Lead {
   institution: string;
   email: string;
   role: "teacher" | "school_head" | "integrity_office" | "dean" | "library" | "other";
+  /** Optional: who to call back. */
+  name?: string;
+  phone?: string;
   message?: string;
   createdAt: string;
 }
