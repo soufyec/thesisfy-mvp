@@ -29,7 +29,7 @@ export default function PilotRequestsPage() {
     <DashboardLayout>
       <div className="max-w-4xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">{t("admin.leads.title")}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("admin.leads.title")}</h1>
           <p className="text-gray-500 mt-1">{t("admin.leads.subtitle")}</p>
         </div>
         {leads === null ? (

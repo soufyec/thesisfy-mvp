@@ -57,7 +57,7 @@ export default function AnalyticsPage() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl">
-        <div className="mb-6"><h1 className="text-2xl font-bold">{t("dashboard.analytics.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("dashboard.analytics.subtitle")}</p></div>
+        <div className="mb-6"><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("dashboard.analytics.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("dashboard.analytics.subtitle")}</p></div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">{t("dashboard.home.totalWords")}</div><div className="text-xl sm:text-2xl font-bold">{format.number(stats?.totalWords || 0)}</div></div>
           <div className="card p-4 sm:p-5"><div className="text-xs sm:text-sm text-gray-500 mb-1">{t("glossary.integrity")}</div><div className="text-xl sm:text-2xl font-bold text-green-600">{stats?.avgIntegrity ?? 0}%</div><div className="text-xs text-gray-400 mt-1">{(stats?.openFlags || 0) === 1 ? t("dashboard.analytics.openNotices_one") : t("dashboard.analytics.openNotices", { n: stats?.openFlags || 0 })}</div></div>

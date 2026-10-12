@@ -576,7 +576,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     <div className={`flex flex-col h-full min-h-0 bg-white ${className}`}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2.5 flex-shrink-0">
-        <div className="w-[30px] h-[30px] bg-gradient-to-br from-brand-500 to-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">
+        <div className="w-[30px] h-[30px] bg-brand-primary rounded-lg flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div className="min-w-0 flex-1">

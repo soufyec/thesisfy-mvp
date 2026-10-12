@@ -18,16 +18,16 @@ type Body = { label: string; c0: string; c1: string; glow: string; r: number };
 type Item = { z: number; draw: () => void };
 
 const BODIES: Record<"sun" | "earth" | "moon" | "sat", Body> = {
-  sun: { label: "landing.scene.university", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 62 }, // brand-400 → brand-900
+  sun: { label: "landing.scene.university", c0: "#60445A", c1: "#2B1F2D", glow: "rgba(43,31,45,.22)", r: 62 }, // brand-400 → brand-600
   earth: { label: "landing.scene.student", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 30 }, // accent-300 → accent-700
   moon: { label: "glossary.aiAssistant", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 13 }, // prov.ai range
-  sat: { label: "landing.scene.advisor", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 10 }, // brand-300 → brand-700
+  sat: { label: "landing.scene.advisor", c0: "#A892A5", c1: "#493847", glow: "rgba(73,56,71,.2)", r: 10 }, // brand-300 → brand-500
 };
 
 const ORBIT = 380;
 const MOON_R = 68;
 const SAT_R = 100;
-const PARTICLE_COLORS = ["#bac8ff", "#96f2d7", "#ddd6fe"]; // brand-200, accent-200, prov.ai-line
+const PARTICLE_COLORS = ["#CFC3CD", "#96f2d7", "#ddd6fe"]; // brand-200, accent-200, prov.ai-line
 
 // Fixed angles used when the visitor prefers reduced motion.
 const STATIC = { yaw: 0.4, earth: 0.9, moon: 2.1, sat: 4.0 };
@@ -172,13 +172,13 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       ctx.fill();
       ctx.restore();
       roundRect(x, y, pw, ph, 10);
-      ctx.strokeStyle = hover ? body.c1 : "#e5e7eb"; // gray-200
+      ctx.strokeStyle = hover ? body.c1 : "#E7E2DF"; // gray-200
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
-      ctx.fillStyle = hover ? "#fff" : "#111827"; // gray-900
+      ctx.fillStyle = hover ? "#fff" : "#282A30"; // gray-900
       ctx.fillText(tr(body.label), cx, y + ph * 0.5);
       ctx.textAlign = "start";
     };
@@ -339,11 +339,11 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
           ctx.save();
           ctx.translate(qA.x, qA.y);
           ctx.rotate(sa * 0.5);
-          ctx.fillStyle = "#4263eb"; // brand-700
+          ctx.fillStyle = "#493847"; // brand-500
           ctx.fillRect(-r * 2.6, -r * 0.45, r * 1.5, r * 0.9);
           ctx.fillRect(r * 1.1, -r * 0.45, r * 1.5, r * 0.9);
           ctx.fillStyle = "#fff";
-          ctx.strokeStyle = "#4263eb";
+          ctx.strokeStyle = "#493847";
           ctx.lineWidth = 1.2;
           roundRect(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6, r * 0.3);
           ctx.fill();

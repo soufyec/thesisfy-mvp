@@ -83,7 +83,7 @@ export default function PilotForm() {
         </label>
         <PhoneField value={phone} onChange={setPhone} fieldClass={FIELD} labelClass={LABEL} label={<span>{t("landing.pilotForm.phone")} <span className="font-normal text-gray-400">({t("landing.pilotForm.optional")})</span></span>} />
       </div>
-      <button type="submit" disabled={status === "sending"} className="btn-primary mt-1.5 w-full !py-3.5 !text-[15px] !shadow-[0_10px_20px_-8px] !shadow-brand-600/50 disabled:opacity-60 disabled:cursor-not-allowed">
+      <button type="submit" disabled={status === "sending"} className="btn-primary mt-1.5 w-full !py-3.5 !text-[15px] disabled:opacity-60 disabled:cursor-not-allowed">
         {status === "sending" ? t("landing.pilotForm.sending") : t("landing.pilotForm.submit")}
       </button>
       {error && (

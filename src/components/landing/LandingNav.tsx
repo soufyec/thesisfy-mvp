@@ -19,7 +19,7 @@ export function Logo({ size = "nav" }: { size?: "nav" | "footer" }) {
   const text = size === "nav" ? "text-[20px]" : "text-[16px]";
   return (
     <Link href="/" className={`inline-flex items-center gap-2 text-gray-900 font-bold ${text}`} aria-label={t("landing.nav.home")}>
-      <span className={`${box} bg-gradient-to-br from-brand-600 to-accent-500 flex items-center justify-center flex-shrink-0`} aria-hidden="true">
+      <span className={`${box} bg-brand-primary flex items-center justify-center flex-shrink-0`} aria-hidden="true">
         {size === "nav" && <Shield className="w-5 h-5 text-white" strokeWidth={2} />}
       </span>
       <span>
@@ -29,13 +29,13 @@ export function Logo({ size = "nav" }: { size?: "nav" | "footer" }) {
   );
 }
 
-const CTA = "inline-flex items-center justify-center px-4 py-[9px] rounded-[10px] bg-brand-600 text-white font-semibold text-[14px] hover:bg-brand-700 transition-colors shadow-[0_8px_16px_-6px] shadow-brand-600/45";
+const CTA = "inline-flex items-center justify-center px-4 py-[9px] rounded-lg bg-brand-primary text-white font-semibold text-[14px] hover:brightness-110 transition-[filter,box-shadow] shadow-sm shadow-brand-600/20";
 
 export default function LandingNav() {
   const t = useT();
   const [open, setOpen] = useState(false);
   return (
-    <nav className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-gray-100" aria-label={t("landing.nav.main")}>
+    <nav className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-gray-200" aria-label={t("landing.nav.main")}>
       <div className="mx-auto max-w-[1200px] px-5 sm:px-8 h-16 flex items-center justify-between gap-6">
         <Logo />
         <div className="hidden md:flex items-center gap-7 text-[14px] font-medium">

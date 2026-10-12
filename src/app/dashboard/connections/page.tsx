@@ -98,7 +98,7 @@ function ConnectionsInner() {
 
   return (
     <div className="max-w-4xl">
-      <div className="mb-6"><h1 className="text-2xl font-bold">{t("dashboard.connections.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("dashboard.connections.subtitle")}</p></div>
+      <div className="mb-6"><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("dashboard.connections.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("dashboard.connections.subtitle")}</p></div>
 
       {allowance?.institutionPays && (
         <section className="card p-5 mb-6 border-emerald-100 bg-gradient-to-br from-emerald-50/60 to-white">

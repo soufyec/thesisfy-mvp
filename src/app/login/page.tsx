@@ -54,11 +54,11 @@ function LoginForm() {
     <div className="w-full max-w-md">
       <div className="lg:hidden mb-8">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
+          <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
           <span className="text-xl font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
         </Link>
       </div>
-      <h1 className="text-2xl font-bold mb-2">{t("landing.login.title")}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-[-0.01em] mb-2">{t("landing.login.title")}</h1>
       <p className="text-gray-500 mb-8">{t("landing.login.subtitle")}</p>
       {process.env.NEXT_PUBLIC_DEMO_ACCOUNTS !== "off" && <div className="mb-6 p-4 bg-brand-50 rounded-xl">
         <p className="text-xs font-medium text-brand-700 mb-3">{t("landing.login.demoTitle")}</p>
@@ -91,7 +91,7 @@ export default function LoginPage() {
   const t = useT();
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-600 to-brand-800 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-brand-dark p-12 flex-col justify-between relative overflow-hidden">
         <div className="relative">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><ShieldCheck className="w-6 h-6 text-white" /></div>
@@ -99,7 +99,7 @@ export default function LoginPage() {
           </Link>
         </div>
         <div className="relative">
-          <h2 className="text-4xl font-bold text-white mb-4 tracking-[-0.02em] leading-[1.15] [text-wrap:pretty]">{t("landing.login.headline")}</h2>
+          <h2 className="font-display text-4xl font-bold text-white mb-4 tracking-[-0.01em] leading-[1.15] [text-wrap:pretty]">{t("landing.login.headline")}</h2>
           <p className="text-brand-100 text-lg max-w-[520px]">{t("landing.login.lead")}</p>
         </div>
       </div>

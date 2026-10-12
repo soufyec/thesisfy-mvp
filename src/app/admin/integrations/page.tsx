@@ -89,7 +89,7 @@ export default function IntegrationsPage() {
     <DashboardLayout>
       <div className="max-w-4xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">{t("lti.title")}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("lti.title")}</h1>
           <p className="text-gray-500 mt-1">{t("lti.subtitle")}</p>
         </div>
 

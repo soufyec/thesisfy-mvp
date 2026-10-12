@@ -10,7 +10,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="flex items-center justify-between px-4 sm:px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" aria-hidden /></div>
+          <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" aria-hidden /></div>
           <span className="text-xl font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
         </Link>
         <LanguageSwitcher variant="inline" />
@@ -26,7 +26,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
 export function AuthNotice({ title, body, cta }: { title: string; body: string; cta: string }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-2">{title}</h1>
+      <h1 className="font-display text-2xl font-bold tracking-[-0.01em] mb-2">{title}</h1>
       <p className="text-gray-600 text-sm mb-6">{body}</p>
       <Link href="/login" className="btn-outline !py-2 !px-4 text-sm">{cta}</Link>
     </div>

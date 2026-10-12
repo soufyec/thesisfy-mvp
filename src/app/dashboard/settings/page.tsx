@@ -87,7 +87,7 @@ export default function SettingsPage() {
   return (
     <DashboardLayout>
       <div className="max-w-3xl space-y-6">
-        <div><h1 className="text-2xl font-bold">{t("dashboard.settings.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("dashboard.settings.subtitle")}</p></div>
+        <div><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("dashboard.settings.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("dashboard.settings.subtitle")}</p></div>
 
         <section className="card p-5 sm:p-6">
           <h2 className="font-semibold mb-4">{t("dashboard.settings.profile")}</h2>

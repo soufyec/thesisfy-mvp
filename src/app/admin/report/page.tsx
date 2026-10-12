@@ -296,7 +296,7 @@ export default function PilotReportPage() {
       <div className="max-w-6xl pilot-report">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
           <div>
-            <h1 className="text-2xl font-bold">{t("report.page.title")}</h1>
+            <h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("report.page.title")}</h1>
             <p className="text-gray-500 mt-1 text-sm">{t("report.page.subtitle", { university: user?.university || "" })}</p>
             {r && header && (
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">

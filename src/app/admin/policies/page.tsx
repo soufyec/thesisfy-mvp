@@ -43,7 +43,7 @@ export default function PoliciesPage() {
   return (
     <DashboardLayout>
       <div className="max-w-3xl">
-        <div className="mb-6"><h1 className="text-2xl font-bold">{t("admin.policies.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.policies.updated", { university: p.university, date: fmt.date(p.updatedAt, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) })}{!canEdit && t("admin.policies.readOnly")}</p></div>
+        <div className="mb-6"><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("admin.policies.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.policies.updated", { university: p.university, date: fmt.date(p.updatedAt, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) })}{!canEdit && t("admin.policies.readOnly")}</p></div>
         {saved && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{saved}</div>}
         <div className="space-y-5">
           <div className="card p-5 sm:p-6">

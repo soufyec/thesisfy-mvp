@@ -40,7 +40,7 @@ export default function AdminDashboard() {
     <DashboardLayout>
       <div className="max-w-6xl">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div><h1 className="text-2xl font-bold">{user?.role === "professor" ? t("admin.dashboard.titleAdvisor") : t("admin.dashboard.titleInstitution")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.dashboard.subtitle", { university: user?.university || "", n: stats?.total ?? "…" })}</p></div>
+          <div><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{user?.role === "professor" ? t("admin.dashboard.titleAdvisor") : t("admin.dashboard.titleInstitution")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.dashboard.subtitle", { university: user?.university || "", n: stats?.total ?? "…" })}</p></div>
           <Link href="/admin/report" className="btn-outline !py-2 !px-3 text-sm gap-1.5 self-start" title={t("report.overview.linkHelp")}><FileBarChart className="w-4 h-4" />{t("report.overview.link")}</Link>
         </div>
         {loading ? <div className="p-12 text-center text-gray-400">{t("common.loading")}…</div> : (
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
               {[
                 { label: t("admin.dashboard.theses"), value: stats?.total, sub: t("admin.dashboard.thesesSub", { active: stats?.inProgress, review: stats?.underReview }), icon: <ShieldCheck className="w-5 h-5 text-brand-600" />, bg: "bg-brand-50" },
                 { label: t("admin.dashboard.avgIntegrity"), value: `${stats?.avgIntegrity}%`, sub: t("admin.dashboard.avgIntegritySub", { avg: stats?.avgAiUsage, limit: policy?.maxAiUsagePercent }), icon: <Activity className="w-5 h-5 text-green-600" />, bg: "bg-green-50" },
-                { label: t("admin.dashboard.students"), value: stats?.totalStudents, sub: t("admin.dashboard.studentsSub", { n: stats?.activeSessions }), icon: <Users className="w-5 h-5 text-blue-600" />, bg: "bg-blue-50" },
+                { label: t("admin.dashboard.students"), value: stats?.totalStudents, sub: t("admin.dashboard.studentsSub", { n: stats?.activeSessions }), icon: <Users className="w-5 h-5 text-brand-600" />, bg: "bg-brand-50" },
                 { label: t("admin.dashboard.openNotices"), value: stats?.openFlags, sub: t("admin.dashboard.openNoticesSub", { n: stats?.flagsThisWeek }), icon: <Flag className="w-5 h-5 text-amber-600" />, bg: "bg-amber-50" },
               ].map((c) => (
                 <div key={c.label} className="card p-4 sm:p-5"><div className="flex items-center justify-between"><div><div className="text-xs sm:text-sm text-gray-500 mb-1">{c.label}</div><div className="text-xl sm:text-2xl font-bold">{c.value ?? 0}</div></div><div className={`w-10 h-10 ${c.bg} rounded-xl flex items-center justify-center`}>{c.icon}</div></div><div className="mt-2 text-xs text-gray-500">{c.sub}</div></div>
@@ -61,7 +61,7 @@ export default function AdminDashboard() {
                 <h2 className="font-semibold mb-4">{t("admin.dashboard.distribution")}</h2>
                 <div className="space-y-3">
                   {(stats?.distribution || []).map((d, i) => (
-                    <div key={d.range}><div className="flex justify-between text-sm mb-1"><span className="text-gray-600">{d.range}</span><span className="text-gray-400">{plural(t, "admin.dashboard.distCount", d.count)}</span></div><div className="w-full bg-gray-100 rounded-full h-2"><div className={`${["bg-green-500", "bg-blue-500", "bg-amber-500", "bg-red-500"][i]} h-2 rounded-full`} style={{ width: `${(d.count / maxDist) * 100}%` }} /></div></div>
+                    <div key={d.range}><div className="flex justify-between text-sm mb-1"><span className="text-gray-600">{d.range}</span><span className="text-gray-400">{plural(t, "admin.dashboard.distCount", d.count)}</span></div><div className="w-full bg-gray-100 rounded-full h-2"><div className={`${["bg-green-500", "bg-brand-500", "bg-amber-500", "bg-red-500"][i]} h-2 rounded-full`} style={{ width: `${(d.count / maxDist) * 100}%` }} /></div></div>
                   ))}
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-100">
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
                 {policy && (
                   <div className="space-y-3 text-sm">
                     <div className="p-3 bg-green-50 rounded-xl"><div className="text-xs text-green-800">{t("admin.dashboard.maxAi")}</div><div className="text-xl font-bold text-green-700">{policy.maxAiUsagePercent}%</div></div>
-                    <div className="p-3 bg-blue-50 rounded-xl"><div className="text-xs text-blue-800">{t("admin.dashboard.providers")}</div><div className="font-medium text-blue-700 capitalize">{policy.allowedProviders.join(", ")}</div><div className="text-xs text-blue-600 mt-0.5">{policy.allowBYOK ? t("admin.dashboard.byokOn") : t("admin.dashboard.byokOff")}</div></div>
+                    <div className="p-3 bg-brand-50 rounded-xl"><div className="text-xs text-brand-700">{t("admin.dashboard.providers")}</div><div className="font-medium text-brand-600 capitalize">{policy.allowedProviders.join(", ")}</div><div className="text-xs text-brand-600 mt-0.5">{policy.allowBYOK ? t("admin.dashboard.byokOn") : t("admin.dashboard.byokOff")}</div></div>
                     <div className="p-3 bg-emerald-50 rounded-xl"><div className="text-xs text-emerald-800">{t("glossary.copilot")}</div><div className="font-medium text-emerald-700">{policy.researchCopilot ? t("admin.dashboard.copilotOn") : t("admin.dashboard.copilotOff")}</div><div className="text-xs text-emerald-600 mt-0.5">{t("admin.dashboard.sensitivity", { level: t(`admin.level.${policy.flagSensitivity}`) })}</div></div>
                   </div>
                 )}

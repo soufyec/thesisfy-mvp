@@ -43,10 +43,10 @@ export default function RegisterPage() {
       <LanguageSwitcher variant="inline" className="absolute top-4 right-4" />
       <div className="w-full max-w-md card p-8">
         <Link href="/" className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
+          <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
           <span className="text-xl font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
         </Link>
-        <h1 className="text-2xl font-bold mb-1">{t("landing.register.title")}</h1>
+        <h1 className="font-display text-2xl font-bold tracking-[-0.01em] mb-1">{t("landing.register.title")}</h1>
         <p className="text-gray-500 text-sm mb-6">{t("landing.register.subtitle")}</p>
         <form onSubmit={submit} className="space-y-4">
           {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>}

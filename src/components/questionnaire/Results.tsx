@@ -132,7 +132,7 @@ export default function Results() {
       <main className="mx-auto max-w-[1040px] px-4 sm:px-6 py-6 sm:py-10">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-[24px] font-bold tracking-[-0.02em]">{t("q.results.title")}</h1>
+            <h1 className="font-display text-[24px] font-bold tracking-[-0.02em]">{t("q.results.title")}</h1>
             {data && (
               <p className="mt-1 text-[13px] text-gray-500">
                 {rows.length === 1 ? t("q.results.count_one") : t("q.results.count", { n: rows.length })}

@@ -28,7 +28,7 @@ export default function FlagsPage() {
     <DashboardLayout>
       <div className="max-w-5xl">
         <div className="flex items-center justify-between mb-6">
-          <div><h1 className="text-2xl font-bold">{t("admin.notices.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.notices.subtitle")}</p></div>
+          <div><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("admin.notices.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.notices.subtitle")}</p></div>
           <div className="flex gap-2">{(["open", "all"] as const).map((f) => <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 text-xs rounded-lg font-medium ${filter === f ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"}`}>{f === "open" ? t("admin.notices.filterOpen") : t("common.all")}</button>)}</div>
         </div>
         <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">

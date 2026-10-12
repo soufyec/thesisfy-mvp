@@ -92,7 +92,7 @@ export default function HeroEditorPreview() {
 
   return (
     <div className="relative mt-14 max-w-[1200px] mx-auto z-[1]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      <div className="absolute -inset-2 rounded-[28px] bg-gradient-to-r from-brand-600/[0.12] to-accent-500/[0.12] blur-[48px]" aria-hidden="true" />
+      <div className="absolute -inset-2 rounded-[28px] bg-gradient-to-r from-brand-500/[0.14] to-accent-500/[0.08] blur-[48px]" aria-hidden="true" />
       <div className="relative bg-white border border-gray-200 rounded-2xl shadow-[0_25px_50px_-12px] shadow-gray-900/15 overflow-hidden">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-100 text-[13px] text-gray-500">

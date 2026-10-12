@@ -61,7 +61,7 @@ export default function AdminLibraryPage() {
       <div className="max-w-6xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">{t("admin.library.title")}</h1>
+            <h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("admin.library.title")}</h1>
             <p className="text-gray-500 mt-1 text-sm">{t("admin.library.subtitle", { university, n: fmt.number(totalOpens) })}</p>
           </div>
           {canManage && <button onClick={() => { setError(""); setEdit({ form: { ...EMPTY } }); }} className="btn-primary !px-4"><Plus className="w-4 h-4 mr-1" />{t("admin.library.addDatabase")}</button>}

@@ -30,7 +30,7 @@ export default function LibraryPage() {
     <DashboardLayout>
       <div className="max-w-6xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">{t("dashboard.library.title")}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("dashboard.library.title")}</h1>
           <p className="text-gray-500 mt-1 text-sm max-w-3xl">{data?.settings.intro || t("dashboard.library.intro", { university: data?.university || t("dashboard.library.yourUniversity") })}</p>
         </div>
 

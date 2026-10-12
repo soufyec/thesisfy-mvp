@@ -120,7 +120,7 @@ export default function HowItWorks() {
         return (
           <article key={n} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-7 flex flex-col gap-4 min-w-0">
             <div className={`inline-flex w-fit px-2.5 py-1 rounded-full text-[12px] font-semibold ${CHIPS[k]}`}>{t(`landing.how.${n}.kicker`)}</div>
-            <h3 className="text-[20px] font-bold leading-[1.3] tracking-[-0.01em] m-0 [text-wrap:balance]">{t(`landing.how.${n}.title`)}</h3>
+            <h3 className="font-display text-[20px] font-semibold leading-[1.3] tracking-[-0.01em] m-0 [text-wrap:balance]">{t(`landing.how.${n}.title`)}</h3>
             <p className="text-[14px] leading-[1.65] text-gray-600 m-0 [text-wrap:pretty]">{t(`landing.how.${n}.body`)}</p>
             <div className="mt-auto pt-1"><Preview /></div>
           </article>

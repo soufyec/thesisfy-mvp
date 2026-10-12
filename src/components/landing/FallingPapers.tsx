@@ -110,7 +110,7 @@ export default function FallingPapers({ className = "" }: { className?: string }
       const left = -w / 2 + pad;
       const width = w - pad * 2;
       let y = -h / 2 + pad * 1.1;
-      ctx.fillStyle = "#1f2937";
+      ctx.fillStyle = "#282A30";
       ctx.font = `700 ${Math.max(7, w * 0.07)}px Georgia, "Times New Roman", serif`;
       ctx.textBaseline = "top";
       ctx.fillText(titles[s.kind], left, y);

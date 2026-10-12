@@ -9,7 +9,7 @@
   --prov-human: theme("colors.prov.human");
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@500;600;700;800&display=swap');
 
 @layer base {
   html {
@@ -22,16 +22,16 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-all duration-200 shadow-lg shadow-brand-600/25 hover:shadow-xl hover:shadow-brand-600/30;
+    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-brand-primary rounded-lg transition-all duration-200 shadow-sm shadow-brand-600/20 hover:shadow-md hover:shadow-brand-600/25 hover:brightness-110;
   }
   .btn-outline {
-    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:border-brand-300 hover:text-brand-700 transition-all duration-200;
+    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-lg hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-all duration-200;
   }
   .card {
-    @apply bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300;
+    @apply bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300;
   }
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500;
+    @apply bg-clip-text text-transparent bg-brand-heading;
   }
   .input-field {
     @apply w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-200 bg-gray-50 hover:bg-white;
@@ -52,7 +52,7 @@
     @apply badge bg-amber-50 text-amber-700;
   }
   .badge-info {
-    @apply badge bg-blue-50 text-blue-700;
+    @apply badge bg-brand-50 text-brand-600;
   }
   .badge-danger {
     @apply badge bg-red-50 text-red-700;
@@ -448,10 +448,10 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 
 /* Tab outline: a translucent cloud that floats under the tab, no border, soft brand-tinted glow */
 .tab-outline-cloud {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62) 55%, rgba(237, 242, 255, 0.72));
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62) 55%, rgba(241, 237, 241, 0.78));
   -webkit-backdrop-filter: blur(22px) saturate(1.5);
   backdrop-filter: blur(22px) saturate(1.5);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 18px 50px -18px rgba(76, 110, 245, 0.35), 0 10px 30px -12px rgba(60, 64, 67, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 18px 50px -18px rgba(43, 31, 45, 0.28), 0 10px 30px -12px rgba(60, 64, 67, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.6);
   animation: outline-cloud-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   transform-origin: top left;
 }
@@ -464,7 +464,7 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 }
 .tab-outline-item:hover,
 .tab-outline-item:focus-visible {
-  background: linear-gradient(90deg, rgba(76, 110, 245, 0.14), rgba(32, 201, 151, 0.10));
+  background: linear-gradient(90deg, rgba(43, 31, 45, 0.10), rgba(32, 201, 151, 0.10));
   color: theme("colors.brand.700");
   transform: translateX(3px);
   box-shadow: 0 6px 16px -10px rgba(76, 110, 245, 0.45);

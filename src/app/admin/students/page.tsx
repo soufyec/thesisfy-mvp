@@ -58,7 +58,7 @@ export default function StudentsPage() {
     <DashboardLayout>
       <div className="max-w-5xl">
         <div className="flex items-center justify-between mb-6">
-          <div><h1 className="text-2xl font-bold">{t("admin.students.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.students.subtitle")}</p></div>
+          <div><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("admin.students.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.students.subtitle")}</p></div>
           {/* Advisors have no invitation links, so they keep the direct button; admins use the Invite people block below. */}
           {user?.role === "professor" && <button onClick={() => { setOpen(true); setCreated(null); }} className="btn-primary !px-4"><Plus className="w-4 h-4 mr-1" />{t("admin.students.invite")}</button>}
         </div>

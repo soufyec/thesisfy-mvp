@@ -136,7 +136,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
       <aside {...(sidebarOpen || isDesktop ? {} : ({ inert: "" } as Record<string, string>))} className={`fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 ${collapsed ? "lg:w-[76px]" : "w-64"} w-72 bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className={`p-4 lg:p-5 border-b border-gray-100 flex items-center ${collapsed ? "lg:justify-center" : "justify-between"}`}>
           <Link href="/" className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center flex-shrink-0">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             {!collapsed && (

@@ -74,7 +74,7 @@ export default function StudentDashboard() {
         <div className="lg:flex lg:items-start lg:gap-6">
         <div className="flex-1 min-w-0">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">{user ? t(Date.now() - Date.parse((user as { createdAt?: string }).createdAt || "") < 86400000 ? "dashboard.home.welcomeNew" : "dashboard.home.welcomeName", { name: user.name.split(" ")[0] }) : t("dashboard.home.welcome")}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{user ? t(Date.now() - Date.parse((user as { createdAt?: string }).createdAt || "") < 86400000 ? "dashboard.home.welcomeNew" : "dashboard.home.welcomeName", { name: user.name.split(" ")[0] }) : t("dashboard.home.welcome")}</h1>
           <p className="text-gray-500 mt-1">{t("dashboard.home.subtitle")}</p>
         </div>
         {!loading && active && <div className="lg:hidden mb-6"><DeadlineCalendar deadline={active?.deadline} wordCount={active?.wordCount || 0} targetWords={active?.targetWords || 0} createdAt={active?.createdAt} onEdit={active ? () => setDeadlineFor(active) : undefined} /></div>}

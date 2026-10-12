@@ -28,7 +28,7 @@ export default function AdminThesesPage() {
     <DashboardLayout>
       <div className="max-w-6xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div><h1 className="text-2xl font-bold">{t("admin.theses.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.theses.subtitle")}</p></div>
+          <div><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{t("admin.theses.title")}</h1><p className="text-gray-500 mt-1 text-sm">{t("admin.theses.subtitle")}</p></div>
           <div className="flex gap-2 flex-wrap items-center">
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`${t("common.search")}…`} aria-label={t("common.search")} className="input-field !py-1.5 !w-40 text-sm" />
             {["all", "in_progress", "under_review", "flagged", "draft"].map((f) => (

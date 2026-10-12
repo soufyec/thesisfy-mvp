@@ -19,8 +19,8 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
         <title>{sealLabel}</title>
         <defs>
           <linearGradient id={`seal-fill-${uid}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#364fc7" />
-            <stop offset="1" stopColor="#087f5b" />
+            <stop offset="0" stopColor="#2B1F2D" />
+            <stop offset="1" stopColor="#60445A" />
           </linearGradient>
           <path id={`seal-ring-${uid}`} d="M130,130 m-96,0 a96,96 0 1,1 192,0 a96,96 0 1,1 -192,0" />
           {/* lower inner arc, left to right through the bottom, for the "verified process" line */}
@@ -48,7 +48,7 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
         <text x="130" y="160" textAnchor="middle" fill="#ffffff" fontSize="15" fontWeight="800" fontFamily="Inter, system-ui, sans-serif" letterSpacing="0.5">
           {SEAL_NAME}
         </text>
-        <text fill="#ffffff" fillOpacity="0.85" fontSize="8.5" fontWeight="700" letterSpacing="1.8" fontFamily="Inter, system-ui, sans-serif">
+        <text fill="#D9C4AA" fillOpacity="0.95" fontSize="8.5" fontWeight="700" letterSpacing="1.8" fontFamily="Inter, system-ui, sans-serif">
           <textPath href={`#seal-arc-${uid}`} startOffset="50%" textAnchor="middle">
             · VERIFIED PROCESS ·
           </textPath>

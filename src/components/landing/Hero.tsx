@@ -100,7 +100,7 @@ export default function Hero() {
   const textRef = useRef<HTMLDivElement>(null);
 
   return (
-    <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14">
+    <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14 bg-brand-light">
       <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[560px]">
         {/* Papers fall through the copy column and dissolve before its bottom; the orbit keeps the right */}
         <FallingPapers />
@@ -114,14 +114,14 @@ export default function Hero() {
 
         {/* Copy */}
         <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
-          <h1 className="text-[32px] min-[420px]:text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-2 [text-wrap:pretty]">
+          <h1 className="font-display text-[32px] min-[420px]:text-[36px] sm:text-[46px] lg:text-[58px] font-bold leading-[1.08] tracking-[-0.015em] mb-6 mt-2 [text-wrap:pretty]">
             <RotatingWord />
           </h1>
           <p className="text-[17px] sm:text-[19px] leading-[1.6] text-gray-600 max-w-[560px] mb-9 [text-wrap:pretty]">
             {t("landing.hero.body")}
           </p>
           <div className="flex flex-wrap gap-3">
-            <a href="#pilot" className="btn-primary gap-2 !px-[26px] !py-[15px] !text-[16px] !shadow-[0_10px_20px_-8px] !shadow-brand-600/50">
+            <a href="#pilot" className="btn-primary gap-2 !px-[26px] !py-[15px] !text-[16px]">
               {t("landing.hero.cta")}
               <ArrowRight className="w-[18px] h-[18px]" strokeWidth={2.2} aria-hidden="true" />
             </a>

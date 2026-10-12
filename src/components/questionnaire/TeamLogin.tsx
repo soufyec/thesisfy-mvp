@@ -42,7 +42,7 @@ export default function TeamLogin({ next }: { next: string }) {
       </header>
       <main className="flex-1 flex items-start justify-center px-4 py-10">
         <form onSubmit={submit} className="w-full max-w-[400px] bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8">
-          <h1 className="text-[20px] font-bold tracking-[-0.02em]">{t("q.login.title")}</h1>
+          <h1 className="font-display text-[20px] font-bold tracking-[-0.02em]">{t("q.login.title")}</h1>
           <p className="mt-2 text-[14px] text-gray-600">{t("q.login.help")}</p>
           <label htmlFor="team-password" className="block mt-6 mb-1 text-[13px] font-medium text-gray-700">
             {t("q.login.password")}

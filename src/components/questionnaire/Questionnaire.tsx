@@ -248,7 +248,7 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
             <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-500/15 text-accent-500" aria-hidden="true">
               <Check className="w-6 h-6" strokeWidth={2.5} />
             </span>
-            <h1 className="text-[22px] font-bold tracking-[-0.02em]">{t("q.done.title")}</h1>
+            <h1 className="font-display text-[22px] font-bold tracking-[-0.02em]">{t("q.done.title")}</h1>
             <p className="mt-3 text-[15px] text-gray-600 leading-relaxed">{q.confirmation.replace(/\s*!\s*/g, ". ")}</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               {mode === "entretien" && (
@@ -262,7 +262,7 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
           <>
             <div className="mb-5">
               <div className="flex items-baseline justify-between gap-3 mb-2">
-                <h1 className="text-[20px] sm:text-[24px] font-bold tracking-[-0.02em] leading-tight">{q.title}</h1>
+                <h1 className="font-display text-[20px] sm:text-[24px] font-bold tracking-[-0.02em] leading-tight">{q.title}</h1>
                 <span className="text-[12px] text-gray-500 whitespace-nowrap">{t("q.progress", { n: stack.length, total })}</span>
               </div>
               <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={stack.length} aria-label={t("q.progress", { n: stack.length, total })}>
