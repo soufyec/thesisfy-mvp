@@ -30,19 +30,22 @@ export interface OnboardingVideo {
   chapters: { at: number; label: "writing" | "assistant" | "ledger" | "advisor" }[];
 }
 
-const CHAPTERS: OnboardingVideo["chapters"] = [
+const chapters = (assistant: number, ledger: number, advisor: number): OnboardingVideo["chapters"] => [
   { at: 0, label: "writing" },
-  { at: 50, label: "assistant" },
-  { at: 100, label: "ledger" },
-  { at: 130, label: "advisor" },
+  { at: assistant, label: "assistant" },
+  { at: ledger, label: "ledger" },
+  { at: advisor, label: "advisor" },
 ];
 
-/** One video per UI language, narrated in that language. Files live in `public/videos/`; until a file exists its
- *  entry stays `null` and the modal shows the chapter placeholder. */
+const files = (locale: Locale) => ({ src: `/videos/tour-${locale}.mp4`, poster: `/videos/tour-${locale}.jpg`, captions: `/videos/tour-${locale}.vtt` });
+
+/** One video per UI language, narrated in that language (see `docs/academy/tour.md`; regenerate with
+ *  `scripts/academy/make-tour.sh`, which prints these durations and chapter marks). Set `src` to `null` to fall
+ *  back to the chapter placeholder. */
 export const ONBOARDING_VIDEO: Record<Locale, OnboardingVideo> = {
-  en: { src: null, poster: null, captions: null, duration: 160, chapters: CHAPTERS },
-  es: { src: null, poster: null, captions: null, duration: 160, chapters: CHAPTERS },
-  fr: { src: null, poster: null, captions: null, duration: 160, chapters: CHAPTERS },
+  en: { ...files("en"), duration: 93, chapters: chapters(33, 63, 73) },
+  es: { ...files("es"), duration: 85, chapters: chapters(29, 58, 68) },
+  fr: { ...files("fr"), duration: 107, chapters: chapters(32, 64, 74) },
 };
 
 export function formatClock(seconds: number): string {

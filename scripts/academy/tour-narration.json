@@ -1,0 +1,35 @@
+{
+  "en": { "voice": "af_heart", "lang": "a", "scenes": {
+    "intro": "This is Thesisfic. Your assignment is written here, in an editor that works like Docs or Word, and every sentence keeps a record of where it came from.",
+    "write": "You write as you always do. Everything you type counts as written, and the margin shows it in green. There is no detector, and no suspicion.",
+    "paste": "When you paste a passage, the editor simply asks where it comes from. Declare it as a quote, add the source, and it is marked in amber. Attributed, never accused.",
+    "assistant": "Thesisfic AI is paid for by your university. It thinks with you: it critiques, outlines and finds sources. It never writes your text for you.",
+    "cost": "Before anything from the assistant goes into your document, you see the cost: the words added, and your new share of AI against the limit of your programme.",
+    "inserted": "Once inserted, the passage is marked in violet. You keep control, and the provenance stays with the text.",
+    "ledger": "The Integrity ledger adds it up: written, quoted, AI-assisted. Every item is visible, and every notice comes with an action you can take.",
+    "advisor": "Your advisor opens the same document and sees exactly the same ledger. Nothing is hidden from you, and nothing is inferred about you.",
+    "outro": "Thesisfic. We teach your students how to use AI, properly."
+  }},
+  "es": { "voice": "ef_dora", "lang": "e", "scenes": {
+    "intro": "Esto es Thesisfic. Tu trabajo se escribe aquí, en un editor que funciona como Docs o Word, y cada frase guarda un registro de dónde viene.",
+    "write": "Escribes como siempre. Todo lo que tecleas cuenta como escrito, y el margen lo muestra en verde. No hay detector, ni sospecha.",
+    "paste": "Cuando pegas un pasaje, el editor solo te pregunta de dónde viene. Decláralo como cita, añade la fuente, y queda marcado en ámbar. Atribuido, nunca acusado.",
+    "assistant": "Thesisfic AI lo paga tu universidad. Piensa contigo: critica, esquematiza y busca fuentes. Nunca escribe tu texto por ti.",
+    "cost": "Antes de que algo del asistente entre en tu documento, ves el coste: las palabras añadidas, y tu nuevo porcentaje de IA frente al límite de tu programa.",
+    "inserted": "Una vez insertado, el pasaje queda marcado en violeta. Tú mantienes el control, y la procedencia se queda con el texto.",
+    "ledger": "El registro de integridad lo suma todo: escrito, citado, con ayuda de IA. Cada elemento es visible, y cada aviso trae una acción que puedes hacer.",
+    "advisor": "Tu tutor abre el mismo documento y ve exactamente el mismo registro. Nada se te oculta, y nada se infiere sobre ti.",
+    "outro": "Thesisfic. Enseñamos a tus estudiantes a usar la IA como es debido."
+  }},
+  "fr": { "voice": "ff_siwis", "lang": "f", "scenes": {
+    "intro": "Voici Thesisfic. Votre travail s'écrit ici, dans un éditeur qui fonctionne comme Docs ou Word, et chaque phrase garde la trace de son origine.",
+    "write": "Vous écrivez comme d'habitude. Tout ce que vous tapez compte comme rédigé, et la marge l'affiche en vert. Pas de détecteur, pas de soupçon.",
+    "paste": "Quand vous collez un passage, l'éditeur vous demande simplement d'où il vient. Déclarez-le comme citation, ajoutez la source, et il est marqué en ambre. Attribué, jamais accusé.",
+    "assistant": "Thesisfic AI est payé par votre université. Il réfléchit avec vous : il critique, structure et trouve des sources. Il n'écrit jamais votre texte à votre place.",
+    "cost": "Avant qu'un contenu de l'assistant n'entre dans votre document, vous voyez le coût : les mots ajoutés, et votre nouvelle part d'IA face à la limite de votre formation.",
+    "inserted": "Une fois inséré, le passage est marqué en violet. Vous gardez le contrôle, et la provenance reste attachée au texte.",
+    "ledger": "Le registre d'intégrité fait le total : rédigé, cité, assisté par IA. Chaque élément est visible, et chaque avis vient avec une action possible.",
+    "advisor": "Votre directeur ouvre le même document et voit exactement le même registre. Rien ne vous est caché, et rien n'est déduit à votre sujet.",
+    "outro": "Thesisfic. Nous apprenons à vos étudiants à utiliser l'IA comme il faut."
+  }}
+}
