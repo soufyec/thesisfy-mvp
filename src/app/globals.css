@@ -9,8 +9,6 @@
   --prov-human: theme("colors.prov.human");
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@500;600;700;800&display=swap');
-
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -25,7 +23,7 @@
     @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-brand-primary rounded-lg transition-all duration-200 shadow-sm shadow-brand-600/20 hover:shadow-md hover:shadow-brand-600/25 hover:brightness-110;
   }
   .btn-outline {
-    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-lg hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-all duration-200;
+    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-brand-600 bg-white border-2 border-brand-200 rounded-lg hover:border-brand-400 hover:bg-brand-50 transition-all duration-200;
   }
   .card {
     @apply bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300;

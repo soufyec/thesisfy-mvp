@@ -50,14 +50,14 @@ export default function PilotForm() {
 
   if (status === "sent") {
     return (
-      <div className="bg-white text-gray-900 rounded-2xl p-7 shadow-[0_25px_50px_-12px] shadow-black/25 flex items-center min-h-[280px]" role="status">
+      <div className="bg-white text-gray-900 rounded-2xl p-7 shadow-[0_18px_40px_-16px] shadow-black/20 flex items-center min-h-[280px]" role="status">
         <p className="text-[16px] leading-[1.6] text-gray-700 m-0">{t("landing.pilotForm.sent")}</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={submit} className="bg-white text-gray-900 rounded-2xl p-7 shadow-[0_25px_50px_-12px] shadow-black/25 flex flex-col gap-3.5" noValidate>
+    <form onSubmit={submit} className="bg-white text-gray-900 rounded-2xl p-7 shadow-[0_18px_40px_-16px] shadow-black/20 flex flex-col gap-3.5" noValidate>
       <label htmlFor="pilot-institution" className={LABEL}>
         {t("landing.pilotForm.institution")}
         <input id="pilot-institution" name="institution" type="text" className={FIELD} placeholder={t("landing.pilotForm.institutionPlaceholder")} value={institution} onChange={(e) => setInstitution(e.target.value)} required autoComplete="organization" />
