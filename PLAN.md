@@ -64,8 +64,13 @@ Diferencias respecto al handoff original, decididas después y que prevalecen:
 - [x] Acciones contextuales por modo (Guiding questions · Add as comment · Insert, marked as AI · Keep as notes · Replace selection).
 - [x] **Tarjeta de coste** obligatoria antes de cualquier inserción (palabras, % actual → nuevo, quién paga; deshabilitada si supera el límite).
 
-### Fase 5 · Onboarding y consentimiento
-Pendiente de propuesta de contenido y confirmación. Archivos: `ConsentModal.tsx`, `dashboard/page.tsx`, `admin/page.tsx`, `register/page.tsx`.
+### Fase 5 · Onboarding y consentimiento (onboarding hecho)
+**Archivos:** `src/components/onboarding/{StudentOnboarding,IntroModal,TourCoachmark}.tsx`, `src/lib/onboarding.ts`, `src/lib/i18n/messages/onboarding.ts`, `DocsEditor.tsx` (`data-tour`, menú ⋯ → Help → "Show the tour again"), `Toolbar.tsx`, `AssistantPanel.tsx`, `MenuBar.tsx`, `db.ts` (`users.onboardedAt`), `api/auth/me` (PATCH `onboarded`). Spec: `docs/design-handoff/README.md §4.10`, mockup `08 Editor Onboarding`.
+- [x] Modal de intro de 4 páginas (vídeo con capítulos · Provenance · Thesisfic AI · Integrity) en EN/ES/FR.
+- [x] Tour de 6 coachmarks sobre la UI real (toolbar · integrity pill · modelo · comentario del tutor · pestañas · pasaje pegado), con foco recortado, tarjeta posicionada y scroll del `main` sin `scrollIntoView`; anclas de documento con fallback a los botones Comment / Cite.
+- [x] Una sola vez por cuenta y dispositivo (`localStorage onboarding_v1` + `users.onboardedAt`); Skip termina las dos partes; solo escritorio (≥ 1024px), solo estudiante propietario, nunca en revisión.
+- [x] Vídeo configurable por idioma en `src/lib/onboarding.ts` (`ONBOARDING_VIDEO`); con `src: null` se muestra el placeholder con capítulos.
+- [ ] `ConsentModal` de una pantalla, mini-gutter en el dashboard del tutor y código de invitación obligatorio en el registro (sin empezar).
 
 ### Fase 6 · Instrumentación para el piloto (hecha)
 **Archivos:** `src/app/api/admin/report/route.ts`, `src/app/admin/report/page.tsx`, `src/lib/export.ts` (`toCsv`), `src/lib/nav.tsx`, `globals.css` (print).
@@ -92,7 +97,7 @@ Infraestructura `src/lib/i18n` (cookie `locale`, rutas `/es` `/fr` `/en`, `useT`
 Mobile nativo (Capacitor), migración a Postgres, SSO/LMS.
 
 ## 4. Pendiente
-- Fase 5 (onboarding y consentimiento): no empezada; requiere confirmar antes el contenido de las tres pantallas de primer uso.
+- Fase 5: el onboarding del editor está hecho; quedan `ConsentModal`, el mini-gutter del tutor y el código de invitación.
 - Rutas `/privacy` y `/contact` no existen: el pie de la landing enlaza a `#model` y `#pilot`.
 - `MenuBar` (barra horizontal antigua) sigue exportado aunque ya no se renderiza; eliminar cuando nada lo use.
 - ESLint no está instalado en el proyecto; `npm run lint` pide instalarlo.

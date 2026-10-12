@@ -6,11 +6,13 @@ Repo destino: `soufyec/thesisfy-mvp` (Next 14 App Router · React 18 · Tailwind
 
 | Archivo | Para qué |
 |---|---|
-| `CLAUDE.md` (en la raíz del proyecto, junto a esta carpeta) | Reglas del proyecto. Copiar a la raíz del repo. Claude Code lo lee en cada sesión. |
+| `CLAUDE.md` (se entrega aparte, fuera de esta carpeta) | Reglas del proyecto. Copiar a la raíz del repo. Claude Code lo lee en cada sesión. |
 | `PLAN.md` | Diagnóstico, dirección y 7 fases (0–6) con archivos, tareas, aceptación y prompt. Copiar a la raíz del repo. |
 | `PROMPTS.md` | Los prompts exactos a pegar en Claude Code, sesión por sesión. |
 | `README.md` | Este documento: especificación visual precisa de los dos mockups finales. |
-| `mockups/05 Landing Propuesta v2.dc.html` | Referencia de la Fase 1. Abrir en un navegador (necesita `support.js` al lado). |
+| `mockups/07 Landing Propuesta v3.dc.html` | **Referencia de la Fase 1** (sustituye a `05`). Abrir en un navegador (necesita `support.js` al lado). Añade motion al hacer scroll y la sección `#model` como scrollytelling. |
+| `mockups/05 Landing Propuesta v2.dc.html` | Versión estática anterior; misma estructura y copy que `07`, sin motion. |
+| `mockups/08 Editor Onboarding.dc.html` | `06` + onboarding del estudiante (modal de intro y tour de 6 coachmarks). Referencia de la Fase 5. Tweak `onboarding` para reproducirlo. |
 | `mockups/06 Editor Propuesta v2.dc.html` | Referencia de las Fases 2, 3 y 4. Viewport mínimo 1440px. |
 | `mockups/01 Landing Actual`, `02 Editor Actual` | Recreación del estado actual del repo, para comparar antes/después. |
 
@@ -68,7 +70,7 @@ Se mantiene el componente actual. `SEAL_NAME = "thesisfy.edu"`. En el hero: 100p
 
 ---
 
-## 3. Landing (`src/app/page.tsx`) — ref. `mockups/05`
+## 3. Landing (`src/app/page.tsx`) — ref. `mockups/07`
 
 Contenedor `max-w-[1200px] mx-auto px-8`. Fondo blanco. Secciones alternan blanco / `gray-50`.
 
@@ -101,8 +103,16 @@ Padding `72px 32px 56px`. Grid `minmax(0,1fr) 104px`, gap 32, `min-height 520px`
 - Derecha `gray-50`, padding 20: título "INTEGRITY LEDGER" 12/600 `gray-500` tracking .08em; filas 13px con borde `gray-200`: Starting score 100 · Pasted text attributed −0 (green) · AI share 12% of 25% limit −0 (green) · 1 open notice · bulk paste 240 words −6 (amber) · **Integrity 94** (14/700 green). Nota 12px `gray-500`: `Every deduction maps to an action the student can take. Advisor and student see the same ledger.`
 - Pie 10×20, borde superior, 12px `gray-500`, leyenda con barras 10×3: Written by the student · AI-assisted, declared · Quoted or pasted.
 
-### 3.4 `#model` — tres pilares
-`py-20 bg-gray-50`. Título centrado 36/700: `Why a provenance report beats an <gradient>AI score</gradient>`; sub 16px `gray-600` `max-w-[600px]`: `Three design decisions that hold up in an appeal hearing.` Margen inferior 56. Grid 3 col gap 24, tarjetas blancas radio 16 borde `gray-100` `shadow-sm` padding 28: número 44px radio 12 `brand-50`/`brand-600` 15/700; h3 17/600; p 14/1.65 `gray-600`.
+### 3.4 `#model` — tres pilares (scrollytelling, `IntegrityModelStory.tsx`)
+`padding 80px 32px 40px` `bg-gray-50`. Título centrado 36/700: `Why a provenance report beats an <gradient>AI score</gradient>`; sub 16px `gray-600` `max-w-[600px]`: `Three design decisions that hold up in an appeal hearing.` Margen inferior 24.
+
+**Layout ≥ 900px**: grid `minmax(0,1fr) minmax(0,1fr)` gap 48. Columna izquierda `position:sticky; top:104px; height:520px`, con **tres paneles superpuestos** (`position:absolute; inset:0`, blanco, radio 16, borde `gray-200`, sombra `0 20px 40px -20px rgba(17,24,39,.18)`, padding 24). Columna derecha: tres bloques de texto de `min-height:62vh` centrados verticalmente: número 44px radio 12 `brand-50`/`brand-600`; h3 26/700/1.2 −0.02em; p 17/1.65 `gray-600` `max-w-[480px]`.
+- **Paso activo** = el bloque de texto cuyo rect cruza `innerHeight/2` (o el más cercano), calculado en el handler de scroll con rAF. El panel activo: `opacity 1; transform none`; anteriores `translateY(-24px) scale(.97)`; siguientes `translateY(24px) scale(.97)`; opacidad 0. Transición `opacity .5s, transform .6s cubic-bezier(.2,.7,.2,1)`. Los textos no activos bajan a `opacity .35`.
+- Panel 0 (atribución): cabecera "Chapter 2 · Methods" + "Saved · 14:36"; tres párrafos Georgia 14/1.7 con gutter (¶3 verde · Q ámbar "Pasted 14:32 · attributed on entry" · AI violeta "Claude · Grammar · 14:36" con caret parpadeante 1s); abajo, tarjeta ámbar (`#fffbeb`, borde `#fde68a`, radio 12): "**240 words pasted.** Mark them so the ledger stays at 100." + chips "Quoted · add source" (`prov.paste` fondo) · "Copied from an AI tool" · "My own notes".
+- Panel 1 (ledger): eyebrow "INTEGRITY LEDGER" + chip `accent-50`/`accent-700` "Visible to you and your advisor"; filas 14px con sub-línea 12px `gray-400` (§2 ¶4 · 14:32) y botón de acción `brand-50`/`brand-700` ("Add source", "Reply"); total "Integrity **94**" 28/700 green; nota "No probability. No hidden weighting. Resolve the notice and the score returns to 100."
+- Panel 2 (consentimiento): eyebrow "MONITORING SCOPES · CHOSEN BY THE STUDENT, WITHIN POLICY"; cinco filas con toggle 34×20 (`brand-600` on / `gray-300` off; los bloqueados por política en `gray-400`): Pastes and quotes · AI assistant use · Session word counts · Keystrokes (off, "Not available under this institution's policy") · Clipboard contents (off, "Never recorded"); bloque terminal `gray-900` monoespaciado 12px: `server › event keystroke_sample dropped · outside granted scopes` / `server › event paste_count stored · receipt #4f2a` (`accent-300`); enlace "Download consent receipt" con icono `download`.
+
+**Layout < 900px** (y `prefers-reduced-motion`): las tres tarjetas estáticas de la versión anterior (grid 1 col gap 24, radio 16, borde `gray-100`, `shadow-sm`, padding 28; número 44px; h3 17/600; p 14/1.65). Sin paneles.
 1. **Attribution at the moment of writing** — Text inserted from the assistant, pasted from a source or copied from an external AI tool is marked when it enters the document. Nothing is inferred afterwards.
 2. **A ledger the student can see and fix** — The integrity score is a sum of visible deductions: unattributed pastes, AI share above policy, open notices. Every point maps to an action the student can take.
 3. **Consent and policy enforced on the server** — Students choose monitoring scopes within the institution's policy. Events outside the granted scopes are dropped even if a client sends them. Receipts are downloadable.
@@ -116,18 +126,29 @@ Padding `72px 32px 56px`. Grid `minmax(0,1fr) 104px`, gap 32, `min-height 520px`
 ### 3.6 `#pilot` — formulario
 `padding 40px 32px 96px`. Bloque `linear-gradient(135deg, brand-600, brand-800)`, blanco, radio 24, padding 56, grid `6fr 5fr` gap 48.
 - Izq: eyebrow 12/700 tracking .14em uppercase `brand-200` `Pilot programme`; h2 36/700/1.15 `One department. One semester. A report you can take to the academic board.`; p 16/1.6 `brand-100` `max-w-[520px]`: `We set up your AI policy together, onboard advisors and students in a 45-minute session, and deliver an end-of-term integrity report with provenance statistics, consent records and AI spend.`
-- Der: tarjeta blanca radio 16 padding 28 gap 14, sombra formulario. Labels 13/600 `gray-700`; inputs radio 12 `12px 14px` 14px `gray-50` borde `gray-200`: Institution (`University of …`) · Work email (`name@university.edu`) · Role (select: Integrity office / Dean / Library). Botón primario `Request a pilot` 14px padding, 15/600. Nota 12px `gray-500` centrada: `Pilots are scoped per department. No public pricing yet.`
-- Submit → `POST /api/leads { institution, email, role }` → `db.leads`. Éxito: sustituir el formulario por `Thanks. We will reply from a thesisfy.edu address within two working days.` Error: línea 12px `red-600` bajo el botón.
+- Der: tarjeta blanca radio 16 padding 28 gap 14, sombra formulario. Labels 13/600 `gray-700`; inputs radio 12 `12px 14px` 14px `gray-50` borde `gray-200`, en este orden: **Name** (`Full name`, requerido) · Institution (`University of …`) · Work email (`name@university.edu`) · Role (select: Integrity office / Dean / Library) · **Phone** (label con "Optional" 12/400 `gray-400` a la derecha; placeholder `+34 600 000 000`; `type="tel"`, no requerido). Botón primario `Request a pilot` 14px padding, 15/600. Nota 12px `gray-500` centrada: `Pilots are scoped per department. No public pricing yet.`
+- Submit → `POST /api/leads { name, institution, email, role, phone? }` → `db.leads`. Validar `name`, `institution`, `email` (dominio no gratuito opcional), `role`; `phone` opcional. Éxito: sustituir el formulario por `Thanks. We will reply from a thesisfy.edu address within two working days.` Error: línea 12px `red-600` bajo el botón.
 
 ### 3.7 Footer
 Borde superior `gray-100`, padding 32, 13px `gray-500`. Logo 24px + "Thesisfy.edu" 16/700 · enlaces Integrity model · Data & consent · Privacy · Contact · `© 2026 Thesisfy.edu`.
 
-### 3.8 Responsive
-< 1024px: hero a una columna (sello encima del texto, 80px), preview a una columna (ledger debajo), pilares/roles a 1 col, bloque piloto a 1 col. Escena orbital oculta < 768px.
+### 3.8 Motion al hacer scroll (`useScrollMotion.ts`, `Reveal.tsx`)
+Toda la landing respeta `prefers-reduced-motion` (todo estático, elementos visibles). Implementación de referencia: `setupScroll()` en `mockups/07`.
+- **Barra de progreso**: `fixed top-0` 2px `brand-600`, `transform: scaleX(scrollY / (scrollHeight − innerHeight))`, `transform-origin: left`.
+- **Nav**: a partir de `scrollY > 8`, sombra `0 8px 24px -16px rgba(17,24,39,.25)` y borde `gray-200`; transición .3s.
+- **Reveal** (`<Reveal variant="up|left|right|scale" delay={ms}>`): estado inicial `opacity 0` + `translateY(28px)` / `translateX(∓36px)` / `translateY(44px) scale(.96)`; al entrar (IntersectionObserver, `threshold .12`, `rootMargin 0 0 -6%`) pasa a `opacity 1; transform none`; transición `opacity .7s cubic-bezier(.2,.7,.2,1), transform .9s` + `transition-delay`. Se dispara una vez. Dónde: badge, h1 (80ms), párrafo (160), CTAs (240), bullets (320), sello (scale, 300), caption (450), preview del editor (scale, 200), títulos de sección, tarjetas de roles (0/120/240), columnas del bloque piloto (left / right 120).
+- **Parallax del hero**: columna de texto `translateY(scrollY·0.1)`, sello `translateY(scrollY·0.18)`; `will-change: transform`.
+- **Escena orbital**: yaw suma `scrollY·0.0012` rad al ángulo (gira al hacer scroll además del ratón).
+- **Ledger del preview** (al 40% visible, una vez): filas con `opacity 0; translateX(12px)` entran cada 170ms a partir de 350ms; después el total y la píldora cuentan 100 → 94 en 900ms (ease-out cúbico, `tabular-nums`).
+- **Tarjetas de roles**: hover `box-shadow 0 20px 40px -24px rgba(17,24,39,.25)`, borde `gray-200`, .3s.
+- Todos los listeners de scroll pasivos y agrupados en un rAF.
+
+### 3.9 Responsive
+< 1024px: hero a una columna (sello encima del texto, 80px), preview a una columna (ledger debajo), roles a 1 col, bloque piloto a 1 col. `#model` pasa a tarjetas < 900px (ver 3.4). Escena orbital oculta < 768px. Sin parallax < 768px.
 
 ---
 
-## 4. Editor (`DocsEditor.tsx` + hijos) — ref. `mockups/06`
+## 4. Editor (`DocsEditor.tsx` + hijos) — ref. `mockups/06` (onboarding: `mockups/08`)
 
 Columna flex a `100vh`, fondo `#f1f3f4`, `min-width` de diseño 1440px. Cromo: cabecera 52 · toolbar 40 · pestañas 34 · (documento + panel) · session bar 30.
 
@@ -150,12 +171,19 @@ Estilo `.doc-tab` actual: `6px 12px`, radio `8 8 0 0`, 13px. Activa: blanco, bor
 **Bubble menu** (selección): fondo `gray-900`, radio 10, padding 4, gap 2, sombra bubble, 12px blanco. B · I · U (28×28) | separador `rgba(255,255,255,.2)` | Cite · Comment (icono 13 + texto, `0 9px`) · **Ask AI** (`brand-600`, 600, `0 10px`) → abre el panel con la selección como "Working on".
 
 ### 4.5 Panel del asistente (`AssistantPanel.tsx`, 400px, borde izquierdo `gray-200`, blanco)
-- **Cabecera** `12px 16px`, borde inferior `gray-100`: icono 30px radio 8 gradiente `brand-500 → accent-500` con `bot` blanco · `Thesisfy AI` 14/600 + `Thinks with you. Never writes your thesis.` 12px `gray-400` · chip proveedor 12px radio 999 `gray-100` con punto 7px color proveedor: `Claude · your account` (click → popover con el selector completo) · historial `history` 16 `gray-500`.
-- **Modos** `12px 16px 0`: grid `repeat(5,1fr)` gap 6. Cada celda: columna centrada, gap 4, `padding 8px 2px 6px`, radio 10, borde 1px, icono 16 + etiqueta 11/500/1.1. Inactivo: blanco, borde `gray-200`, `gray-600`. Activo: `brand-600` fondo y borde, blanco. Debajo, `description` del modo 12px `gray-500` margen `8px 2px 0`.
-  Orden e iconos lucide: Ask `message-square` · Brainstorm `lightbulb` · Outline `list` · Critique `search` · Grammar `pencil` · Summarize `file-text` · Explain `graduation-cap` · Citations `book-marked` · Find gaps `circle-alert` · Paraphrase `shuffle`. Descripciones y sugerencias rápidas: ver `MODES` en `mockups/06` (script final).
+- **Cabecera** `12px 16px`, borde inferior `gray-100`: icono 30px radio 8 `brand-600` sólido con `bot` blanco (sin gradiente) · `Thesisfy AI` 14/600 + `Thinks with you. Never writes your thesis.` 12px `gray-400` · chip proveedor 12px radio 999 `gray-100` con punto 7px color proveedor: `Claude · your account` + `chevron-down` 11 `gray-400` (click → popover con el selector completo) · historial `history` 16 `gray-500`.
+- **Modos** `12px 16px 0` (`ModePicker.tsx`, estado `pickerOpen`, por defecto cerrado):
+  - *Cerrado*: una barra `brand-600` radio 10, `8px 10px 8px 12px`, blanco, gap 10: icono del modo 16 · etiqueta 13/600 `flex:1` · `Change mode` 12px opacidad .85 + `chevron-down` 12. Click → abre.
+  - *Abierto*: grid `repeat(5,1fr)` gap 6. Cada celda: columna centrada, gap 4, `padding 8px 2px 6px`, radio 10, borde 1px, icono 16 + etiqueta 11/500/1.1; `title` = description. Inactivo: blanco, borde `gray-200`, `gray-600`. Activo: `brand-600` fondo y borde, blanco. Click en una celda → cambia el modo **y cierra**. Sin línea de descripción debajo.
+  Orden e iconos lucide: Ask `message-square` · Brainstorm `lightbulb` · Outline `list` · Critique `search` · Grammar `pencil` · Summarize `file-text` · Explain `graduation-cap` · Citations `book-marked` · Find gaps `circle-alert` · Paraphrase `shuffle`. Descripciones y sugerencias rápidas (**2 por modo**, recortar `QUICK` a dos): ver `MODES` en `mockups/06` (script final).
 - **Working on**: margen `12px 16px 0`, `10px 12px`, borde `gray-200`, radio 10, `gray-50`, barra izquierda 3px `brand-600`. Eyebrow 11/600 uppercase tracking .06em `gray-400`: `Working on · §1 ¶2 · 48 words`; extracto Georgia 13/1.45 `gray-700` clamp 2 líneas; `✕` 12px `gray-400`.
 - **Conversación** (scroll, `14px 16px`, gap 14): chips rápidos 12px `6px 10px` radio 8 `brand-50`/`brand-700`. Usuario: derecha, `max-w 85%`, 14/1.5, `9px 12px`, radio `12 12 2 12`, `brand-600` blanco. Asistente: meta 11px `gray-400` `Claude · Critique` + chip `logged` (`brand-50`/`brand-700` 600); burbuja `10px 12px` radio `12 12 12 2` `gray-100`. Acciones bajo la respuesta: 12px `5px 10px` radio 8 borde `gray-200` blanco `brand-700` 500 (`Guiding questions` · `Add as comment` / `Insert, marked as AI` · `Keep as notes` / `Replace selection`).
 - **Tarjeta de coste** (obligatoria antes de cualquier inserción): borde `#ddd6fe`, fondo `#f5f3ff`, radio 12, padding 12. Cabecera punto 8px `prov.ai` + `Before you insert AI text` 12/600 `#5b21b6`. Cuerpo 12.5/1.5 `gray-700`: `Inserting this outline adds <b>64 AI-assisted words</b>. Your AI share goes from <b>12% to 14%</b> of the 25% your institution allows. It is marked in the document and visible to your advisor.` Botones: `Insert, marked as AI` (`prov.ai` blanco 600) · `Keep as notes` (borde `#ddd6fe`, `#5b21b6`). Si el nuevo % supera el límite: botón deshabilitado y la frase `This insertion would take you to 27%, above the 25% limit.` Añadir quién paga cuando el proveedor es institucional: `Billed to University of … (AI budget).`
+- **Estado de carga** (mientras llega la respuesta): meta `Claude · {Mode}` y burbuja `gray-100` radio `12 12 12 2`, `min-width 220px`, `overflow:hidden`, `position:relative`, con tres capas:
+  1. brillo: pseudo-capa `inset:0`, `linear-gradient(100deg, transparent 30%, rgba(255,255,255,.75) 50%, transparent 70%)`, `background-size 220% 100%`, `@keyframes shimmer { from { background-position:120% 0 } to { background-position:-120% 0 } }` 1.6s lineal infinito;
+  2. fila 12px `gray-600`: tres puntos 6px `brand-600` con `@keyframes dot { 0%,80%,100% { translateY(0); opacity:.4 } 40% { translateY(-4px); opacity:1 } }` 1.2s, retardos 0 / .15s / .3s, + etiqueta de estado que rota cada 1.8s: `Reading your selection` → `Checking the citation` → `Drafting questions` → `Almost there` (por modo, 3–4 etiquetas; las de arriba son las de Critique);
+  3. dos líneas esqueleto 8px radio 4 `gray-200` al 92% y 70%.
+  Al llegar el primer token, la burbuja se sustituye por la respuesta en streaming. Respeta `prefers-reduced-motion` (sin brillo ni rebote; puntos estáticos).
 - **Composer** `12px 16px 14px`, borde superior `gray-100`: caja `gray-50` borde `gray-200` radio 12 `9px 12px`; placeholder 14px `gray-400` `{Mode}… (Enter to send, Shift+Enter for a new line)`; botón enviar 28px radio 8 `brand-600` `arrow-up` 14.
 
 ### 4.6 Session bar (30px, blanco, borde superior `gray-200`, 12px `gray-500`, gap 18, padding `0 16px`)
@@ -168,6 +196,37 @@ Izq: punto 7px `green-500` con pulso 2.4s + `Session recording <b gray-900>paste
 Panel como bottom sheet (base existente), toolbar con scroll horizontal, gutter oculto, modos en grid 5×2 igual (celdas 56px mínimo).
 
 ---
+
+### 4.9 Correcciones pendientes detectadas en la revisión (aplicar en Fases 2–4)
+- Tarjeta de coste: siempre indica quién paga. Cuenta personal: `Paid by your Claude account (≈ 0.4¢).`; institucional: `Billed to University of … (AI budget).` Ya reflejado en `mockups/06`.
+- Etiquetas del gutter y anotación de margen: mínimo **11px** (el mockup usa 10–10.5; subir).
+- El `✕` de "Working on" es icono lucide `x` 14px, no carácter de texto.
+- Toolbar con `overflow:hidden` a 1440px oculta controles en portátiles de 1280. Regla de colapso: por debajo de 1366px, Super/Sub/Clear formatting y Checklist pasan al menú `⋯`; por debajo de 1280, también Image/Table/Spacing.
+- La `IntegrityPill` muestra el nº de notices abiertos cuando > 0: punto 6px `amber-600` tras el score + `title="1 open notice"`. Sin él, el "−6" del ledger no tiene origen visible.
+- Botón "Share" → "Share with advisor" (el único destinatario posible para un estudiante).
+- Formulario de piloto: `input`/`select` reales con `aria-label`, nunca `span`.
+
+### 4.10 Onboarding del estudiante (`StudentOnboarding.tsx`) — ref. `mockups/08`
+Se muestra una vez al primer acceso al editor tras crear la cuenta (`localStorage onboarding_v1 = "done"`; también `users.onboardedAt` en `db` para que no se repita en otro dispositivo). Reproducible desde el menú `⋯` → "Show the tour again". Dos partes encadenadas; `Skip` en cualquier momento termina las dos.
+
+**A. Modal de intro** (4 páginas). Overlay `fixed inset-0 z-100 rgba(17,24,39,.55) backdrop-blur(4px)`, centrado, padding 24. Diálogo 720px, `max-height calc(100vh − 48px)`, blanco, radio 16, sombra `0 25px 50px -12px rgba(0,0,0,.35)`, columna flex. Media arriba (se encoge, `min-height 140px`), texto (`20px 28px 16px`: eyebrow 12/600 uppercase `brand-700`, h2 22/700/1.25, p 14/1.6 `gray-600`), pie (`0 28px 20px`: `Skip` 13px `gray-500` · puntos 6px (`activo 18×6 brand-600`, resto `gray-200`, clicables) · `Back` secundario · primario `brand-600` radio 8 13/600).
+1. **Vídeo** (`aspect-ratio 16/9`, `max-height 42vh`, fondo `gray-900`, botón play 64px blanco con `play` `brand-600`): capítulos con barra segmentada 3px y marcas `0:00 Writing & provenance · 0:50 Thesisfy AI · 1:40 Integrity ledger · 2:10 Your advisor`; duración 2:40. **El vídeo no existe aún**: componente `<video>` con `poster` y `src` configurables en `src/lib/onboarding.ts`; hasta tenerlo, mostrar el placeholder del mockup. Eyebrow `Welcome to Thesisfy` · h2 `A two-minute tour of how your thesis is written here` · p `Watch the video or skip ahead. Afterwards we will point out six parts of the editor you will use every week.` · botón `Next`.
+2. **Provenance** (media `aspect-ratio 16/7`, `max-height 36vh`, fondo `brand-50`, tarjeta blanca con un párrafo Georgia 14 y las tres marcas + leyenda Written / AI-assisted / Quoted or pasted). Eyebrow `Provenance` · h2 `Every sentence keeps a record of where it came from` · p `Nothing is guessed afterwards. Text you write, text you paste and text you insert from the assistant are each marked the moment they enter the document.`
+3. **Thesisfy AI** (fondo `#f5f3ff`; tarjeta con la rejilla de 10 modos, Outline activo, y la tarjeta de coste). Eyebrow `Thesisfy AI` · h2 `The assistant thinks with you. It never writes your thesis.` · p `Ten modes to outline, critique, correct and cite. Before any AI text is inserted you see the words added, your new AI share and who pays.`
+4. **Integrity** (fondo `accent-50`; tarjeta con tres filas de ledger y chip `Same view as your advisor`). Eyebrow `Integrity` · h2 `You and your advisor see exactly the same ledger` · p `Your score is a sum of visible items you can fix. There are no hidden metrics and no accusations, only notices with an action attached.` · botón `Start the tour`.
+
+**B. Tour de 6 coachmarks** sobre la UI real. Capa `fixed inset-0 z-100 pointer-events:none`. *Foco*: div posicionado sobre el rect del ancla + 6px de margen, radio 10, `box-shadow 0 0 0 9999px rgba(17,24,39,.5), 0 0 0 3px rgba(76,110,245,.9), 0 0 0 8px rgba(76,110,245,.25)`, transición `all .45s cubic-bezier(.2,.7,.2,1)`. *Tarjeta*: 320px, blanco, radio 12, sombra `0 20px 40px -12px rgba(17,24,39,.35)`, padding `18px 18px 14px`: fila eyebrow 11/600 uppercase `brand-700` + contador `n / 6` `gray-400`; h3 16/700; p 13/1.55 `gray-600`; pie `Skip tour` 12px `gray-500` · `Back` · primario (`Next`, último `Start writing`). Colocación: `below` (centrada bajo el ancla, 14px), `left` o `right`; se recorta a 12px del viewport y si no cabe abajo se pone encima. Anclas con `data-tour`. Si el ancla está dentro del `main` desplazable, antes de medir se ajusta `main.scrollTop` para que el ancla quede visible con sitio para la tarjeta (no usar `scrollIntoView`). Re-medir en `resize`.
+
+| # | `data-tour` | Ancla | Eyebrow / título | Texto | Pos. |
+|---|---|---|---|---|---|
+| 1 | `editor` | Toolbar completa | The editor / `Write as you would anywhere` | `Full formatting, comments, citations, images and tables. The Provenance switch at the far right shows or hides the margin marks; your work is recorded either way.` | below |
+| 2 | `integrity` | `IntegrityPill` | Integrity pill / `Your AI share and score, always in view` | `12% of your text is AI-assisted against a 25% limit. Click to open the ledger and see each item behind the score. Your advisor sees the same.` (valores reales) | below |
+| 3 | `model` | Chip de proveedor del panel | Change model / `Choose which AI model you work with` | `Claude, GPT, Gemini or Mistral, on your university's budget or your own account. Every reply is logged with the model used.` | below |
+| 4 | `feedback` | Comentario del tutor en el margen (si no hay, el botón Add comment de la toolbar) | Feedback / `Your advisor comments in the margin` | `Replies stay attached to the paragraph. Resolving a comment clears its notice from the ledger. Use Add comment in the toolbar to ask a question of your own.` | left |
+| 5 | `tabs` | Fila de pestañas | Parts of the thesis / `Move between chapters and notes` | `Final submission is what gets evaluated. Add tabs for notes or drafts; copying between your own tabs needs no attribution.` | below |
+| 6 | `citations` | Primer bloque `paste` del documento (si no hay, el botón Cite) | Citations / `Quote, paste and cite without penalty` | `Pasted text is marked in amber and asks for a source. Select it and press Cite, or ask the Citations mode to format the reference in APA 7.` | right |
+
+El comentario del tutor en el margen (ancla 4) sigue el estilo de las anotaciones de margen: 11px, borde izquierdo 2px `brand-600`, `Prof. Williams` `brand-700` · texto `gray-500` · `Reply` `gray-400`. Si el panel del asistente está cerrado, el paso 3 lo abre antes de medir. Con `prefers-reduced-motion`, sin transiciones de posición.
 
 ## 5. Copy
 Inglés, sobrio, segunda persona. Prohibido: detected, caught, suspicious, cheating, flag (de cara al estudiante), signos de exclamación. Usar: attributed, declared, notice, logged. Cualquier acción con coste muestra la frase de consecuencia antes del botón.

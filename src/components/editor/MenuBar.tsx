@@ -13,7 +13,7 @@ export type MenuAction =
   | "outline" | "comments" | "ai" | "provenance" | "zoom-50" | "zoom-75" | "zoom-100" | "zoom-125" | "zoom-150" | "fullscreen" | "focus"
   | "image" | "table" | "link" | "comment" | "pageBreak" | "hr" | "date" | "citation" | "toc" | "footnote"
   | "bold" | "italic" | "underline" | "strike" | "superscript" | "subscript" | "h1" | "h2" | "h3" | "h4" | "p" | "alignLeft" | "alignCenter" | "alignRight" | "alignJustify" | "ls-1" | "ls-1.15" | "ls-1.5" | "ls-2" | "bullets" | "numbers" | "checklist" | "indent" | "outdent" | "clearFormat" | "blockquote" | "codeBlock"
-  | "spellcheck" | "references" | "integrity" | "privacy" | "shortcuts" | "about" | "copilot"
+  | "spellcheck" | "references" | "integrity" | "privacy" | "shortcuts" | "about" | "copilot" | "tour"
   | "reviewer" | "language" | "cite" | "process" | "sources" | "evidence"
   | "specialChars" | "bookmark" | "caseUpper" | "caseLower" | "caseTitle" | "caseCycle" | "indentFirst" | "indentHanging" | "indentNone" | "numberHeadings"
   | `table:${string}`;
@@ -288,6 +288,7 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
       title: t("editor.menu.help"),
       items: [
         { label: t("editor.menu.shortcuts"), action: "shortcuts", shortcut: `${mod}/` },
+        { label: t("onboarding.menu.tour"), action: "tour" },
         { label: t("editor.menu.about"), action: "about" },
       ],
     },

@@ -33,6 +33,8 @@ export interface User {
   avatar?: string;
   createdAt: string;
   lastActiveAt?: string;
+  /** Set when the student finishes or skips the editor onboarding, so another device does not repeat it. */
+  onboardedAt?: string;
   preferences: {
     language: "en" | "es" | "fr";
     defaultProvider?: Provider;

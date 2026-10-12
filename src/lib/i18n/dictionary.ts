@@ -12,8 +12,9 @@ import { report } from "./messages/report";
 import { questionnaire } from "./messages/questionnaire";
 import { notifications } from "./messages/notifications";
 import { lti } from "./messages/lti";
+import { onboarding } from "./messages/onboarding";
 
-const AREAS = [common, landing, dashboard, admin, editor, assistant, panelsReview, panelsResearch, accounts, report, questionnaire, notifications, lti] as const;
+const AREAS = [common, landing, dashboard, admin, editor, assistant, panelsReview, panelsResearch, accounts, report, questionnaire, notifications, lti, onboarding] as const;
 
 function merge(locale: Locale): Record<string, string> {
   const out: Record<string, string> = {};

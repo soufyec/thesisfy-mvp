@@ -10,6 +10,7 @@ export interface SessionUser {
   role: "student" | "professor" | "admin";
   university: string;
   avatar?: string;
+  onboardedAt?: string;
   preferences: { language: "en" | "es" | "fr"; defaultProvider?: string; editorFont: string; editorZoom: number };
 }
 

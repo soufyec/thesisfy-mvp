@@ -585,7 +585,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         </div>
         <div ref={headerMenusRef} className="contents">
         <div className="relative flex-shrink-0">
-          <button onClick={() => { setHistoryOpen(false); setProviderOpen((o) => !o); }} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1.5 max-w-[150px]" aria-label={t("assistant.provider.aria")} aria-expanded={providerOpen}>
+          <button onClick={() => { setHistoryOpen(false); setProviderOpen((o) => !o); }} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1.5 max-w-[150px]" aria-label={t("assistant.provider.aria")} aria-expanded={providerOpen} data-tour="model">
             <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 ${chipColor ? "" : "bg-gray-400"}`} style={chipColor ? { background: chipColor } : undefined} />
             <span className="truncate">{chipText}</span>
             <ChevronDown className="w-3 h-3 flex-shrink-0" />

@@ -24,6 +24,8 @@ export async function PATCH(request: NextRequest) {
   const patch: Record<string, unknown> = {};
   if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim();
   if (body.preferences && typeof body.preferences === "object") patch.preferences = body.preferences;
+  // The onboarding can only be marked as seen, never un-seen: replaying it is a client-side choice.
+  if (body.onboarded === true && !r.user.onboardedAt) patch.onboardedAt = new Date().toISOString();
   const updated = db.users.update(r.user.id, patch);
   return json({ user: updated ? publicUser(updated) : null });
 }

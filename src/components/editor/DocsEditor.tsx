@@ -56,6 +56,8 @@ import SourcesPanel from "./sources/SourcesPanel";
 import EvidencePanel from "./evidence/EvidencePanel";
 import ConsentModal from "../ConsentModal";
 import { DeadlineDialog, IntegrityPill, Modal, Toast } from "../ui";
+import StudentOnboarding, { type OnboardingPhase } from "../onboarding/StudentOnboarding";
+import { readOnboardingDone } from "@/lib/onboarding";
 import { useUser, type Consent } from "../useUser";
 import { api, ApiError, countWordsInText } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
@@ -104,10 +106,10 @@ export default function DocsEditor({ thesisId, reviewMode = false }: { thesisId:
       </div>
     );
   if (!data || loading || !user) return <div className="min-h-screen bg-[#f1f3f4] flex items-center justify-center text-gray-400 text-sm">{t("editor.loadingDocument")}</div>;
-  return <DocsEditorInner initial={data} thesisId={thesisId} userId={user.id} userRole={user.role} reviewMode={reviewMode} />;
+  return <DocsEditorInner initial={data} thesisId={thesisId} userId={user.id} userRole={user.role} reviewMode={reviewMode} onboarded={!!user.onboardedAt} />;
 }
 
-function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { initial: LoadResponse; thesisId: string; userId: string; userRole: string; reviewMode: boolean }) {
+function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onboarded }: { initial: LoadResponse; thesisId: string; userId: string; userRole: string; reviewMode: boolean; onboarded: boolean }) {
   const router = useRouter();
   // `t` is stable and always reads the current locale, so closures captured by the editor never go stale.
   const tLive = useT();
@@ -253,6 +255,16 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
   useEffect(() => {
     if (!reviewMode && isOwner && window.innerWidth >= 1280) setSidebar("ai");
   }, [reviewMode, isOwner]);
+
+  // First visit to the editor: the welcome modal, then the tour. Desktop only (the anchors are hidden on phones),
+  // students only, and never in review mode. Replayable from ⋯ → Help → Show the tour again.
+  const [onboardingPhase, setOnboardingPhase] = useState<OnboardingPhase>("off");
+  useEffect(() => {
+    if (reviewMode || !isOwner || userRole !== "student" || onboarded) return;
+    if (window.innerWidth < 1024 || readOnboardingDone()) return;
+    const id = setTimeout(() => setOnboardingPhase("intro"), 700);
+    return () => clearTimeout(id);
+  }, [reviewMode, isOwner, userRole, onboarded]);
 
   // Who pays for institution-provided models, for the cost card shown before any AI insertion.
   useEffect(() => {
@@ -1120,6 +1132,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
       versions: () => setSidebar("versions"),
       share: () => setDialog("share"),
       submit: () => setDialog("submit"),
+      tour: () => setOnboardingPhase("intro"),
       "dl-docx": () => download("docx"),
       "dl-html": () => download("html"),
       "dl-md": () => download("md"),
@@ -1338,7 +1351,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
             {saveState === "saved" ? t("editor.save.saved") : saveState === "saving" ? t("editor.save.saving") : saveState === "unsaved" ? t("editor.save.unsaved") : t("editor.save.failed")}
           </span>
         )}
-        <IntegrityPill aiPct={aiPct} pastePct={pastePct} limitPct={policy.maxAiUsagePercent} score={integrityScore} onClick={() => setSidebar((x) => (x === "integrity" ? "none" : "integrity"))} className="hidden md:inline-flex flex-shrink-0" />
+        <span data-tour="integrity" className="hidden md:inline-flex flex-shrink-0"><IntegrityPill aiPct={aiPct} pastePct={pastePct} limitPct={policy.maxAiUsagePercent} score={integrityScore} onClick={() => setSidebar((x) => (x === "integrity" ? "none" : "integrity"))} /></span>
         {/* The assistant thinks with the author: a reviewer reads the thesis, so the panel is not offered in review. */}
         {isOwner && <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />{t("glossary.aiAssistant")}</button>}
         <button onClick={() => setDialog("share")} className="hidden md:inline-flex items-center px-3.5 py-[7px] rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 flex-shrink-0">{t("editor.share")}</button>
@@ -1353,7 +1366,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
 
       {/* Document tabs */}
       {!focus && (
-        <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-[#f1f3f4] border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label={t("editor.tabs.label")}>
+        <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-[#f1f3f4] border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label={t("editor.tabs.label")} data-tour="tabs">
           <div className="relative flex-shrink-0" data-tab-anchor={SUBMISSION}>
             <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => { if (activeTab === SUBMISSION) setOutlineTab(outlineTab === SUBMISSION ? null : SUBMISSION); else { setOutlineTab(null); switchTab(SUBMISSION); } }} className={`doc-tab submission !pr-7${activeTab === SUBMISSION ? "active" : ""}`} title={t("editor.tabs.submissionHint")}>
               <FileCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
@@ -1462,6 +1475,16 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode }: { 
           </aside>
         )}
       </div>
+
+      {isOwner && !reviewMode && (
+        <StudentOnboarding
+          phase={onboardingPhase}
+          onPhase={setOnboardingPhase}
+          onEnsureAssistant={() => setSidebar("ai")}
+          onDone={() => editor.commands.focus()}
+          vars={{ ai: aiPct, limit: policy.maxAiUsagePercent }}
+        />
+      )}
 
       {/* Session bar (30px) */}
       <SessionBar

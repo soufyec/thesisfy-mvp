@@ -72,9 +72,9 @@ function ProvenanceToggle({ on, onToggle, locked }: { on: boolean; onToggle: (v:
   );
 }
 
-function Btn({ onClick, active, disabled, title, children }: { onClick: () => void; active?: boolean; disabled?: boolean; title: string; children: React.ReactNode }) {
+function Btn({ onClick, active, disabled, title, children, tour }: { onClick: () => void; active?: boolean; disabled?: boolean; title: string; children: React.ReactNode; tour?: string }) {
   return (
-    <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onClick} disabled={disabled} title={title} aria-label={title} className={`tb-btn ${active ? "active" : ""}`}>
+    <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onClick} disabled={disabled} title={title} aria-label={title} data-tour={tour} className={`tb-btn ${active ? "active" : ""}`}>
       {children}
     </button>
   );
@@ -195,7 +195,7 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
   };
 
   return (
-    <div className="flex items-center px-2.5 h-10 bg-white border-b border-gray-200 whitespace-nowrap flex-shrink-0" role="toolbar" aria-label={t("editor.toolbar.label")}>
+    <div className="flex items-center px-2.5 h-10 bg-white border-b border-gray-200 whitespace-nowrap flex-shrink-0" role="toolbar" aria-label={t("editor.toolbar.label")} data-tour="editor">
       {/* The tools scroll sideways when the window is narrow; the Provenance pill stays pinned at the right. */}
       <div className="relative flex-1 min-w-0 h-full">
       {compact && <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-white to-transparent z-[1]" aria-hidden="true" />}
@@ -246,8 +246,8 @@ export default function Toolbar({ editor, zoom, onZoom, onLink, onImage, onTable
       <ColorPicker colors={HIGHLIGHTS} value={highlight} title={t("editor.toolbar.highlightColor")} icon={<Highlighter className="w-4 h-4" />} onPick={(c) => editor.chain().focus().setHighlight({ color: c }).run()} onClear={() => editor.chain().focus().unsetHighlight().run()} />
       <span className="tb-sep" />
       <Btn onClick={onLink} active={editor.isActive("link")} title={`${t("editor.toolbar.insertLink")} (Ctrl+K)`}><Link2 className="w-4 h-4" /></Btn>
-      <Btn onClick={onComment} title={`${t("editor.toolbar.addComment")} (Ctrl+Alt+M)`}><MessageSquarePlus className="w-4 h-4" /></Btn>
-      <Btn onClick={onCite} title={`${t("editor.cite")} (Ctrl+Alt+E): ${t("editor.toolbar.citeSource")}`}><BookMarked className="w-4 h-4" /></Btn>
+      <Btn onClick={onComment} title={`${t("editor.toolbar.addComment")} (Ctrl+Alt+M)`} tour="comment"><MessageSquarePlus className="w-4 h-4" /></Btn>
+      <Btn onClick={onCite} title={`${t("editor.cite")} (Ctrl+Alt+E): ${t("editor.toolbar.citeSource")}`} tour="cite"><BookMarked className="w-4 h-4" /></Btn>
       <Btn onClick={onImage} title={t("editor.toolbar.insertImage")}><ImageIcon className="w-4 h-4" /></Btn>
       <Btn onClick={onTable} title={t("editor.toolbar.insertTable")}><TableIcon className="w-4 h-4" /></Btn>
       <span className="tb-sep" />

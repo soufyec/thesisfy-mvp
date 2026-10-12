@@ -486,6 +486,31 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
   100% { transform: none; }
 }
 @media (prefers-reduced-motion: reduce) { .hero-properly { animation: none; } }
+/* The highlighted word then rotates: all candidates share one grid cell (width of the longest), the current one
+   is in place, the previous one falls out of the bottom edge while the next one drops in from the top edge. */
+.hero-rotate { display: inline-grid; vertical-align: baseline; overflow: hidden; padding: 0 0.04em; margin: 0 -0.04em; }
+.hero-rotate-word {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-110%);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+  pointer-events: none;
+}
+.hero-rotate-word.is-in { opacity: 1; transform: none; }
+.hero-rotate-word.is-out { opacity: 0; transform: translateY(110%); transition: transform 0.55s cubic-bezier(0.55, 0, 0.8, 0.4), opacity 0.4s ease 0.1s; }
+@media (prefers-reduced-motion: reduce) { .hero-rotate-word { transition: none; } }
+
+/* ---------- Student onboarding: intro modal and coachmarks ---------- */
+.onb-overlay { background: rgba(17, 24, 39, 0.55); backdrop-filter: blur(4px); }
+.onb-video-glow { background: radial-gradient(ellipse at 30% 30%, rgba(76, 110, 245, 0.45), transparent 60%), radial-gradient(ellipse at 75% 80%, rgba(32, 201, 151, 0.3), transparent 55%); }
+/* The focus cut-out: one element whose huge spread shadow dims everything else, plus the brand ring. */
+.tour-focus {
+  box-shadow: 0 0 0 9999px rgba(17, 24, 39, 0.5), 0 0 0 3px rgba(76, 110, 245, 0.9), 0 0 0 8px rgba(76, 110, 245, 0.25);
+  transition: left 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), top 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), width 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), height 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.tour-card { transition: left 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), top 0.45s cubic-bezier(0.2, 0.7, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .tour-focus, .tour-card { transition: none; } }
 
 /* ---------- Landing: previews that move ---------- */
 @keyframes land-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

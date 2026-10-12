@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#111827;background:#fff;-webkit-font-smoothing:antialiased}
+a{color:#4c6ef5;text-decoration:none}a:hover{color:#4263eb}
+*{box-sizing:border-box}
+@keyframes seal-spin{to{transform:rotate(360deg)}}
+@keyframes caret{50%{opacity:0}}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" data-screen-label="Landing propuesta v3" style="min-height:100vh;background:#fff;font-family:Inter,system-ui,sans-serif;color:#111827">
+  <div ref="{{ progressRef }}" aria-hidden="true" style="position:fixed;top:0;left:0;right:0;height:2px;background:#4c6ef5;transform:scaleX(0);transform-origin:0 50%;z-index:60"></div>
+  <nav ref="{{ navRef }}" style="position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);backdrop-filter:blur(16px);border-bottom:1px solid #f3f4f6;transition:box-shadow .3s,border-color .3s">
+    <div style="max-width:1200px;margin:0 auto;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <a href="#" style="display:flex;align-items:center;gap:8px;color:#111827">
+        <span style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#4c6ef5,#20c997);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+        <span style="font-size:20px;font-weight:700">Thesisfy<span style="color:#4c6ef5">.edu</span></span>
+      </a>
+      <div style="display:flex;align-items:center;gap:28px;font-size:14px;font-weight:500">
+        <a href="#model" style="color:#4b5563">Integrity model</a>
+        <a href="#roles" style="color:#4b5563">For institutions</a>
+        <a href="#pilot" style="color:#4b5563">Pilot programme</a>
+        <a href="#" style="color:#4b5563">Sign in</a>
+        <a href="#pilot" style="padding:9px 16px;background:#4c6ef5;color:#fff;border-radius:10px;font-weight:600;box-shadow:0 8px 16px -6px rgba(76,110,245,.45)">Request a pilot</a>
+      </div>
+    </div>
+  </nav>
+
+  <section ref="{{ heroRef }}" style="padding:72px 32px 56px;position:relative;overflow:hidden">
+    <div ref="{{ stageRef }}" style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:32px;align-items:start;position:relative;min-height:520px">
+      <canvas ref="{{ canvasRef }}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;display:block;opacity:.38;pointer-events:none"></canvas>
+      <figure ref="{{ sealRef }}" style="order:2;margin:-16px 0 0;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;width:104px;will-change:transform">
+        <svg data-reveal="scale" data-delay="300" width="100" height="100" viewBox="0 0 260 260" style="filter: drop-shadow(0 10px 18px rgba(54,79,199,.28)); width: 102px; height: 102px">
+          <defs>
+            <linearGradient id="sealBase" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4c6ef5"></stop><stop offset="1" stop-color="#0ca678"></stop></linearGradient>
+            <linearGradient id="sealShine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"></stop><stop offset=".55" stop-color="#fff" stop-opacity="0"></stop></linearGradient>
+            <radialGradient id="sealInner" cx=".5" cy=".4" r=".6"><stop offset="0" stop-color="#5c7cfa"></stop><stop offset="1" stop-color="#364fc7"></stop></radialGradient>
+            <path id="sealRing2" d="M130,130 m-92,0 a92,92 0 1,1 184,0 a92,92 0 1,1 -184,0"></path>
+          </defs>
+          <g fill="url(#sealBase)">
+            <circle cx="130" cy="130" r="116"></circle>
+            <circle cx="248" cy="130" r="12"></circle><circle cx="246.2" cy="150.5" r="12"></circle><circle cx="240.9" cy="170.3" r="12"></circle><circle cx="232.2" cy="189" r="12"></circle><circle cx="220.4" cy="205.9" r="12"></circle><circle cx="205.9" cy="220.4" r="12"></circle><circle cx="189" cy="232.2" r="12"></circle><circle cx="170.3" cy="240.9" r="12"></circle><circle cx="150.5" cy="246.2" r="12"></circle><circle cx="130" cy="248" r="12"></circle><circle cx="109.5" cy="246.2" r="12"></circle><circle cx="89.7" cy="240.9" r="12"></circle><circle cx="71" cy="232.2" r="12"></circle><circle cx="54.1" cy="220.4" r="12"></circle><circle cx="39.6" cy="205.9" r="12"></circle><circle cx="27.8" cy="189" r="12"></circle><circle cx="19.1" cy="170.3" r="12"></circle><circle cx="13.8" cy="150.5" r="12"></circle><circle cx="12" cy="130" r="12"></circle><circle cx="13.8" cy="109.5" r="12"></circle><circle cx="19.1" cy="89.7" r="12"></circle><circle cx="27.8" cy="71" r="12"></circle><circle cx="39.6" cy="54.1" r="12"></circle><circle cx="54.1" cy="39.6" r="12"></circle><circle cx="71" cy="27.8" r="12"></circle><circle cx="89.7" cy="19.1" r="12"></circle><circle cx="109.5" cy="13.8" r="12"></circle><circle cx="130" cy="12" r="12"></circle><circle cx="150.5" cy="13.8" r="12"></circle><circle cx="170.3" cy="19.1" r="12"></circle><circle cx="189" cy="27.8" r="12"></circle><circle cx="205.9" cy="39.6" r="12"></circle><circle cx="220.4" cy="54.1" r="12"></circle><circle cx="232.2" cy="71" r="12"></circle><circle cx="240.9" cy="89.7" r="12"></circle><circle cx="246.2" cy="109.5" r="12"></circle>
+          </g>
+          <circle cx="130" cy="130" r="116" fill="url(#sealShine)"></circle>
+          <circle cx="130" cy="130" r="106" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2"></circle>
+          <g style="transform-origin:130px 130px;animation:seal-spin 60s linear infinite"><text fill="#fff" font-size="21" font-weight="700" font-family="Inter, system-ui, sans-serif" letter-spacing="3"><textPath href="#sealRing2" startOffset="0" textLength="576" lengthAdjust="spacing">ACADEMIC QUALITY SEAL · THESISFY.EDU · </textPath></text></g>
+          <circle cx="130" cy="130" r="72" fill="url(#sealInner)" stroke="#fff" stroke-opacity=".9" stroke-width="2"></circle>
+          <path d="M130 88 l-32 12 v26 c0 23 32 40 32 40 s32-17 32-40 v-26 z" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-width="5" stroke-linejoin="round"></path>
+          <path d="M115 130 l10 10 l20 -22" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <figcaption data-reveal="up" data-delay="450" style="text-align:center;font-size:11px;line-height:1.3;color:#6b7280"><span style="display:block;font-weight:600;color:#111827">Academic quality seal</span></figcaption>
+      </figure>
+      <div ref="{{ textRef }}" style="min-width:0;max-width:720px;order:1;position:relative;z-index:1;will-change:transform">
+        <div data-reveal="up" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#f0f4ff;border-radius:9999px;color:#4263eb;font-size:13px;font-weight:600;margin-bottom:28px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>Academic integrity for the AI era</div>
+        <h1 data-reveal="up" data-delay="80" style="font-size:58px;line-height:1.05;font-weight:800;letter-spacing:-.025em;margin:0 0 24px;text-wrap:pretty">Evidence of the writing process, <span style="background:linear-gradient(90deg,#4c6ef5,#20c997);-webkit-background-clip:text;background-clip:text;color:transparent">not suspicion</span> of the result.</h1>
+        <p data-reveal="up" data-delay="160" style="font-size:19px;line-height:1.6;color:#4b5563;margin:0 0 36px;max-width:560px;text-wrap:pretty">Thesisfy attributes every sentence of a thesis as it is written: typed, quoted or AI-assisted. Advisors receive a provenance report. Students use the AI tools your policy allows, inside the editor, with their consent and under your budget.</p>
+        <div data-reveal="up" data-delay="240" style="display:flex;gap:12px;flex-wrap:wrap">
+          <a href="#pilot" style="display:inline-flex;align-items:center;gap:8px;padding:15px 26px;background:#4c6ef5;color:#fff;border-radius:12px;font-weight:600;font-size:16px;box-shadow:0 10px 20px -8px rgba(76,110,245,.5);transition:background .2s" style-hover="background:#4263eb;color:#fff">Request a pilot<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
+          <a href="#model" style="display:inline-flex;align-items:center;padding:15px 26px;background:#fff;color:#374151;border:2px solid #e5e7eb;border-radius:12px;font-weight:600;font-size:16px;transition:border-color .2s" style-hover="border-color:#4c6ef5;color:#4263eb">Read the integrity model</a>
+        </div>
+        <div data-reveal="up" data-delay="320" style="margin-top:36px;display:flex;gap:24px;font-size:13px;color:#6b7280;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#20c997"></span>Consent-first, GDPR by design</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#7c3aed"></span>No AI-probability guessing</span>
+          <span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span>AI costs billed to the institution</span>
+        </div>
+      </div>
+    </div>
+
+    <div data-reveal="scale" data-delay="200" style="max-width:1200px;margin:56px auto 0;position:relative;z-index:1">
+      <div style="position:absolute;inset:-8px;background:linear-gradient(90deg,rgba(76,110,245,.12),rgba(32,201,151,.12));border-radius:28px;filter:blur(48px)"></div>
+      <div style="position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 25px 50px -12px rgba(17,24,39,.15);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#6b7280;gap:12px;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:8px;background:#4c6ef5;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg></span><span style="font-weight:600;color:#111827">Chapter 1 · Introduction</span>· Final submission</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:9999px;background:#f0f4ff;color:#4263eb;font-weight:600"><span style="width:16px;height:16px;border-radius:50%;background:conic-gradient(#7c3aed 0 12%,#f59e0b 12% 19%,#20c997 19% 100%)"></span>AI-assisted 12% · limit 25% · Integrity <span ref="{{ pillScoreRef }}">94</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px)">
+          <div style="padding:28px 32px 28px 64px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.7;color:#202124;border-right:1px solid #f3f4f6;display:flex;flex-direction:column;gap:14px">
+            <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:11px;color:#9ca3af"><span>¶1</span><span style="width:3px;border-radius:2px;background:#20c997"></span></span>Climate prediction has historically relied on physically based circulation models whose accuracy is bounded by the resolution at which sub-grid processes can be represented.</p>
+            <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:11px;color:#7c3aed;font-weight:700"><span>AI</span><span style="width:3px;border-radius:2px;background:#7c3aed"></span></span><span style="background:rgba(124,58,237,.13);border-bottom:2px solid rgba(124,58,237,.55)">Recent work suggests that deep learning architectures trained on reanalysis products can learn stable emulators of atmospheric dynamics, offering large speed-ups at inference time while preserving physically plausible behaviour.</span> <span style="font-family:Inter,sans-serif;font-size:11px;color:#7c3aed;font-weight:600">Claude · Outline · 9 Mar</span></p>
+            <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:11px;color:#b45309;font-weight:700"><span>Q</span><span style="width:3px;border-radius:2px;background:#f59e0b"></span></span><span style="background:rgba(245,158,11,.16);border-bottom:2px solid rgba(245,158,11,.6)">"Hybrid modelling" describes any configuration in which a learned component is coupled to a numerical solver.</span> <span style="font-family:Inter,sans-serif;font-size:11px;color:#b45309;font-weight:600">Quoted · Reichstein 2019</span></p>
+          </div>
+          <div ref="{{ ledgerRef }}" style="padding:20px;background:#f9fafb;display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.08em">Integrity ledger</div>
+            <div data-ledger="1" style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">Starting score</span><span style="font-weight:600">100</span></div>
+            <div data-ledger="1" style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">Pasted text attributed</span><span style="font-weight:600;color:#059669">−0</span></div>
+            <div data-ledger="1" style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">AI share 12% of 25% limit</span><span style="font-weight:600;color:#059669">−0</span></div>
+            <div data-ledger="1" style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">1 open notice · bulk paste 240 words</span><span style="font-weight:600;color:#d97706">−6</span></div>
+            <div data-ledger="1" style="display:flex;justify-content:space-between;font-size:14px;padding:8px 0"><span style="font-weight:600">Integrity</span><span ref="{{ scoreRef }}" style="font-weight:700;color:#059669;font-variant-numeric:tabular-nums">94</span></div>
+            <div style="font-size:12px;color:#6b7280;line-height:1.5">Every deduction maps to an action the student can take. Advisor and student see the same ledger.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:20px;padding:10px 20px;border-top:1px solid #f3f4f6;font-size:12px;color:#6b7280;background:#fff;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:3px;border-radius:2px;background:#20c997"></span>Written by the student</span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:3px;border-radius:2px;background:#7c3aed"></span>AI-assisted, declared</span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:3px;border-radius:2px;background:#f59e0b"></span>Quoted or pasted</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="model" style="padding:80px 32px 40px;background:#f9fafb">
+    <div style="max-width:1200px;margin:0 auto">
+      <div data-reveal="up" style="text-align:center;margin-bottom:24px"><h2 style="font-size:36px;font-weight:700;margin:0 0 12px;letter-spacing:-.02em">Why a provenance report beats an <span style="background:linear-gradient(90deg,#4c6ef5,#20c997);-webkit-background-clip:text;background-clip:text;color:transparent">AI score</span></h2><p style="color:#4b5563;margin:0 auto;font-size:16px;max-width:600px">Three design decisions that hold up in an appeal hearing.</p></div>
+
+      <sc-if value="{{ sticky }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:start">
+        <div style="position:sticky;top:104px;height:520px;align-self:start;min-width:0">
+          <div data-panel="0" style="position:absolute;inset:0;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 20px 40px -20px rgba(17,24,39,.18);padding:24px;display:flex;flex-direction:column;gap:14px;transition:opacity .5s,transform .6s cubic-bezier(.2,.7,.2,1)">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#6b7280"><span style="font-weight:600;color:#111827">Chapter 2 · Methods</span><span style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e"></span>Saved · 14:36</span></div>
+            <div style="padding-left:40px;font-family:Georgia,serif;font-size:14px;line-height:1.7;color:#202124;display:flex;flex-direction:column;gap:12px">
+              <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:11px;color:#9ca3af"><span>¶3</span><span style="width:3px;border-radius:2px;background:#20c997"></span></span>We sample the ERA5 reanalysis at 0.25° and train on 1979–2015, holding out 2016–2022 for evaluation.</p>
+              <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:11px;color:#b45309;font-weight:700"><span>Q</span><span style="width:3px;border-radius:2px;background:#f59e0b"></span></span><span style="background:rgba(245,158,11,.16);border-bottom:2px solid rgba(245,158,11,.6)">"Learned parameterisations remain sensitive to the training window."</span> <span style="font-family:Inter,sans-serif;font-size:11px;color:#b45309;font-weight:600">Pasted 14:32 · attributed on entry</span></p>
+              <p style="margin:0;position:relative"><span style="position:absolute;left:-40px;top:4px;bottom:4px;display:flex;gap:5px;font-family:Inter,sans-serif;font-size:11px;color:#7c3aed;font-weight:700"><span>AI</span><span style="width:3px;border-radius:2px;background:#7c3aed"></span></span><span style="background:rgba(124,58,237,.13);border-bottom:2px solid rgba(124,58,237,.55)">We therefore report skill separately for each held-out year.</span> <span style="font-family:Inter,sans-serif;font-size:11px;color:#7c3aed;font-weight:600">Claude · Grammar · 14:36</span><span style="display:inline-block;width:2px;height:16px;background:#111827;vertical-align:-3px;margin-left:2px;animation:caret 1s steps(1) infinite"></span></p>
+            </div>
+            <div style="margin-top:auto;border:1px solid #fde68a;background:#fffbeb;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:13px;color:#111827"><strong style="font-weight:600">240 words pasted.</strong> Mark them so the ledger stays at 100.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:12px;font-weight:600"><span style="padding:6px 11px;border-radius:8px;background:#f59e0b;color:#111827">Quoted · add source</span><span style="padding:6px 11px;border-radius:8px;border:1px solid #fde68a;color:#92400e">Copied from an AI tool</span><span style="padding:6px 11px;border-radius:8px;border:1px solid #fde68a;color:#92400e">My own notes</span></div>
+            </div>
+          </div>
+          <div data-panel="1" style="position:absolute;inset:0;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 20px 40px -20px rgba(17,24,39,.18);padding:24px;display:flex;flex-direction:column;gap:10px;transition:opacity .5s,transform .6s cubic-bezier(.2,.7,.2,1)">
+            <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.08em">Integrity ledger</span><span style="font-size:12px;padding:3px 10px;border-radius:999px;background:#e6fcf5;color:#0ca678;font-weight:600">Visible to you and your advisor</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;padding:10px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151">Starting score</span><span style="font-weight:600">100</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;padding:10px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151;display:flex;flex-direction:column;gap:2px">Pasted text without a source · 240 words<span style="font-size:12px;color:#9ca3af">§2 ¶4 · 14:32</span></span><span style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;color:#d97706">−6</span><span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:#f0f4ff;color:#4263eb">Add source</span></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;padding:10px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151;display:flex;flex-direction:column;gap:2px">AI share 12% of the 25% limit<span style="font-size:12px;color:#9ca3af">1,840 of 3,214 words written by you</span></span><span style="font-weight:600;color:#059669">−0</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;padding:10px 0;border-bottom:1px solid #e5e7eb"><span style="color:#374151;display:flex;flex-direction:column;gap:2px">Advisor comment awaiting reply<span style="font-size:12px;color:#9ca3af">§1 ¶2 · Prof. Williams</span></span><span style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;color:#d97706">−0</span><span style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:#f0f4ff;color:#4263eb">Reply</span></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:15px;padding:12px 0 0"><span style="font-weight:600">Integrity</span><span style="font-weight:700;font-size:28px;color:#059669;letter-spacing:-.02em">94</span></div>
+            <div style="font-size:12px;color:#6b7280;line-height:1.5;margin-top:auto">No probability. No hidden weighting. Resolve the notice and the score returns to 100.</div>
+          </div>
+          <div data-panel="2" style="position:absolute;inset:0;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 20px 40px -20px rgba(17,24,39,.18);padding:24px;display:flex;flex-direction:column;gap:10px;transition:opacity .5s,transform .6s cubic-bezier(.2,.7,.2,1)">
+            <div style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.08em">Monitoring scopes · chosen by the student, within policy</div>
+            <sc-for list="{{ scopes }}" as="s" hint-placeholder-count="5">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;padding:7px 0;border-bottom:1px solid #f3f4f6"><span style="display:flex;flex-direction:column;gap:2px;color:{{ s.fg }}">{{ s.label }}<span style="font-size:12px;color:#9ca3af">{{ s.note }}</span></span><span style="width:34px;height:20px;border-radius:999px;background:{{ s.track }};position:relative;flex-shrink:0"><span style="position:absolute;top:2px;left:{{ s.knob }};width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)"></span></span></div>
+            </sc-for>
+            <div style="margin-top:auto;background:#111827;color:#d1d5db;border-radius:10px;padding:12px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6"><span style="color:#9ca3af">server ›</span> event <span style="color:#fff">keystroke_sample</span> dropped · outside granted scopes<br><span style="color:#9ca3af">server ›</span> event <span style="color:#fff">paste_count</span> stored · <span style="color:#63e6be">receipt #4f2a</span></div>
+            <a href="#" style="font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px">Download consent receipt<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg></a>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="3">
+            <div data-step="{{ $index }}" style="min-height:62vh;display:flex;flex-direction:column;justify-content:center;padding:24px 0;transition:opacity .4s">
+              <div style="width:44px;height:44px;border-radius:12px;background:#f0f4ff;color:#4c6ef5;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;margin-bottom:20px">{{ p.n }}</div>
+              <h3 style="font-size:26px;font-weight:700;margin:0 0 12px;letter-spacing:-.02em;line-height:1.2;text-wrap:pretty">{{ p.title }}</h3>
+              <p style="font-size:17px;line-height:1.65;color:#4b5563;margin:0;max-width:480px;text-wrap:pretty">{{ p.body }}</p>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ cards }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:32px;padding-bottom:40px">
+        <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="3">
+          <div data-reveal="up" data-delay="{{ p.delay }}" style="background:#fff;border-radius:16px;border:1px solid #f3f4f6;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:28px">
+            <div style="width:44px;height:44px;border-radius:12px;background:#f0f4ff;color:#4c6ef5;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;margin-bottom:18px">{{ p.n }}</div>
+            <h3 style="font-size:17px;font-weight:600;margin:0 0 8px">{{ p.title }}</h3>
+            <p style="font-size:14px;line-height:1.65;color:#4b5563;margin:0;text-wrap:pretty">{{ p.body }}</p>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+    </div>
+  </section>
+
+  <section id="roles" style="padding:80px 32px">
+    <div style="max-width:1200px;margin:0 auto">
+      <div data-reveal="up" style="text-align:center;margin-bottom:56px"><h2 style="font-size:36px;font-weight:700;margin:0;letter-spacing:-.02em">One record, three readers</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
+        <sc-for list="{{ roles }}" as="r" hint-placeholder-count="3">
+          <div data-reveal="up" data-delay="{{ r.delay }}" style="border-radius:16px;border:1px solid #f3f4f6;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:28px;background:#fff;transition:box-shadow .3s,border-color .3s" style-hover="box-shadow:0 20px 40px -24px rgba(17,24,39,.25);border-color:#e5e7eb">
+            <div style="display:inline-flex;padding:4px 10px;border-radius:9999px;background:{{ r.bg }};color:{{ r.fg }};font-size:12px;font-weight:600;margin-bottom:14px">{{ r.who }}</div>
+            <h3 style="font-size:20px;font-weight:700;margin:0 0 14px;line-height:1.3;letter-spacing:-.01em">{{ r.title }}</h3>
+            <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.55;color:#4b5563">
+              <sc-for list="{{ r.items }}" as="it" hint-placeholder-count="3"><li style="display:flex;gap:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#20c997" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:3px"><polyline points="20 6 9 17 4 12"></polyline></svg>{{ it }}</li></sc-for>
+            </ul>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section id="pilot" style="padding:40px 32px 96px">
+    <div style="max-width:1200px;margin:0 auto;background:linear-gradient(135deg,#4c6ef5,#3b5bdb);color:#fff;border-radius:24px;padding:56px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:48px;align-items:center;overflow:hidden">
+      <div data-reveal="left">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#bac8ff;margin-bottom:16px">Pilot programme</div>
+        <h2 style="font-size:36px;line-height:1.15;font-weight:700;margin:0 0 16px;letter-spacing:-.02em;text-wrap:pretty">One department. One semester. A report you can take to the academic board.</h2>
+        <p style="font-size:16px;line-height:1.6;color:#dbe4ff;margin:0;max-width:520px;text-wrap:pretty">We set up your AI policy together, onboard advisors and students in a 45-minute session, and deliver an end-of-term integrity report with provenance statistics, consent records and AI spend.</p>
+      </div>
+      <div data-reveal="right" data-delay="120" style="background:#fff;color:#111827;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:14px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25)">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;flex-direction:column;gap:6px">Name<span style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;color:#9ca3af;background:#f9fafb;font-weight:400">Full name</span></label>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;flex-direction:column;gap:6px">Institution<span style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;color:#9ca3af;background:#f9fafb;font-weight:400">University of …</span></label>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;flex-direction:column;gap:6px">Work email<span style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;color:#9ca3af;background:#f9fafb;font-weight:400">name@university.edu</span></label>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;flex-direction:column;gap:6px">Role<span style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;color:#111827;background:#f9fafb;display:flex;justify-content:space-between;font-weight:400">Integrity office / Dean / Library<span style="color:#9ca3af">▾</span></span></label>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:flex;flex-direction:column;gap:6px"><span style="display:flex;justify-content:space-between;align-items:baseline">Phone<span style="font-size:12px;font-weight:400;color:#9ca3af">Optional</span></span><span style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;color:#9ca3af;background:#f9fafb;font-weight:400">+34 600 000 000</span></label>
+        <a href="#" style="margin-top:6px;padding:14px;text-align:center;background:#4c6ef5;color:#fff;border-radius:12px;font-weight:600;font-size:15px;box-shadow:0 10px 20px -8px rgba(76,110,245,.5)" style-hover="background:#4263eb;color:#fff">Request a pilot</a>
+        <div style="font-size:12px;color:#6b7280;text-align:center">Pilots are scoped per department. No public pricing yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="border-top:1px solid #f3f4f6;padding:32px;font-size:13px;color:#6b7280">
+    <div style="max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap">
+      <span style="display:flex;align-items:center;gap:8px;color:#111827;font-weight:700;font-size:16px"><span style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,#4c6ef5,#20c997)"></span>Thesisfy<span style="color:#4c6ef5">.edu</span></span>
+      <div style="display:flex;gap:24px;flex-wrap:wrap"><a href="#" style="color:#6b7280">Integrity model</a><a href="#" style="color:#6b7280">Data &amp; consent</a><a href="#" style="color:#6b7280">Privacy</a><a href="#" style="color:#6b7280">Contact</a></div>
+      <span>© 2026 Thesisfy.edu</span>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;motion&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;full&quot;,&quot;options&quot;:[&quot;full&quot;,&quot;subtle&quot;,&quot;off&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Scroll motion&quot;},&quot;storyLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sticky&quot;,&quot;options&quot;:[&quot;sticky&quot;,&quot;cards&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Integrity model section&quot;}}">
+class Component extends DCLogic {
+  rootRef = React.createRef(); canvasRef = React.createRef(); heroRef = React.createRef(); stageRef = React.createRef(); textRef = React.createRef();
+  sealRef = React.createRef(); navRef = React.createRef(); progressRef = React.createRef(); ledgerRef = React.createRef(); scoreRef = React.createRef(); pillScoreRef = React.createRef();
+  mouse = { x: 0, y: 0, tx: 0, ty: 0, px: -1, py: -1 };
+  scrollYaw = 0;
+  particles = Array.from({ length: 80 }, () => {
+    const u = Math.random() * Math.PI * 2, v = Math.acos(2 * Math.random() - 1), r = 430 + Math.random() * 120;
+    return { x: r * Math.sin(v) * Math.cos(u), y: r * Math.cos(v) * 0.6, z: r * Math.sin(v) * Math.sin(u), c: ["#bac8ff", "#96f2d7", "#ddd6fe"][Math.floor(Math.random() * 3)], s: 1.5 + Math.random() * 2 };
+  });
+
+  get motion() { return this.props.motion ?? "full"; }
+  get reduce() { return this.motion === "off" || matchMedia("(prefers-reduced-motion: reduce)").matches; }
+
+  state = { narrow: typeof window !== "undefined" && window.innerWidth < 900 };
+  componentDidMount() {
+    this.setupScene(); this.setupScroll();
+    this.onResize = () => { const narrow = window.innerWidth < 900; if (narrow !== this.state.narrow) this.setState({ narrow }); };
+    window.addEventListener("resize", this.onResize);
+  }
+  componentDidUpdate(prev, prevState) { if (prev.motion !== this.props.motion || prev.storyLayout !== this.props.storyLayout || prevState.narrow !== this.state.narrow) { this.teardownScroll(); this.setupScroll(); } }
+  componentWillUnmount() { if (this.cleanupScene) this.cleanupScene(); this.teardownScroll(); window.removeEventListener("resize", this.onResize); }
+
+  setupScroll() {
+    const root = this.rootRef.current; if (!root) return;
+    const reduce = this.reduce, subtle = this.motion === "subtle";
+    const timers = [], observers = [];
+    const nav = this.navRef.current, progress = this.progressRef.current, text = this.textRef.current, seal = this.sealRef.current;
+    // reveal on enter
+    const els = Array.from(root.querySelectorAll("[data-reveal]"));
+    if (!reduce) {
+      const dist = subtle ? 0.5 : 1;
+      els.forEach((el) => {
+        const k = el.dataset.reveal;
+        el.style.opacity = "0";
+        el.style.transform = k === "left" ? `translateX(${-36 * dist}px)` : k === "right" ? `translateX(${36 * dist}px)` : k === "scale" ? `translateY(${44 * dist}px) scale(${1 - 0.04 * dist})` : `translateY(${28 * dist}px)`;
+        el.style.transition = "opacity .7s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1)";
+        el.style.transitionDelay = (el.dataset.delay || 0) + "ms";
+      });
+      const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (!e.isIntersecting) return; const el = e.target; el.style.opacity = "1"; el.style.transform = "none"; io.unobserve(el); }), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+      els.forEach((el) => io.observe(el)); observers.push(io);
+    } else els.forEach((el) => { el.style.opacity = ""; el.style.transform = ""; el.style.transition = ""; });
+    // ledger: rows in sequence, score counts down
+    const ledger = this.ledgerRef.current, score = this.scoreRef.current, pill = this.pillScoreRef.current;
+    if (ledger && !reduce) {
+      const rows = Array.from(ledger.querySelectorAll("[data-ledger]"));
+      rows.forEach((r) => { r.style.opacity = "0"; r.style.transform = "translateX(12px)"; r.style.transition = "opacity .45s, transform .5s cubic-bezier(.2,.7,.2,1)"; });
+      const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+        if (!e.isIntersecting) return; io.disconnect();
+        rows.forEach((r, i) => timers.push(setTimeout(() => { r.style.opacity = "1"; r.style.transform = "none"; }, 350 + i * 170)));
+        const t0 = 350 + rows.length * 170, start = performance.now() + t0, dur = 900;
+        const tick = () => { const p = Math.min(1, (performance.now() - start) / dur); if (p < 0) { this.rafScore = requestAnimationFrame(tick); return; } const v = Math.round(100 - 6 * (1 - Math.pow(1 - p, 3))); if (score) score.textContent = v; if (pill) pill.textContent = v; if (p < 1) this.rafScore = requestAnimationFrame(tick); };
+        timers.push(setTimeout(() => { if (score) score.textContent = "100"; if (pill) pill.textContent = "100"; tick(); }, t0 - 300));
+      }), { threshold: 0.4 });
+      io.observe(ledger); observers.push(io);
+    }
+    // sticky story: active step drives the visual panel
+    const panels = Array.from(root.querySelectorAll("[data-panel]")), steps = Array.from(root.querySelectorAll("[data-step]"));
+    const setActive = (n) => {
+      panels.forEach((p, i) => { const a = i === n; p.style.opacity = a ? "1" : "0"; p.style.transform = reduce ? "none" : a ? "none" : i < n ? "translateY(-24px) scale(.97)" : "translateY(24px) scale(.97)"; p.style.pointerEvents = a ? "auto" : "none"; });
+      steps.forEach((s, i) => { s.style.opacity = i === n ? "1" : "0.35"; });
+    };
+    let active = -1;
+    const pickStep = () => {
+      if (!steps.length) return;
+      const mid = window.innerHeight / 2; let best = 0, bd = Infinity;
+      steps.forEach((s, i) => { const r = s.getBoundingClientRect(); const d = r.top <= mid && r.bottom >= mid ? 0 : Math.min(Math.abs(r.top - mid), Math.abs(r.bottom - mid)); if (d < bd) { bd = d; best = i; } });
+      if (best !== active) { active = best; setActive(best); }
+    };
+    if (panels.length) pickStep();
+    // scroll-linked: progress, nav shadow, hero parallax, orbit yaw
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return; ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const y = window.scrollY, max = document.documentElement.scrollHeight - window.innerHeight;
+        if (progress) progress.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
+        if (panels.length) pickStep();
+        if (nav) { nav.style.boxShadow = y > 8 ? "0 8px 24px -16px rgba(17,24,39,.25)" : "none"; nav.style.borderBottomColor = y > 8 ? "#e5e7eb" : "#f3f4f6"; }
+        if (!reduce) { const d = subtle ? 0.5 : 1; this.scrollYaw = y * 0.0012 * d; if (text) text.style.transform = `translateY(${y * 0.1 * d}px)`; if (seal) seal.style.transform = `translateY(${y * 0.18 * d}px)`; }
+        else { this.scrollYaw = 0; if (text) text.style.transform = ""; if (seal) seal.style.transform = ""; }
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+    this.teardownScroll = () => { window.removeEventListener("scroll", onScroll); observers.forEach((o) => o.disconnect()); timers.forEach(clearTimeout); cancelAnimationFrame(this.rafScore); this.teardownScroll = () => {}; };
+  }
+  teardownScroll() {}
+
+  setupScene() {
+    const canvas = this.canvasRef.current, hero = this.heroRef.current, stage = this.stageRef.current;
+    if (!canvas || !hero || !stage) return;
+    const ctx = canvas.getContext("2d");
+    const m = this.mouse;
+    const onMove = (e) => { const r = stage.getBoundingClientRect(); m.px = e.clientX - r.left; m.py = e.clientY - r.top; const hr = hero.getBoundingClientRect(); m.tx = ((e.clientX - hr.left) / hr.width - 0.5) * 2; m.ty = ((e.clientY - hr.top) / hr.height - 0.5) * 2; };
+    const onLeave = () => { m.tx = 0; m.ty = 0; m.px = -1; m.py = -1; };
+    hero.addEventListener("pointermove", onMove);
+    hero.addEventListener("pointerleave", onLeave);
+    const start = performance.now();
+    const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+    const bodies = {
+      sun: { label: "University", sub: "sets policy and budget", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 54 },
+      earth: { label: "Student", sub: "writes the thesis", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 24 },
+      moon: { label: "AI assistant", sub: "declared, never hidden", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 10 },
+      sat: { label: "Advisor", sub: "observes the process", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 8 },
+    };
+    const ORBIT = 300, MOON_R = 56, SAT_R = 84;
+    const ring = (fn, color, dash) => { ctx.beginPath(); for (let i = 0; i <= 96; i++) { const q = fn((i / 96) * Math.PI * 2); if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); } ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]); };
+    const sphere = (q, body, rr0) => {
+      const r = rr0 * q.k;
+      ctx.save(); ctx.shadowColor = body.glow; ctx.shadowBlur = r * 1.4;
+      const g = ctx.createRadialGradient(q.x - r * 0.35, q.y - r * 0.4, r * 0.1, q.x, q.y, r);
+      g.addColorStop(0, body.c0); g.addColorStop(1, body.c1);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2); ctx.stroke();
+    };
+    const pill = (q, body, dy, hover) => {
+      const fs = (hover ? 13.5 : 12.5) * Math.max(0.85, Math.min(1.1, q.k));
+      ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`; const tw = ctx.measureText(body.label).width;
+      ctx.font = `500 ${fs * 0.82}px Inter, system-ui, sans-serif`; const sw = ctx.measureText(body.sub).width;
+      const pw = Math.max(tw, sw) + fs * 1.8, ph = fs * 3.1, x = q.x - pw / 2, y = q.y + dy;
+      ctx.save(); ctx.shadowColor = "rgba(17,24,39,.14)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6; rr(x, y, pw, ph, 10); ctx.fillStyle = hover ? body.c1 : "rgba(255,255,255,.96)"; ctx.fill(); ctx.restore();
+      rr(x, y, pw, ph, 10); ctx.strokeStyle = hover ? body.c1 : "#e5e7eb"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.textBaseline = "middle"; ctx.textAlign = "center";
+      ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`; ctx.fillStyle = hover ? "#fff" : "#111827"; ctx.fillText(body.label, q.x, y + ph * 0.34);
+      ctx.font = `500 ${fs * 0.82}px Inter, system-ui, sans-serif`; ctx.fillStyle = hover ? "rgba(255,255,255,.85)" : "#6b7280"; ctx.fillText(body.sub, q.x, y + ph * 0.7);
+      ctx.textAlign = "start";
+    };
+    const draw = (now) => {
+      if (!this.canvasRef.current) return;
+      const reduce = this.reduce;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      if (!W || !H) { this.raf = requestAnimationFrame(draw); return; }
+      if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      m.x += (m.tx - m.x) * 0.05; m.y += (m.ty - m.y) * 0.05;
+      const t = (now - start) / 1000;
+      const yaw = (reduce ? 0.4 : t * 0.02) + m.x * 0.5 + this.scrollYaw;
+      const pitch = -0.42 + m.y * 0.2;
+      const F = 900;
+      const te = this.textRef.current;
+      const textRight = te ? te.getBoundingClientRect().right - stage.getBoundingClientRect().left : W * 0.6;
+      const cx = Math.min(W - 60, Math.max(W * 0.72, textRight + 90)), cy = H * 0.55;
+      const S = Math.max(0.6, Math.min(W / 640, H / 330));
+      const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const P = (x, y, z) => { const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw; const y1 = y * cp - z1 * sp, z2 = y * sp + z1 * cp; const k = F / (F + z2 + 650); return { x: cx + x1 * k * S, y: cy + y1 * k * S, k: k * S, z: z2 }; };
+      const items = [];
+      for (const p of this.particles) { const q = P(p.x, p.y, p.z); items.push({ z: q.z, draw: () => { ctx.globalAlpha = 0.35 + q.k * 0.4; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(q.x, q.y, p.s * q.k, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; } }); }
+      const ea = reduce ? 0.9 : t * 0.08, ma = reduce ? 2.1 : t * 0.38, sa = reduce ? 4.0 : t * 0.26 + 1.3;
+      const E = { x: Math.cos(ea) * ORBIT, y: 0, z: Math.sin(ea) * ORBIT };
+      const M = { x: E.x + Math.cos(ma) * MOON_R, y: Math.sin(ma) * MOON_R * 0.35, z: E.z + Math.sin(ma) * MOON_R };
+      const SA = { x: E.x + Math.cos(sa) * SAT_R * 0.55, y: Math.sin(sa) * SAT_R, z: E.z + Math.sin(sa) * SAT_R * 0.55 };
+      const qS = P(0, 0, 0), qE = P(E.x, E.y, E.z), qM = P(M.x, M.y, M.z), qA = P(SA.x, SA.y, SA.z);
+      items.push({ z: 1e4, draw: () => ring((a) => P(Math.cos(a) * ORBIT, 0, Math.sin(a) * ORBIT), "rgba(76,110,245,.18)") });
+      items.push({ z: qE.z + 1, draw: () => { ring((a) => P(E.x + Math.cos(a) * MOON_R, Math.sin(a) * MOON_R * 0.35, E.z + Math.sin(a) * MOON_R), "rgba(124,58,237,.3)"); ring((a) => P(E.x + Math.cos(a) * SAT_R * 0.55, Math.sin(a) * SAT_R, E.z + Math.sin(a) * SAT_R * 0.55), "rgba(76,110,245,.25)", [3, 4]); } });
+      const hov = (q, rad) => m.px >= 0 && Math.hypot(m.px - q.x, m.py - q.y) < rad;
+      const hS = hov(qS, 70), hE = hov(qE, 44), hM = hov(qM, 26), hA = hov(qA, 26);
+      items.push({ z: 1e4 - 1, draw: () => { const r = bodies.sun.r * qS.k * 2.4; const g = ctx.createRadialGradient(qS.x, qS.y, bodies.sun.r * qS.k * 0.8, qS.x, qS.y, r); g.addColorStop(0, "rgba(116,143,252,.35)"); g.addColorStop(1, "rgba(116,143,252,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(qS.x, qS.y, r, 0, Math.PI * 2); ctx.fill(); } });
+      items.push({ z: qS.z, draw: () => { sphere(qS, bodies.sun, bodies.sun.r); const r = bodies.sun.r * qS.k; ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = Math.max(1.5, 3 * qS.k); ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(qS.x, qS.y - r * 0.5); ctx.lineTo(qS.x - r * 0.42, qS.y - r * 0.32); ctx.lineTo(qS.x - r * 0.42, qS.y + r * 0.05); ctx.bezierCurveTo(qS.x - r * 0.42, qS.y + r * 0.35, qS.x, qS.y + r * 0.52, qS.x, qS.y + r * 0.52); ctx.bezierCurveTo(qS.x, qS.y + r * 0.52, qS.x + r * 0.42, qS.y + r * 0.35, qS.x + r * 0.42, qS.y + r * 0.05); ctx.lineTo(qS.x + r * 0.42, qS.y - r * 0.32); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(qS.x - r * 0.18, qS.y + r * 0.02); ctx.lineTo(qS.x - r * 0.04, qS.y + r * 0.16); ctx.lineTo(qS.x + r * 0.2, qS.y - r * 0.12); ctx.stroke(); pill(qS, bodies.sun, r + 12, hS); } });
+      items.push({ z: Math.min(qA.z, qE.z) - 0.5, draw: () => { ctx.strokeStyle = hA ? bodies.sat.c1 : "rgba(66,99,235,.45)"; ctx.lineWidth = 1; ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.moveTo(qA.x, qA.y); ctx.lineTo(qE.x, qE.y); ctx.stroke(); ctx.setLineDash([]); } });
+      items.push({ z: qE.z, draw: () => { sphere(qE, bodies.earth, bodies.earth.r); pill(qE, bodies.earth, bodies.earth.r * qE.k + 10, hE); } });
+      items.push({ z: qM.z, draw: () => { sphere(qM, bodies.moon, bodies.moon.r); if (hM) pill(qM, bodies.moon, bodies.moon.r * qM.k + 8, true); else { ctx.font = `600 ${11 * Math.max(0.85, qM.k)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#6d28d9"; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText("AI", qM.x, qM.y + bodies.moon.r * qM.k + 4); ctx.textAlign = "start"; } } });
+      items.push({ z: qA.z, draw: () => {
+        const k = qA.k, r = bodies.sat.r * k;
+        ctx.save(); ctx.translate(qA.x, qA.y); ctx.rotate(sa * 0.5);
+        ctx.fillStyle = "#4263eb"; ctx.fillRect(-r * 2.6, -r * 0.45, r * 1.5, r * 0.9); ctx.fillRect(r * 1.1, -r * 0.45, r * 1.5, r * 0.9);
+        ctx.fillStyle = "#fff"; ctx.strokeStyle = "#4263eb"; ctx.lineWidth = 1.2; rr(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6, r * 0.3); ctx.fill(); ctx.stroke();
+        ctx.restore();
+        if (hA) pill(qA, bodies.sat, r + 10, true); else { ctx.font = `600 ${11 * Math.max(0.85, k)}px Inter, system-ui, sans-serif`; ctx.fillStyle = "#4263eb"; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText("Advisor", qA.x, qA.y - r * 2.2); ctx.textAlign = "start"; }
+      } });
+      items.sort((a, b) => b.z - a.z).forEach((i) => i.draw());
+      this.raf = requestAnimationFrame(draw);
+    };
+    this.raf = requestAnimationFrame(draw);
+    this.cleanupScene = () => { cancelAnimationFrame(this.raf); hero.removeEventListener("pointermove", onMove); hero.removeEventListener("pointerleave", onLeave); };
+  }
+
+  renderVals() {
+    // sticky scrollytelling needs two real columns; below 900px fall back to cards
+    const layout = this.state.narrow ? "cards" : (this.props.storyLayout ?? "sticky");
+    const pillars = [
+      { n: "01", delay: 0, title: "Attribution at the moment of writing", body: "Text inserted from the assistant, pasted from a source or copied from an external AI tool is marked when it enters the document. Nothing is inferred afterwards." },
+      { n: "02", delay: 120, title: "A ledger the student can see and fix", body: "The integrity score is a sum of visible deductions: unattributed pastes, AI share above policy, open notices. Every point maps to an action the student can take." },
+      { n: "03", delay: 240, title: "Consent and policy enforced on the server", body: "Students choose monitoring scopes within the institution's policy. Events outside the granted scopes are dropped even if a client sends them. Receipts are downloadable." },
+    ];
+    const roles = [
+      { who: "Integrity office", delay: 0, bg: "#f0f4ff", fg: "#4263eb", title: "Fewer accusations, better evidence", items: ["A policy you set once: AI share limit, permitted tools and modes, monitoring scopes.", "Provenance reports instead of probability scores in appeal hearings.", "Monthly AI spend by model and department, with budget alerts."] },
+      { who: "Advisors", delay: 120, bg: "#e6fcf5", fg: "#0ca678", title: "Read the process, not just the draft", items: ["Which passages were AI-assisted, pasted or written, with dates.", "Session timeline and AI log alongside the chapter you are reviewing.", "Approve, request revision or comment without leaving the document."] },
+      { who: "Students", delay: 240, bg: "#f5f3ff", fg: "#6d28d9", title: "Use AI openly, within the rules", items: ["Claude, GPT, Gemini or Mistral inside the editor, paid by the university or their own account.", "An assistant that outlines, critiques and corrects, but never writes the thesis.", "Clear view of their own AI share and what each insertion costs."] },
+    ];
+    const sc = (label, note, on, locked) => ({ label, note, fg: locked ? "#9ca3af" : "#111827", track: on ? "#4c6ef5" : "#d1d5db", knob: on ? "16px" : "2px" });
+    const scopes = [
+      sc("Pastes and quotes", "Word counts and source, never the clipboard", true),
+      sc("AI assistant use", "Mode, model, words inserted, cost", true),
+      sc("Session word counts", "Per session, per tab", true),
+      sc("Keystrokes", "Not available under this institution's policy", false, true),
+      sc("Clipboard contents", "Never recorded", false, true),
+    ];
+    return { pillars, roles, scopes, sticky: layout === "sticky", cards: layout === "cards", rootRef: this.rootRef, canvasRef: this.canvasRef, heroRef: this.heroRef, stageRef: this.stageRef, textRef: this.textRef, sealRef: this.sealRef, navRef: this.navRef, progressRef: this.progressRef, ledgerRef: this.ledgerRef, scoreRef: this.scoreRef, pillScoreRef: this.pillScoreRef };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
@@ -14,6 +14,45 @@ const BULLETS = [
   { dot: "bg-prov-paste", text: "landing.hero.bullet3" },
   { dot: "bg-brand-500", text: "landing.hero.bullet4" },
 ];
+
+const HI_WORDS = ["landing.hero.titleHi", "landing.hero.titleHi2", "landing.hero.titleHi3", "landing.hero.titleHi4"] as const;
+const FIRST_SWAP_MS = 3600; // after the fly-in of the first word has settled
+const SWAP_EVERY_MS = 2600;
+
+/** The highlighted word of the headline: "properly" arrives, then ethically / critically / responsibly take turns.
+ *  The leaving word drops out downwards while the next one comes down from above. All words are stacked in one
+ *  grid cell so the headline keeps the width of the longest word and never reflows. */
+function RotatingWord() {
+  const t = useT();
+  const [idx, setIdx] = useState(0);
+  const [prev, setPrev] = useState<number | null>(null);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let i = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const next = () => {
+      setPrev(i);
+      i = (i + 1) % HI_WORDS.length;
+      setIdx(i);
+      timer = setTimeout(next, SWAP_EVERY_MS);
+    };
+    timer = setTimeout(next, FIRST_SWAP_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <span className="hero-properly hero-rotate" aria-live="off">
+      {HI_WORDS.map((k, i) => (
+        <span
+          key={k}
+          className={`hero-rotate-word gradient-text${i === idx ? " is-in" : i === prev ? " is-out" : ""}`}
+          aria-hidden={i !== idx}
+        >
+          {t(k)}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export default function Hero() {
   const t = useT();
@@ -37,7 +76,7 @@ export default function Hero() {
         <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
           <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-2 [text-wrap:pretty]">
             {t("landing.hero.titleA")}
-            <span className="hero-properly gradient-text">{t("landing.hero.titleHi")}</span>
+            <RotatingWord />
             {t("landing.hero.titleB")}
           </h1>
           <p className="text-[17px] sm:text-[19px] leading-[1.6] text-gray-600 max-w-[560px] mb-9 [text-wrap:pretty]">
