@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
@@ -26,6 +26,17 @@ function RotatingWord() {
   const t = useT();
   const [idx, setIdx] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
+  const [width, setWidth] = useState<number | undefined>(undefined);
+  const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  // The cell follows the active word, so the full stop sits right after it instead of after the longest word.
+  useLayoutEffect(() => {
+    const measure = () => { const w = wordRefs.current[idx]?.offsetWidth; if (w) setWidth(w); };
+    measure();
+    const onResize = () => measure();
+    window.addEventListener("resize", onResize);
+    document.fonts?.ready.then(measure).catch(() => {});
+    return () => window.removeEventListener("resize", onResize);
+  }, [idx]);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let i = 0;
@@ -40,10 +51,11 @@ function RotatingWord() {
     return () => clearTimeout(timer);
   }, []);
   return (
-    <span className="hero-properly hero-rotate" aria-live="off">
+    <span className="hero-properly hero-rotate" aria-live="off" style={width ? { width } : undefined}>
       {HI_WORDS.map((k, i) => (
         <span
           key={k}
+          ref={(el) => { wordRefs.current[i] = el; }}
           className={`hero-rotate-word gradient-text${i === idx ? " is-in" : i === prev ? " is-out" : ""}`}
           aria-hidden={i !== idx}
         >

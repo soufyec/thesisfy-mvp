@@ -488,9 +488,10 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 @media (prefers-reduced-motion: reduce) { .hero-properly { animation: none; } }
 /* The highlighted word then rotates: all candidates share one grid cell (width of the longest), the current one
    is in place, the previous one falls out of the bottom edge while the next one drops in from the top edge. */
-.hero-rotate { display: inline-grid; vertical-align: baseline; overflow: hidden; padding: 0 0.04em; margin: 0 -0.04em; }
+.hero-rotate { display: inline-grid; vertical-align: baseline; overflow: hidden; padding: 0 0.04em; margin: 0 -0.04em; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
 .hero-rotate-word {
   grid-area: 1 / 1;
+  justify-self: start;
   white-space: nowrap;
   opacity: 0;
   transform: translateY(-110%);
@@ -499,7 +500,7 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 }
 .hero-rotate-word.is-in { opacity: 1; transform: none; }
 .hero-rotate-word.is-out { opacity: 0; transform: translateY(110%); transition: transform 0.55s cubic-bezier(0.55, 0, 0.8, 0.4), opacity 0.4s ease 0.1s; }
-@media (prefers-reduced-motion: reduce) { .hero-rotate-word { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .hero-rotate, .hero-rotate-word { transition: none; } }
 
 /* ---------- Student onboarding: intro modal and coachmarks ---------- */
 .onb-overlay { background: rgba(17, 24, 39, 0.55); backdrop-filter: blur(4px); }
