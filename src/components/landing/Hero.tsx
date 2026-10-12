@@ -15,11 +15,12 @@ const BULLETS = [
   { dot: "bg-brand-500", text: "landing.hero.bullet4" },
 ];
 
-const HI_WORDS = ["landing.hero.titleHi", "landing.hero.titleHi2", "landing.hero.titleHi3", "landing.hero.titleHi4"] as const;
-const FIRST_SWAP_MS = 3600; // after the fly-in of the first word has settled
+const HI_WORDS = ["landing.hero.titleHi2", "landing.hero.titleHi3", "landing.hero.titleHi4"] as const;
+const FIRST_SWAP_MS = 2600;
 const SWAP_EVERY_MS = 2600;
 
-/** The highlighted word of the headline: "properly" arrives, then ethically / critically / responsibly take turns.
+/** The highlighted word of the headline: ethically / critically / responsibly take turns, the first one there from
+ *  the first paint.
  *  The leaving word drops out downwards while the next one comes down from above. All words are stacked in one
  *  grid cell sized to the longest of them, and the cell is glued to the word before it, so the line breaks are
  *  the same whichever word is showing: nothing reflows on a phone when a long word replaces a short one. The
@@ -75,7 +76,7 @@ function RotatingWord() {
       {head}
       <span ref={unitRef} className={glued ? "whitespace-nowrap" : undefined}>
         {glue}{glued ? "\u00a0" : " "}
-        <span className="hero-properly hero-rotate" aria-live="off" style={width ? { width } : undefined}>
+        <span className="hero-rotate" aria-live="off" style={width ? { width } : undefined}>
           {HI_WORDS.map((k, i) => (
             <span
               key={k}
@@ -84,7 +85,7 @@ function RotatingWord() {
               aria-hidden={i !== idx}
             >
               {t(k)}
-              <span className="text-gray-900">{t("landing.hero.titleB")}</span>
+              <span className="text-gray-900 ml-[0.08em]">{t("landing.hero.titleB")}</span>
             </span>
           ))}
         </span>

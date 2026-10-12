@@ -471,22 +471,7 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 }
 @media (prefers-reduced-motion: reduce) { .tab-outline-cloud { animation: none; } .tab-outline-item { transition: none; } .tab-outline-item:hover { transform: none; } }
 
-/* Hero headline: the last word arrives from outside the screen after the sentence has been read, overshoots and
-   settles. Inline-block so the transform applies; the gradient stays clipped to the glyphs. */
-.hero-properly {
-  display: inline-block;
-  will-change: transform;
-  animation: hero-properly-in 1.1s cubic-bezier(0.22, 1.2, 0.36, 1) 0.7s both;
-}
-@keyframes hero-properly-in {
-  0% { transform: translateX(110vw) rotate(8deg) scale(1.15); opacity: 0; }
-  12% { opacity: 1; }
-  70% { transform: translateX(-4%) rotate(-2deg) scale(1.06); }
-  86% { transform: translateX(1.5%) rotate(0.5deg) scale(1.02); }
-  100% { transform: none; }
-}
-@media (prefers-reduced-motion: reduce) { .hero-properly { animation: none; } }
-/* The highlighted word then rotates: all candidates share one grid cell (width of the longest), the current one
+/* Hero headline: the highlighted word rotates. All candidates share one grid cell (width of the longest), the current one
    is in place, the previous one falls out of the bottom edge while the next one drops in from the top edge. */
 .hero-rotate { display: inline-grid; vertical-align: baseline; overflow: hidden; padding: 0 0.04em; margin: 0 -0.04em; }
 .hero-rotate-word {
