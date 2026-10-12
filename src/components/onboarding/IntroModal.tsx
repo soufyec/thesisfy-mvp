@@ -96,7 +96,7 @@ function VideoPage() {
         </div>
       )}
       {!playing && (
-        <span className="absolute top-3 right-3 text-[11px] px-2 py-[3px] rounded-full bg-white/15 text-white font-semibold">
+        <span className="absolute top-3 right-3 text-[11px] px-2 py-[3px] rounded-full bg-gray-900/70 text-white font-semibold">
           {video.src ? t("onboarding.video.badge", { duration: formatClock(video.duration) }) : t("onboarding.video.placeholder", { duration: formatClock(video.duration) })}
         </span>
       )}
