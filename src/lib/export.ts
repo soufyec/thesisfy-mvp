@@ -1,7 +1,8 @@
 "use client";
 
 import { hfLayout } from "@/components/editor/headerFooter";
-import { AlignmentType, Document, Footer, Header, HeadingLevel, ImageRun, Packer, PageBreak, PageNumber, PageOrientation, Paragraph, ShadingType, Tab, Table, TableCell, TableRow, TabStopType, TextRun, VerticalAlignTable, WidthType } from "docx";
+import { AlignmentType, Document, Footer, FootnoteReferenceRun, Header, HeadingLevel, ImageRun, Packer, PageBreak, PageNumber, PageOrientation, Paragraph, ShadingType, Tab, Table, TableCell, TableOfContents, TableRow, TabStopType, TextRun, VerticalAlignTable, WidthType, type ParagraphChild } from "docx";
+import { footnoteOrder, tocHtml } from "@/components/editor/thesisBlocks";
 
 export function downloadBlob(name: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
@@ -26,13 +27,50 @@ export function safeFileName(title: string) {
   return cleaned || "thesis";
 }
 
-export function htmlToText(html: string) {
+/** Localised words the exports need for the structure blocks (figure / table captions, the contents block, notes). */
+export interface ExportLabels { figure: string; table: string; tocTitle: string; tocEmpty: string; footnotes: string; numberHeadings?: boolean }
+const DEFAULT_LABELS: ExportLabels = { figure: "Figure", table: "Table", tocTitle: "Table of Contents", tocEmpty: "(no headings yet)", footnotes: "Notes" };
+
+/** Turns the structure blocks into plain content: the contents block becomes a list, footnote markers become [n]
+ *  with the notes listed under a heading at the end, and captions get their "Figure n." / "Table n." prefix. */
+export function bakeStructure(html: string, labels: ExportLabels = DEFAULT_LABELS): string {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("nav[data-toc]").forEach((nav) => {
+    const wrap = doc.createElement("div");
+    wrap.innerHTML = tocHtml(html, { title: labels.tocTitle, empty: labels.tocEmpty }, !!labels.numberHeadings);
+    nav.replaceWith(...Array.from(wrap.childNodes));
+  });
+  const order = footnoteOrder(html);
+  doc.querySelectorAll("sup[data-footnote-ref]").forEach((sup) => { sup.textContent = `[${order.indexOf(sup.getAttribute("data-footnote-ref") || "") + 1}]`; });
+  doc.querySelectorAll("section[data-footnotes]").forEach((sec) => {
+    const items = Array.from(sec.querySelectorAll("div[data-footnote]"));
+    const out = doc.createElement("section");
+    out.className = "footnotes";
+    const h = doc.createElement("h3"); h.textContent = labels.footnotes; out.appendChild(h);
+    for (const it of items) {
+      const n = order.indexOf(it.getAttribute("data-footnote") || "") + 1;
+      if (!n) continue;
+      const first = it.querySelector("p");
+      if (first) first.insertAdjacentText("afterbegin", `[${n}] `);
+      Array.from(it.childNodes).forEach((c) => out.appendChild(c));
+    }
+    sec.replaceWith(out);
+  });
+  let fig = 0, tbl = 0;
+  doc.querySelectorAll("figure figcaption").forEach((c) => { fig += 1; c.insertAdjacentText("afterbegin", `${labels.figure} ${fig}. `); });
+  doc.querySelectorAll("p[data-caption='table']").forEach((c) => { tbl += 1; c.insertAdjacentText("afterbegin", `${labels.table} ${tbl}. `); });
+  return doc.body.innerHTML;
+}
+
+export function htmlToText(html: string, labels?: ExportLabels) {
+  html = bakeStructure(html, labels);
   const doc = new DOMParser().parseFromString(html, "text/html");
   doc.querySelectorAll("h1,h2,h3,h4,p,li,tr,div").forEach((el) => el.append("\n"));
   return (doc.body.textContent || "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-export function htmlToMarkdown(html: string) {
+export function htmlToMarkdown(html: string, labels?: ExportLabels) {
+  html = bakeStructure(html, labels);
   const doc = new DOMParser().parseFromString(html, "text/html");
   const walk = (node: Node): string => {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
@@ -113,7 +151,8 @@ interface RunStyle {
   color?: string;
 }
 
-function runsFrom(node: Node, style: RunStyle = {}): TextRun[] {
+let fnNumbers = new Map<string, number>();
+function runsFrom(node: Node, style: RunStyle = {}): ParagraphChild[] {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent || "";
     if (!text) return [];
@@ -132,6 +171,7 @@ function runsFrom(node: Node, style: RunStyle = {}): TextRun[] {
   if (tag === "sub") next.subScript = true;
   if (el.style?.color) next.color = el.style.color.replace(/[^0-9a-f]/gi, "").slice(0, 6) || undefined;
   if (tag === "br") return [new TextRun({ break: 1 })];
+  if (tag === "sup" && el.hasAttribute("data-footnote-ref")) { const n = fnNumbers.get(el.getAttribute("data-footnote-ref") || ""); return n ? [new FootnoteReferenceRun(n)] : []; }
   return Array.from(el.childNodes).flatMap((c) => runsFrom(c, next));
 }
 
@@ -206,9 +246,16 @@ function hfBand(slots: { l: string; c: string; r: string }, widthTwips: number):
   });
 }
 
-export async function htmlToDocx(html: string, opts: { title: string; author?: string; orientation?: "portrait" | "landscape"; marginCm?: number; lineSpacing?: number; headerText?: string; footerText?: string; pageNumbers?: "none" | "footerCenter" | "footerRight" | "headerRight"; numberHeadings?: boolean }): Promise<Blob> {
+export async function htmlToDocx(html: string, opts: { title: string; author?: string; orientation?: "portrait" | "landscape"; marginCm?: number; lineSpacing?: number; headerText?: string; footerText?: string; pageNumbers?: "none" | "footerCenter" | "footerRight" | "headerRight"; numberHeadings?: boolean; labels?: ExportLabels }): Promise<Blob> {
+  const labels = opts.labels || DEFAULT_LABELS;
   const doc = new DOMParser().parseFromString(html, "text/html");
-  const children: (Paragraph | Table)[] = [];
+  const children: (Paragraph | Table | TableOfContents)[] = [];
+  // Real Word footnotes: markers numbered in document order, note bodies collected from the notes section.
+  const fnOrder = footnoteOrder(html);
+  fnNumbers = new Map(fnOrder.map((id, i) => [id, i + 1]));
+  const footnotes: Record<number, { children: Paragraph[] }> = {};
+  let hasToc = false;
+  let figCount = 0, tblCount = 0;
   const spacing = { line: Math.round((opts.lineSpacing || 1.5) * 240), after: 120 };
   const headingCounters = [0, 0, 0];
 
@@ -234,6 +281,7 @@ export async function htmlToDocx(html: string, opts: { title: string; author?: s
         if (r) children.push(new Paragraph({ children: [r], alignment: imageAlignment(img as HTMLElement) }));
       }
       const runs = runsFrom(el);
+      if (el.getAttribute("data-caption") === "table") { tblCount += 1; runs.unshift(new TextRun({ text: `${labels.table} ${tblCount}. `, bold: true })); }
       if (runs.length || !img) {
         children.push(
           new Paragraph({
@@ -259,7 +307,23 @@ export async function htmlToDocx(html: string, opts: { title: string; author?: s
       const r = img ? await imageRun(img as HTMLImageElement, el) : null;
       if (r) children.push(new Paragraph({ children: [r], alignment: imageAlignment(el), keepNext: true }));
       const caption = (el.querySelector("figcaption")?.textContent || "").trim();
-      if (caption) children.push(new Paragraph({ children: [new TextRun({ text: caption, italics: true, size: 20 })], alignment: imageAlignment(el), spacing }));
+      if (caption) { figCount += 1; children.push(new Paragraph({ children: [new TextRun({ text: `${labels.figure} ${figCount}. `, bold: true, size: 20 }), new TextRun({ text: caption, italics: true, size: 20 })], alignment: imageAlignment(el), spacing })); }
+      return;
+    }
+    if (tag === "nav" && el.hasAttribute("data-toc")) {
+      // A Word contents field: Word fills and paginates it when the file opens (updateFields below).
+      hasToc = true;
+      children.push(new Paragraph({ children: [new TextRun({ text: labels.tocTitle, bold: true, size: 28 })], spacing }));
+      children.push(new TableOfContents(labels.tocTitle, { hyperlink: true, headingStyleRange: "2-4" }));
+      return;
+    }
+    if (tag === "section" && el.hasAttribute("data-footnotes")) {
+      for (const note of Array.from(el.querySelectorAll("div[data-footnote]"))) {
+        const n = fnNumbers.get(note.getAttribute("data-footnote") || "");
+        if (!n) continue;
+        const paras = Array.from(note.children).map((c) => new Paragraph({ children: runsFrom(c), spacing: { line: 240, after: 60 } }));
+        footnotes[n] = { children: paras.length ? paras : [new Paragraph("")] };
+      }
       return;
     }
     if (tag === "ul" || tag === "ol") {
@@ -332,6 +396,8 @@ export async function htmlToDocx(html: string, opts: { title: string; author?: s
   const document = new Document({
     creator: opts.author || "Thesisfic",
     title: opts.title,
+    footnotes: Object.keys(footnotes).length ? footnotes : undefined,
+    features: hasToc ? { updateFields: true } : undefined,
     numbering: { config: [{ reference: "numbers", levels: [0, 1, 2].map((level) => ({ level, format: "decimal" as const, text: `%${level + 1}.`, alignment: AlignmentType.START, style: { paragraph: { indent: { left: 720 * (level + 1), hanging: 360 } } } })) }] },
     styles: { default: { document: { run: { font: "Times New Roman", size: 24 } } } },
     sections: [{ ...hf, properties: { page: { margin: { top: marginTwips, bottom: marginTwips, left: marginTwips, right: marginTwips }, size: { orientation: opts.orientation === "landscape" ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT } } }, children }],
@@ -340,11 +406,12 @@ export async function htmlToDocx(html: string, opts: { title: string; author?: s
 }
 
 /** Wraps document HTML in a printable standalone page (used for "Download as HTML" and print preview). */
-export function standaloneHtml(html: string, title: string) {
+export function standaloneHtml(html: string, title: string, labels?: ExportLabels) {
+  html = bakeStructure(html, labels);
   // Links to headings or bookmarks inside the document must not open a new tab in the exported file.
   html = html.replace(/<a\b([^>]*href="#[^"]*"[^>]*)>/gi, (m, attrs: string) => `<a${attrs.replace(/\s+target="[^"]*"/i, "").replace(/\s+rel="[^"]*"/i, "")}>`);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, "&lt;")}</title>
-<style>body{font-family:Georgia,serif;max-width:17cm;margin:2.54cm auto;line-height:1.6;color:#111}h1{font-size:1.8em}h2{font-size:1.4em}h3{font-size:1.15em}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4px 8px}img{max-width:100%;height:auto}figcaption{font-size:.85em;color:#555;text-align:center;margin-top:.3em}.page-break{page-break-after:always}[data-provenance]{border-bottom:1px dotted #999}</style></head><body>${html}</body></html>`;
+<style>body{font-family:Georgia,serif;max-width:17cm;margin:2.54cm auto;line-height:1.6;color:#111}h1{font-size:1.8em}h2{font-size:1.4em}h3{font-size:1.15em}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4px 8px}img{max-width:100%;height:auto}figcaption{font-size:.85em;color:#555;text-align:center;margin-top:.3em}.page-break{page-break-after:always}[data-provenance]{border-bottom:1px dotted #999}nav.toc{margin:1em 0 2em}nav.toc .toc-title{font-weight:700;margin-bottom:.4em}nav.toc ol{list-style:none;padding:0;margin:0}section.footnotes{margin-top:2.5em;border-top:1px solid #ccc;padding-top:.5em;font-size:.85em}section.footnotes h3{font-size:1em;margin:0 0 .4em}p[data-caption]{text-align:center;font-size:.9em}</style></head><body>${html}</body></html>`;
 }
 
 export type CsvCell = string | number | boolean | null | undefined;

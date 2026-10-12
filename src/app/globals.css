@@ -487,6 +487,38 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 .hero-rotate-word.is-out { opacity: 0; transform: translateY(110%); transition: transform 0.55s cubic-bezier(0.55, 0, 0.8, 0.4), opacity 0.4s ease 0.1s; }
 @media (prefers-reduced-motion: reduce) { .hero-rotate, .hero-rotate-word { transition: none; } }
 
+/* ---------- Thesis structure: footnotes, table of contents, numbered captions ---------- */
+/* Numbers are CSS counters, so they always follow document order without touching the content. */
+.ProseMirror { counter-reset: fn fnl fig tbl; }
+.ProseMirror sup.fn-ref { counter-increment: fn; cursor: pointer; color: theme("colors.brand.700"); font-size: 0.72em; line-height: 0; user-select: none; }
+.ProseMirror sup.fn-ref::before { content: counter(fn); }
+.ProseMirror sup.fn-ref.ProseMirror-selectednode { outline: 2px solid theme("colors.brand.400"); border-radius: 2px; }
+.ProseMirror section.footnotes { margin-top: 2.5em; padding-top: 0.6em; border-top: 1px solid theme("colors.gray.300"); font-size: 10pt; line-height: 1.45; counter-reset: fnl; }
+.ProseMirror section.footnotes::before { content: var(--fn-title, "Notes"); display: block; font-family: Inter, sans-serif; font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: theme("colors.gray.400"); margin-bottom: 0.4em; }
+.ProseMirror .fn-item { counter-increment: fnl; position: relative; padding-left: 1.7em; margin: 0 0 0.35em; }
+.ProseMirror .fn-item::before { content: counter(fnl); position: absolute; left: 0.1em; top: -0.15em; font-size: 0.75em; color: theme("colors.brand.700"); font-weight: 600; }
+.ProseMirror .fn-item p { margin: 0; }
+.ProseMirror .fn-item p.is-empty::before { content: var(--fn-placeholder, ""); color: theme("colors.gray.400"); pointer-events: none; float: left; height: 0; }
+.ProseMirror nav.toc { margin: 0.5em 0 1.5em; padding: 0.8em 1em; border: 1px solid theme("colors.gray.200"); border-radius: 8px; background: theme("colors.gray.50"); font-size: 11pt; user-select: none; }
+.ProseMirror nav.toc.ProseMirror-selectednode { outline: 2px solid theme("colors.brand.400"); }
+.ProseMirror nav.toc .toc-title { font-weight: 700; font-size: 12pt; margin-bottom: 0.4em; }
+.ProseMirror nav.toc .toc-empty { color: theme("colors.gray.400"); font-style: italic; }
+.ProseMirror nav.toc ol { list-style: none; margin: 0; padding: 0; }
+.ProseMirror nav.toc li { margin: 0; padding: 0; }
+.ProseMirror nav.toc .toc-l3 { padding-left: 1.4em; }
+.ProseMirror nav.toc .toc-l4 { padding-left: 2.8em; }
+.ProseMirror nav.toc a.toc-entry { display: flex; align-items: baseline; gap: 0.5em; color: inherit; text-decoration: none; padding: 0.12em 0; cursor: pointer; }
+.ProseMirror nav.toc a.toc-entry:hover .toc-text { color: theme("colors.brand.700"); }
+.ProseMirror nav.toc .toc-text { flex: 1 1 auto; white-space: pre-wrap; }
+.ProseMirror nav.toc .toc-text::after { content: ""; flex: 1; border-bottom: 1px dotted theme("colors.gray.300"); margin-left: 0.4em; transform: translateY(-0.3em); display: inline-block; width: 1em; min-width: 1em; }
+.ProseMirror nav.toc a.toc-entry { display: grid; grid-template-columns: 1fr auto; }
+.ProseMirror nav.toc .toc-page { font-variant-numeric: tabular-nums; color: theme("colors.gray.600"); }
+.ProseMirror figure.img-node figcaption { counter-increment: fig; }
+.ProseMirror figure.img-node figcaption::before { content: var(--cap-figure, "Figure ") counter(fig) ". "; font-weight: 600; }
+.ProseMirror p.caption-table { counter-increment: tbl; font-size: 10pt; text-align: center; margin-bottom: 0.3em; color: theme("colors.gray.700"); }
+.ProseMirror p.caption-table::before { content: var(--cap-table, "Table ") counter(tbl) ". "; font-weight: 600; }
+@media print { .ProseMirror nav.toc { background: none; border: none; padding: 0; } .ProseMirror sup.fn-ref, .ProseMirror .fn-item::before { color: inherit; } }
+
 /* ---------- Student onboarding: intro modal and coachmarks ---------- */
 .onb-overlay { background: rgba(17, 24, 39, 0.55); backdrop-filter: blur(4px); }
 .onb-video-glow { background: radial-gradient(ellipse at 30% 30%, rgba(76, 110, 245, 0.45), transparent 60%), radial-gradient(ellipse at 75% 80%, rgba(32, 201, 151, 0.3), transparent 55%); }

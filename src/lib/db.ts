@@ -1175,9 +1175,28 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
+/** Block boundaries separate words; inline tags (marks, comment and provenance spans) never do, so a word that a
+ *  mark splits in two ("Cl<strong>imate</strong>") still counts once, exactly as the editor counts it. */
+const BLOCK_TAG_RE = /<\/?(?:p|div|h[1-6]|li|ul|ol|br|hr|tr|td|th|thead|tbody|table|blockquote|pre|figure|figcaption|section|header|footer|details|summary)\b[^>]*>/gi;
+
+export function htmlToWordText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(BLOCK_TAG_RE, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function countWords(html: string): number {
   // Image captions live in <figcaption>; they are not thesis words, like the editor's own counter (it only sees text nodes).
-  const text = stripHtml(html.replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " "));
+  const text = htmlToWordText(html.replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " "));
   return text ? text.split(/\s+/).filter(Boolean).length : 0;
 }
 

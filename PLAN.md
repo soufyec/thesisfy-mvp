@@ -96,6 +96,14 @@ Infraestructura `src/lib/i18n` (cookie `locale`, rutas `/es` `/fr` `/en`, `useT`
 ## 3. Fuera de alcance (por ahora)
 Mobile nativo (Capacitor), migración a Postgres, SSO/LMS.
 
+
+### Fase 10 · Estructura de tesis en el editor (hecha)
+**Archivos:** `src/components/editor/thesisBlocks.ts`, `DocsEditor.tsx`, `MenuBar.tsx`, `TableMenu.tsx`, `globals.css`, `src/lib/export.ts`, `src/lib/db.ts` (`countWords`), `messages/editor.ts`.
+- [x] Notas al pie reales: marcador numerado en línea + sección de notas al final, sincronizados en cada cambio (borrar el marcador borra la nota, pegar un marcador crea su nota, la numeración sigue el orden del texto). Clic en el marcador lleva a la nota; Escape vuelve al marcador; Ctrl+Alt+F inserta. Exportan como notas al pie nativas de Word.
+- [x] Índice automático: bloque que se redibuja con los títulos 2–4, su numeración (si está activa) y la página en la que empiezan; clic lleva al título. En Word se exporta como campo de tabla de contenido.
+- [x] Leyendas numeradas: "Figura n." en las imágenes con leyenda y "Tabla n." con Insertar › Leyenda de tabla (o el menú de tabla), localizadas; incluidas en DOCX, HTML, Markdown y texto.
+- [x] Contador de palabras único en cliente y servidor (las marcas en línea ya no parten palabras); el menú flotante de tablas no se desmonta al cambiar de disposición (fallo al abrir la vista previa de impresión).
+
 ## 4. Pendiente
 - Fase 5: el onboarding del editor está hecho; quedan `ConsentModal`, el mini-gutter del tutor y el código de invitación.
 - Rutas `/privacy` y `/contact` no existen: el pie de la landing enlaza a `#model` y `#pilot`.

@@ -32,6 +32,7 @@ import { Pagination } from "./pagination";
 import { TableExtras } from "./tableExtras";
 import { TextTools } from "./textTools";
 import { anchorHref, Bookmark, findAnchorPos, HeadingAnchors, listAnchors, type AnchorItem } from "./anchors";
+import { Captions, Footnote, FootnoteRef, Footnotes, Toc } from "./thesisBlocks";
 import { TableBubble, TableContextMenu, runTableAction } from "./TableMenu";
 import { SpecialCharsDialog } from "./SpecialCharsDialog";
 import { FirstPageHeader, PrintHeaderFooter } from "./PageHeaderFooter";
@@ -346,6 +347,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       TextTools,
       Bookmark,
       HeadingAnchors,
+      FootnoteRef,
+      Footnote,
+      Footnotes,
+      Captions,
+      Toc.configure({ labels: { title: t("editor.doc.toc"), empty: t("editor.doc.noHeadings") } }),
     ],
     content: initial.thesis.content,
     editorProps: {
@@ -461,7 +467,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       setSaveState("unsaved");
       scheduleSave();
       const chars = ed.storage.characterCount.characters();
-      const words = ed.storage.characterCount.words();
+      const words = countWordsInText(ed.getText({ blockSeparator: " " }));
       setTabWords(words);
       const isPaste = transaction.getMeta("paste") || transaction.getMeta("uiEvent") === "paste";
       const charDelta = chars - lastCounts.current.chars;
@@ -484,7 +490,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
 
   useEffect(() => {
     if (!editor) return;
-    lastCounts.current = { chars: editor.storage.characterCount.characters(), words: editor.storage.characterCount.words() };
+    lastCounts.current = { chars: editor.storage.characterCount.characters(), words: countWordsInText(editor.getText({ blockSeparator: " " })) };
     setTabWords(lastCounts.current.words);
   }, [editor]);
 
@@ -508,7 +514,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         else if (m.attrs.source === "ai") ai += w;
         else paste += w;
       });
-      const total = Math.max(0, ed.storage.characterCount.words() - declaration);
+      // Same tokenisation as the server (whitespace-separated runs of text, blocks separated), so the bar never flickers between two counts.
+      const total = Math.max(0, countWordsInText(ed.getText({ blockSeparator: " " })) - declaration);
       setThesis((t) => ({ ...t, wordCount: total, provenance: { human: Math.max(0, total - ai - paste), ai, paste } }));
     }, 400);
   };
@@ -574,7 +581,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     // fresh state so undo never crosses into another tab
     const st = ed.state;
     ed.view.updateState(EditorState.create({ doc: st.doc, plugins: st.plugins, schema: st.schema }));
-    lastCounts.current = { chars: ed.storage.characterCount.characters(), words: ed.storage.characterCount.words() };
+    lastCounts.current = { chars: ed.storage.characterCount.characters(), words: countWordsInText(ed.getText({ blockSeparator: " " })) };
     setTabWords(lastCounts.current.words);
     setSelectionText("");
   }, []);
@@ -1005,11 +1012,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     const html = editor.getHTML();
     const tabTitle = activeTab === SUBMISSION ? "" : tabs.find((t) => t.id === activeTab)?.title || "";
     const name = safeFileName(tabTitle ? `${thesis.title} - ${tabTitle}` : thesis.title);
+    const labels = { figure: t("editor.doc.figure"), table: t("editor.doc.table"), tocTitle: t("editor.doc.toc"), tocEmpty: t("editor.doc.noHeadings"), footnotes: t("editor.doc.footnotes"), numberHeadings: !!ws.numberHeadings };
     try {
-      if (fmt === "docx") downloadBlob(`${name}.docx`, await htmlToDocx(html, { title: thesis.title, author: thesis.studentName, orientation: thesis.pageSetup.orientation, marginCm: thesis.pageSetup.margin, lineSpacing: thesis.pageSetup.lineSpacing, headerText: thesis.pageSetup.headerText, footerText: thesis.pageSetup.footerText, pageNumbers: thesis.pageSetup.pageNumbers, numberHeadings: thesis.pageSetup.numberHeadings }));
-      if (fmt === "html") downloadBlob(`${name}.html`, new Blob([standaloneHtml(html, thesis.title)], { type: "text/html" }));
-      if (fmt === "md") downloadBlob(`${name}.md`, new Blob([htmlToMarkdown(html)], { type: "text/markdown" }));
-      if (fmt === "txt") downloadBlob(`${name}.txt`, new Blob([htmlToText(html)], { type: "text/plain" }));
+      if (fmt === "docx") downloadBlob(`${name}.docx`, await htmlToDocx(html, { title: thesis.title, author: thesis.studentName, orientation: thesis.pageSetup.orientation, marginCm: thesis.pageSetup.margin, lineSpacing: thesis.pageSetup.lineSpacing, headerText: thesis.pageSetup.headerText, footerText: thesis.pageSetup.footerText, pageNumbers: thesis.pageSetup.pageNumbers, numberHeadings: thesis.pageSetup.numberHeadings, labels }));
+      if (fmt === "html") downloadBlob(`${name}.html`, new Blob([standaloneHtml(html, thesis.title, labels)], { type: "text/html" }));
+      if (fmt === "md") downloadBlob(`${name}.md`, new Blob([htmlToMarkdown(html, labels)], { type: "text/markdown" }));
+      if (fmt === "txt") downloadBlob(`${name}.txt`, new Blob([htmlToText(html, labels)], { type: "text/plain" }));
     } catch (e) {
       notify(t("editor.toast.exportFailed", { message: (e as Error).message }), "error");
     }
@@ -1063,24 +1071,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
 
   const insertToc = () => {
     if (!editor) return;
-    const items: string[] = [];
-    editor.state.doc.descendants((node) => {
-      if (node.type.name === "heading" && node.attrs.level > 1) items.push(`<li><p>${"&nbsp;&nbsp;".repeat(node.attrs.level - 2)}${node.textContent}</p></li>`);
-    });
-    programmatic(() => editor.chain().focus().insertContent(`<h2>${t("editor.doc.toc")}</h2><ul>${items.join("") || `<li><p>${t("editor.doc.noHeadings")}</p></li>`}</ul>`).run());
+    programmatic(() => editor.chain().focus().insertToc().run());
   };
 
   const insertFootnote = () => {
     if (!editor) return;
-    const n = (editor.state.doc.textContent.match(/\[\d+\]/g) || []).length + 1;
-    programmatic(() => {
-      // The marker goes at the caret; the note body at the end of the document. The caret stays after the marker so
-      // the student keeps writing where they were (the note text is reached by clicking it).
-      editor.chain().focus().insertContent(`<sup>[${n}]</sup>`).run();
-      const after = editor.state.selection.to;
-      const end = editor.state.doc.content.size;
-      editor.chain().insertContentAt(end, `<p><sup>[${n}]</sup> ${t("editor.doc.footnoteText")}</p>`).setTextSelection(after).run();
-    });
+    programmatic(() => editor.chain().focus().insertFootnote().run());
   };
 
   const updateThesis = async (patch: Record<string, unknown>, successMsg?: string) => {
@@ -1161,6 +1157,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       focus: () => setFocus((f) => !f),
       image: () => setDialog("image"),
       table: () => setDialog("table"),
+      tableCaption: () => { programmatic(() => c().setTableCaption().run()); },
       link: openLink,
       comment: startComment,
       pageBreak: () => c().setPageBreak().run(),
@@ -1210,7 +1207,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
 
   const stats = useMemo(() => {
     if (!editor) return { words: 0, chars: 0, charsNoSpaces: 0, paragraphs: 0, headings: 0, pages: 0, readingMin: 0 };
-    const words = editor.storage.characterCount.words();
+    const words = countWordsInText(editor.getText({ blockSeparator: " " }));
     const chars = editor.storage.characterCount.characters();
     let paragraphs = 0, headings = 0;
     editor.state.doc.descendants((n) => {
@@ -1421,13 +1418,16 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       )}
       {/* Body */}
       <div className="flex-1 flex min-h-0 print:!block print:!overflow-visible">
-        <main className={`flex-1 overflow-auto print:!overflow-visible ${workspaceClass}`} data-hf-header={ws.headerText || ""} data-hf-footer={ws.footerText || ""} data-hf-num={ws.pageNumbers || "none"} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
+        <main className={`flex-1 overflow-auto print:!overflow-visible ${workspaceClass}`} data-hf-header={ws.headerText || ""} data-hf-footer={ws.footerText || ""} data-hf-num={ws.pageNumbers || "none"} style={{ ["--cap-figure" as string]: `"${t("editor.doc.figure")} "`, ["--cap-table" as string]: `"${t("editor.doc.table")} "`, ["--fn-title" as string]: `"${t("editor.doc.footnotes")}"` }} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
           <div className="px-0 md:px-4 min-h-full">
             <div className={`docs-page ${ws.numberHeadings ? "num-headings" : ""}`} ref={sheetRef}>
               <FirstPageHeader setup={ws} pages={pageCount} />
               <EditorContent editor={editor} spellCheck={spellcheck} />
-              {/* Stable wrappers: tippy moves the bubble elements into its popper, so React must never use them as sibling references. */}
-              <div className="contents">{!isMobile && <TableBubble editor={editor} canEdit={canEdit} />}</div>
+              {/* Stable wrappers: tippy moves the bubble elements into its popper, so React must never use them as sibling
+                  references, and the bubbles stay mounted whatever the layout (unmounting one while tippy holds its node
+                  throws removeChild and takes the page down, which is what happened when the print preview narrowed the
+                  viewport below 768px). They hide themselves through shouldShow instead. */}
+              <div className="contents"><TableBubble editor={editor} canEdit={canEdit} enabled={!isMobile} /></div>
               <div className="contents">
               <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom", maxWidth: "none", popperOptions: { modifiers: [{ name: "keepOnSheet", enabled: true, phase: "main", requiresIfExists: ["preventOverflow"], fn: ({ state }) => { const sheet = sheetRef.current; const o = state.modifiersData.popperOffsets; if (!sheet || !o) return; const s = sheet.getBoundingClientRect(); const base = (state.elements.popper.offsetParent as HTMLElement | null)?.getBoundingClientRect().left || 0; const w = state.rects.popper.width; if (w < s.width) o.x = Math.max(s.left + 4, Math.min(o.x + base, s.right - w - 4)) - base; } }] } }} shouldShow={({ state }) => !state.selection.empty && !isMobile && (state.selection as { node?: { type: { name: string } } }).node?.type.name !== "image" && !(state.selection instanceof CellSelection)}>
                 <div className="bubble-menu !flex-col !items-stretch !gap-0" role="toolbar" aria-label={t("editor.bubble.label")}>

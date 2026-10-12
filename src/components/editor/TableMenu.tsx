@@ -26,6 +26,7 @@ export function runTableAction(editor: Editor, action: string): boolean {
     case "merge": return c.mergeCells().run();
     case "split": return c.splitCell().run();
     case "header": return c.toggleHeaderRow().run();
+    case "caption": return c.setTableCaption().run();
     case "headerCol": return c.toggleHeaderColumn().run();
     case "valign-top": return c.setCellAttribute("verticalAlign", "top").run();
     case "valign-middle": return c.setCellAttribute("verticalAlign", "middle").run();
@@ -52,6 +53,8 @@ export function tableMenuItems(editor: Editor, t: Translate, enabled: boolean): 
     a(t("editor.table.menu.delRow"), "delRow"),
     a(t("editor.table.menu.delCol"), "delCol"),
     a(t("editor.table.menu.delTable"), "delTable"),
+    { sep: true, label: "" },
+    a(t("editor.table.menu.caption"), "caption"),
     { sep: true, label: "" },
     a(t("editor.table.menu.merge"), "merge", { disabled: !inTable || !editor.can().mergeCells() }),
     a(t("editor.table.menu.split"), "split", { disabled: !inTable || !editor.can().splitCell() }),
@@ -84,7 +87,7 @@ const bm = "bm-btn";
  * Floating table toolbar: shown above the table while the cursor is inside it (or cells are selected). Insert row/column,
  * merge/split, header row, and a second row for cell format (background, vertical alignment) or deletion.
  */
-export function TableBubble({ editor, canEdit }: { editor: Editor; canEdit: boolean }) {
+export function TableBubble({ editor, canEdit, enabled = true }: { editor: Editor; canEdit: boolean; enabled?: boolean }) {
   const t = useT();
   const [panel, setPanel] = useState<null | "cell" | "delete">(null);
   const act = (a: string) => runTableAction(editor, a);
@@ -102,7 +105,7 @@ export function TableBubble({ editor, canEdit }: { editor: Editor; canEdit: bool
     <BubbleMenu
       editor={editor}
       pluginKey="tableMenu"
-      shouldShow={({ state }) => canEdit && editor.isActive("table") && (state.selection.empty || state.selection instanceof CellSelection)}
+      shouldShow={({ state }) => enabled && canEdit && editor.isActive("table") && (state.selection.empty || state.selection instanceof CellSelection)}
       tippyOptions={{
         duration: 120,
         placement: "top-start",
