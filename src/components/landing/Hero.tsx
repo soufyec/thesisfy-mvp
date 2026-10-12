@@ -21,22 +21,37 @@ const SWAP_EVERY_MS = 2600;
 
 /** The highlighted word of the headline: "properly" arrives, then ethically / critically / responsibly take turns.
  *  The leaving word drops out downwards while the next one comes down from above. All words are stacked in one
- *  grid cell so the headline keeps the width of the longest word and never reflows. */
+ *  grid cell sized to the longest of them, and the cell is glued to the word before it, so the line breaks are
+ *  the same whichever word is showing: nothing reflows on a phone when a long word replaces a short one. The
+ *  full stop travels with each word. */
 function RotatingWord() {
   const t = useT();
   const [idx, setIdx] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
   const [width, setWidth] = useState<number | undefined>(undefined);
+  const [glued, setGlued] = useState(true);
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  // The cell follows the active word, so the full stop sits right after it instead of after the longest word.
+  const unitRef = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
-    const measure = () => { const w = wordRefs.current[idx]?.offsetWidth; if (w) setWidth(w); };
+    const measure = () => {
+      const w = Math.max(0, ...wordRefs.current.map((el) => el?.offsetWidth || 0));
+      if (w) setWidth(w);
+      // Glue "forma" to the cell only while the pair fits on one line of the headline; on a narrow phone the
+      // cell (still fixed in width, so still stable) wraps on its own instead of overflowing the edge.
+      const unit = unitRef.current;
+      const h1 = unit?.closest("h1");
+      if (unit && h1) {
+        unit.style.whiteSpace = "nowrap";
+        const fits = unit.getBoundingClientRect().right <= h1.getBoundingClientRect().right + 1;
+        unit.style.whiteSpace = "";
+        setGlued(fits);
+      }
+    };
     measure();
-    const onResize = () => measure();
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", measure);
     document.fonts?.ready.then(measure).catch(() => {});
-    return () => window.removeEventListener("resize", onResize);
-  }, [idx]);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let i = 0;
@@ -50,19 +65,31 @@ function RotatingWord() {
     timer = setTimeout(next, FIRST_SWAP_MS);
     return () => clearTimeout(timer);
   }, []);
+  // The word before the cell stays on its line ("AI, properly", "forma correcta", "façon correcte").
+  const lead = t("landing.hero.titleA");
+  const cut = lead.trimEnd().lastIndexOf(" ");
+  const head = cut >= 0 ? lead.slice(0, cut + 1) : "";
+  const glue = cut >= 0 ? lead.slice(cut + 1).trimEnd() : lead.trimEnd();
   return (
-    <span className="hero-properly hero-rotate" aria-live="off" style={width ? { width } : undefined}>
-      {HI_WORDS.map((k, i) => (
-        <span
-          key={k}
-          ref={(el) => { wordRefs.current[i] = el; }}
-          className={`hero-rotate-word gradient-text${i === idx ? " is-in" : i === prev ? " is-out" : ""}`}
-          aria-hidden={i !== idx}
-        >
-          {t(k)}
+    <>
+      {head}
+      <span ref={unitRef} className={glued ? "whitespace-nowrap" : undefined}>
+        {glue}{glued ? "\u00a0" : " "}
+        <span className="hero-properly hero-rotate" aria-live="off" style={width ? { width } : undefined}>
+          {HI_WORDS.map((k, i) => (
+            <span
+              key={k}
+              ref={(el) => { wordRefs.current[i] = el; }}
+              className={`hero-rotate-word gradient-text${i === idx ? " is-in" : i === prev ? " is-out" : ""}`}
+              aria-hidden={i !== idx}
+            >
+              {t(k)}
+              <span className="text-gray-900">{t("landing.hero.titleB")}</span>
+            </span>
+          ))}
         </span>
-      ))}
-    </span>
+      </span>
+    </>
   );
 }
 
@@ -87,9 +114,7 @@ export default function Hero() {
         {/* Copy */}
         <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
           <h1 className="text-[36px] sm:text-[46px] lg:text-[58px] font-extrabold leading-[1.05] tracking-[-0.025em] mb-6 mt-2 [text-wrap:pretty]">
-            {t("landing.hero.titleA")}
             <RotatingWord />
-            {t("landing.hero.titleB")}
           </h1>
           <p className="text-[17px] sm:text-[19px] leading-[1.6] text-gray-600 max-w-[560px] mb-9 [text-wrap:pretty]">
             {t("landing.hero.body")}
