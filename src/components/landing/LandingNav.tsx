@@ -22,7 +22,7 @@ export default function LandingNav() {
   const t = useT();
   const [open, setOpen] = useState(false);
   return (
-    <nav className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-gray-100" aria-label={t("landing.nav.main")}>
+    <nav className="sticky top-0 z-50 bg-brand-50/85 backdrop-blur-xl border-b border-gray-100" aria-label={t("landing.nav.main")}>
       <div className="mx-auto max-w-[1200px] px-5 sm:px-8 h-16 flex items-center justify-between gap-6">
         <Logo />
         <div className="hidden md:flex items-center gap-7 text-[14px] font-medium">

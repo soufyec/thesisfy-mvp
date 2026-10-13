@@ -7,16 +7,16 @@ const config: Config = {
       colors: {
         // Plum brand, derived from #571d61 (chosen on the design canvas).
         brand: {
-          50: "#f6eff8",
-          100: "#ead9ee",
-          200: "#d9bfe0",
-          300: "#b07cba",
-          400: "#8f3f9c",
-          500: "#6f2a7b",
-          600: "#571d61",
-          700: "#46174e",
-          800: "#35113b",
-          900: "#2a0d2f",
+          50: "#eef7f1",
+          100: "#dcefe4",
+          200: "#bcdccb",
+          300: "#7fb59b",
+          400: "#4f9a78",
+          500: "#2a6a4e",
+          600: "#037947",
+          700: "#183c2d",
+          800: "#122e22",
+          900: "#0c2018",
         },
         accent: {
           50: "#e6fcf5",

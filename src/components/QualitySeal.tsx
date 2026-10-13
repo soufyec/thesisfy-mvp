@@ -20,7 +20,7 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
         <title>{sealLabel}</title>
         <defs>
           <linearGradient id={`seal-fill-${uid}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#2a0d2f" />
+            <stop offset="0" stopColor="#0c2018" />
             <stop offset="1" stopColor="#087f5b" />
           </linearGradient>
           {/* lower inner arc, left to right through the bottom, for the "verified process" line */}

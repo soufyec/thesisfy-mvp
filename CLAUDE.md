@@ -41,12 +41,12 @@ Cada modo lleva icono `lucide` (campo `icon` de `MODES` es el nombre del icono),
 
 ## 4. Sistema visual
 
-Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos en componentes. **Se conserva la identidad actual** (índigo + verde, Inter); se corrige la ejecución, no la paleta.
+Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos en componentes. **Identidad actual: verde abeto + menta, Inter** (propuesta C del lienzo); se corrige la ejecución, no la paleta.
 
 **Color**
-- `brand` (primario, acciones): `brand-600` `#4c6ef5` como principal, `brand-50/100` para fondos suaves.
+- `brand` (primario, acciones): `brand-600` `#037947` (verde abeto) como principal, `brand-400` `#4f9a78` como extremo claro de los degradados, `brand-800` `#122e22` como extremo oscuro, `brand-50/100` para fondos suaves.
 - `accent` (éxito, texto escrito por el estudiante, checks): `accent-500` `#20c997`.
-- Gradiente de marca `brand-600 → accent-500`: solo en el logo, una palabra destacada por titular y el bloque CTA. Nunca en tarjetas, botones ni fondos de sección.
+- Gradientes de marca solo en verde (`brand-800 → brand-600 → brand-400` en bandas, `brand-600 → brand-400` en texto): una palabra destacada por titular, las cifras de la evidencia y los bloques ENT y CTA. Nunca en tarjetas ni botones. El logo tiene sus propios colores (`Logo.tsx`) y no usa la escala.
 - Neutros: `gray-50…900`. Fondo de app `gray-50`, tarjetas `white`, área del editor `#f1f3f4` (`.docs-workspace`).
 - Procedencia (tokens `prov-*`): `prov-ai` `#7c3aed` (`prov-ai-deep`, `prov-ai-soft`, `prov-ai-line`), `prov-paste` `#f59e0b` (`prov-paste-deep`), `prov-human` = `accent-500`.
 - Estados: `green-600`, `amber-600`, `red-600`. Colores de proveedores de IA viven en `providers.ts`.

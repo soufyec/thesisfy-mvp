@@ -27,14 +27,16 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="relative isolate min-h-screen landing-ground text-gray-900 overflow-x-clip">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/landing/ribbon.webp" alt="" aria-hidden="true" className="landing-ribbon hidden md:block" />
       <LandingNav />
 
       <Hero />
 
       {/* Integrated with the institution's digital workspace (ENT) */}
       <section id="ent" className="px-5 sm:px-8 pb-16 scroll-mt-16">
-        <Reveal><div className="mx-auto max-w-[1200px] rounded-2xl bg-gradient-to-br from-brand-600 to-accent-800 text-white p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-6 items-center">
+        <Reveal><div className="mx-auto max-w-[1200px] rounded-2xl bg-gradient-to-br from-brand-800 via-brand-600 to-brand-400 text-white p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-6 items-center">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase text-brand-100 mb-3">
               <Plug className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
@@ -61,7 +63,7 @@ export default function LandingPage() {
       </section>
 
       {/* The evidence: published figures with their sources */}
-      <section id="data" className="py-20 px-5 sm:px-8 bg-gray-50 scroll-mt-16">
+      <section id="data" className="py-20 px-5 sm:px-8 bg-gray-50/55 scroll-mt-16">
         <div className="mx-auto max-w-[1200px]">
           <Reveal className="text-center mb-12">
             <h2 className="text-[30px] sm:text-[36px] font-bold tracking-[-0.02em] mb-3 [text-wrap:balance]">{t("landing.data.title")}</h2>
@@ -73,7 +75,7 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="py-20 px-5 sm:px-8 bg-white scroll-mt-16">
+      <section id="how" className="py-20 px-5 sm:px-8 bg-white/45 scroll-mt-16">
         <div className="mx-auto max-w-[1200px]">
           <Reveal className="text-center mb-14">
             <h2 className="text-[30px] sm:text-[36px] font-bold tracking-[-0.02em] mb-3">
@@ -88,7 +90,7 @@ export default function LandingPage() {
       </section>
 
       {/* Three readers */}
-      <section id="roles" className="py-20 px-5 sm:px-8 bg-gray-50 scroll-mt-16">
+      <section id="roles" className="py-20 px-5 sm:px-8 bg-gray-50/55 scroll-mt-16">
         <div className="mx-auto max-w-[1200px]">
           <Reveal className="text-center mb-14">
             <h2 className="text-[30px] sm:text-[36px] font-bold tracking-[-0.02em]">{t("landing.roles.title")}</h2>
@@ -114,7 +116,7 @@ export default function LandingPage() {
 
       {/* 7-day trial */}
       <section id="trial" className="px-5 sm:px-8 pt-10 pb-24 scroll-mt-16">
-        <Reveal><div className="mx-auto max-w-[1200px] bg-gradient-to-br from-brand-600 to-brand-800 text-white rounded-3xl p-7 sm:p-10 lg:p-14 grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] gap-10 lg:gap-12 items-center">
+        <Reveal><div className="mx-auto max-w-[1200px] bg-gradient-to-br from-brand-800 via-brand-600 to-brand-400 text-white rounded-3xl p-7 sm:p-10 lg:p-14 grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] gap-10 lg:gap-12 items-center">
           <div>
             <div className="text-[12px] font-bold tracking-[0.14em] uppercase text-brand-200 mb-4">{t("landing.trial.eyebrow")}</div>
             <h2 className="text-[30px] sm:text-[36px] leading-[1.15] font-bold tracking-[-0.02em] mb-4 [text-wrap:pretty]">{t("landing.trial.title")}</h2>

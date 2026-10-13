@@ -45,7 +45,7 @@ function Tile({ tile, active }: { tile: (typeof TILES)[number]; active: boolean 
   const fmt = useFormat();
   const v = useCountUp(active, tile.n);
   return (
-    <article className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 flex flex-col gap-2 min-w-0 w-full">
+    <article className="bg-white rounded-2xl border border-brand-100 shadow-sm p-5 sm:p-6 flex flex-col gap-2 min-w-0 w-full">
       <div className="text-[40px] sm:text-[44px] leading-none font-extrabold tracking-[-0.03em] gradient-text [font-variant-numeric:tabular-nums]">
         {fmt.number(v)}
         <span className="text-[24px]">{tile.unit}</span>

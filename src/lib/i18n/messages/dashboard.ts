@@ -403,7 +403,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.library.access.proxy.how": "Ábrela desde esta página: el enlace pasa por el proxy de la biblioteca, que te pide tu cuenta universitaria una vez.",
     "dashboard.library.access.vpn.label": "VPN de la universidad",
     "dashboard.library.access.vpn.short": "VPN",
-    "dashboard.library.access.vpn.how": "Conéctate primero al VPN de la universidad y después abre la base de datos.",
+    "dashboard.library.access.vpn.how": "Conéctate primero a la VPN de la universidad y después abre la base de datos.",
     "dashboard.library.access.campus.label": "Solo en el campus",
     "dashboard.library.access.campus.short": "Campus",
     "dashboard.library.access.campus.how": "Disponible desde la red del campus o los ordenadores de la biblioteca.",
@@ -710,7 +710,7 @@ export const dashboard: Messages<typeof en> = {
     // AI connections
     "dashboard.connections.title": "Connexions IA",
     "dashboard.connections.subtitle": "Utilisez les modèles que fournit votre université, ou le compte IA que vous payez déjà, dans Thesisfic, avec chaque interaction journalisée de façon transparente.",
-    "dashboard.connections.providedBody": "Votre université paie ces modèles, comme les entreprises offrent Copilot à leurs équipes. Rien à configurer : choisissez-en un dans l'assistant ou laissez Auto.",
+    "dashboard.connections.providedBody": "Votre université paie ces modèles, comme les entreprises offrent Copilot à leurs équipes. Rien à configurer : choisissez-en un dans l'assistant ou laissez-le sur Auto.",
     "dashboard.connections.allowance": "Votre dotation de ce mois-ci",
     "dashboard.connections.usedUpBlock": "Épuisée : renouvelée le 1er du mois.",
     "dashboard.connections.usedUpOwn": "Épuisée : votre propre compte est utilisé jusqu'au 1er du mois.",
