@@ -18,16 +18,16 @@ type Body = { label: string; c0: string; c1: string; glow: string; r: number };
 type Item = { z: number; draw: () => void };
 
 const BODIES: Record<"sun" | "earth" | "moon" | "sat", Body> = {
-  sun: { label: "landing.scene.university", c0: "#748ffc", c1: "#364fc7", glow: "rgba(76,110,245,.28)", r: 62 }, // brand-400 → brand-900
+  sun: { label: "landing.scene.university", c0: "#8f3f9c", c1: "#2a0d2f", glow: "rgba(87,29,97,.28)", r: 62 }, // brand-400 → brand-900
   earth: { label: "landing.scene.student", c0: "#63e6be", c1: "#0ca678", glow: "rgba(32,201,151,.25)", r: 30 }, // accent-300 → accent-700
   moon: { label: "glossary.aiAssistant", c0: "#c4b5fd", c1: "#6d28d9", glow: "rgba(124,58,237,.25)", r: 13 }, // prov.ai range
-  sat: { label: "landing.scene.advisor", c0: "#91a7ff", c1: "#4263eb", glow: "rgba(76,110,245,.2)", r: 10 }, // brand-300 → brand-700
+  sat: { label: "landing.scene.advisor", c0: "#b07cba", c1: "#46174e", glow: "rgba(87,29,97,.2)", r: 10 }, // brand-300 → brand-700
 };
 
 const ORBIT = 380;
 const MOON_R = 68;
 const SAT_R = 100;
-const PARTICLE_COLORS = ["#bac8ff", "#96f2d7", "#ddd6fe"]; // brand-200, accent-200, prov.ai-line
+const PARTICLE_COLORS = ["#d9bfe0", "#96f2d7", "#ddd6fe"]; // brand-200, accent-200, prov.ai-line
 
 // Fixed angles used when the visitor prefers reduced motion.
 const STATIC = { yaw: 0.4, earth: 0.9, moon: 2.1, sat: 4.0 };
@@ -250,12 +250,12 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       const SA: Vec3 = { x: E.x + Math.cos(sa) * SAT_R * 0.55, y: Math.sin(sa) * SAT_R, z: E.z + Math.sin(sa) * SAT_R * 0.55 };
       const qS = P(0, 0, 0), qE = P(E.x, E.y, E.z), qM = P(M.x, M.y, M.z), qA = P(SA.x, SA.y, SA.z);
 
-      items.push({ z: 1e4, draw: () => ring((a) => P(Math.cos(a) * ORBIT, 0, Math.sin(a) * ORBIT), "rgba(76,110,245,.18)") });
+      items.push({ z: 1e4, draw: () => ring((a) => P(Math.cos(a) * ORBIT, 0, Math.sin(a) * ORBIT), "rgba(87,29,97,.18)") });
       items.push({
         z: qE.z + 1,
         draw: () => {
           ring((a) => P(E.x + Math.cos(a) * MOON_R, Math.sin(a) * MOON_R * 0.35, E.z + Math.sin(a) * MOON_R), "rgba(124,58,237,.3)");
-          ring((a) => P(E.x + Math.cos(a) * SAT_R * 0.55, Math.sin(a) * SAT_R, E.z + Math.sin(a) * SAT_R * 0.55), "rgba(76,110,245,.25)", [3, 4]);
+          ring((a) => P(E.x + Math.cos(a) * SAT_R * 0.55, Math.sin(a) * SAT_R, E.z + Math.sin(a) * SAT_R * 0.55), "rgba(87,29,97,.25)", [3, 4]);
         },
       });
 
@@ -268,8 +268,8 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
         draw: () => {
           const r = BODIES.sun.r * qS.k * 2.4;
           const g = ctx.createRadialGradient(qS.x, qS.y, BODIES.sun.r * qS.k * 0.8, qS.x, qS.y, r);
-          g.addColorStop(0, "rgba(116,143,252,.35)");
-          g.addColorStop(1, "rgba(116,143,252,0)");
+          g.addColorStop(0, "rgba(143,63,156,.35)");
+          g.addColorStop(1, "rgba(143,63,156,0)");
           ctx.fillStyle = g;
           ctx.beginPath();
           ctx.arc(qS.x, qS.y, r, 0, Math.PI * 2);
@@ -307,7 +307,7 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       items.push({
         z: Math.min(qA.z, qE.z) - 0.5,
         draw: () => {
-          ctx.strokeStyle = hA ? BODIES.sat.c1 : "rgba(66,99,235,.45)";
+          ctx.strokeStyle = hA ? BODIES.sat.c1 : "rgba(70,23,78,.45)";
           ctx.lineWidth = 1;
           ctx.setLineDash([2, 4]);
           ctx.beginPath();
@@ -344,11 +344,11 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
           ctx.save();
           ctx.translate(qA.x, qA.y);
           ctx.rotate(sa * 0.5);
-          ctx.fillStyle = "#4263eb"; // brand-700
+          ctx.fillStyle = "#46174e"; // brand-700
           ctx.fillRect(-r * 2.6, -r * 0.45, r * 1.5, r * 0.9);
           ctx.fillRect(r * 1.1, -r * 0.45, r * 1.5, r * 0.9);
           ctx.fillStyle = "#fff";
-          ctx.strokeStyle = "#4263eb";
+          ctx.strokeStyle = "#46174e";
           ctx.lineWidth = 1.2;
           roundRect(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6, r * 0.3);
           ctx.fill();

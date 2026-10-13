@@ -5,17 +5,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Plum brand, derived from #571d61 (chosen on the design canvas).
         brand: {
-          50: "#f0f4ff",
-          100: "#dbe4ff",
-          200: "#bac8ff",
-          300: "#91a7ff",
-          400: "#748ffc",
-          500: "#5c7cfa",
-          600: "#4c6ef5",
-          700: "#4263eb",
-          800: "#3b5bdb",
-          900: "#364fc7",
+          50: "#f6eff8",
+          100: "#ead9ee",
+          200: "#d9bfe0",
+          300: "#b07cba",
+          400: "#8f3f9c",
+          500: "#6f2a7b",
+          600: "#571d61",
+          700: "#46174e",
+          800: "#35113b",
+          900: "#2a0d2f",
         },
         accent: {
           50: "#e6fcf5",

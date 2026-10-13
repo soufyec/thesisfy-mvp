@@ -1,5 +1,7 @@
 "use client";
 
+import Reveal from "./Reveal";
+
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { useFormat, useT } from "@/lib/i18n/client";
@@ -43,10 +45,10 @@ function Tile({ tile, active }: { tile: (typeof TILES)[number]; active: boolean 
   const fmt = useFormat();
   const v = useCountUp(active, tile.n);
   return (
-    <article className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 flex flex-col gap-2 min-w-0">
-      <div className="text-[40px] sm:text-[44px] leading-none font-extrabold tracking-[-0.03em] text-gray-900 [font-variant-numeric:tabular-nums]">
+    <article className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 flex flex-col gap-2 min-w-0 w-full">
+      <div className="text-[40px] sm:text-[44px] leading-none font-extrabold tracking-[-0.03em] gradient-text [font-variant-numeric:tabular-nums]">
         {fmt.number(v)}
-        <span className="text-[24px] text-brand-600">{tile.unit}</span>
+        <span className="text-[24px]">{tile.unit}</span>
       </div>
       <p className="text-[14px] leading-[1.5] text-gray-600 m-0 [text-wrap:pretty]">{t(`landing.data.${tile.id}.label`)}</p>
       <a href={tile.url} target="_blank" rel="noopener noreferrer" className="mt-auto pt-2 text-[12px] leading-[1.4] text-gray-500 hover:text-brand-700 inline-flex items-start gap-1">
@@ -74,7 +76,7 @@ export default function StatTiles() {
   }, []);
   return (
     <div ref={ref} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-      {TILES.map((tile) => <Tile key={tile.id} tile={tile} active={active} />)}
+      {TILES.map((tile, i) => <Reveal key={tile.id} delay={i * 70} className="flex min-w-0"><Tile tile={tile} active={active} /></Reveal>)}
     </div>
   );
 }

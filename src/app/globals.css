@@ -448,10 +448,10 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 
 /* Tab outline: a translucent cloud that floats under the tab, no border, soft brand-tinted glow */
 .tab-outline-cloud {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62) 55%, rgba(237, 242, 255, 0.72));
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62) 55%, rgba(246, 239, 248, 0.78));
   -webkit-backdrop-filter: blur(22px) saturate(1.5);
   backdrop-filter: blur(22px) saturate(1.5);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 18px 50px -18px rgba(76, 110, 245, 0.35), 0 10px 30px -12px rgba(60, 64, 67, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 18px 50px -18px rgba(87, 29, 97, 0.35), 0 10px 30px -12px rgba(60, 64, 67, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.6);
   animation: outline-cloud-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   transform-origin: top left;
 }
@@ -464,10 +464,10 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 }
 .tab-outline-item:hover,
 .tab-outline-item:focus-visible {
-  background: linear-gradient(90deg, rgba(76, 110, 245, 0.14), rgba(32, 201, 151, 0.10));
+  background: linear-gradient(90deg, rgba(87, 29, 97, 0.14), rgba(32, 201, 151, 0.10));
   color: theme("colors.brand.700");
   transform: translateX(3px);
-  box-shadow: 0 6px 16px -10px rgba(76, 110, 245, 0.45);
+  box-shadow: 0 6px 16px -10px rgba(87, 29, 97, 0.45);
 }
 @media (prefers-reduced-motion: reduce) { .tab-outline-cloud { animation: none; } .tab-outline-item { transition: none; } .tab-outline-item:hover { transform: none; } }
 
@@ -521,10 +521,10 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 
 /* ---------- Student onboarding: intro modal and coachmarks ---------- */
 .onb-overlay { background: rgba(17, 24, 39, 0.55); backdrop-filter: blur(4px); }
-.onb-video-glow { background: radial-gradient(ellipse at 30% 30%, rgba(76, 110, 245, 0.45), transparent 60%), radial-gradient(ellipse at 75% 80%, rgba(32, 201, 151, 0.3), transparent 55%); }
+.onb-video-glow { background: radial-gradient(ellipse at 30% 30%, rgba(87, 29, 97, 0.45), transparent 60%), radial-gradient(ellipse at 75% 80%, rgba(32, 201, 151, 0.3), transparent 55%); }
 /* The focus cut-out: one element whose huge spread shadow dims everything else, plus the brand ring. */
 .tour-focus {
-  box-shadow: 0 0 0 9999px rgba(17, 24, 39, 0.5), 0 0 0 3px rgba(76, 110, 245, 0.9), 0 0 0 8px rgba(76, 110, 245, 0.25);
+  box-shadow: 0 0 0 9999px rgba(17, 24, 39, 0.5), 0 0 0 3px rgba(87, 29, 97, 0.9), 0 0 0 8px rgba(87, 29, 97, 0.25);
   transition: left 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), top 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), width 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), height 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .tour-card { transition: left 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), top 0.45s cubic-bezier(0.2, 0.7, 0.2, 1); }
@@ -545,15 +545,19 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
   .land-bar { transition: none; }
 }
 
-/* Scroll reveal (landing): content lifts into view on desktop; phones and reduced motion show it as is. */
-@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+/* Scroll reveal (landing): content lifts into view as it scrolls in; reduced motion shows it as is. */
+@media (prefers-reduced-motion: no-preference) {
   .reveal {
     opacity: 0;
-    transform: translateY(22px);
-    transition: opacity 0.75s cubic-bezier(0.2, 0.65, 0.2, 1), transform 0.75s cubic-bezier(0.2, 0.65, 0.2, 1);
+    transform: translateY(28px) scale(0.985);
+    transition: opacity 0.8s cubic-bezier(0.2, 0.65, 0.2, 1), transform 0.8s cubic-bezier(0.2, 0.65, 0.2, 1);
+    will-change: opacity, transform;
   }
   .reveal.is-in {
     opacity: 1;
     transform: none;
+  }
+  @media (max-width: 767px) {
+    .reveal { transform: translateY(18px); }
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
+import Reveal from "./Reveal";
 
 /** The three things that happen inside an assignment, each with a small moving preview of the real feature. */
 
@@ -118,12 +119,12 @@ export default function HowItWorks() {
       {[1, 2, 3].map((n, k) => {
         const Preview = PREVIEWS[k];
         return (
-          <article key={n} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-7 flex flex-col gap-4 min-w-0">
+          <Reveal key={n} delay={k * 130} className="flex min-w-0"><article className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-7 flex flex-col gap-4 min-w-0 w-full">
             <div className={`inline-flex w-fit px-2.5 py-1 rounded-full text-[12px] font-semibold ${CHIPS[k]}`}>{t(`landing.how.${n}.kicker`)}</div>
             <h3 className="text-[20px] font-bold leading-[1.3] tracking-[-0.01em] m-0 [text-wrap:balance]">{t(`landing.how.${n}.title`)}</h3>
             <p className="text-[14px] leading-[1.65] text-gray-600 m-0 [text-wrap:pretty]">{t(`landing.how.${n}.body`)}</p>
             <div className="mt-auto pt-1"><Preview /></div>
-          </article>
+          </article></Reveal>
         );
       })}
     </div>

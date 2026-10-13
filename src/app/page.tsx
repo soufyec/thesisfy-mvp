@@ -34,14 +34,14 @@ export default function LandingPage() {
 
       {/* Integrated with the institution's digital workspace (ENT) */}
       <section id="ent" className="px-5 sm:px-8 pb-16 scroll-mt-16">
-        <Reveal><div className="mx-auto max-w-[1200px] rounded-2xl border border-brand-100 bg-brand-50 p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-6 items-center">
+        <Reveal><div className="mx-auto max-w-[1200px] rounded-2xl bg-gradient-to-br from-brand-600 to-accent-800 text-white p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-6 items-center">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase text-brand-700 mb-3">
+            <div className="inline-flex items-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase text-brand-100 mb-3">
               <Plug className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
               {t("landing.ent.kicker")}
             </div>
             <h2 className="text-[22px] sm:text-[26px] font-bold leading-[1.25] tracking-[-0.02em] mb-3 [text-wrap:balance]">{t("landing.ent.title")}</h2>
-            <p className="text-[15px] leading-[1.6] text-gray-700 m-0 [text-wrap:pretty]">{t("landing.ent.body")}</p>
+            <p className="text-[15px] leading-[1.6] text-white/90 m-0 [text-wrap:pretty]">{t("landing.ent.body")}</p>
           </div>
           <div className="flex flex-col gap-3 lg:items-end">
             <div className="flex flex-wrap items-center gap-3">
@@ -52,9 +52,9 @@ export default function LandingPage() {
               </span>
               <span className="inline-flex items-center rounded-xl bg-white border border-brand-100 shadow-sm px-4 py-3 text-[14px] font-bold tracking-[-0.01em] text-gray-900">{t("landing.ent.standard")}</span>
             </div>
-            <div className="text-[13px] text-gray-700 lg:text-right max-w-[460px]">
+            <div className="text-[13px] text-white lg:text-right max-w-[460px]">
               <span className="font-semibold">{t("landing.ent.others")}</span>
-              <span className="block text-gray-500 mt-0.5">{t("landing.ent.othersNote")}</span>
+              <span className="block text-brand-100 mt-0.5">{t("landing.ent.othersNote")}</span>
             </div>
           </div>
         </div></Reveal>
@@ -67,7 +67,7 @@ export default function LandingPage() {
             <h2 className="text-[30px] sm:text-[36px] font-bold tracking-[-0.02em] mb-3 [text-wrap:balance]">{t("landing.data.title")}</h2>
             <p className="text-[16px] text-gray-600 max-w-[600px] mx-auto">{t("landing.data.subtitle")}</p>
           </Reveal>
-          <Reveal delay={120}><StatTiles /></Reveal>
+          <StatTiles />
           <Reveal><p className="mt-10 mx-auto max-w-[720px] text-center text-[17px] leading-[1.6] text-gray-800 [text-wrap:pretty]">{t("landing.data.takeaway")}</p></Reveal>
         </div>
       </section>
@@ -83,7 +83,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-[16px] text-gray-600 max-w-[600px] mx-auto">{t("landing.how.subtitle")}</p>
           </Reveal>
-          <Reveal delay={120}><HowItWorks /></Reveal>
+          <HowItWorks />
         </div>
       </section>
 
