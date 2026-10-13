@@ -3,7 +3,7 @@
 import { useId, type CSSProperties } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
-import { SPARK_D, T_D, WORDMARK_D } from "./logoAssets";
+import { SPARK_D, T_D, T_FOLD_D, WORDMARK_D } from "./logoAssets";
 
 // The Thesisfic logo: three overlapping circles with a white T at their shared centre, the wordmark
 // in Inter 800 and a spark. It is brand artwork, so its colours live here and nowhere else; the
@@ -38,21 +38,28 @@ export function LogoMark({ size = 32, onDark = false, className = "" }: { size?:
           <stop offset="1" stopColor={MARK.mint[1]} />
         </linearGradient>
         <filter id={`${id}-glow`} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="7" result="b" />
-          <feComponentTransfer in="b" result="g">
-            <feFuncA type="linear" slope="0.85" />
-          </feComponentTransfer>
+          <feGaussianBlur in="SourceAlpha" stdDeviation="9" result="b" />
+          <feFlood floodColor="#b9f3e3" floodOpacity="0.9" />
+          <feComposite in2="b" operator="in" result="g" />
           <feMerge>
             <feMergeNode in="g" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+        <linearGradient id={`${id}-fold`} x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="0.45" stopColor="#b6ead3" stopOpacity="0.85" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
       </defs>
       <g style={{ isolation: "isolate" }}>
         <circle cx="170" cy="200" r="150" fill={`url(#${id}-deep)`} fillOpacity={onDark ? 1 : 0.96} />
         <circle cx="342" cy="200" r="150" fill={`url(#${id}-pale)`} fillOpacity={onDark ? 0.82 : 0.9} style={{ mixBlendMode: blend }} />
         <circle cx="256" cy="330" r="150" fill={`url(#${id}-mint)`} fillOpacity={onDark ? 0.88 : 0.92} style={{ mixBlendMode: blend }} />
-        <path filter={`url(#${id}-glow)`} fill="#ffffff" transform="translate(0 -12)" d={T_D} />
+        <g filter={`url(#${id}-glow)`}>
+          <path fill="#ffffff" d={T_D} />
+          <path fill={`url(#${id}-fold)`} d={T_FOLD_D} />
+        </g>
       </g>
     </svg>
   );
@@ -126,6 +133,20 @@ export function LogoSpinner({ size = 28, label, className = "" }: { size?: numbe
           <stop offset="0" stopColor={MARK.mint[0]} />
           <stop offset="1" stopColor={MARK.mint[1]} />
         </linearGradient>
+        <filter id={`${id}-glow`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="9" result="b" />
+          <feFlood floodColor="#b9f3e3" floodOpacity="0.9" />
+          <feComposite in2="b" operator="in" result="g" />
+          <feMerge>
+            <feMergeNode in="g" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <linearGradient id={`${id}-fold`} x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="0.45" stopColor="#b6ead3" stopOpacity="0.85" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
       </defs>
       <g className="logo-spin-orbit" style={{ isolation: "isolate" }}>
         <g className="logo-spin-sat" style={sat(-60, -34)}>
@@ -138,7 +159,10 @@ export function LogoSpinner({ size = 28, label, className = "" }: { size?: numbe
           <circle cx="256" cy="330" r="150" fill={`url(#${id}-mint)`} fillOpacity="0.92" style={{ mixBlendMode: "multiply" }} />
         </g>
       </g>
-      <path className="logo-spin-t" fill="#ffffff" transform="translate(0 -12)" d={T_D} />
+      <g className="logo-spin-t" filter={`url(#${id}-glow)`}>
+          <path fill="#ffffff" d={T_D} />
+          <path fill={`url(#${id}-fold)`} d={T_FOLD_D} />
+      </g>
     </svg>
   );
 }
