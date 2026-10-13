@@ -114,7 +114,7 @@ export const lti: Messages<typeof en> = {
     "lti.list.never": "Sin lanzamientos todavía",
     "lti.remove": "Quitar",
     "lti.removeTitle": "¿Quitar este sitio Moodle?",
-    "lti.removeBody": "Los lanzamientos desde {name} dejarán de funcionar. Las cuentas creadas desde él se conservan y volverán a entrar cuando el sitio se registre de nuevo.",
+    "lti.removeBody": "Los lanzamientos desde {name} dejarán de funcionar. Las cuentas creadas desde él se conservan y podrán volver a entrar cuando el sitio se registre de nuevo.",
     "lti.registered": "Sitio Moodle registrado.",
     "lti.removed": "Sitio Moodle quitado.",
     "lti.error.name": "Pon un nombre al sitio.",

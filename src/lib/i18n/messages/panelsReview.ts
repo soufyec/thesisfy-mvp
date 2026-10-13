@@ -614,7 +614,7 @@ export const panelsReview: Messages<typeof en> = {
     "panelsReview.reviewer.criteria.clarity.label": "Clarté",
     "panelsReview.reviewer.criteria.clarity.description": "Les phrases sont-elles précises et lisibles ? Termes ambigus, phrases longues et jargon non défini.",
     "panelsReview.reviewer.criteria.citations.label": "Citations",
-    "panelsReview.reviewer.criteria.citations.description": "Les sources sont-elles citées là où il le faut, de façon cohérente et dans le style du mémoire ? Chiffres et idées empruntées sans référence.",
+    "panelsReview.reviewer.criteria.citations.description": "Les sources sont-elles citées là où il le faut, de façon cohérente et dans le style de la thèse ? Chiffres et idées empruntées sans référence.",
     "panelsReview.reviewer.criteria.method.label": "Méthode",
     "panelsReview.reviewer.criteria.method.description": "Les méthodes, les échantillons et l'analyse sont-ils décrits avec assez de détail pour être jugés et reproduits ?",
   },
