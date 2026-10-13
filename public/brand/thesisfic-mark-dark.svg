@@ -9,8 +9,5 @@
   <circle cx="170" cy="200" r="150" fill="url(#tmd-deep)" fill-opacity="1"/>
   <circle cx="342" cy="200" r="150" fill="url(#tmd-pale)" fill-opacity="0.82" style="mix-blend-mode:normal"/>
   <circle cx="256" cy="330" r="150" fill="url(#tmd-mint)" fill-opacity="0.88" style="mix-blend-mode:normal"/>
-  <g filter="url(#tmd-glow)" fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M212 226 H300"/>
-    <path d="M276 226 C 276 258, 268 288, 250 314"/>
-  </g>
+  <path filter="url(#tmd-glow)" fill="#ffffff" transform="translate(0 -12)" d="M213 222 H297 Q304 222 304 229 V239 Q304 246 297 246 L285.5 310 Q284 318 276 318 H252 Q244 318 245.5 310 L257 254 Q258 246 250 246 H213 Q206 246 206 239 V229 Q206 222 213 222 Z"/>
 </g></svg>

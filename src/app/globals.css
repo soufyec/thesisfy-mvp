@@ -555,3 +555,12 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
     transform: none;
   }
 }
+
+/* Logo as a loading indicator (LogoSpinner): the circles orbit the mark's centre and drift apart, the T stays. */
+@keyframes logo-orbit { to { transform: rotate(360deg); } }
+@keyframes logo-spread { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(var(--sx), var(--sy)); } }
+@keyframes logo-t { 50% { opacity: 0.55; } }
+.logo-spin-orbit { transform-origin: 256px 243px; animation: logo-orbit 2.4s linear infinite; }
+.logo-spin-sat { animation: logo-spread 2.4s ease-in-out infinite; }
+.logo-spin-t { animation: logo-t 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .logo-spin-orbit, .logo-spin-sat, .logo-spin-t { animation: none; } }
