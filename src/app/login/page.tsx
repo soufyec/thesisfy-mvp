@@ -1,12 +1,19 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { setMeCache } from "@/components/useUser";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n/client";
+
+const DEMO_CREDS = {
+  student: { email: "jane.cooper@stanford.edu", password: "demo123" },
+  admin: { email: "admin@stanford.edu", password: "admin123" },
+  professor: { email: "prof.williams@stanford.edu", password: "demo123" },
+};
+const demoEnabled = process.env.NEXT_PUBLIC_DEMO_ACCOUNTS !== "off";
 
 function LoginForm() {
   const t = useT();
@@ -17,8 +24,7 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const signIn = async (email: string, password: string) => {
     setError("");
     setLoading(true);
     try {
@@ -39,16 +45,26 @@ function LoginForm() {
       setLoading(false);
     }
   };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void signIn(email, password);
+  };
 
   const fillDemo = (type: "student" | "admin" | "professor") => {
-    const creds = {
-      student: { email: "jane.cooper@stanford.edu", password: "demo123" },
-      admin: { email: "admin@stanford.edu", password: "admin123" },
-      professor: { email: "prof.williams@stanford.edu", password: "demo123" },
-    };
-    setEmail(creds[type].email);
-    setPassword(creds[type].password);
+    setEmail(DEMO_CREDS[type].email);
+    setPassword(DEMO_CREDS[type].password);
   };
+
+  // `/login?demo=student|professor|admin` (the landing's demo card) signs straight into that demo account.
+  const demo = params.get("demo");
+  useEffect(() => {
+    if (!demoEnabled || !demo || !(demo in DEMO_CREDS)) return;
+    const c = DEMO_CREDS[demo as keyof typeof DEMO_CREDS];
+    setEmail(c.email);
+    setPassword(c.password);
+    void signIn(c.email, c.password);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo]);
 
   return (
     <div className="w-full max-w-md">
@@ -60,7 +76,7 @@ function LoginForm() {
       </div>
       <h1 className="font-display text-2xl font-bold tracking-[-0.01em] mb-2">{t("landing.login.title")}</h1>
       <p className="text-gray-500 mb-8">{t("landing.login.subtitle")}</p>
-      {process.env.NEXT_PUBLIC_DEMO_ACCOUNTS !== "off" && <div className="mb-6 p-4 bg-brand-50 rounded-xl">
+      {demoEnabled && <div className="mb-6 p-4 bg-brand-50 rounded-xl">
         <p className="text-xs font-medium text-brand-700 mb-3">{t("landing.login.demoTitle")}</p>
         <div className="flex flex-wrap gap-2">
           {([["student", "landing.login.demoStudent"], ["professor", "landing.login.demoAdvisor"], ["admin", "landing.login.demoAdmin"]] as const).map(([type, label]) => (

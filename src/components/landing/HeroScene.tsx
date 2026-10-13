@@ -111,11 +111,16 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       ctx.setLineDash([]);
     };
 
+    // The glow is a radial gradient drawn under the sphere: a shadow blur would be rasterised again every frame.
     const sphere = (q: Projected, body: Body, baseR: number) => {
       const r = baseR * q.k;
-      ctx.save();
-      ctx.shadowColor = body.glow;
-      ctx.shadowBlur = r * 1.4;
+      const halo = ctx.createRadialGradient(q.x, q.y, r * 0.85, q.x, q.y, r * 1.75);
+      halo.addColorStop(0, body.glow);
+      halo.addColorStop(1, body.glow.replace(/[\d.]+\)$/, "0)"));
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(q.x, q.y, r * 1.75, 0, Math.PI * 2);
+      ctx.fill();
       const g = ctx.createRadialGradient(q.x - r * 0.35, q.y - r * 0.4, r * 0.1, q.x, q.y, r);
       g.addColorStop(0, body.c0);
       g.addColorStop(1, body.c1);
@@ -123,7 +128,6 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       ctx.beginPath();
       ctx.arc(q.x, q.y, r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
       ctx.strokeStyle = "rgba(255,255,255,.55)";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -184,7 +188,7 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
     };
 
     const drawFrame = (now: number) => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const W = canvas.clientWidth;
       const H = canvas.clientHeight;
       if (!W || !H) return;
@@ -222,20 +226,21 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       };
 
       const items: Item[] = [];
+      // Dust: the far half is painted before the bodies, the near half after them.
+      const near: { q: Projected; p: Particle }[] = [];
+      const dot = (q: Projected, p: Particle) => {
+        ctx.globalAlpha = 0.35 + q.k * 0.4;
+        ctx.fillStyle = p.c;
+        ctx.beginPath();
+        ctx.arc(q.x, q.y, p.s * q.k, 0, Math.PI * 2);
+        ctx.fill();
+      };
       for (const p of particles) {
         const q = P(p.x, p.y, p.z);
-        items.push({
-          z: q.z,
-          draw: () => {
-            ctx.globalAlpha = 0.35 + q.k * 0.4;
-            ctx.fillStyle = p.c;
-            ctx.beginPath();
-            ctx.arc(q.x, q.y, p.s * q.k, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-          },
-        });
+        if (q.z >= 0) dot(q, p);
+        else near.push({ q, p });
       }
+      ctx.globalAlpha = 1;
 
       const ea = reduce ? STATIC.earth : t * 0.08;
       const ma = reduce ? STATIC.moon : t * 0.38;
@@ -355,12 +360,18 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       });
 
       items.sort((a, b) => b.z - a.z).forEach((i) => i.draw());
+      for (const n of near) dot(n.q, n.p);
+      ctx.globalAlpha = 1;
     };
 
+    // ~30 fps: enough for the slow orbit, half the raster work.
+    let lastDraw = 0;
     const loop = (now: number) => {
       if (!running) return;
-      drawFrame(now);
       raf = requestAnimationFrame(loop);
+      if (now - lastDraw < 30) return;
+      lastDraw = now;
+      drawFrame(now);
     };
     const startLoop = () => {
       if (running) return;
@@ -373,15 +384,23 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
     };
     const drawStatic = () => drawFrame(performance.now());
 
-    // Under 768px the canvas is display:none; do not animate a hidden scene.
+    // Under 768px the canvas is display:none; do not animate a hidden scene, nor one scrolled out of view or in a
+    // hidden tab.
+    let inView = true;
     const onVisibility = () => {
-      if (!visible.matches) {
+      if (!visible.matches || !inView || document.hidden) {
         stopLoop();
         return;
       }
       if (reduce) drawStatic();
       else startLoop();
     };
+    const io = new IntersectionObserver((entries) => {
+      inView = entries.some((e) => e.isIntersecting);
+      onVisibility();
+    });
+    io.observe(stage);
+    document.addEventListener("visibilitychange", onVisibility);
 
     const resize = new ResizeObserver(() => {
       if (reduce && visible.matches) drawStatic();
@@ -397,7 +416,9 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
 
     return () => {
       stopLoop();
+      io.disconnect();
       resize.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
       visible.removeEventListener("change", onVisibility);
       hero.removeEventListener("pointermove", onMove);
       hero.removeEventListener("pointerleave", onLeave);

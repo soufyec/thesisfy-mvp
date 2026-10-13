@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, FileText, Sparkles } from "lucide-react";
 import { IntegrityPill } from "@/components/ui";
 import { useT } from "@/lib/i18n/client";
@@ -42,6 +42,26 @@ export default function HeroEditorPreview() {
   const [typed, setTyped] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduce, setReduce] = useState(false);
+  const [offscreen, setOffscreen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // No typing while the card is scrolled away or the tab hidden: the timers would otherwise re-render it forever.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || !("IntersectionObserver" in window)) return;
+    let inView = true;
+    const sync = () => setOffscreen(!inView || document.hidden);
+    const io = new IntersectionObserver((entries) => {
+      inView = entries.some((e) => e.isIntersecting);
+      sync();
+    });
+    io.observe(el);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -54,7 +74,7 @@ export default function HeroEditorPreview() {
 
   // Step 1 types the first paragraph; the other steps hold, then advance; step 5 loops back.
   useEffect(() => {
-    if (reduce || paused) return;
+    if (reduce || paused || offscreen) return;
     if (step === 1) {
       if (typed >= p1.length) {
         const id = setTimeout(() => setStep(2), 700);
@@ -70,7 +90,7 @@ export default function HeroEditorPreview() {
       } else setStep((step + 1) as Step);
     }, HOLD[step]);
     return () => clearTimeout(id);
-  }, [step, typed, p1.length, reduce, paused]);
+  }, [step, typed, p1.length, reduce, paused, offscreen]);
 
   const jump = (s: Step) => {
     setPaused(true);
@@ -92,8 +112,7 @@ export default function HeroEditorPreview() {
 
   return (
     <div className="relative mt-14 max-w-[1200px] mx-auto z-[1]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      <div className="absolute -inset-2 rounded-[28px] bg-gradient-to-r from-brand-500/[0.14] to-accent-500/[0.08] blur-[48px]" aria-hidden="true" />
-      <div className="relative bg-white border border-gray-200 rounded-2xl shadow-[0_18px_40px_-16px] shadow-gray-900/10 overflow-hidden">
+      <div ref={rootRef} className="relative bg-white border border-gray-200 rounded-2xl shadow-[0_25px_50px_-12px,0_0_80px_-10px] shadow-brand-600/15 overflow-hidden">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-100 text-[13px] text-gray-500">
           <span className="flex items-center gap-2.5 min-w-0">

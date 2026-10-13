@@ -3,7 +3,8 @@ import { Check, Plug } from "lucide-react";
 import LandingNav, { Logo } from "@/components/landing/LandingNav";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
-import PilotForm from "@/components/landing/PilotForm";
+import DemoAccess from "@/components/landing/DemoAccess";
+import Reveal from "@/components/landing/Reveal";
 import StatTiles from "@/components/landing/StatTiles";
 import { getT } from "@/lib/i18n/server";
 
@@ -22,7 +23,7 @@ export default function LandingPage() {
     { href: "#how", label: t("landing.footer.model") },
     { href: "#how", label: t("landing.footer.data") },
     { href: "#how", label: t("landing.footer.privacy") },
-    { href: "#pilot", label: t("landing.footer.contact") },
+    { href: "#demo", label: t("landing.footer.contact") },
   ];
 
   return (
@@ -33,7 +34,7 @@ export default function LandingPage() {
 
       {/* Integrated with the institution's digital workspace (ENT) */}
       <section id="ent" className="px-5 sm:px-8 pb-16 scroll-mt-16 bg-brand-light">
-        <div className="mx-auto max-w-[1200px] rounded-2xl border border-brand-100 bg-brand-50 p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-6 items-center">
+        <Reveal><div className="mx-auto max-w-[1200px] rounded-2xl border border-brand-100 bg-brand-50 p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-6 items-center">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase text-brand-700 mb-3">
               <Plug className="w-4 h-4" strokeWidth={2.2} aria-hidden="true" />
@@ -56,45 +57,45 @@ export default function LandingPage() {
               <span className="block text-gray-500 mt-0.5">{t("landing.ent.othersNote")}</span>
             </div>
           </div>
-        </div>
+        </div></Reveal>
       </section>
 
       {/* The evidence: published figures with their sources */}
       <section id="data" className="py-20 px-5 sm:px-8 bg-gray-50 scroll-mt-16">
         <div className="mx-auto max-w-[1200px]">
-          <div className="text-center mb-12">
+          <Reveal className="text-center mb-12">
             <h2 className="font-display text-[30px] sm:text-[36px] font-bold tracking-[-0.01em] mb-3 [text-wrap:balance]">{t("landing.data.title")}</h2>
             <p className="text-[16px] text-gray-600 max-w-[600px] mx-auto">{t("landing.data.subtitle")}</p>
-          </div>
-          <StatTiles />
-          <p className="mt-10 mx-auto max-w-[720px] text-center text-[17px] leading-[1.6] text-gray-800 [text-wrap:pretty]">{t("landing.data.takeaway")}</p>
+          </Reveal>
+          <Reveal delay={120}><StatTiles /></Reveal>
+          <Reveal><p className="mt-10 mx-auto max-w-[720px] text-center text-[17px] leading-[1.6] text-gray-800 [text-wrap:pretty]">{t("landing.data.takeaway")}</p></Reveal>
         </div>
       </section>
 
       {/* How it works */}
       <section id="how" className="py-20 px-5 sm:px-8 bg-white scroll-mt-16">
         <div className="mx-auto max-w-[1200px]">
-          <div className="text-center mb-14">
+          <Reveal className="text-center mb-14">
             <h2 className="font-display text-[30px] sm:text-[36px] font-bold tracking-[-0.01em] mb-3">
               {t("landing.how.titleA")}
               <span className="gradient-text">{t("landing.how.titleHi")}</span>
               {t("landing.how.titleB")}
             </h2>
             <p className="text-[16px] text-gray-600 max-w-[600px] mx-auto">{t("landing.how.subtitle")}</p>
-          </div>
-          <HowItWorks />
+          </Reveal>
+          <Reveal delay={120}><HowItWorks /></Reveal>
         </div>
       </section>
 
       {/* Three readers */}
       <section id="roles" className="py-20 px-5 sm:px-8 bg-gray-50 scroll-mt-16">
         <div className="mx-auto max-w-[1200px]">
-          <div className="text-center mb-14">
+          <Reveal className="text-center mb-14">
             <h2 className="font-display text-[30px] sm:text-[36px] font-bold tracking-[-0.01em]">{t("landing.roles.title")}</h2>
-          </div>
+          </Reveal>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {roles.map((r) => (
-              <article key={r.who} className={CARD}>
+            {roles.map((r, i) => (
+              <Reveal key={r.who} delay={i * 130} className="flex"><article className={`${CARD} w-full`}>
                 <div className={`inline-flex px-2.5 py-1 rounded-full text-[12px] font-semibold mb-3.5 ${r.chip}`}>{r.who}</div>
                 <h3 className="font-display text-[20px] font-semibold leading-[1.3] tracking-[-0.01em] mb-3.5">{r.title}</h3>
                 <ul className="flex flex-col gap-2.5 text-[14px] leading-[1.55] text-gray-600 list-none p-0 m-0">
@@ -105,22 +106,22 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-              </article>
+              </article></Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pilot programme */}
-      <section id="pilot" className="px-5 sm:px-8 pt-10 pb-24 scroll-mt-16">
-        <div className="mx-auto max-w-[1200px] bg-brand-dark text-white rounded-3xl p-7 sm:p-10 lg:p-14 grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] gap-10 lg:gap-12 items-center">
+      {/* Live demo */}
+      <section id="demo" className="px-5 sm:px-8 pt-10 pb-24 scroll-mt-16">
+        <Reveal><div className="mx-auto max-w-[1200px] bg-brand-dark text-white rounded-3xl p-7 sm:p-10 lg:p-14 grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] gap-10 lg:gap-12 items-center">
           <div>
-            <div className="text-[12px] font-bold tracking-[0.14em] uppercase text-brand-200 mb-4">{t("landing.pilot.eyebrow")}</div>
-            <h2 className="font-display text-[30px] sm:text-[36px] leading-[1.15] font-bold tracking-[-0.01em] mb-4 [text-wrap:pretty]">{t("landing.pilot.title")}</h2>
-            <p className="text-[16px] leading-[1.6] text-brand-100 max-w-[520px] [text-wrap:pretty]">{t("landing.pilot.body")}</p>
+            <div className="text-[12px] font-bold tracking-[0.14em] uppercase text-brand-200 mb-4">{t("landing.demo.eyebrow")}</div>
+            <h2 className="font-display text-[30px] sm:text-[36px] leading-[1.15] font-bold tracking-[-0.01em] mb-4 [text-wrap:pretty]">{t("landing.demo.title")}</h2>
+            <p className="text-[16px] leading-[1.6] text-brand-100 max-w-[520px] [text-wrap:pretty]">{t("landing.demo.body")}</p>
           </div>
-          <PilotForm />
-        </div>
+          <DemoAccess />
+        </div></Reveal>
       </section>
 
       {/* Footer */}
