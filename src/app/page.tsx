@@ -3,7 +3,7 @@ import { Check, Plug } from "lucide-react";
 import LandingNav, { Logo } from "@/components/landing/LandingNav";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
-import DemoAccess from "@/components/landing/DemoAccess";
+import TrialForm from "@/components/landing/TrialForm";
 import Reveal from "@/components/landing/Reveal";
 import StatTiles from "@/components/landing/StatTiles";
 import { getT } from "@/lib/i18n/server";
@@ -23,7 +23,7 @@ export default function LandingPage() {
     { href: "#how", label: t("landing.footer.model") },
     { href: "#how", label: t("landing.footer.data") },
     { href: "#how", label: t("landing.footer.privacy") },
-    { href: "#demo", label: t("landing.footer.contact") },
+    { href: "#trial", label: t("landing.footer.contact") },
   ];
 
   return (
@@ -112,15 +112,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Live demo */}
-      <section id="demo" className="px-5 sm:px-8 pt-10 pb-24 scroll-mt-16">
+      {/* 7-day trial */}
+      <section id="trial" className="px-5 sm:px-8 pt-10 pb-24 scroll-mt-16">
         <Reveal><div className="mx-auto max-w-[1200px] bg-gradient-to-br from-brand-600 to-brand-800 text-white rounded-3xl p-7 sm:p-10 lg:p-14 grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] gap-10 lg:gap-12 items-center">
           <div>
-            <div className="text-[12px] font-bold tracking-[0.14em] uppercase text-brand-200 mb-4">{t("landing.demo.eyebrow")}</div>
-            <h2 className="text-[30px] sm:text-[36px] leading-[1.15] font-bold tracking-[-0.02em] mb-4 [text-wrap:pretty]">{t("landing.demo.title")}</h2>
-            <p className="text-[16px] leading-[1.6] text-brand-100 max-w-[520px] [text-wrap:pretty]">{t("landing.demo.body")}</p>
+            <div className="text-[12px] font-bold tracking-[0.14em] uppercase text-brand-200 mb-4">{t("landing.trial.eyebrow")}</div>
+            <h2 className="text-[30px] sm:text-[36px] leading-[1.15] font-bold tracking-[-0.02em] mb-4 [text-wrap:pretty]">{t("landing.trial.title")}</h2>
+            <p className="text-[16px] leading-[1.6] text-brand-100 max-w-[520px] [text-wrap:pretty]">{t("landing.trial.body")}</p>
           </div>
-          <DemoAccess />
+          <TrialForm />
         </div></Reveal>
       </section>
 
