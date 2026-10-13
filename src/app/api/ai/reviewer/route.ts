@@ -7,6 +7,7 @@ import { error, json, requireUser } from "@/lib/api";
 import { checkPolicy } from "@/lib/ai/policy";
 import { costOf, resolveProvider, streamCompletion } from "@/lib/ai/providers";
 import { locateQuote } from "@/lib/ai/anchor";
+import { demoLang } from "@/lib/ai/demo";
 import { AnchoredReviewComment, buildReviewerPrompt, buildReviewerUserMessage, demoReview, effectiveRubric, isReviewCategory, MAX_COMMENTS_PER_SECTION, parseReviewerOutput, ReviewCategory, ReviewerComment, ReviewScope, rubricVersion, SEVERITY_ORDER } from "@/lib/ai/reviewer";
 
 export const runtime = "nodejs";
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
   for (const chunk of chunks) {
     let comments: ReviewerComment[];
     if (cfg.provider === "demo") {
-      comments = demoReview(chunk.text, activeRubric, { categories, lang: user.preferences.language });
+      comments = demoReview(chunk.text, activeRubric, { categories, lang: demoLang(user.preferences.language) });
     } else {
       let raw = "";
       let err: string | undefined;

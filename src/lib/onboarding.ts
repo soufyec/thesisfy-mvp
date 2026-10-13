@@ -46,6 +46,8 @@ export const ONBOARDING_VIDEO: Record<Locale, OnboardingVideo> = {
   en: { ...files("en"), duration: 93, chapters: chapters(33, 63, 73) },
   es: { ...files("es"), duration: 85, chapters: chapters(29, 58, 68) },
   fr: { ...files("fr"), duration: 107, chapters: chapters(32, 64, 74) },
+  // No German narration yet: German users get the English tour until `make-tour.sh` produces tour-de.*.
+  de: { ...files("en"), duration: 93, chapters: chapters(33, 63, 73) },
 };
 
 export function formatClock(seconds: number): string {

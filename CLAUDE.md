@@ -1,4 +1,4 @@
-# CLAUDE.md — Thesisfic.edu
+# CLAUDE.md — Thesisfic
 
 Guía para cualquier cambio hecho con Claude Code en `soufyec/thesisfy-mvp`. Léela entera antes de tocar código. Si una petición contradice esta guía, pregunta antes de implementar. Especificación visual detallada en `docs/design-handoff/README.md` (mockups en `docs/design-handoff/mockups/`); donde el handoff diga "Thesisfy", léase **Thesisfic**.
 
@@ -31,7 +31,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 | Texto pegado / citado | **Quoted or pasted** | `provenance: "paste"` |
 | Desglose de la puntuación | **Integrity ledger** | `IntegrityLedger` (sustituye a `IntegrityPanel`) |
 | Píldora resumen en la cabecera | **Integrity pill** | `IntegrityPill` (`ui.tsx`) |
-| Sello de calidad de la landing | **Academic quality seal** | `QualitySeal` (`SEAL_NAME = "thesisfic.edu"`) |
+| Sello de calidad de la landing | **Academic quality seal** | `QualitySeal` (`SEAL_NAME = "Thesisfic"`) |
 | Pestaña que se entrega y evalúa | **Final submission** | `SUBMISSION` |
 | Barra inferior de estado de sesión | **Session bar** | `SessionBar` |
 | Aviso de integridad | **Notice** (nunca "flag" de cara al estudiante) | `IntegrityFlag` en datos |
@@ -73,10 +73,10 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 
 ## 6. Reglas de copy
 
-- Idiomas de la UI: inglés (base), español y francés. Documentación interna: español.
-- Ninguna cadena visible se escribe literal en un componente: pasa por `useT()` (cliente) o `getT()` (servidor) de `src/lib/i18n`. Las claves viven en `src/lib/i18n/messages/<área>.ts`, con el inglés como fuente de claves y `es`/`fr` tipados contra él (falta una traducción → error de compilación). Fechas y números con `useFormat()`.
-- Español en segunda persona informal (tú); francés con vous. Mismo tono sobrio, sin exclamaciones. Glosario obligatorio en `messages/common.ts` (`glossary.*`): Written → Escrito / Rédigé; AI-assisted → Con ayuda de IA / Assisté par IA; Quoted or pasted → Citado o pegado / Cité ou collé; Integrity ledger → Registro de integridad / Registre d'intégrité; Final submission → Entrega final / Dépôt final; Notice → Aviso / Avis. "Thesisfic AI" y "Research copilot" no se traducen.
-- Entrada por idioma: `/es`, `/fr`, `/en` (y `?lang=`) fijan la cookie `locale`; el selector `LanguageSwitcher` la cambia sin recargar y guarda `preferences.language` si hay sesión.
+- Idiomas de la UI: inglés (base), español, francés y alemán. Documentación interna: español.
+- Ninguna cadena visible se escribe literal en un componente: pasa por `useT()` (cliente) o `getT()` (servidor) de `src/lib/i18n`. Las claves viven en `src/lib/i18n/messages/<área>.ts`, con el inglés como fuente de claves y `es`/`fr`/`de` tipados contra él (falta una traducción → error de compilación). Fechas y números con `useFormat()`.
+- Español en segunda persona informal (tú); francés con vous; alemán con Sie. Mismo tono sobrio, sin exclamaciones. Glosario obligatorio en `messages/common.ts` (`glossary.*`): Written → Escrito / Rédigé; AI-assisted → Con ayuda de IA / Assisté par IA; Quoted or pasted → Citado o pegado / Cité ou collé; Integrity ledger → Registro de integridad / Registre d'intégrité; Final submission → Entrega final / Dépôt final; Notice → Aviso / Avis. En alemán: Geschrieben / KI-unterstützt / Zitiert oder eingefügt / Integritätsregister / Endabgabe / Hinweis. "Thesisfic AI" y "Research copilot" no se traducen.
+- Entrada por idioma: `/es`, `/fr`, `/de`, `/en` (y `?lang=`) fijan la cookie `locale`; el selector `LanguageSwitcher` la cambia sin recargar y guarda `preferences.language` si hay sesión.
 - Tono: sobrio, concreto, segunda persona. Sin signos de exclamación, sin "¡Bienvenido!", sin "empower", "transform", "revolutionary".
 - Hablar de "notices", "attributed", "declared"; nunca de "detected", "caught", "suspicious", "cheating".
 - Toda acción irreversible o con coste muestra una frase de consecuencia antes del botón (principio 5).

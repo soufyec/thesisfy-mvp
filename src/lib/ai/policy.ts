@@ -17,7 +17,7 @@ export interface PolicyCheck {
   message?: string;
 }
 
-export function checkPolicy(policy: Policy, mode: AIMode, prompt: string, lang: "en" | "es" | "fr" = "en"): PolicyCheck {
+export function checkPolicy(policy: Policy, mode: AIMode, prompt: string, lang: "en" | "es" | "fr" | "de" = "en"): PolicyCheck {
   if (mode === "copilot" ? !policy.researchCopilot : !policy.allowedModes.includes(mode)) {
     return { allowed: false, reason: "mode_not_allowed", message: t(lang, "mode") };
   }
@@ -37,7 +37,7 @@ export function detectLang(text: string): "en" | "es" | "fr" {
   return "en";
 }
 
-function t(lang: "en" | "es" | "fr", key: "mode" | "generation") {
+function t(lang: "en" | "es" | "fr" | "de", key: "mode" | "generation") {
   const msgs = {
     en: {
       mode: "This assistant mode is not enabled by your institution's AI policy. Ask your advisor or switch to a permitted mode.",
@@ -53,6 +53,11 @@ function t(lang: "en" | "es" | "fr", key: "mode" | "generation") {
       mode: "Ce mode de l'assistant n'est pas activé par la politique IA de votre établissement. Demandez à votre directeur ou choisissez un mode autorisé.",
       generation:
         "Je ne peux pas rédiger cette partie de votre mémoire à votre place : la politique de votre établissement (et les règles de Thesisfic) bloquent le texte généré par IA, et cette demande a été consignée comme bloquée.\n\nCe que je peux faire :\n- Construire un **plan** de la section avec vous\n- Vous poser des **questions guides** pour que vous rédigiez vous-même\n- **Critiquer** ou **corriger** un brouillon que vous écrivez\n\nQue préférez-vous ?",
+    },
+    de: {
+      mode: "Dieser Assistentenmodus ist durch die KI-Richtlinie Ihrer Hochschule nicht freigegeben. Fragen Sie Ihre Betreuung oder wählen Sie einen erlaubten Modus.",
+      generation:
+        "Ich kann diesen Teil Ihrer Abschlussarbeit nicht für Sie schreiben: Die Richtlinie Ihrer Hochschule (und die Regeln von Thesisfic) blockieren KI-generierten Text für die Arbeit, und diese Anfrage wurde als blockiert protokolliert.\n\nWas ich stattdessen tun kann:\n- Den Abschnitt mit Ihnen **gliedern**, Überschrift für Überschrift\n- Ihnen **Leitfragen** stellen, damit Sie ihn in eigenen Worten schreiben\n- Einen von Ihnen geschriebenen Entwurf **kritisch prüfen** oder **korrigieren**\n\nWas möchten Sie?",
     },
   };
   return msgs[lang][key];
