@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, Shield, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n/client";
 
@@ -13,21 +13,8 @@ const LINKS = [
   { href: "#trial", label: "landing.nav.pilot" },
 ];
 
-export function Logo({ size = "nav" }: { size?: "nav" | "footer" }) {
-  const t = useT();
-  const box = size === "nav" ? "w-8 h-8 rounded-lg" : "w-6 h-6 rounded-md";
-  const text = size === "nav" ? "text-[20px]" : "text-[16px]";
-  return (
-    <Link href="/" className={`inline-flex items-center gap-2 text-gray-900 font-bold ${text}`} aria-label={t("landing.nav.home")}>
-      <span className={`${box} bg-brand-primary flex items-center justify-center flex-shrink-0`} aria-hidden="true">
-        {size === "nav" && <Shield className="w-5 h-5 text-white" strokeWidth={2} />}
-      </span>
-      <span>
-        Thesisfic<span className="text-brand-600">.edu</span>
-      </span>
-    </Link>
-  );
-}
+export { default as Logo } from "@/components/Logo";
+import Logo from "@/components/Logo";
 
 const CTA = "inline-flex items-center justify-center px-4 py-[9px] rounded-lg bg-brand-primary text-white font-semibold text-[14px] hover:brightness-110 transition-[filter,box-shadow] shadow-sm shadow-brand-600/20";
 

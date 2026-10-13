@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Bell, ChevronLeft, ChevronRight, LogOut, Menu, ShieldCheck, X } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, LogOut, Menu, X } from "lucide-react";
+import Logo, { LogoMark } from "@/components/Logo";
 import { adminNav, NavItem, studentNav } from "@/lib/nav";
 import { setMeCache, useUser } from "./useUser";
 import { api } from "@/lib/client";
@@ -135,16 +136,12 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
       {/* Sidebar */}
       <aside {...(sidebarOpen || isDesktop ? {} : ({ inert: "" } as Record<string, string>))} className={`fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 ${collapsed ? "lg:w-[76px]" : "w-64"} w-72 bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className={`p-4 lg:p-5 border-b border-gray-100 flex items-center ${collapsed ? "lg:justify-center" : "justify-between"}`}>
-          <Link href="/" className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-            {!collapsed && (
-              <span className="text-lg font-bold truncate">
-                Thesisfic<span className="text-brand-600">.edu</span>
-              </span>
-            )}
-          </Link>
+          {collapsed ? (
+            <Link href="/" className="hidden lg:flex items-center justify-center" aria-label={t("landing.nav.home")}>
+              <LogoMark size={34} />
+            </Link>
+          ) : null}
+          <Logo size="sidebar" className={collapsed ? "lg:hidden" : ""} />
           <button className="lg:hidden text-gray-400" onClick={() => setSidebarOpen(false)} aria-label={t("dashboard.layout.closeMenu")}>
             <X className="w-5 h-5" />
           </button>

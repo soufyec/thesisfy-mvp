@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import Logo from "@/components/Logo";
 import { setMeCache } from "@/components/useUser";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n/client";
@@ -42,10 +42,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 relative flex items-center justify-center p-6">
       <LanguageSwitcher variant="inline" className="absolute top-4 right-4" />
       <div className="w-full max-w-md card p-8">
-        <Link href="/" className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
-          <span className="text-xl font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
-        </Link>
+        <Logo size="nav" className="mb-6" />
         <h1 className="font-display text-2xl font-bold tracking-[-0.01em] mb-1">{t("landing.register.title")}</h1>
         <p className="text-gray-500 text-sm mb-6">{t("landing.register.subtitle")}</p>
         <form onSubmit={submit} className="space-y-4">
