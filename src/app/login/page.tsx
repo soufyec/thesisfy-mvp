@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import Logo from "@/components/Logo";
 import { setMeCache } from "@/components/useUser";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n/client";
@@ -69,10 +69,7 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md">
       <div className="lg:hidden mb-8">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-accent-500 rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
-          <span className="text-xl font-bold">Thesisfic<span className="text-brand-600">.edu</span></span>
-        </Link>
+        <Logo size="nav" />
       </div>
       <h1 className="text-2xl font-bold mb-2">{t("landing.login.title")}</h1>
       <p className="text-gray-500 mb-8">{t("landing.login.subtitle")}</p>
@@ -109,10 +106,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex">
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-600 to-brand-800 p-12 flex-col justify-between relative overflow-hidden">
         <div className="relative">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><ShieldCheck className="w-6 h-6 text-white" /></div>
-            <span className="text-2xl font-bold text-white">Thesisfic.edu</span>
-          </Link>
+          <Logo size="panel" onDark />
         </div>
         <div className="relative">
           <h2 className="text-4xl font-bold text-white mb-4 tracking-[-0.02em] leading-[1.15] [text-wrap:pretty]">{t("landing.login.headline")}</h2>
