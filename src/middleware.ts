@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
   let pathname = url.pathname;
   let chosen: Locale | null = null;
 
-  const m = pathname.match(/^\/(en|es|fr)(\/|$)/);
+  const m = pathname.match(/^\/(en|es|fr|de)(\/|$)/);
   if (m && isLocale(m[1])) {
     chosen = m[1];
     pathname = pathname.slice(m[1].length + 1) || "/";
@@ -48,5 +48,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*", "/admin/:path*", "/login", "/register", "/(en|es|fr)", "/(en|es|fr)/:path*"],
+  matcher: ["/", "/dashboard/:path*", "/admin/:path*", "/login", "/register", "/(en|es|fr|de)", "/(en|es|fr|de)/:path*"],
 };

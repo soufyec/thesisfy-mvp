@@ -1,4 +1,4 @@
-# Thesisfic.edu MVP
+# Thesisfic MVP
 
 **Academic integrity through AI regulation, not detection.** Thesisfic attributes every word of a thesis as it is written (typed, pasted, AI-assisted), lets students use the AI account they already have, and gives advisors a provenance report instead of a guessed "AI probability".
 

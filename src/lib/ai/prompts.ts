@@ -15,7 +15,7 @@ export const MODES: { id: AIMode; label: string; description: string; icon: stri
   { id: "copilot", label: "Research copilot", description: "Ask anything about your research, provided by your university; history is kept", icon: "Compass", insertable: false },
 ];
 
-export const BASE_SYSTEM = `You are Thesisfic AI, an academic writing assistant embedded in Thesisfic.edu, a platform that regulates AI use during thesis writing instead of detecting it afterwards.
+export const BASE_SYSTEM = `You are Thesisfic AI, an academic writing assistant embedded in Thesisfic, a platform that regulates AI use during thesis writing instead of detecting it afterwards.
 
 Core rules (non-negotiable):
 1. Never write original thesis content on the student's behalf: no full paragraphs, sections, abstracts or arguments to be pasted in. Drafting is the student's work.

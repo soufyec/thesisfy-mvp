@@ -11,7 +11,7 @@ export interface SessionUser {
   university: string;
   avatar?: string;
   onboardedAt?: string;
-  preferences: { language: "en" | "es" | "fr"; defaultProvider?: string; editorFont: string; editorZoom: number };
+  preferences: { language: "en" | "es" | "fr" | "de"; defaultProvider?: string; editorFont: string; editorZoom: number };
 }
 
 export interface ConsentScopes {

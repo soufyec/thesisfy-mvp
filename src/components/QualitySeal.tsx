@@ -4,7 +4,7 @@ import { useId } from "react";
 import { useT } from "@/lib/i18n/client";
 
 // Quality seal shown on the landing page. Change SEAL_NAME to rebrand the seal in one place.
-export const SEAL_NAME = "thesisfic.edu";
+export const SEAL_NAME = "Thesisfic";
 
 export default function QualitySeal({ size = 260, className = "" }: { size?: number; className?: string }) {
   // Unique ids per instance: two seals on one page (desktop column + phone band) must not share gradient/path ids.

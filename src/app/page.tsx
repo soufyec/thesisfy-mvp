@@ -135,7 +135,7 @@ export default function LandingPage() {
               </a>
             ))}
           </nav>
-          <span>© 2026 Thesisfic.edu</span>
+          <span>© 2026 Thesisfic</span>
         </div>
       </footer>
     </div>

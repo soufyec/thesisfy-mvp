@@ -36,7 +36,7 @@ export interface User {
   /** Set when the student finishes or skips the editor onboarding, so another device does not repeat it. */
   onboardedAt?: string;
   preferences: {
-    language: "en" | "es" | "fr";
+    language: "en" | "es" | "fr" | "de";
     defaultProvider?: Provider;
     editorFont: string;
     editorZoom: number;

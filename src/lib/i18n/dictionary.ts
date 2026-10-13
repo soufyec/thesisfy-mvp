@@ -22,7 +22,7 @@ function merge(locale: Locale): Record<string, string> {
   return out;
 }
 
-export const MESSAGES: Record<Locale, Record<string, string>> = { en: merge("en"), es: merge("es"), fr: merge("fr") };
+export const MESSAGES: Record<Locale, Record<string, string>> = { en: merge("en"), es: merge("es"), fr: merge("fr"), de: merge("de") };
 
 export type Translate = (key: string, vars?: Vars) => string;
 
@@ -38,7 +38,7 @@ export function translator(locale: Locale): Translate {
 
 /** Keys that exist in English but not in another locale: used by the i18n check script. */
 export function missingKeys(): Record<Exclude<Locale, "en">, string[]> {
-  const out = { es: [] as string[], fr: [] as string[] };
+  const out = { es: [] as string[], fr: [] as string[], de: [] as string[] };
   for (const l of LOCALES) {
     if (l === "en") continue;
     for (const k of Object.keys(MESSAGES.en)) if (!(k in MESSAGES[l])) out[l].push(k);

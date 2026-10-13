@@ -214,7 +214,7 @@ export function roleFromClaims(claims: LaunchClaims): Role {
 function localeFromClaims(claims: LaunchClaims): User["preferences"]["language"] {
   const lp = claims[`${LTI_CLAIM}launch_presentation`] as { locale?: string } | undefined;
   const l = (lp?.locale || "").slice(0, 2).toLowerCase();
-  return l === "es" || l === "fr" ? l : "en";
+  return l === "es" || l === "fr" || l === "de" ? l : "en";
 }
 
 /** Finds or creates the Thesisfic account behind a platform user. Existing accounts are matched by email. */

@@ -1,6 +1,10 @@
 import { AIMode } from "../db";
 
 type DemoLang = "en" | "es" | "fr";
+/** Canned demo answers exist in three languages; German users get the English ones until they are written. */
+export function demoLang(lang: string): DemoLang {
+  return lang === "es" || lang === "fr" ? lang : "en";
+}
 
 /**
  * The "demo mode" explanation. It travels as response metadata (`meta.demoNotice`), never inside the answer text,

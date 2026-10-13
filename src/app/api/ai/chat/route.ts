@@ -6,7 +6,7 @@ import { canAccessThesis } from "@/lib/auth";
 import { error, requireUser } from "@/lib/api";
 import { buildSystemPrompt, MODES } from "@/lib/ai/prompts";
 import { checkPolicy, detectLang } from "@/lib/ai/policy";
-import { demoGroundedResponse, demoNotice, demoResponse } from "@/lib/ai/demo";
+import { demoGroundedResponse, demoNotice, demoResponse, demoLang } from "@/lib/ai/demo";
 import { ChatMessage, costOf, resolveProvider, streamCompletion } from "@/lib/ai/providers";
 import { groundingBlock, passageLabel, retrieve } from "@/lib/sources/retrieve";
 import { splitSentences } from "@/lib/sources/chunk";
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
   const grounding = body.useSources && thesis ? retrieve(thesis.id, lastUser, 8) : null;
   const demo = cfg.provider === "demo";
   // `demoNotice` is metadata: the panel shows it next to the answer, so it is never inserted as AI text.
-  const meta = { provider: cfg.provider, model: cfg.model, source: cfg.source, label: cfg.label, billedTo: cfg.billedTo, institutionModelId: cfg.institutionModel?.id, notice: cfg.notice, mode, conversationId: conversation.id, demo, demoNotice: demo ? demoNotice(lang) : undefined, lang, useSources: !!grounding, groundedPassages: grounding?.length ?? 0 };
+  const meta = { provider: cfg.provider, model: cfg.model, source: cfg.source, label: cfg.label, billedTo: cfg.billedTo, institutionModelId: cfg.institutionModel?.id, notice: cfg.notice, mode, conversationId: conversation.id, demo, demoNotice: demo ? demoNotice(demoLang(lang)) : undefined, lang, useSources: !!grounding, groundedPassages: grounding?.length ?? 0 };
 
   const finish = (text: string, usage: { inputTokens: number; outputTokens: number }, blocked: boolean) => {
     const interaction = db.interactions.create({
@@ -122,8 +122,8 @@ export async function POST(request: NextRequest) {
       cfg.notice && cfg.source === "demo" && cfg.label === "Allowance used up"
         ? cfg.notice
         : grounding && grounding.length
-          ? demoGroundedResponse(grounding.slice(0, 3).map((p) => ({ label: passageLabel(p), quote: splitSentences(p.text)[0] || p.text.slice(0, 200) })), lang)
-          : demoResponse(mode, messages, lang);
+          ? demoGroundedResponse(grounding.slice(0, 3).map((p) => ({ label: passageLabel(p), quote: splitSentences(p.text)[0] || p.text.slice(0, 200) })), demoLang(lang))
+          : demoResponse(mode, messages, demoLang(lang));
     const interactionId = finish(text, { inputTokens: 0, outputTokens: 0 }, false);
     if (body.stream === false) return NextResponse.json({ message: text, meta, interactionId, usage: { inputTokens: 0, outputTokens: 0 } });
     return sse(async (send) => {

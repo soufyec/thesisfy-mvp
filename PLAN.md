@@ -4,7 +4,7 @@ Estado: pre-piloto. Comprador: universidad. Foco: editor + asistente IA, landing
 Mockups de referencia en `docs/design-handoff/mockups/`: `01 Landing Actual`, `02 Editor Actual` (estado previo), `05 Landing Propuesta v2`, `06 Editor Propuesta v2` (dirección elegida). Especificación en `docs/design-handoff/README.md`.
 
 Diferencias respecto al handoff original, decididas después y que prevalecen:
-- La marca es **Thesisfic.edu** (sello `thesisfic.edu`).
+- La marca es **Thesisfic** (sello `Thesisfic`; el nombre ya no lleva «.edu»).
 - El asistente tiene **11 modos**: los 10 del handoff más **Research copilot**, el modo libre pagado por la universidad, que va destacado y abre por defecto cuando la institución lo ofrece. El historial de conversaciones se guarda y se muestra en `/dashboard/ai-chat`.
 - **No hay extensión de navegador**. La atribución de texto de IA pegado se hace con huellas por frase de las respuestas del asistente.
 - Los modelos los paga la universidad (`/admin/ai-access`); el BYOK del estudiante es opcional.
@@ -30,7 +30,7 @@ Diferencias respecto al handoff original, decididas después y que prevalecen:
 - [x] `ui.tsx`: `IntegrityPill` (anillo cónico + "AI x% of y% · Integrity n", variante landing).
 - [x] `prompts.ts`: `MODES[].icon` pasa de emoji a nombre de icono lucide.
 - [x] `db.leads` + `POST /api/leads` (notifica a administradores).
-- [x] `QualitySeal`: se mantiene `thesisfic.edu`.
+- [x] `QualitySeal`: ahora `Thesisfic`.
 
 ### Fase 1 · Landing B2B
 **Archivos:** `src/app/page.tsx`, `src/components/landing/HeroScene.tsx`, `src/components/landing/HeroEditorPreview.tsx`, `src/app/login/page.tsx`.
