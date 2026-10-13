@@ -121,7 +121,7 @@ export default function Hero() {
             {t("landing.hero.body")}
           </p>
           <div className="flex flex-wrap gap-3">
-            <a href="#pilot" className="btn-primary gap-2 !px-[26px] !py-[15px] !text-[16px] !shadow-[0_10px_20px_-8px] !shadow-brand-600/50">
+            <a href="#demo" className="btn-primary gap-2 !px-[26px] !py-[15px] !text-[16px] !shadow-[0_10px_20px_-8px] !shadow-brand-600/50">
               {t("landing.hero.cta")}
               <ArrowRight className="w-[18px] h-[18px]" strokeWidth={2.2} aria-hidden="true" />
             </a>

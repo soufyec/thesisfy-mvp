@@ -10,7 +10,7 @@ const LINKS = [
   { href: "#how", label: "landing.nav.how" },
   { href: "#data", label: "landing.nav.data" },
   { href: "#roles", label: "landing.nav.institutions" },
-  { href: "#pilot", label: "landing.nav.pilot" },
+  { href: "#demo", label: "landing.nav.pilot" },
 ];
 
 export function Logo({ size = "nav" }: { size?: "nav" | "footer" }) {
@@ -45,7 +45,7 @@ export default function LandingNav() {
             </a>
           ))}
           <LanguageSwitcher variant="inline" />
-          <a href="#pilot" className={CTA}>
+          <a href="#demo" className={CTA}>
             {t("landing.nav.requestPilot")}
           </a>
         </div>
@@ -68,7 +68,7 @@ export default function LandingNav() {
             </a>
           ))}
           <LanguageSwitcher variant="inline" className="py-2" />
-          <a href="#pilot" className={`${CTA} mt-2`} onClick={() => setOpen(false)}>
+          <a href="#demo" className={`${CTA} mt-2`} onClick={() => setOpen(false)}>
             {t("landing.nav.requestPilot")}
           </a>
         </div>

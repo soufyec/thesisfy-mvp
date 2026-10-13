@@ -15,6 +15,7 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
   const sealLabel = t("landing.seal.aria", { name: SEAL_NAME });
   return (
     <figure className={`flex flex-col items-center gap-3 ${className}`} aria-label={sealLabel}>
+      <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox="0 0 260 260" role="img" className="drop-shadow-xl">
         <title>{sealLabel}</title>
         <defs>
@@ -22,7 +23,6 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
             <stop offset="0" stopColor="#364fc7" />
             <stop offset="1" stopColor="#087f5b" />
           </linearGradient>
-          <path id={`seal-ring-${uid}`} d="M130,130 m-96,0 a96,96 0 1,1 192,0 a96,96 0 1,1 -192,0" />
           {/* lower inner arc, left to right through the bottom, for the "verified process" line */}
           <path id={`seal-arc-${uid}`} d="M66,130 a64,64 0 0,0 128,0" />
         </defs>
@@ -36,11 +36,6 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
         </g>
         <circle cx="130" cy="130" r="108" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="1.5" />
         <circle cx="130" cy="130" r="80" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="1.5" />
-        <g className="seal-spin" style={{ transformOrigin: "130px 130px" }}>
-          <text fill="#ffffff" fontSize="12" fontWeight="700" fontFamily="Inter, system-ui, sans-serif">
-            <textPath href={`#seal-ring-${uid}`} startOffset="0" textLength="600" lengthAdjust="spacing">{ring}</textPath>
-          </text>
-        </g>
         {/* center */}
         <circle cx="130" cy="130" r="74" fill="#ffffff" fillOpacity="0.1" />
         <path d="M130 70 l-30 11 v24 c0 22 30 38 30 38 s30-16 30-38 v-24 z" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinejoin="round" />
@@ -54,6 +49,18 @@ export default function QualitySeal({ size = 260, className = "" }: { size?: num
           </textPath>
         </text>
       </svg>
+      {/* The ring text turns on its own layer: an HTML transform is composited, an SVG one repaints the seal. */}
+      <div className="seal-spin absolute inset-0" aria-hidden="true">
+        <svg width={size} height={size} viewBox="0 0 260 260" className="block">
+          <defs>
+            <path id={`seal-ring-${uid}`} d="M130,130 m-96,0 a96,96 0 1,1 192,0 a96,96 0 1,1 -192,0" />
+          </defs>
+          <text fill="#ffffff" fontSize="12" fontWeight="700" fontFamily="Inter, system-ui, sans-serif">
+            <textPath href={`#seal-ring-${uid}`} startOffset="0" textLength="600" lengthAdjust="spacing">{ring}</textPath>
+          </text>
+        </svg>
+      </div>
+      </div>
       <figcaption className="text-center max-w-[16rem]">
         <span className="block text-sm font-semibold text-gray-900">{t("glossary.qualitySeal")}</span>
         <span className="block text-xs text-gray-500 mt-0.5">{t("landing.seal.description")}</span>
