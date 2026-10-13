@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LogoSpinner } from "@/components/Logo";
 import {
   ArrowUp,
   BookMarked,
@@ -787,9 +788,16 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               {m.notice && !m.error && <div className="mb-1 text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1">{m.notice}</div>}
               {m.demo && !m.error && !m.streaming && <div className="mb-1 text-[11px] text-gray-500">{t("assistant.msg.demoNotice")}</div>}
               <div className={`text-sm leading-[1.55] px-3 py-2.5 rounded-[12px_12px_12px_2px] text-gray-900 ${m.blocked ? "bg-amber-50 border border-amber-100" : "bg-gray-100"}`}>
-                <Markdown text={m.content || (m.streaming ? "…" : "")} />
+                {m.streaming && !m.content && !m.error ? (
+                  <div className="flex items-center gap-2.5 py-0.5 text-[13px] text-gray-500">
+                    <LogoSpinner size={28} label={t("assistant.msg.thinking")} />
+                    <span aria-hidden="true">{t("assistant.msg.thinking")}</span>
+                  </div>
+                ) : (
+                  <Markdown text={m.content} />
+                )}
                 {m.error && <div className="mt-2 text-xs text-red-600">{m.error}</div>}
-                {m.streaming && <span className="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 align-middle" />}
+                {m.streaming && m.content && <span className="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 align-middle" />}
               </div>
               {!m.streaming && m.content && renderActions(m)}
               {!m.streaming && m.content && renderCostCard(m)}

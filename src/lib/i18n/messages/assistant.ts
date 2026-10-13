@@ -167,6 +167,7 @@ const en = {
 
   // Message meta
   "assistant.msg.logged": "logged",
+  "assistant.msg.thinking": "Thinking with you",
   "assistant.msg.blocked": "blocked by policy",
   "assistant.msg.errorAuth": "Your university's model did not accept its credentials. Ask your administrator to check the model in AI access & billing; you can connect your own account meanwhile.",
   "assistant.msg.errorRateLimit": "The model is busy right now. Wait a moment and send again.",
@@ -347,6 +348,7 @@ export const assistant: Messages<typeof en> = {
     "assistant.workingOn.stop": "Dejar de trabajar sobre esta selección",
 
     "assistant.msg.logged": "registrado",
+    "assistant.msg.thinking": "Pensando contigo",
     "assistant.msg.blocked": "bloqueado por la política",
     "assistant.msg.errorAuth": "El modelo de tu universidad no ha aceptado sus credenciales. Pide a tu administración que revise el modelo en Acceso a IA y facturación; mientras tanto puedes conectar tu propia cuenta.",
     "assistant.msg.errorRateLimit": "El modelo está saturado ahora mismo. Espera un momento y vuelve a enviar.",
@@ -523,6 +525,7 @@ export const assistant: Messages<typeof en> = {
     "assistant.workingOn.stop": "Ne plus travailler sur cette sélection",
 
     "assistant.msg.logged": "enregistré",
+    "assistant.msg.thinking": "Réfléchit avec vous",
     "assistant.msg.blocked": "bloqué par la politique",
     "assistant.msg.errorAuth": "Le modèle de votre université n'a pas accepté ses identifiants. Demandez à votre administration de vérifier le modèle dans Accès IA et facturation ; vous pouvez connecter votre propre compte en attendant.",
     "assistant.msg.errorRateLimit": "Le modèle est saturé pour le moment. Attendez un instant et renvoyez.",

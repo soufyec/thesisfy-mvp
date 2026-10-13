@@ -1,9 +1,9 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
-import { SPARK_D, WORDMARK_D } from "./logoAssets";
+import { SPARK_D, T_D, WORDMARK_D } from "./logoAssets";
 
 // The Thesisfic logo: three overlapping circles with a white T at their shared centre, the wordmark
 // in Inter 800 and a spark. It is brand artwork, so its colours live here and nowhere else; the
@@ -52,10 +52,7 @@ export function LogoMark({ size = 32, onDark = false, className = "" }: { size?:
         <circle cx="170" cy="200" r="150" fill={`url(#${id}-deep)`} fillOpacity={onDark ? 1 : 0.96} />
         <circle cx="342" cy="200" r="150" fill={`url(#${id}-pale)`} fillOpacity={onDark ? 0.82 : 0.9} style={{ mixBlendMode: blend }} />
         <circle cx="256" cy="330" r="150" fill={`url(#${id}-mint)`} fillOpacity={onDark ? 0.88 : 0.92} style={{ mixBlendMode: blend }} />
-        <g filter={`url(#${id}-glow)`} fill="none" stroke="#ffffff" strokeWidth="26" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M212 226 H300" />
-          <path d="M276 226 C 276 258, 268 288, 250 314" />
-        </g>
+        <path filter={`url(#${id}-glow)`} fill="#ffffff" transform="translate(0 -12)" d={T_D} />
       </g>
     </svg>
   );
@@ -106,5 +103,42 @@ export default function Logo({
       <LogoMark size={s.mark} onDark={onDark} />
       <Wordmark height={s.text} onDark={onDark} />
     </Link>
+  );
+}
+
+// The mark as a loading indicator: the three circles drift apart and orbit each other while the T holds
+// the centre. Keyframes live in globals.css (`logo-orbit`, `logo-spread`, `logo-t`) and stop under reduced motion.
+export function LogoSpinner({ size = 28, label, className = "" }: { size?: number; label: string; className?: string }) {
+  const id = useId().replace(/:/g, "");
+  const sat = (sx: number, sy: number): CSSProperties => ({ "--sx": `${sx}px`, "--sy": `${sy}px` } as CSSProperties);
+  return (
+    <svg width={size} height={size} viewBox="0 0 512 512" role="img" aria-label={label} className={`block flex-shrink-0 overflow-visible ${className}`}>
+      <defs>
+        <linearGradient id={`${id}-deep`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={MARK.deep[0]} />
+          <stop offset="1" stopColor={MARK.deep[1]} />
+        </linearGradient>
+        <linearGradient id={`${id}-pale`} x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={MARK.pale[0]} />
+          <stop offset="1" stopColor={MARK.pale[1]} />
+        </linearGradient>
+        <linearGradient id={`${id}-mint`} x1="0.5" y1="1" x2="0.5" y2="0">
+          <stop offset="0" stopColor={MARK.mint[0]} />
+          <stop offset="1" stopColor={MARK.mint[1]} />
+        </linearGradient>
+      </defs>
+      <g className="logo-spin-orbit" style={{ isolation: "isolate" }}>
+        <g className="logo-spin-sat" style={sat(-60, -34)}>
+          <circle cx="170" cy="200" r="150" fill={`url(#${id}-deep)`} fillOpacity="0.96" />
+        </g>
+        <g className="logo-spin-sat" style={sat(60, -34)}>
+          <circle cx="342" cy="200" r="150" fill={`url(#${id}-pale)`} fillOpacity="0.9" style={{ mixBlendMode: "multiply" }} />
+        </g>
+        <g className="logo-spin-sat" style={sat(0, 68)}>
+          <circle cx="256" cy="330" r="150" fill={`url(#${id}-mint)`} fillOpacity="0.92" style={{ mixBlendMode: "multiply" }} />
+        </g>
+      </g>
+      <path className="logo-spin-t" fill="#ffffff" transform="translate(0 -12)" d={T_D} />
+    </svg>
   );
 }
