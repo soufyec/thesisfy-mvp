@@ -11,7 +11,7 @@ import { useT } from "@/lib/i18n/client";
 const BULLETS = [
   { dot: "bg-accent-500", text: "landing.hero.bullet1" },
   { dot: "bg-prov-ai", text: "landing.hero.bullet2" },
-  { dot: "bg-prov-paste", text: "landing.hero.bullet3" },
+  { dot: "bg-brand-500", text: "landing.hero.bullet4" },
 ];
 
 const HI_WORDS = ["landing.hero.titleHi2", "landing.hero.titleHi3", "landing.hero.titleHi4"] as const;
