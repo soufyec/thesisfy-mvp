@@ -8,6 +8,8 @@ import TourCoachmark from "./TourCoachmark";
 
 export type OnboardingPhase = "off" | "intro" | "tour";
 
+const TOUR_MIN_WIDTH = 1024;
+
 /** Orchestrates the two chained parts (intro modal, then six coachmarks) and persists completion on the device and
  *  on the account. Skipping at any point ends both. */
 export default function StudentOnboarding({ phase, onPhase, onEnsureAssistant, onDone, vars }: {
@@ -36,7 +38,9 @@ export default function StudentOnboarding({ phase, onPhase, onEnsureAssistant, o
     setStep(n);
   }, [onEnsureAssistant]);
 
-  if (phase === "intro") return <IntroModal page={page} onPage={setPage} onSkip={finish} onFinish={() => { setStep(0); onPhase("tour"); }} vars={vars} />;
+  // The coachmarks point at toolbar and header controls that phones and narrow windows hide.
+  const tourFits = typeof window === "undefined" || window.innerWidth >= TOUR_MIN_WIDTH;
+  if (phase === "intro") return <IntroModal page={page} onPage={setPage} onSkip={finish} onFinish={() => { if (!tourFits) return finish(); setStep(0); onPhase("tour"); }} tourNext={tourFits} vars={vars} />;
   if (phase === "tour") return <TourCoachmark step={step} onStep={goStep} onSkip={finish} onFinish={finish} vars={vars} />;
   return null;
 }
