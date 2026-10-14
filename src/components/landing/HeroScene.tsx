@@ -210,9 +210,13 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
       // Keep the student orbit (380px) inside the hero on wide screens.
       // The sun sits right of the text column; the orbit is as large as the space to the right edge allows, so it
       // sweeps under the headline on the left while the student never leaves the canvas on the right.
-      const cx = compact ? W / 2 : Math.max(W * 0.6, textRight + 30);
       // The near side of the orbit projects largest: F / (F + 650 - ORBIT). Fitting that keeps the student on screen.
       const KN = F / (F + 650 - ORBIT);
+      // On wide screens the sun moves well to the right of the copy (the canvas runs to the viewport edge, so the
+      // orbit keeps its size); when that would shrink the orbit below its natural scale it stays where it was.
+      const base = Math.max(W * 0.6, textRight + 30);
+      const shifted = Math.max(W * 0.68, textRight + 160);
+      const cx = compact ? W / 2 : (W - shifted - 60) / (ORBIT * KN) >= 1 ? shifted : Math.max(base, W - 60 - ORBIT * KN);
       const S = compact ? Math.max(0.45, Math.min((W - 40) / (2 * ORBIT * KN), H / 300)) : Math.max(0.6, Math.min(W / 640, H / 330, (W - cx - 60) / (ORBIT * KN)));
       const cy = compact ? H * 0.52 : H * 0.55;
       const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
@@ -425,5 +429,5 @@ export default function HeroScene({ heroRef, textRef, compact = false }: { heroR
     };
   }, [heroRef, textRef, tr, compact]);
 
-  return <canvas ref={canvasRef} aria-hidden="true" className={compact ? "block md:hidden absolute inset-0 w-full h-full opacity-[.75] pointer-events-none" : "hidden md:block absolute inset-0 w-full h-full opacity-[.38] pointer-events-none"} />;
+  return <canvas ref={canvasRef} aria-hidden="true" className={compact ? "block md:hidden absolute inset-0 w-full h-full opacity-[.75] pointer-events-none" : "hidden md:block absolute left-0 top-0 h-full w-[calc(50%+50vw)] opacity-[.38] pointer-events-none"} />;
 }
