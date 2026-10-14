@@ -258,11 +258,23 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   }, [reviewMode, isOwner]);
 
   // First visit to the editor: the welcome modal, then the tour. Desktop only (the anchors are hidden on phones),
-  // students only, and never in review mode. Replayable from ⋯ → Help → Show the tour again.
+  // students only, and never in review mode. Replayable from ⋯ → Help → Show the tour again, or with a link that
+  // ends in ?tour=1 (for sharing the tutorial with someone whose account has already seen it).
   const [onboardingPhase, setOnboardingPhase] = useState<OnboardingPhase>("off");
+  const tourLinkRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (reviewMode || !isOwner || userRole !== "student" || onboarded) return;
-    if (window.innerWidth < 1024 || readOnboardingDone()) return;
+    if (reviewMode || !isOwner || userRole !== "student") return;
+    if (tourLinkRef.current === null) {
+      const url = new URL(window.location.href);
+      tourLinkRef.current = url.searchParams.get("tour") === "1";
+      if (tourLinkRef.current) {
+        url.searchParams.delete("tour");
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+      }
+    }
+    const forced = tourLinkRef.current;
+    if (!forced && onboarded) return;
+    if (window.innerWidth < 1024 || (!forced && readOnboardingDone())) return;
     const id = setTimeout(() => setOnboardingPhase("intro"), 700);
     return () => clearTimeout(id);
   }, [reviewMode, isOwner, userRole, onboarded]);
