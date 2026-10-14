@@ -78,8 +78,10 @@ export default function SettingsPage() {
   };
 
   const exportData = async () => {
-    const [theses, logs, cons] = await Promise.all([api("/api/theses"), api("/api/ai/logs"), api("/api/monitor/consent")]);
-    downloadBlob(`thesisfic-export-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify({ user, theses, aiInteractions: logs, consent: cons, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" }));
+    // The library (sources without their extracted text, references, and which theses use each one) is optional in the
+    // export: staff have none, and a failure there must not block the rest.
+    const [theses, logs, cons, library] = await Promise.all([api("/api/theses"), api("/api/ai/logs"), api("/api/monitor/consent"), api("/api/library").catch(() => null)]);
+    downloadBlob(`thesisfic-export-${new Date().toISOString().slice(0, 10)}.json`, new Blob([JSON.stringify({ user, theses, library, aiInteractions: logs, consent: cons, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" }));
   };
 
   if (!me || !user || !policy) return <DashboardLayout><div className="text-gray-400 text-sm">{t("common.loading")}…</div></DashboardLayout>;

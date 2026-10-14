@@ -6,6 +6,8 @@ import { Modal } from "../ui";
 import { api } from "@/lib/client";
 import { useT } from "@/lib/i18n/client";
 import { formatReference, Reference, ThesisDoc } from "./types";
+import { newReferenceId, referenceForSource } from "./sources/match";
+import { referenceFromSource, type LibrarySource } from "./sources/SourcesPanel";
 
 type Candidate = Omit<Reference, "id"> & { origin: "crossref" | "openlibrary" | "page" | "ai" | "library" | "manual"; verified: boolean; note?: string };
 
@@ -30,6 +32,8 @@ export default function CitationDialog({
   sessionId,
   onInsert,
   insertMode,
+  sources = [],
+  prefill = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,6 +42,13 @@ export default function CitationDialog({
   sessionId?: string | null;
   onInsert: (c: CitationInsert) => void;
   insertMode: "selection" | "cursor" | "library";
+  /** Sources linked to the thesis; those without a reference yet are offered under "From your sources". */
+  sources?: LibrarySource[];
+  /**
+   * Entry the dialog opens with ("Cite" on a source whose entry has no authors or year): its fields are filled in and
+   * checked like any other; an entry of this thesis with the same source, DOI or title is updated, not duplicated.
+   */
+  prefill?: Reference | null;
 }) {
   const t = useT();
   const [query, setQuery] = useState("");
@@ -58,13 +69,17 @@ export default function CitationDialog({
     setError("");
     setCandidates([]);
     setPicked(-1);
-    setForm(EMPTY);
+    if (prefill) {
+      const { id: _id, ...fields } = prefill;
+      setForm({ ...EMPTY, ...fields, volume: fields.volume || "", issue: fields.issue || "", pages: fields.pages || "", doi: fields.doi || "", url: fields.url || "", origin: "manual", verified: false, note: t("editor.cite.fromSourceNote") });
+    } else setForm(EMPTY);
     setLocator("");
     setStyle(thesis.citationStyle);
     setLinkText(false);
     setMarkPassage(insertMode === "selection");
     setMeta(null);
-  }, [open, thesis.citationStyle, insertMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, thesis.citationStyle, insertMode, prefill]);
 
   const search = async () => {
     setLoading(true);
@@ -87,7 +102,13 @@ export default function CitationDialog({
     setForm({ ...EMPTY, ...c, volume: c.volume || "", issue: c.issue || "", pages: c.pages || "", doi: c.doi || "", url: c.url || "" });
   };
 
-  const existing = useMemo(() => thesis.references.find((r) => sameRef(r, form)), [thesis.references, form]);
+  // The reference made from the same source wins over a metadata match, so citing a source never duplicates its entry.
+  // A prefilled entry of this thesis stays the same entry even when its title is corrected here.
+  const existing = useMemo(
+    () => (prefill ? thesis.references.find((r) => r.id === prefill.id) : undefined) || (form.sourceId ? thesis.references.find((r) => r.sourceId === form.sourceId) : undefined) || thesis.references.find((r) => sameRef(r, form)),
+    [thesis.references, form, prefill]
+  );
+  const freeSources = useMemo(() => sources.filter((s) => !referenceForSource(s, thesis.references, true)), [sources, thesis.references]);
   const sorted = useMemo(() => [...thesis.references].sort((a, b) => a.authors.localeCompare(b.authors)), [thesis.references]);
   const preview = useMemo(() => {
     const ref: Reference = { ...form, id: existing?.id || "preview" } as Reference;
@@ -110,7 +131,7 @@ export default function CitationDialog({
   const submit = () => {
     if (!valid) return;
     const { origin: _o, verified: _v, note: _n, ...fields } = form;
-    const reference: Reference = existing ? { ...existing, ...fields, id: existing.id } : { ...(fields as Omit<Reference, "id">), id: `ref_${Date.now().toString(36)}` };
+    const reference: Reference = existing ? { ...existing, ...fields, id: existing.id } : { ...(fields as Omit<Reference, "id">), id: newReferenceId() };
     onInsert({ reference, isNew: !existing, inText: preview.inText, linkUrl: linkText && linkUrl ? linkUrl : undefined, markPassage: markPassage && insertMode === "selection" });
     onClose();
   };
@@ -164,7 +185,7 @@ export default function CitationDialog({
           {error && <div className="mt-2 p-2.5 rounded-lg bg-amber-50 text-amber-800 text-xs">{error}</div>}
         </div>
 
-        {(candidates.length > 0 || sorted.length > 0) && (
+        {(candidates.length > 0 || sorted.length > 0 || freeSources.length > 0) && (
           <div className="space-y-1.5">
             {candidates.length > 0 && <div className="text-xs font-medium text-gray-500">{t("editor.cite.results")}</div>}
             {candidates.map((c, i) => (
@@ -177,6 +198,26 @@ export default function CitationDialog({
                 </div>
               </label>
             ))}
+            {freeSources.length > 0 && (
+              <div className="pt-1">
+                <label htmlFor="cite-from-source" className="text-xs font-medium text-gray-500">{t("editor.cite.fromSources")}</label>
+                <select
+                  id="cite-from-source"
+                  value=""
+                  onChange={(e) => {
+                    const src = freeSources.find((x) => x.id === e.target.value);
+                    if (!src) return;
+                    const { id: _id, ...fields } = referenceFromSource(src, "");
+                    setPicked(-1);
+                    setForm({ ...EMPTY, ...fields, doi: fields.doi || "", url: fields.url || "", origin: "manual", verified: false, note: t("editor.cite.fromSourceNote") });
+                  }}
+                  className="input-field !py-1.5 mt-1 text-xs"
+                >
+                  <option value="">{t("editor.cite.chooseSource")}</option>
+                  {freeSources.map((src) => <option key={src.id} value={src.id}>{`${src.authors ? `${src.authors.split(",")[0]} ` : ""}${src.year ? `(${src.year}) — ` : ""}${src.title.slice(0, 70)}`}</option>)}
+                </select>
+              </div>
+            )}
             {sorted.length > 0 && (
               <div className="pt-1">
                 <label htmlFor="cite-existing" className="text-xs font-medium text-gray-500">{t("editor.cite.reuse")}</label>

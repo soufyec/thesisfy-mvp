@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, Bot, CreditCard, FileBarChart, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users, Inbox } from "lucide-react";
+import { BarChart3, BookMarked, BookOpen, Bot, CreditCard, FileBarChart, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users, Inbox } from "lucide-react";
 
 export interface NavItem {
   /** i18n key, rendered with `t(item.label)`. */
@@ -17,6 +17,8 @@ const cls = "w-5 h-5";
 export const studentNav: NavItem[] = [
   { label: "dashboard.nav.dashboard", href: "/dashboard", icon: <LayoutDashboard className={cls} />, mobile: true },
   { label: "dashboard.nav.theses", href: "/dashboard/theses", icon: <FileText className={cls} />, mobile: true },
+  // Not in the mobile bar (it holds five items): phones reach it from the theses cards and the home quick actions.
+  { label: "glossary.sourcesReferences", href: "/dashboard/sources", icon: <BookMarked className={cls} /> },
   { label: "dashboard.nav.copilot", shortLabel: "dashboard.nav.short.copilot", href: "/dashboard/ai-chat", icon: <Bot className={cls} />, mobile: true },
   { label: "dashboard.nav.library", shortLabel: "dashboard.nav.short.library", href: "/dashboard/library", icon: <Library className={cls} />, mobile: true },
   { label: "dashboard.nav.analytics", href: "/dashboard/analytics", icon: <BarChart3 className={cls} /> },

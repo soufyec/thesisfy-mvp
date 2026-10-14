@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { BookMarked, Plus, Trash2 } from "lucide-react";
 import DashboardLayout, { useTimeAgo } from "@/components/DashboardLayout";
 import { ConfirmDialog } from "@/components/editor/Dialogs";
 import { DeadlineChip, DeadlineDialog, Modal, ScoreRing } from "@/components/ui";
@@ -24,6 +24,9 @@ interface Thesis {
   professorName: string;
   openFlags: number;
   sessionCount: number;
+  /** Sources and references this thesis uses (optional fields of GET /api/theses). */
+  sourceCount?: number;
+  referenceCount?: number;
 }
 
 function ThesesInner() {
@@ -43,6 +46,7 @@ function ThesesInner() {
     await api(`/api/theses/${deadlineFor.id}`, { method: "PUT", json: { deadline: iso || "" } });
     setTheses((list) => list.map((x) => (x.id === deadlineFor.id ? { ...x, deadline: iso } : x)));
   };
+  const count = (key: string, n: number) => (n === 1 ? t(`${key}_one`, { n }) : t(key, { n }));
   const [form, setForm] = useState({ title: "", description: "", deadline: "", targetWords: 20000, citationStyle: "APA" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -86,6 +90,7 @@ function ThesesInner() {
                   <p className="text-sm text-gray-500 line-clamp-2 mb-2 break-words">{th.description}</p>
                   <div className="flex items-center gap-x-3 gap-y-1 text-xs text-gray-400 flex-wrap"><span>{t("dashboard.advisorLine", { name: th.professorName })}</span><span>{t("dashboard.progressWords", { n: format.number(th.wordCount), target: format.number(th.targetWords) })}</span><span>{t("dashboard.theses.aiPct", { n: th.aiUsagePercent })}</span><span>{th.sessionCount === 1 ? t("dashboard.theses.sessions_one") : t("dashboard.theses.sessions", { n: th.sessionCount })}</span><span>{t("dashboard.theses.updated", { time: timeAgo(th.updatedAt) })}</span></div>
                   <div className="mt-3 flex items-center gap-2 flex-wrap relative z-10"><DeadlineChip deadline={th.deadline} wordCount={th.wordCount} targetWords={th.targetWords} onClick={() => setDeadlineFor(th)} withDate />{th.deadline && <button type="button" onClick={() => setDeadlineFor(th)} className="text-[11px] text-brand-600 font-medium hover:underline">{t("deadline.change")}</button>}</div>
+                  <div className="mt-2 flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-gray-500">{(th.sourceCount !== undefined || th.referenceCount !== undefined) && <span className="inline-flex items-center gap-1.5"><BookMarked className="w-[15px] h-[15px] text-gray-400" aria-hidden="true" />{count("dashboard.theses.sourceCount", th.sourceCount || 0)} · {count("dashboard.theses.referenceCount", th.referenceCount || 0)}</span>}<Link href={`/dashboard/sources?thesis=${encodeURIComponent(th.id)}`} className="relative z-10 text-brand-600 font-medium hover:underline">{t("dashboard.theses.chooseSources")}</Link></div>
                   <div className="w-full bg-gray-100 rounded-full h-1.5 mt-3"><div className="bg-brand-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, (th.wordCount / th.targetWords) * 100)}%` }} /></div>
                 </div>
                 <div className="flex flex-col items-center gap-2 flex-shrink-0 relative z-10"><ScoreRing value={th.integrityScore} /><button onClick={() => setDel(th)} className="text-gray-300 hover:text-red-500 p-1" title={t("common.delete")} aria-label={t("common.delete")}><Trash2 className="w-4 h-4" /></button></div>

@@ -42,10 +42,10 @@ import { MenuAction, MenuOverflow } from "./MenuBar";
 import { TypographyRow, TypographyToggle } from "./BubbleTypography";
 import SessionBar from "./SessionBar";
 import ProvenanceGutter from "./ProvenanceGutter";
-import { CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, ReferencesPanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
+import { CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
 import { TabOutline } from "./TabOutline";
 import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, PasteMatchInfo } from "./Dialogs";
-import { CommentItem, FlagItem, formatReference, formatTimeAgo, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, richText, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
+import { CommentItem, FlagItem, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, richText, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { InsertMeta } from "../ai/AssistantPanel";
 import { LanguageReview } from "./language/languageReview";
 import { LanguageReviewPanel } from "./language/LanguageReviewPanel";
@@ -53,7 +53,10 @@ import ReviewerPanel from "./reviewer/ReviewerPanel";
 import CiteVerifiedPanel from "./citations/CiteVerifiedPanel";
 import ProcessPanel from "./process/ProcessPanel";
 import { recordSnapshot } from "./process/useSnapshots";
-import SourcesPanel from "./sources/SourcesPanel";
+import LibraryPanel from "./sources/LibraryPanel";
+import { referenceFromSource, type LibrarySource } from "./sources/SourcesPanel";
+import { newReferenceId, normDoi, referenceForSource } from "./sources/match";
+import { citationCounts } from "@/lib/sources/cited";
 import EvidencePanel from "./evidence/EvidencePanel";
 import ConsentModal from "../ConsentModal";
 import { DeadlineDialog, IntegrityPill, Modal, Toast } from "../ui";
@@ -83,6 +86,21 @@ const isNotesTitle = (title: string) => LOCALES.some((l) => translate(l, "editor
 
 const PASTE_DIALOG_MIN_WORDS = 30;
 const SUBMISSION = "submission";
+/** The three SidebarKinds of the Sources & references panel (one per tab). */
+const isLibraryKind = (k: SidebarKind) => k === "references" || k === "sources" || k === "library";
+/** Panel names for the mobile bottom sheet's label; the other kinds use `editor.panel.<kind>`. */
+const PANEL_TITLES: Partial<Record<SidebarKind, string>> = {
+  ai: "glossary.aiAssistant",
+  integrity: "glossary.integrityLedger",
+  references: "glossary.sourcesReferences",
+  sources: "glossary.sourcesReferences",
+  library: "glossary.sourcesReferences",
+  cite: "panelsReview.cite.title",
+  evidence: "panelsResearch.evidence.title",
+  reviewer: "panelsReview.reviewer.title",
+  language: "panelsReview.language.title",
+  process: "panelsResearch.process.title",
+};
 const norm = (t: string) => t.replace(/\s+/g, " ").trim();
 
 export default function DocsEditor({ thesisId, reviewMode = false }: { thesisId: string; reviewMode?: boolean }) {
@@ -240,9 +258,108 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   const [citeMode, setCiteMode] = useState<null | "selection" | "cursor" | "library">(null);
   const citeRange = useRef<{ from: number; to: number }>({ from: 0, to: 0 });
   const [citeText, setCiteText] = useState("");
+  /** Fields the citation dialog opens with ("Cite" on a source whose entry lacks authors or year). */
+  const [citePrefill, setCitePrefill] = useState<Reference | null>(null);
   const policy = initial.policy;
 
   const notify = useCallback((message: string, kind: "info" | "success" | "error" = "info") => setToast({ message, kind }), []);
+
+  // ---------- sources & references ----------
+  /** Sources linked to this thesis (each lives in the student's library); null until the first answer. */
+  const [sources, setSources] = useState<LibrarySource[] | null>(null);
+  /**
+   * The first read failed: the list stays unknown (null, so the session bar shows no count) and the Sources tab says
+   * so with a retry, instead of "no sources yet". A later refresh that fails keeps the last list.
+   */
+  const [sourcesFailed, setSourcesFailed] = useState(false);
+  const sourcesLoaded = useRef(false);
+  const reloadSources = useCallback(async () => {
+    try {
+      const d = await api<{ sources: LibrarySource[] }>(`/api/theses/${thesisId}/sources`);
+      sourcesLoaded.current = true;
+      setSources(d.sources);
+      setSourcesFailed(false);
+    } catch {
+      if (!sourcesLoaded.current) setSourcesFailed(true);
+    }
+  }, [thesisId]);
+  const retrySources = useCallback(() => {
+    setSourcesFailed(false);
+    reloadSources();
+  }, [reloadSources]);
+  useEffect(() => {
+    reloadSources();
+  }, [reloadSources]);
+  const updateSources = useCallback((update: (list: LibrarySource[]) => LibrarySource[]) => setSources((s) => update(s || [])), []);
+  /** Tab Find support opens on: the References tab's "Check references" link opens the Reference check. */
+  const [citeTab, setCiteTab] = useState<"find" | "check">("find");
+
+  /**
+   * The reference list as last written or read. Writes made in quick succession build on each other instead of on a
+   * stale render, and the answers to other saves never replace it (only an explicit refresh or a reference check does).
+   */
+  const referencesRef = useRef<Reference[]>(initial.thesis.references || []);
+  /** >0 while a reference-list write is on its way: a refresh from the server waits, so it never undoes the write. */
+  const refsWrites = useRef(0);
+  /** Bumped on every local change of the list: a refresh that started before it is dropped. */
+  const refsEpoch = useRef(0);
+  useEffect(() => {
+    referencesRef.current = thesis.references || [];
+  }, [thesis.references]);
+  const applyReferences = useCallback((refs: Reference[]) => {
+    referencesRef.current = refs;
+    refsEpoch.current++;
+    setThesis((x) => ({ ...x, references: refs }));
+  }, []);
+  /** Replaces the thesis's reference list (the server syncs it into the student's library; removed entries stay there). */
+  const saveReferences = useCallback(
+    async (refs: Reference[], successMsg?: string) => {
+      applyReferences(refs);
+      refsWrites.current++;
+      try {
+        await api(`/api/theses/${thesisId}`, { method: "PUT", json: { references: refs } });
+        if (successMsg) notify(successMsg, "success");
+      } catch (e) {
+        notify((e as Error).message, "error");
+      } finally {
+        refsWrites.current--;
+      }
+    },
+    [thesisId, notify, applyReferences]
+  );
+  /**
+   * Re-reads thesis.references from the server: choices made on the library page (another browser tab) or in the
+   * "Your library" tab are not overwritten later by a stale array. Skipped while a local write is on its way, unless
+   * `afterWrites`, which first waits (up to 5 s) for those writes to land.
+   */
+  const refreshReferences = useCallback(
+    async (afterWrites = false) => {
+      if (refsWrites.current > 0) {
+        if (!afterWrites) return;
+        for (let i = 0; i < 50 && refsWrites.current > 0; i++) await new Promise((r) => setTimeout(r, 100));
+        if (refsWrites.current > 0) return;
+      }
+      const epoch = refsEpoch.current;
+      try {
+        const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}`);
+        if (refsWrites.current > 0 || epoch !== refsEpoch.current) return;
+        applyReferences(d.thesis.references || []);
+      } catch {
+        /* keep the local list */
+      }
+    },
+    [thesisId, applyReferences]
+  );
+  // Back from the library page (or any other tab): the list may have changed there.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      refreshReferences();
+      reloadSources();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refreshReferences, reloadSources]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -556,7 +673,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       try {
         const res = await api<{ thesis: ThesisDoc; integrityBreakdown?: IntegrityBreakdown; flags?: FlagItem[]; resolvedFlagIds?: string[] }>(`/api/theses/${thesisId}`, { method: "PUT", json: payload });
         dirtyRef.current = false;
-        setThesis((t) => ({ ...t, ...res.thesis, content: t.content }));
+        // The reference list is not part of this save: the local one (maybe written since) stays.
+        setThesis((t) => ({ ...t, ...res.thesis, content: t.content, references: t.references }));
         setLastSaved(new Date().toISOString());
         setSaveState("saved");
         // The saved document is what the server scores: the pill and the ledger update together from this answer.
@@ -691,11 +809,14 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   const insertCitation = (c: CitationInsert, mode: "selection" | "cursor" | "library") => {
     const ed = editorRef.current;
     if (!ed) return;
-    const refs = c.isNew ? [...thesis.references, c.reference] : thesis.references.map((r) => (r.id === c.reference.id ? c.reference : r));
-    setThesis((t) => ({ ...t, references: refs }));
-    updateThesis({ references: refs });
+    // The in-text mark must always point to an entry of this thesis's list: whatever `isNew` says, a reference whose
+    // id is not in the list is appended, and one that is gets updated (no write when nothing changed).
+    const current = referencesRef.current;
+    const prev = current.find((r) => r.id === c.reference.id);
+    if (!prev) saveReferences([...current, c.reference]);
+    else if (JSON.stringify(prev) !== JSON.stringify(c.reference)) saveReferences(current.map((r) => (r.id === c.reference.id ? c.reference : r)));
     if (mode === "library") {
-      notify(c.isNew ? t("editor.toast.referenceAdded") : t("editor.toast.referenceUpdated"), "success");
+      notify(!prev ? t("editor.toast.referenceAdded") : t("editor.toast.referenceUpdated"), "success");
       return;
     }
     const { from, to } = citeRange.current;
@@ -728,8 +849,111 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       });
       if (changed) programmatic(() => ed.view.dispatch(tr));
     }
-    notify(t(c.isNew ? "editor.toast.citationInsertedNew" : "editor.toast.citationInserted", { cite: c.inText }), "success");
+    notify(t(!prev ? "editor.toast.citationInsertedNew" : "editor.toast.citationInserted", { cite: c.inText }), "success");
   };
+
+  /**
+   * "Cite" on a source: reuses the reference made from it (`sourceId`), else one with the same DOI, else one with the
+   * same normalised title; only otherwise creates a reference, linked to the source. Inserted at the cursor.
+   */
+  const citeSource = (s: LibrarySource) => {
+    const ed = editorRef.current;
+    if (!ed || !canEdit) return notify(t("editor.toast.readOnly"), "error");
+    const refs = referencesRef.current;
+    const found = referenceForSource(s, refs, true);
+    // An older entry of the same work gains the link to its full text.
+    const reference: Reference = found ? (found.sourceId ? found : { ...found, sourceId: s.id }) : referenceFromSource(s, newReferenceId());
+    const next = found ? refs.map((r) => (r.id === reference.id ? reference : r)) : [...refs, reference];
+    const { from, to } = ed.state.selection;
+    citeRange.current = { from, to };
+    // Text, PDF and many web sources have no authors or year: inserting directly would print "(, )" and an empty entry.
+    // The citation dialog opens on the entry instead, with its required fields, and reuses it when it already exists.
+    if (!reference.authors.trim() || !reference.year.trim()) {
+      setCiteText("");
+      setCitePrefill(reference);
+      setCiteMode("cursor");
+      return;
+    }
+    insertCitation({ reference, isNew: !found, inText: inTextCitation(reference, thesis.citationStyle, next), markPassage: false }, "cursor");
+  };
+
+  /** "Insert (Author, year) at cursor" in the References tab: a real citation mark, restyled and counted like the others. */
+  const insertReferenceAtCursor = (r: Reference) => {
+    const ed = editorRef.current;
+    if (!ed || !canEdit) return notify(t("editor.toast.readOnly"), "error");
+    const { from, to } = ed.state.selection;
+    citeRange.current = { from, to };
+    // An entry without authors or year (an older "Cite" on a text source) is completed in the dialog first.
+    if (!r.authors.trim() || !r.year.trim()) {
+      setCiteText("");
+      setCitePrefill(r);
+      setCiteMode("cursor");
+      return;
+    }
+    insertCitation({ reference: r, isNew: false, inText: inTextCitation(r, thesis.citationStyle, referencesRef.current), markPassage: false }, "cursor");
+  };
+
+  /** In-text citations per reference id: the open tab as it is now, plus every other tab as last loaded or saved. */
+  const countCitations = useCallback(() => {
+    const live = editorRef.current?.getHTML();
+    const active = activeTabRef.current;
+    return citationCounts(Object.keys(contentsRef.current).map((k) => (k === active && live !== undefined ? live : contentsRef.current[k])));
+  }, []);
+
+  /**
+   * IEEE chips carry the position of their reference in the list sorted by author (the bibliography's order), so when
+   * that order changes every chip is renumbered: the open tab through a transaction, the other tabs in their stored
+   * HTML (saved with the next save). Chips keep their locator ("[3, p. 14]"); author-date styles never change here.
+   */
+  const renumberIeee = () => {
+    const ed = editorRef.current;
+    if (!ed || !canEdit) return;
+    const refs = referencesRef.current;
+    const edits: { from: number; to: number; text: string; marks: readonly import("prosemirror-model").Mark[] }[] = [];
+    ed.state.doc.descendants((node, pos) => {
+      if (!node.isText) return;
+      const m = node.marks.find((mk) => mk.type.name === "citation");
+      const ref = m && refs.find((r) => r.id === m.attrs.refId);
+      const text = ref ? renumberedIeeeChip(node.text || "", ref, refs) : null;
+      if (text !== null) edits.push({ from: pos, to: pos + node.nodeSize, text, marks: node.marks });
+    });
+    if (edits.length) {
+      const tr = ed.state.tr;
+      for (const e of edits.reverse()) tr.replaceWith(e.from, e.to, ed.state.schema.text(e.text, e.marks));
+      programmatic(() => ed.view.dispatch(tr));
+    }
+    let others = false;
+    for (const k of Object.keys(contentsRef.current)) {
+      if (k === activeTabRef.current) continue;
+      const html = contentsRef.current[k];
+      const next = renumberIeeeHtml(html, refs);
+      if (next === html) continue;
+      contentsRef.current[k] = next;
+      dirtyKeys.current.add(k);
+      others = true;
+    }
+    if (others) {
+      dirtyRef.current = true;
+      setSaveState("unsaved");
+      scheduleSave();
+    }
+  };
+  const renumberIeeeRef = useRef(renumberIeee);
+  renumberIeeeRef.current = renumberIeee;
+  const ieeeKey = thesis.citationStyle === "IEEE" ? ieeeOrderKey(thesis.references || []) : "";
+  const lastIeeeKey = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = lastIeeeKey.current;
+    lastIeeeKey.current = ieeeKey;
+    // Not when the editor opens (the stored text stays as it is until the list changes) and not in other styles.
+    if (prev === null || !ieeeKey || prev === ieeeKey) return;
+    renumberIeeeRef.current();
+  }, [ieeeKey]);
+
+  // Find support opens on its search tab unless the References tab asked for the Reference check.
+  useEffect(() => {
+    if (sidebar !== "cite") setCiteTab("find");
+  }, [sidebar]);
 
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => {
@@ -1046,9 +1270,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       if (!node.isText) return;
       const m = node.marks.find((mk) => mk.type.name === "citation");
       if (!m) return;
-      const ref = thesis.references.find((r) => r.id === m.attrs.refId);
+      const ref = referencesRef.current.find((r) => r.id === m.attrs.refId);
       if (!ref) return;
-      const text = formatReference(ref, style).inText;
+      const text = inTextCitation(ref, style, referencesRef.current);
       if (text && text !== node.text) edits.push({ from: pos, to: pos + node.nodeSize, text, mark: m });
     });
     for (const e of edits.reverse()) tr.replaceWith(e.from, e.to, ed.state.schema.text(e.text, [e.mark]));
@@ -1063,7 +1287,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
 
   const insertBibliography = () => {
     if (!editor) return;
-    const refs = [...thesis.references].sort((a, b) => a.authors.localeCompare(b.authors));
+    // The numbered list and the chips in the text must agree: chips left over from an older order are renumbered first.
+    if (thesis.citationStyle === "IEEE") renumberIeee();
+    const refs = [...referencesRef.current].sort((a, b) => a.authors.localeCompare(b.authors));
     const items = refs.map((r, i) => `<p>${thesis.citationStyle === "IEEE" ? `[${i + 1}] ` : ""}${formatReference(r, thesis.citationStyle).full}</p>`).join("");
     const title = t("editor.doc.references");
     programmatic(() => {
@@ -1095,7 +1321,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   const updateThesis = async (patch: Record<string, unknown>, successMsg?: string) => {
     try {
       const res = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}`, { method: "PUT", json: patch });
-      setThesis((t) => ({ ...t, ...res.thesis, content: t.content }));
+      // Reference lists are written by saveReferences only: the answer to another change never replaces the local one.
+      setThesis((t) => ({ ...t, ...res.thesis, content: t.content, references: t.references }));
       if (successMsg) notify(successMsg, "success");
     } catch (e) {
       notify((e as Error).message, "error");
@@ -1163,7 +1390,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       comments: () => setSidebar((s) => (s === "comments" ? "none" : "comments")),
       ai: () => setSidebar((s) => (s === "ai" ? "none" : "ai")),
       integrity: () => setSidebar((s) => (s === "integrity" ? "none" : "integrity")),
-      references: () => setSidebar("references"),
+      // Sources & references (⋯ → Tools, mobile "More"): opens on References, or stays on the tab already open.
+      references: () => setSidebar((s) => (isLibraryKind(s) ? s : "references")),
       provenance: () => setShowProvenance((v) => !v),
       "zoom-50": () => setZoom(50), "zoom-75": () => setZoom(75), "zoom-100": () => setZoom(100), "zoom-125": () => setZoom(125), "zoom-150": () => setZoom(150),
       fullscreen: () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.()),
@@ -1267,14 +1495,22 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
           onRestore={async (id) => { const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${id}`, { method: "POST" }).catch((e) => { notify((e as Error).message, "error"); return null; }); if (d) { restoreSubmission(d.thesis); notify(t("editor.toast.versionRestored", { finalSubmission }), "success"); loadVersions(); } }}
         />
       );
-      case "references": return (
-        <ReferencesPanel references={thesis.references} style={thesis.citationStyle} canEdit={canEdit} onClose={() => setSidebar("none")}
+      case "references":
+      case "sources":
+      case "library": return (
+        <LibraryPanel tab={sidebar} onTab={(tab) => setSidebar(tab)} onClose={() => setSidebar("none")} editor={editor} thesisId={thesisId} canEdit={canEdit && !reviewMode} isOwner={isOwner}
+          references={thesis.references} style={thesis.citationStyle} sources={sources || []} sourcesLoading={sources === null && !sourcesFailed} sourcesError={sourcesFailed ? t("panelsResearch.sources.errLoad") : ""} onRetrySources={retrySources} onSourcesChange={updateSources} countCitations={countCitations}
+          selectionText={selectionText} sessionId={sessionId || undefined} onConsentRequired={() => setDialog("consent")} notify={notify}
           onChangeStyle={(s) => { updateThesis({ citationStyle: s }); restyleCitations(s); }}
-          onAdd={(r: Reference) => updateThesis({ references: [...thesis.references, r] }, t("editor.toast.referenceAddedShort"))}
-          onRemove={(id) => updateThesis({ references: thesis.references.filter((r) => r.id !== id) })}
-          onInsertInText={(r) => programmatic(() => editor.chain().focus().insertContent(formatReference(r, thesis.citationStyle).inText).run())}
+          onAddReference={(r) => saveReferences([...referencesRef.current, r], t("editor.toast.referenceAddedShort"))}
+          onRemoveReference={(id) => saveReferences(referencesRef.current.filter((r) => r.id !== id), t("editor.toast.referenceRemoved"))}
+          onInsertReference={insertReferenceAtCursor}
           onInsertBibliography={insertBibliography}
-          onAddWithAi={() => openCite("library")}
+          onFindReference={() => openCite("library")}
+          onCheckReferences={() => { setCiteTab("check"); setSidebar("cite"); }}
+          onCiteSource={citeSource}
+          onReferenceAdded={() => refreshReferences(true)}
+          onSourceAdded={reloadSources}
         />
       );
       case "find": return <FindPanel editor={editor} onClose={() => setSidebar("none")} canEdit={canEdit} />;
@@ -1286,25 +1522,24 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       );
       case "language": return <LanguageReviewPanel editor={editor} thesisId={thesisId} sessionId={sessionId || undefined} canEdit={canEdit} onClose={() => setSidebar("none")} />;
       case "cite": return (
-        <CiteVerifiedPanel editor={editor} thesisId={thesisId} sessionId={sessionId || undefined} selectionText={selectionText} references={thesis.references} citationStyle={thesis.citationStyle} canEdit={canEdit} onClose={() => setSidebar("none")} onConsentRequired={() => setDialog("consent")}
+        <CiteVerifiedPanel key={citeTab} initialTab={citeTab} editor={editor} thesisId={thesisId} sessionId={sessionId || undefined} selectionText={selectionText} references={thesis.references} citationStyle={thesis.citationStyle} canEdit={canEdit} onClose={() => setSidebar("none")} onConsentRequired={() => setDialog("consent")}
           onInsertCitation={(ref, o) => {
             const { from, to } = editor.state.selection;
             const hasSel = from !== to;
             citeRange.current = { from, to };
-            insertCitation({ reference: ref, isNew: !thesis.references.some((r) => r.id === ref.id), inText: formatReference(ref, thesis.citationStyle).inText, linkUrl: o.link, markPassage: hasSel && o.markPassage }, hasSel ? "selection" : "cursor");
+            // A new entry for a work this thesis already reads in full text is linked to that source.
+            const src = !ref.sourceId && ref.doi ? (sources || []).find((x) => normDoi(x.doi) === normDoi(ref.doi)) : undefined;
+            const reference = src ? { ...ref, sourceId: src.id } : ref;
+            const known = referencesRef.current.some((r) => r.id === reference.id);
+            insertCitation({ reference, isNew: !known, inText: inTextCitation(reference, thesis.citationStyle, known ? referencesRef.current : [...referencesRef.current, reference]), linkUrl: o.link, markPassage: hasSel && o.markPassage }, hasSel ? "selection" : "cursor");
           }}
-          onReferencesChanged={(refs) => { setThesis((t) => ({ ...t, references: refs })); }}
-          onAddToLibrary={(w) => { api(`/api/theses/${thesisId}/sources`, { method: "POST", json: w.doi ? { kind: "doi", value: w.doi, title: w.title } : { kind: "url", value: w.url, title: w.title } }).then(() => notify(t("editor.toast.sourceAdded"), "success")).catch((e) => notify((e as Error).message, "error")); }}
+          onReferencesChanged={applyReferences}
+          onAddToLibrary={canEdit && !reviewMode ? (w) => { api(`/api/theses/${thesisId}/sources`, { method: "POST", json: w.doi ? { kind: "doi", value: w.doi, title: w.title } : { kind: "url", value: w.url, title: w.title } }).then(() => { notify(t("editor.toast.sourceAdded"), "success"); reloadSources(); }).catch((e) => notify((e as Error).message, "error")); } : undefined}
         />
       );
       case "process": return (
         <ProcessPanel thesisId={thesisId} isOwner={canEdit} sessionId={sessionId || undefined} onClose={() => setSidebar("none")} onOpenConsent={() => setDialog("consent")}
           onInsertDeclaration={(html) => { if (activeTabRef.current !== SUBMISSION) switchTab(SUBMISSION); programmatic(() => editor.chain().focus("end").insertContent(html).run()); saveNow(); notify(t("editor.toast.declarationAppended", { finalSubmission }), "success"); }}
-        />
-      );
-      case "sources": return (
-        <SourcesPanel thesisId={thesisId} canEdit={canEdit} selectionText={selectionText} sessionId={sessionId || undefined} onConsentRequired={() => setDialog("consent")} onClose={() => setSidebar("none")}
-          onInsertCitation={(ref) => { const reference: Reference = { id: `ref_${Date.now().toString(36)}`, type: ref.doi ? "article" : "web", ...ref }; const { from, to } = editor.state.selection; citeRange.current = { from, to }; insertCitation({ reference, isNew: !thesis.references.some((r) => r.doi && r.doi === ref.doi), inText: formatReference(reference, thesis.citationStyle).inText, markPassage: false }, "cursor"); }}
         />
       );
       case "evidence": return (
@@ -1338,7 +1573,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   };
 
   const panelTitle = (k: SidebarKind) => {
-    const key = k === "ai" ? "glossary.aiAssistant" : k === "integrity" ? "glossary.integrityLedger" : `editor.panel.${k}`;
+    const key = PANEL_TITLES[k] || `editor.panel.${k}`;
     const l = t(key);
     return l === key ? k : l;
   };
@@ -1512,6 +1747,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         targetWords={thesis.targetWords}
         pages={!isMobile && pageCount > 0 ? pageCount : Math.max(1, Math.ceil((activeTab === SUBMISSION ? thesis.wordCount : tabWords) / 350))}
         citationStyle={thesis.citationStyle}
+        library={{ sources: sources === null ? null : sources.length, references: thesis.references.length, open: isLibraryKind(sidebar), onToggle: () => setSidebar((k) => (isLibraryKind(k) ? "none" : "references")) }}
         zoom={zoom}
         onWordCount={() => setDialog("wordCount")}
         deadline={thesis.deadline}
@@ -1543,7 +1779,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       )}
       <Modal open={mobileMenu} onClose={() => setMobileMenu(false)} title={thesis.title} size="sm">
         <div className="grid grid-cols-2 gap-2 text-sm">
-          {([["save", t("editor.menu.saveNow")], ["saveVersion", t("editor.menu.saveVersion")], ["versions", t("editor.menu.versionHistory")], ["find", t("editor.mobile.find")], ["references", t("editor.panel.citations")], ["dl-docx", t("editor.mobile.dlDocx")], ["dl-md", t("editor.mobile.dlMd")], ["print", t("editor.mobile.print")], ["pageSetup", t("editor.menu.pageSetup")], ["wordCount", t("editor.menu.documentDetails")], ["provenance", showProvenance ? t("editor.mobile.hideProvenance") : t("editor.mobile.showProvenance")], ["share", t("editor.share")], ["submit", t("editor.menu.submit")], ["privacy", t("editor.mobile.privacy")], ["rename", t("editor.rename")], ["shortcuts", t("editor.mobile.shortcuts")]] as [MenuAction, string][]).map(([a, l]) => (
+          {([["save", t("editor.menu.saveNow")], ["saveVersion", t("editor.menu.saveVersion")], ["versions", t("editor.menu.versionHistory")], ["find", t("editor.mobile.find")], ["references", t("glossary.sourcesReferences")], ["dl-docx", t("editor.mobile.dlDocx")], ["dl-md", t("editor.mobile.dlMd")], ["print", t("editor.mobile.print")], ["pageSetup", t("editor.menu.pageSetup")], ["wordCount", t("editor.menu.documentDetails")], ["provenance", showProvenance ? t("editor.mobile.hideProvenance") : t("editor.mobile.showProvenance")], ["share", t("editor.share")], ["submit", t("editor.menu.submit")], ["privacy", t("editor.mobile.privacy")], ["rename", t("editor.rename")], ["shortcuts", t("editor.mobile.shortcuts")]] as [MenuAction, string][]).map(([a, l]) => (
             <button key={a} onClick={() => { setMobileMenu(false); onAction(a); }} className="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-left">{l}</button>
           ))}
         </div>
@@ -1575,7 +1811,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       <ShortcutsDialog open={dialog === "shortcuts"} onClose={() => setDialog(null)} />
       <ConfirmDialog open={!!confirmPromote} onClose={() => setConfirmPromote(null)} title={t("editor.dialog.promoteTitle", { finalSubmission })} confirmLabel={t("editor.tabs.useAsSubmission", { finalSubmission })} body={t("editor.dialog.promoteBody", { title: tabs.find((tb) => tb.id === confirmPromote)?.title || "", finalSubmission })} onConfirm={() => confirmPromote && promoteTab(confirmPromote)} />
       <ConfirmDialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title={t("editor.dialog.deleteTitle")} danger confirmLabel={t("editor.tabs.delete")} body={t("editor.dialog.deleteBody", { title: tabs.find((tb) => tb.id === confirmDelete)?.title || "", finalSubmission })} onConfirm={() => confirmDelete && deleteTab(confirmDelete)} />
-      <CitationDialog open={!!citeMode} onClose={() => setCiteMode(null)} selection={citeText} thesis={thesis} sessionId={sessionId} insertMode={citeMode || "cursor"} onInsert={(c) => insertCitation(c, citeMode || "cursor")} />
+      <CitationDialog open={!!citeMode} onClose={() => { setCiteMode(null); setCitePrefill(null); }} selection={citeText} thesis={thesis} sources={sources || []} sessionId={sessionId} insertMode={citeMode || "cursor"} prefill={citePrefill} onInsert={(c) => insertCitation(c, citeMode || "cursor")} />
       <Modal open={dialog === "about"} onClose={() => setDialog(null)} title={t("editor.dialog.aboutTitle")} size="sm" footer={<button onClick={() => setDialog(null)} className="btn-primary !py-2 !px-4 text-sm">{t("common.close")}</button>}>
         <p className="text-sm text-gray-600">{t("editor.dialog.aboutBody")}</p>
       </Modal>

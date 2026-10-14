@@ -1,27 +1,67 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CalendarClock, X } from "lucide-react";
 import { useFormat, useT } from "@/lib/i18n/client";
 import { deadlineState, fromDateInput, toDateInput, type DeadlineState, type DeadlineTone } from "@/lib/deadline";
 
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const focusables = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === document.activeElement);
+
+/**
+ * Dialog shell. Keyboard (CLAUDE.md §7): focus moves into the dialog when it opens (a field with autoFocus keeps it,
+ * otherwise the first control, the close button), Tab stays inside the topmost dialog, Escape closes, and on close focus
+ * returns to the control that opened it, unless something else (the editor, another dialog) has taken it meanwhile.
+ */
 export function Modal({ open, onClose, title, children, size = "md", footer }: { open: boolean; onClose: () => void; title?: string; children: React.ReactNode; size?: "sm" | "md" | "lg" | "xl"; footer?: React.ReactNode }) {
   const t = useT();
+  const titleId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const root = rootRef.current;
+    const panel = panelRef.current;
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+    if (panel && !panel.contains(document.activeElement)) (focusables(panel)[0] || panel).focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return onCloseRef.current();
+      if (e.key !== "Tab" || !root || !panel) return;
+      // Only the topmost dialog keeps Tab inside itself.
+      const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (dialogs[dialogs.length - 1] !== root) return;
+      const items = focusables(panel);
+      const active = document.activeElement;
+      if (!items.length) {
+        e.preventDefault();
+        panel.focus();
+      } else if (e.shiftKey && (active === items[0] || !panel.contains(active))) {
+        e.preventDefault();
+        items[items.length - 1].focus();
+      } else if (!e.shiftKey && (active === items[items.length - 1] || !panel.contains(active))) {
+        e.preventDefault();
+        items[0].focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      const active = document.activeElement;
+      const focusWasHere = !active || active === document.body || (!!panel && panel.contains(active));
+      if (opener && opener.isConnected && focusWasHere) opener.focus();
+    };
+  }, [open]);
   if (!open) return null;
   const w = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" }[size];
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true">
+    <div ref={rootRef} className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className={`relative bg-white w-full ${w} rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col animate-slide-up`}>
+      <div ref={panelRef} tabIndex={-1} className={`relative bg-white w-full ${w} rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col animate-slide-up focus:outline-none`}>
         {title && (
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-base">{title}</h2>
+            <h2 id={titleId} className="font-semibold text-base">{title}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label={t("common.close")}>
               <X className="w-5 h-5" />
             </button>

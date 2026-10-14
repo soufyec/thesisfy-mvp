@@ -84,19 +84,24 @@ Errores: `{ error: string, code?: "locked" | "cited" | "thesis_cap" | "library_c
 - `PATCH /api/library/references/:id` `{ thesisIds?, fields?, confirmCited? }` → `fields` (solo campos bibliográficos: type, authors, year, title, source, url, doi, pages, volume, issue) actualiza la biblioteca y cada copia vinculada que cambie (409 `locked` si una de ellas es de una tesis bloqueada); si cambia título, autores, año, DOI o fuente se descarta la `verification` anterior. `thesisIds` fija los vínculos: copia a las tesis nuevas, quita de las demás. Quitar de una tesis donde está citada exige `confirmCited: true`; si no, `409 { error, code: "cited", citedIn }`. `{ reference: LibraryReferenceView }`.
 - `DELETE /api/library/references/:id?confirmCited=1` → la quita de la biblioteca y de todas las tesis (mismo control `cited`; 409 `locked`). Las citas del texto no se reescriben: se quedan sin entrada en la bibliografía. `{ ok: true }`.
 
-## Props del panel
+## Panel del editor: Sources & references
 
-```ts
-<SourcesPanel
-  thesisId={string}
-  canEdit={boolean}
-  selectionText={string | undefined}          // precarga la pregunta
-  onInsertCitation={(ref: { authors; year; title; source; doi?; url? }) => void}
-  onClose={() => void}
-  sessionId={string | undefined}              // opcional, para el registro de sesión
-  onConsentRequired={() => void}              // opcional, 428 del servidor
-/>
-```
+Un solo panel lateral (`LibraryPanel.tsx`) sustituye a los antiguos "Citations" (`ReferencesPanel`) y "Sources" (`SourcesPanel`). Tres pestañas, que son también los `SidebarKind` que lo abren (`types.ts`):
+
+| `SidebarKind` | Pestaña | Archivo | Contenido |
+|---|---|---|---|
+| `"references"` | References | `ReferencesTab.tsx` | `thesis.references`: estilo, buscar referencia (abre `CitationDialog` en modo `library`), alta manual, insertar en el cursor (marca `CitationMark` real), bibliografía, enlace a Find support › Reference check. Chips por fila: **Full text** (fuente vinculada con el mismo `sourceId`, si no el mismo DOI; lleva a la pestaña Sources) y **Cited N×** / **Not cited yet**. Quitar pide confirmación (`ConfirmDialog`) con la consecuencia: se queda en la biblioteca y N citas del texto se quedan sin entrada. |
+| `"sources"` | Sources | `SourcesPanel.tsx` (export `SourcesTab`) | Las fuentes vinculadas: alta (DOI, URL, PDF, texto), abrir, pasajes, resumir, citar, quitar (desvincula; se queda en la biblioteca), "Ask my sources". Chip **In references** / **Cited N×** a través de la referencia que apunta a la fuente. |
+| `"library"` | Your library | `YourLibraryTab.tsx` | Solo el dueño con la tesis editable: `GET /api/library` (también al volver a la pestaña), lo que esta tesis aún no usa, y **Add to this thesis**. Como el `PATCH …/sources/:id` o `…/references/:id` fija los vínculos exactamente, justo antes de cada alta se relee `GET /api/library` y se envían los `thesisIds` que tiene el servidor + esta tesis (nunca los de la lista leída al abrir), así que un vínculo hecho mientras tanto en la página de biblioteca no se pierde. Después el editor relee `thesis.references` y las fuentes. Errores 409 (`locked`, `thesis_cap`, `conflict`, `duplicate`) con texto propio del panel; sin mensaje del servidor (red caída, cuerpo vacío), texto propio traducido. |
+
+- Estado en `DocsEditor`: `sources` (lista vinculada, `GET /api/theses/:id/sources` al cargar y al volver a la pestaña), `thesis.references` con `referencesRef` (última lista escrita o leída), `saveReferences` (único escritor de `references`; las respuestas de otros `PUT` no la sustituyen), `refreshReferences` (`GET /api/theses/:id`; no se aplica si hay una escritura local en curso o posterior) y `countCitations` (HTML vivo de la pestaña abierta + resto de pestañas, con `citationCounts` de `src/lib/sources/cited.ts`).
+- Si la primera lectura de las fuentes falla, la lista queda desconocida (`null`: la session bar no muestra recuento) y la pestaña Sources muestra el error con "Try again", nunca "no sources yet". Una relectura posterior que falla conserva la última lista.
+- Entradas: botón "N sources · M references · APA" en la session bar (sustituye al estilo estático; con palabras desde 1280px, solo cifras por debajo para no quitar sitio a la frase de consentimiento), ⋯ → Tools → "Sources & references", rejilla "More" en móvil. `data-tour="cite"` sigue en el botón Cite de la barra.
+- Citar una fuente (`citeSource`): reutiliza la referencia con `sourceId === source.id`, si no la del mismo DOI, si no la del mismo título normalizado; solo si no hay ninguna crea una con `sourceId` e id `ref_<12 hex>` (`newReferenceId`, `match.ts`). Si la entrada no tiene autores o año (texto pegado, PDF, muchas webs), no se inserta "(, )": se abre `CitationDialog` con la entrada (`prefill`), sus campos obligatorios y la misma reutilización. "Insert … at cursor" hace lo mismo con una entrada incompleta. `insertCitation` añade a la lista cualquier referencia cuyo id no esté, así que la marca del texto siempre apunta a una entrada existente.
+- IEEE: cada chip lleva la posición de su referencia en la lista ordenada por autor (el orden de la bibliografía). Cuando ese orden cambia (alta, baja, edición, relectura) `DocsEditor` renumera todos los chips, conservando el localizador ("[3, p. 14]"): la pestaña abierta con una transacción y las demás en su HTML guardado (`renumberIeeeHtml`, se guardan con el siguiente guardado). Insertar la bibliografía renumera antes. Al abrir el editor no se toca el texto.
+- Las entradas se pintan con `referenceHtml` (`types.ts`): los campos se escapan antes de dar formato, así que un título o un autor no puede inyectar HTML en la vista del estudiante ni en la del tutor.
+- `CitationDialog` ofrece "From your sources": las fuentes vinculadas sin referencia todavía; rellena los campos y `sourceId`.
+- Modo lectura (tutor en revisión, tesis bloqueada): solo listas, sin altas, bajas ni vínculos, y sin la pestaña Your library. Find support › Reference check muestra los resultados sin "Check all", y los resultados de Find support no ofrecen "Add as a source".
 
 ## Límites conocidos
 
@@ -105,4 +110,4 @@ Errores: `{ error: string, code?: "locked" | "cited" | "thesis_cap" | "library_c
 - La licencia por fuente se guarda (`license` de Unpaywall) pero no se aplica ninguna restricción automática.
 - Documento único con "el último que escribe gana": una elección hecha en la página de biblioteca puede pisarse con un `PUT` de referencias de un editor abierto con datos viejos. El editor recarga `thesis.references` al volver a la pestaña (`visibilitychange`).
 - Los ids de referencia no son globales: dos tesis del mismo estudiante con el mismo id y contenido distinto (caso heredado) cuentan como la misma referencia de biblioteca; la última escritura de una de ellas fija el contenido de la biblioteca.
-- `Reference.sourceId` que apunte a una fuente borrada no se limpia: la UI debe comprobar que la fuente exista (y recurrir al DOI).
+- `Reference.sourceId` que apunte a una fuente borrada no se limpia: la UI comprueba que la fuente exista y, si no, recurre al DOI (`sourceForReference` en `match.ts`).

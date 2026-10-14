@@ -159,7 +159,11 @@ export interface FlagItem {
   resolved: boolean;
 }
 
-export type SidebarKind = "none" | "outline" | "comments" | "versions" | "references" | "find" | "ai" | "integrity" | "reviewer" | "language" | "cite" | "process" | "sources" | "evidence";
+/**
+ * The side panel that is open. "references", "sources" and "library" all open the Sources & references panel, on its
+ * References, Sources and Your library tab respectively.
+ */
+export type SidebarKind = "none" | "outline" | "comments" | "versions" | "references" | "find" | "ai" | "integrity" | "reviewer" | "language" | "cite" | "process" | "sources" | "library" | "evidence";
 
 export interface EditorCtx {
   editor: Editor;
@@ -187,6 +191,70 @@ export function formatReference(r: Reference, style: ThesisDoc["citationStyle"])
     default:
       return { full: `${authors} (${r.year}). ${r.title}. ${r.type === "article" ? `<em>${r.source}</em>` : r.source}${r.volume ? `, <em>${r.volume}</em>` : ""}${r.issue ? `(${r.issue})` : ""}${r.pages ? `, ${r.pages}` : ""}.${doi}`, inText: `(${etAl}, ${r.year})` };
   }
+}
+
+/**
+ * The in-text citation of a reference. IEEE numbers by position in the reference list sorted by author, the order the
+ * inserted bibliography uses; the other styles are author-date and come from `formatReference`.
+ */
+export function inTextCitation(r: Reference, style: ThesisDoc["citationStyle"], refs: Reference[]): string {
+  if (style !== "IEEE") return formatReference(r, style).inText;
+  const sorted = [...refs].sort((a, b) => a.authors.localeCompare(b.authors));
+  const n = sorted.findIndex((x) => x.id === r.id) + 1;
+  return `[${n || sorted.length + 1}]`;
+}
+
+/**
+ * IEEE numbering of a reference list: id → "[n]", in the order the inserted bibliography uses. Two lists with the same
+ * order give the same string from `ieeeOrderKey`, so the chips only need renumbering when that key changes.
+ */
+export function ieeeOrderKey(refs: Reference[]): string {
+  return [...refs].sort((a, b) => a.authors.localeCompare(b.authors)).map((r) => r.id).join("|");
+}
+
+/**
+ * The renumbered text of one IEEE chip ("[2]", "[2, p. 14]" or the old "[#]"), keeping its locator; null when the
+ * text is not an IEEE chip or already has the right number.
+ */
+export function renumberedIeeeChip(text: string, ref: Reference, refs: Reference[]): string | null {
+  const m = /^\[(\d+|#)((?:,[^\]]*)?)\]$/.exec(text);
+  if (!m) return null;
+  const next = `${inTextCitation(ref, "IEEE", refs).slice(0, -1)}${m[2]}]`;
+  return next === text ? null : next;
+}
+
+/**
+ * Renumbers the IEEE citation chips (`span[data-citation]`) of a stored tab's HTML. Browser only (DOMParser).
+ * Returns the same string when no chip changed.
+ */
+export function renumberIeeeHtml(html: string, refs: Reference[]): string {
+  if (!html || !html.includes("data-citation") || typeof DOMParser === "undefined") return html;
+  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
+  let changed = false;
+  doc.querySelectorAll("span[data-citation]").forEach((el) => {
+    const ref = refs.find((r) => r.id === el.getAttribute("data-citation"));
+    const next = ref ? renumberedIeeeChip(el.textContent || "", ref, refs) : null;
+    if (next === null) return;
+    el.textContent = next;
+    changed = true;
+  });
+  return changed ? doc.body.innerHTML : html;
+}
+
+/**
+ * `formatReference(...).full` that is safe to render as HTML: the entry's own fields are escaped, so a title or an
+ * author can never inject markup into the student's or the tutor's page. Only bare <i>, <em>, <sub> and <sup> tags,
+ * which registries send in some titles, are kept.
+ */
+export function referenceHtml(r: Reference, style: ThesisDoc["citationStyle"]): string {
+  const esc = (v: string) =>
+    v
+      .replace(/&(?![a-zA-Z]+;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/&lt;(\/?)(i|em|sub|sup)&gt;/gi, "<$1$2>");
+  const safe = Object.fromEntries(Object.entries(r).map(([k, v]) => [k, typeof v === "string" ? esc(v) : v])) as unknown as Reference;
+  return formatReference(safe, style).full;
 }
 
 // ---------- Integrity ledger (mirrors src/lib/integrity.ts, which is server-only) ----------
