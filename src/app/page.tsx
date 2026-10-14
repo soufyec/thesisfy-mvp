@@ -29,11 +29,14 @@ export default function LandingPage() {
 
   return (
     <div className="relative isolate min-h-screen landing-ground text-gray-900 overflow-x-clip">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/landing/ribbon.webp" alt="" aria-hidden="true" className="landing-ribbon hidden md:block" />
       <LandingNav />
 
       <Hero />
+
+      {/* Everything below the hero sits over the ribbon, so it never crosses the headline or the orbit. */}
+      <div className="relative isolate">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/landing/ribbon.svg" alt="" aria-hidden="true" decoding="async" loading="lazy" className="landing-ribbon hidden md:block" />
 
       {/* Integrated with the institution's digital workspace (ENT) */}
       <section id="ent" className="px-5 sm:px-8 pb-16 scroll-mt-16">
@@ -140,6 +143,8 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
+      </div>
+
       <footer className="border-t border-gray-100 px-5 sm:px-8 py-8 text-[13px] text-gray-500">
         <div className="mx-auto max-w-[1200px] flex flex-wrap items-center justify-between gap-6">
           <Logo size="footer" />

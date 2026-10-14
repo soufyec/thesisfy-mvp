@@ -573,6 +573,6 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 
 /* Landing ground (proposal C): a very light green gradient with the ribbon of tiny T's drifting behind the sections. */
 .landing-ground { background: linear-gradient(180deg, #f3faf6 0%, #e4f2ea 55%, #d8ebe1 100%); }
-.landing-ribbon { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; z-index: -1; pointer-events: none; user-select: none; will-change: transform; animation: ribbon-drift 22s ease-in-out infinite; }
+.landing-ribbon { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; z-index: -1; pointer-events: none; user-select: none; will-change: transform; animation: ribbon-drift 26s ease-in-out infinite; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 320px, #000 calc(100% - 200px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 320px, #000 calc(100% - 200px), transparent 100%); }
 @keyframes ribbon-drift { 0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); } 50% { transform: translate3d(-1.4%, 0.8%, 0) scale(1.05); } }
 @media (prefers-reduced-motion: reduce) { .landing-ribbon { animation: none; transform: scale(1.05); } }

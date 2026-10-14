@@ -532,7 +532,6 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
           <div className="p-2.5 rounded-lg bg-gray-50 text-[11px] text-gray-600 space-y-1">
             <div>
               <span className="font-medium text-gray-800">{plural(t, "panelsReview.reviewer.commentsCount", lastRun.applied)}</span> {plural(t, "panelsReview.reviewer.anchored", lastRun.applied)}{lastRun.dropped ? plural(t, "panelsReview.reviewer.dropped", lastRun.dropped) : ""} · {lastRun.meta.label}
-              {lastRun.meta.billedTo === "institution" ? t("panelsReview.reviewer.paidByUniversity") : lastRun.meta.billedTo === "student" ? t("panelsReview.reviewer.ownAccount") : ""}
             </div>
             {lastRun.meta.demo && <div className="text-gray-500">{t("panelsReview.reviewer.demoNote")}</div>}
             {lastRun.meta.notice && <div className="text-amber-700">{lastRun.meta.notice}</div>}

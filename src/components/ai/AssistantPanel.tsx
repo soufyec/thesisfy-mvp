@@ -458,14 +458,6 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   };
 
   const metaFor = (m: ChatMsg): InsertMeta => ({ provider: m.provider || "demo", model: m.model || "", mode: m.mode || mode, interactionId: m.interactionId, words: countWordsInText(m.content.replace(DEMO_NOTE_RE, "")) });
-  /** The cost card names who pays in the UI language; the editor passes the funding side as a plain token or legacy label. */
-  const payerLabel = (payer?: string) => {
-    if (!payer) return undefined;
-    const p = payer.toLowerCase();
-    if (p === "institution" || p === "university" || p === "your university") return t("assistant.cost.payer.university");
-    if (p === "student" || p === "you" || p === "your account") return t("assistant.cost.payer.you");
-    return payer;
-  };
 
   /** Runs the confirmed action from the cost card. Never called without it. */
   const confirmPending = () => {
@@ -510,7 +502,6 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         </div>
         <div className="text-[12.5px] leading-normal text-gray-700">
           {pending.action === "notes" ? rich(t("assistant.cost.notes", { noun, words })) : ctx ? rich(t("assistant.cost.withLimit", { noun, words, cur, next, limit: ctx.limitPct })) : rich(t("assistant.cost.noLimit", { noun, words }))}
-          {ctx?.payer && <> {t("assistant.cost.billedTo", { payer: payerLabel(ctx.payer) })}</>}
           {over && ctx && <div className="mt-1.5 text-prov-ai-deep font-medium">{t("assistant.cost.over", { next, limit: ctx.limitPct })}</div>}
         </div>
         <div className="flex gap-1.5 mt-2.5 text-xs">
@@ -776,8 +767,6 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                 {!m.error && <span className="px-[7px] py-px rounded-full bg-brand-50 text-brand-700 font-semibold">{t("assistant.msg.logged")}</span>}
                 {m.blocked && <span className="badge-danger !text-[10px] !py-0">{t("assistant.msg.blocked")}</span>}
                 {m.demo && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">{t("assistant.msg.demo")}</span>}
-                {m.billedTo === "institution" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px] !py-0">{t("assistant.msg.paidByUniversity")}</span>}
-                {m.billedTo === "student" && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">{t("assistant.msg.yourAccount")}</span>}
                 {m.useSources && !m.error && (
                   <span className={`badge !text-[10px] !py-0 inline-flex items-center gap-1 ${m.groundedPassages ? "bg-accent-50 text-accent-800" : "bg-gray-100 text-gray-500"}`}>
                     <BookOpen className="w-3 h-3" aria-hidden />
