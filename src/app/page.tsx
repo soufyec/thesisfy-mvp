@@ -7,6 +7,7 @@ import HowItWorks from "@/components/landing/HowItWorks";
 import TrialForm from "@/components/landing/TrialForm";
 import Reveal from "@/components/landing/Reveal";
 import StatTiles from "@/components/landing/StatTiles";
+import FilmButton from "@/components/landing/FilmButton";
 import { getT } from "@/lib/i18n/server";
 
 const CARD = "bg-white rounded-2xl border border-gray-100 shadow-sm p-7";
@@ -137,6 +138,7 @@ export default function LandingPage() {
             <div className="text-[12px] font-bold tracking-[0.14em] uppercase text-brand-200 mb-4">{t("landing.trial.eyebrow")}</div>
             <h2 className="text-[30px] sm:text-[36px] leading-[1.15] font-bold tracking-[-0.02em] mb-4 [text-wrap:pretty]">{t("landing.trial.title")}</h2>
             <p className="text-[16px] leading-[1.6] text-brand-100 max-w-[520px] [text-wrap:pretty]">{t("landing.trial.body")}</p>
+            <div className="mt-6 -ml-1.5"><FilmButton which="university" tone="dark" label={t("landing.film.watchUniversity")} title={t("landing.film.universityTitle")} /></div>
           </div>
           <TrialForm />
         </div></Reveal>

@@ -55,7 +55,7 @@ export default function IntroModal({ page, onPage, onSkip, onFinish, tourNext = 
   );
 }
 
-const CHAPTER_COLORS = ["bg-prov-human", "bg-prov-ai", "bg-brand-500", "bg-prov-paste"];
+const CHAPTER_COLORS = ["bg-gray-400", "bg-prov-human", "bg-prov-ai", "bg-brand-500", "bg-prov-paste"];
 
 function VideoPage() {
   const t = useT();

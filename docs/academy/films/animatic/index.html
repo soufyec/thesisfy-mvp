@@ -1,0 +1,500 @@
+<meta charset="utf-8">
+<title>Léa intro animatic</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a film strip. The 16:9 stage on top, a scene timeline under it, then the shooting script as a table. */
+:root {
+  /* Thesisfic tokens: fir green + mint */
+  --fir-900: #0c2018; --fir-800: #122e22; --fir-700: #183c2d; --fir-600: #037947; --fir-400: #4f9a78; --fir-100: #dcefe4; --fir-50: #eef7f1;
+  --mint: #20c997; --ai: #7c3aed; --paste: #f59e0b;
+  /* page chrome (light) */
+  --bg: #f4f7f5; --surface: #ffffff; --line: #dfe7e2; --fg: #14211b; --muted: #5b6b63; --accent: var(--fir-600); --accent-soft: var(--fir-50); --row-active: #e6f3ec;
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0b1310; --surface: #111c17; --line: #22332b; --fg: #e4ece8; --muted: #93a59c; --accent: #4fbf8f; --accent-soft: #15281f; --row-active: #173226; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0b1310; --surface: #111c17; --line: #22332b; --fg: #e4ece8; --muted: #93a59c; --accent: #4fbf8f; --accent-soft: #15281f; --row-active: #173226; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px }
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px }
+h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0; text-wrap: balance }
+.sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; max-width: 62ch }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px }
+.seg button { border: 0; background: transparent; color: var(--muted); font: 600 12px/1 var(--font); padding: 7px 11px; border-radius: 999px; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff }
+.seg button:disabled { opacity: .45; cursor: not-allowed }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: 600 13px/1 var(--font); padding: 9px 14px; border-radius: 999px; cursor: pointer }
+#vid { width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; background: #000; display: block }
+.btn.primary { background: var(--fir-600); border-color: var(--fir-600); color: #fff }
+button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px }
+.btn svg { width: 14px; height: 14px }
+
+/* ---------- stage ---------- */
+.stage { position: relative; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 16px; overflow: hidden; background: var(--fir-900); box-shadow: 0 20px 50px -24px rgba(12, 32, 24, .55); container-type: inline-size }
+.scene { position: absolute; inset: 0; opacity: 0; transition: opacity .6s ease; pointer-events: none }
+.scene.on { opacity: 1 }
+.stage.paused * { animation-play-state: paused !important }
+
+/* green motion scenes */
+.green { background: radial-gradient(120% 90% at 20% 15%, var(--fir-700) 0%, var(--fir-800) 45%, var(--fir-900) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 9cqw; color: #fff }
+.green::after { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 50% at 50% 55%, rgba(32, 201, 151, .10), transparent 70%); pointer-events: none }
+.stat-num { font-size: 21cqw; font-weight: 800; letter-spacing: -0.05em; line-height: .9; background: linear-gradient(180deg, #ffffff 0%, #b7ecd6 55%, var(--mint) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; font-variant-numeric: tabular-nums }
+.stat-label { font-size: 2.6cqw; font-weight: 600; margin-top: 2.2cqw; max-width: 46ch; opacity: 0; transform: translateY(8px) }
+.stat-src { font-size: 1.25cqw; color: #a9c9b9; margin-top: 1.6cqw; letter-spacing: .02em; opacity: 0 }
+.on .stat-label { animation: rise .7s ease 1.7s forwards }
+.on .stat-src { animation: rise .7s ease 2.2s forwards }
+.q { font-size: 4.2cqw; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; max-width: 22ch; text-wrap: balance }
+.q.old { color: #9db8aa; opacity: 0; text-decoration: line-through; text-decoration-thickness: .08em; text-decoration-color: transparent }
+.on .q.old { animation: rise .6s ease .2s forwards, strike .6s ease 2.3s forwards }
+.q.new { margin-top: 3cqw; opacity: 0; transform: translateY(10px) }
+.q.new em { font-style: normal; background: linear-gradient(90deg, #b7ecd6, var(--mint)); -webkit-background-clip: text; background-clip: text; color: transparent }
+.on .q.new { animation: rise .7s ease 3s forwards }
+.brand-logo { height: 7.5cqw; width: auto; opacity: 0; transform: scale(.94) }
+.on .brand-logo { animation: pop .8s ease .2s forwards }
+.brand-h { font-size: 4cqw; font-weight: 800; letter-spacing: -0.02em; margin-top: 3cqw; opacity: 0 }
+.brand-s { font-size: 2.3cqw; font-weight: 500; color: #cfe5da; margin-top: 1.4cqw; max-width: 40ch; line-height: 1.35; opacity: 0; text-wrap: balance }
+.on .brand-h { animation: rise .7s ease 1.1s forwards }
+.on .brand-s { animation: rise .7s ease 2.2s forwards }
+.dimq { color: #9db8aa; opacity: 0; font-size: 3.6cqw }
+.on .dimq { animation: rise .6s ease .2s forwards }
+.on .q.pairb { animation: rise .7s ease var(--d2, 2.6s) forwards }
+.flash-text { position: absolute; left: 4%; bottom: 7%; max-width: 70%; background: rgba(12, 32, 24, .9); color: #fff; font-size: 3.2cqw; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; padding: 1.4cqw 2cqw; border-radius: 1.2cqw; opacity: 0; transform: translateY(8px); text-wrap: balance }
+.on .flash-text { animation: rise .5s ease .15s forwards }
+.end-cta { margin-top: 2.6cqw; font-size: 1.6cqw; font-weight: 600; color: #cfe5da; border: 1px solid rgba(207, 229, 218, .45); border-radius: 999px; padding: .7cqw 1.8cqw; opacity: 0 }
+.on .end-cta { animation: rise .7s ease 1.6s forwards }
+.end-line { font-size: 3.6cqw; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin-top: 3.2cqw; max-width: 24ch; text-wrap: balance; opacity: 0 }
+.on .end-line { animation: rise .8s ease .5s forwards }
+.rot { display: inline-grid; text-align: left; white-space: nowrap; vertical-align: bottom }
+.rot > span { grid-area: 1 / 1; opacity: 0 }
+.rot > span.on { opacity: 1 }
+.rot b { font-weight: 800; background: linear-gradient(90deg, #b7ecd6, var(--mint)); -webkit-background-clip: text; background-clip: text; color: transparent }
+.rot > span.swap { animation: wordin .45s cubic-bezier(.2, .7, .2, 1) both }
+@keyframes wordin { from { opacity: 0; transform: translateY(.35em) } to { opacity: 1; transform: none } }
+body.render { padding: 0; background: #000 }
+body.render .wrap > :not(#stage) { display: none }
+body.render .wrap { max-width: none; gap: 0 }
+body.render #stage { position: fixed; inset: 0; width: 100vw; height: 100vh; aspect-ratio: auto; border-radius: 0; box-shadow: none }
+body.render .scene { transition: none }
+body.render .caption { display: none }
+
+/* product screens */
+.screen { background: linear-gradient(160deg, var(--fir-800), var(--fir-900)); display: flex; align-items: center; justify-content: center }
+.frame { position: relative; width: 86%; aspect-ratio: 1440 / 940; border-radius: 1.1cqw; overflow: hidden; background: #fff; box-shadow: 0 2cqw 5cqw -1cqw rgba(0, 0, 0, .55) }
+.bar { height: 4.3%; background: #eef1ef; display: flex; align-items: center; gap: .6cqw; padding-left: 1.2cqw }
+.bar i { width: .8cqw; height: .8cqw; border-radius: 50%; background: #cfd6d2 }
+.viewport { position: absolute; left: 0; right: 0; bottom: 0; top: 4.3%; overflow: hidden }
+.zoom { position: absolute; inset: 0; transform-origin: var(--ox) var(--oy) }
+.zoom img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: top left }
+.on .zoom { animation: kb var(--dur) cubic-bezier(.45, .05, .35, 1) forwards }
+.ring { position: absolute; left: var(--fx); top: var(--fy); width: var(--fw); height: var(--fh); border: .28cqw solid var(--mint); border-radius: .9cqw; box-shadow: 0 0 0 200cqw rgba(12, 32, 24, .28); opacity: 0 }
+.on .ring { animation: fade .6s ease 1.2s forwards }
+.chip { position: absolute; left: 4%; top: 6%; display: inline-flex; align-items: center; gap: .7cqw; background: rgba(12, 32, 24, .82); color: #fff; font-size: 1.35cqw; font-weight: 600; padding: .7cqw 1.2cqw; border-radius: 999px; opacity: 0 }
+.chip b { width: .9cqw; height: .9cqw; border-radius: 50%; background: var(--dot, var(--mint)) }
+.on .chip { animation: rise .6s ease .4s forwards }
+.lower { position: absolute; left: 7%; bottom: 24%; background: #fff; color: var(--fir-900); border-radius: 1cqw; padding: 1.1cqw 1.6cqw; box-shadow: 0 1.5cqw 4cqw -1cqw rgba(0, 0, 0, .45); opacity: 0 }
+.lower strong { display: block; font-size: 2cqw; letter-spacing: -0.01em }
+.lower span { font-size: 1.3cqw; color: #4b5d54 }
+.on .lower { animation: rise .7s ease .8s forwards }
+.title-card { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--fir-900); color: #fff; font-size: 4.2cqw; font-weight: 800; letter-spacing: -0.02em; z-index: 3; opacity: 0 }
+.on .title-card { animation: card 2.4s ease forwards }
+
+.caption { position: absolute; left: 50%; bottom: 3.2%; transform: translateX(-50%); width: min(88%, 70ch); text-align: center; z-index: 5; pointer-events: none }
+.caption span { display: inline; background: rgba(8, 18, 14, .78); color: #fff; font-size: max(12px, 1.7cqw); line-height: 1.55; padding: .25em .55em; border-radius: .35em; -webkit-box-decoration-break: clone; box-decoration-break: clone }
+.caption.hide { display: none }
+
+@keyframes rise { to { opacity: 1; transform: none } }
+@keyframes fade { to { opacity: 1 } }
+@keyframes pop { to { opacity: 1; transform: none } }
+@keyframes strike { to { text-decoration-color: var(--mint) } }
+@keyframes kb { 0% { transform: scale(1) } 18% { transform: scale(1) } 100% { transform: scale(var(--zs)) } }
+@keyframes card { 0% { opacity: 1 } 70% { opacity: 1 } 100% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .on .zoom { animation: none } .scene { transition: none } }
+
+/* ---------- timeline ---------- */
+.timeline { display: flex; gap: 3px; height: 34px }
+.tl { position: relative; flex: var(--w) 1 0; min-width: 0; border: 0; padding: 0; border-radius: 6px; background: var(--surface); outline: 1px solid var(--line); cursor: pointer; overflow: hidden; color: var(--muted); font: 600 11px/34px var(--font); text-align: left; padding-left: 7px; white-space: nowrap; text-overflow: ellipsis }
+.tl .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent-soft); z-index: 0 }
+.tl span { position: relative; z-index: 1 }
+.tl.done .fill { width: 100% }
+.tl.cur { color: var(--fg); outline: 2px solid var(--accent) }
+.meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums }
+
+/* ---------- script table ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden }
+.card h2 { font-size: 15px; margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--line) }
+.tablewrap { overflow-x: auto }
+table { width: 100%; border-collapse: collapse; min-width: 760px }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600 }
+td.n { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; width: 84px }
+td.vis { width: 30%; color: var(--muted) }
+td.snd { width: 15%; color: var(--muted); font-size: 12px }
+tr.row { cursor: pointer }
+tr.row:hover td { background: var(--accent-soft) }
+tr.row.cur td { background: var(--row-active) }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px }
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; min-width: 0 }
+.note strong { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); margin-bottom: 4px }
+.note a { color: var(--accent) }
+@media (max-width: 640px) { h1 { font-size: 19px } .timeline { height: 26px } .tl { font-size: 0 } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 id="h1">Léa intro animatic</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <div class="controls">
+      <button class="btn primary" id="play" type="button"></button>
+      <button class="btn" id="restart" type="button"></button>
+      <div class="seg" role="group" id="cuts"></div>
+      <div class="seg" role="group" aria-label="Language" id="langs"></div>
+      <div class="seg" role="group" id="voice"></div>
+    </div>
+  </header>
+
+  <div class="stage" id="stage" aria-live="off"></div>
+  <div class="timeline" id="timeline"></div>
+  <div class="meta"><span id="clock">0:00 / 0:00</span><span id="hint"></span></div>
+
+  <section class="card">
+    <h2 id="vidTitle"></h2>
+    <video id="vid" controls preload="metadata" playsinline></video>
+  </section>
+
+  <section class="card">
+    <h2 id="scriptTitle"></h2>
+    <div class="tablewrap"><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+
+  <div class="notes" id="notes"></div>
+</div>
+
+<script>
+const UNI = [
+  { id: "s01", kind: "stat" },
+  { id: "s02", kind: "question" },
+  { id: "s03", kind: "brand" },
+  { id: "s04", kind: "screen", img: "shots/s04-settings.jpg", focus: [0.205, 0.17, 0.545, 0.25], zoom: 1.35, title: true, lower: true },
+  { id: "s05", kind: "screen", img: "shots/s05-theses.jpg", focus: [0.215, 0.195, 0.71, 0.205], zoom: 1.28 },
+  { id: "s06", kind: "screen", img: "shots/s06-editor.jpg", focus: [0.115, 0.46, 0.47, 0.38], zoom: 1.22, dot: "var(--mint)" },
+  { id: "s07", kind: "screen", img: "shots/s07-copilot.jpg", focus: [0.725, 0.19, 0.27, 0.64], zoom: 1.3 },
+  { id: "s08", kind: "screen", img: "shots/s08-cost.jpg", focus: [0.733, 0.625, 0.258, 0.2], zoom: 1.45, dot: "var(--ai)" },
+  { id: "s09", kind: "screen", img: "shots/s09-paste.jpg", focus: [0.785, 0.395, 0.0, 0.0], zoom: 1.3, dot: "var(--paste)" },
+  { id: "s10", kind: "screen", img: "shots/s10-sources.jpg", focus: [0.215, 0.17, 0.53, 0.61], zoom: 1.25 },
+  { id: "s11", kind: "screen", img: "shots/s11-ledger.jpg", focus: [0.723, 0.15, 0.272, 0.7], zoom: 1.28 },
+  { id: "s12", kind: "screen", img: "shots/s12-tutor.jpg", focus: [0.715, 0.18, 0.28, 0.27], zoom: 1.2 },
+  { id: "s13", kind: "end" },
+];
+const CUT_SCENES = {
+  uni: UNI,
+  stu: UNI.map((sc) => (sc.id === "s13" ? { ...sc, tx: "s13s" } : sc)),
+  teaser: [
+    { id: "s01", tx: "t01", kind: "stat" },
+    { id: "t02", kind: "pair" },
+    { id: "t03", kind: "flash", img: "shots/s06-editor.jpg", focus: [0.115, 0.46, 0.47, 0.38], zoom: 1.3, dot: "var(--mint)" },
+    { id: "t04", kind: "flash", img: "shots/s08-cost.jpg", focus: [0.733, 0.625, 0.258, 0.2], zoom: 1.5, dot: "var(--ai)" },
+    { id: "t05", kind: "flash", img: "shots/s11-ledger.jpg", focus: [0.723, 0.15, 0.272, 0.7], zoom: 1.3 },
+    { id: "s13", tx: "t06", kind: "end" },
+  ],
+};
+
+// Narration and on-screen text. {u} = for universities, {s} = for students (only where the wording differs).
+const TXT = {
+  en: {
+    ui: { sub: "Three versions of the introduction, after Chloé's idea, narrated with ElevenLabs in four languages: for universities, for students and a short teaser for the landing.", vid: "Rendered video (MP4, 720p)", play: "Play", pause: "Pause", restart: "Restart", uni: "For universities", stu: "For students", script: "Script", cols: ["Scene", "On screen", "Narration", "Sound"], hint: "Click a scene to jump to it.", lang: "Language", audience: "Audience", tl: { s01: "95%", s02: "The question", s03: "Thesisfic", s13: "End", t02: "The question", t03: "Attributed", t04: "Declared", t05: "Visible" }, cuts: {"uni": "Universities", "stu": "Students", "teaser": "Landing teaser"}, cutLabel: "Version", voice: "Voice", off: "Off", take: "Take", voiceOnlyEs: "The voice sample is in Spanish, university version." },
+    s01: { n: "In the UK, 95% of undergraduates already use AI in their studies.", label: "of UK undergraduates already use AI in their studies", src: "HEPI · Student Generative AI Survey 2026 · 1,054 students", vis: "Dark green. The number counts up to 95%, then the label and its source." },
+    s02: { n: { u: "The question is no longer how to stop them using it. It is how to guide them to use it well.", s: "The question is no longer whether you use it. It is how you use it well." }, old: { u: "How do we stop them using it?", s: "Should I use it?" }, nw: { u: "How do we guide them to use it <em>well</em>?", s: "How do I use it <em>well</em>?" }, vis: "The old question appears and is crossed out. The new one replaces it." },
+    s03: { n: { u: "That is why we created Thesisfic. More than a platform, it is the framework your students need to combine AI with their own thinking.", s: "That is why we created Thesisfic. More than a platform, it is the framework you need to combine AI with your own thinking." }, h: "This is why we created Thesisfic.", sub: { u: "More than a platform: the framework your students need to combine AI with their own thinking.", s: "More than a platform: the framework you need to combine AI with your own thinking." }, vis: "Logo, then the two lines." },
+    s04: { n: "Let's take an example. Léa studies at Stanford University, as you can see in her settings.", title: "Let's take an example.", chip: "Settings", lowerA: "Léa Martin", lowerB: "Stanford University", vis: "Title card, then Léa's settings: name and institution." },
+    s05: { n: "Her professor has given her three months to write her thesis on machine learning for climate prediction.", chip: "My Theses", vis: "Her thesis, 91 days left." },
+    s06: { n: "She writes in an editor she already knows. Everything she types is marked in the margin, in green, as written by her.", chip: "Written", vis: "Editor. Green marks in the provenance gutter." },
+    s07: { n: "When she gets stuck, she asks the Research copilot. It explains, asks questions and points to sources. It never writes her thesis for her.", chip: "Research copilot", vis: "The copilot answers with questions and next steps." },
+    s08: { n: "If she inserts an AI suggestion, she sees the cost first: the words it adds and her new AI share against her university's limit.", chip: "Before you insert AI text", vis: "Cost card: 92 AI-assisted words, 5% to 22% of the 25% allowed." },
+    s09: { n: "When she pastes a passage, Thesisfic asks where it comes from, and it is marked as quoted.", chip: "Quoted or pasted", vis: "Paste dialog: own writing, a source or an AI tool." },
+    s10: { n: "Her sources and references live in one library, and she chooses which ones each thesis uses.", chip: "Sources & references", vis: "Sources panel (to be re-shot with the new library)." },
+    s11: { n: "Her integrity ledger shows exactly what her professor sees. No hidden score, no AI probability.", chip: "Integrity ledger", vis: "Ledger: each item that changes the score, with its fix." },
+    s12: { n: "Her professor reads how the thesis was written, instead of guessing.", chip: "Advisor view", vis: "Advisor view: provenance report, sessions, AI log." },
+    s13: { n: "Teach your students how to use AI: properly, ethically, responsibly.", pre: "Teach your students how to use AI,", words: ["properly", "ethically", "responsibly"], post: ".", vis: "Logo. The slogan with the three words appearing one by one, as on the website, while the narrator says them." },
+    s13s: {"n": "Learn to use AI: properly, ethically, responsibly.", "pre": "Learn to use AI,", "words": ["properly", "ethically", "responsibly"], "post": ".", "vis": "Logo. The student slogan, with the three words appearing as the narrator says them."},
+    t01: {"n": "In the UK, 95% of undergraduates already use AI in their studies.", "vis": "Dark green. The number counts up to 95%, with its source."},
+    t02: {"n": "So the question is no longer whether they use it. It's whether they learn to think with it.", "a": "The question is no longer whether they use it.", "b": "It's whether they learn to <em>think</em> with it.", "vis": "Two lines; the second one lands with the narration."},
+    t03: {"n": "Every word they write, attributed.", "text": "Every word, attributed.", "vis": "Quick glimpse of the editor and its green margin."},
+    t04: {"n": "Every AI suggestion, declared.", "text": "Every AI suggestion, declared.", "vis": "Quick glimpse of the cost shown before an AI insertion."},
+    t05: {"n": "Every step, visible to them and to you.", "text": "Every step, visible to them and to you.", "vis": "Quick glimpse of the integrity ledger."},
+    t06: {"n": "Thesisfic. Teach your students how to use AI: properly, ethically, responsibly.", "pre": "Teach your students how to use AI,", "words": ["properly", "ethically", "responsibly"], "post": ".", "cta": "Request a free trial", "vis": "Logo, rotating slogan and the free trial invitation."},
+    snd: { s01: "Music in: soft piano, low", s02: "Music", s03: "Music swells slightly", s04: "Music lowers under voice", s13: "Music resolves, out" },
+    notes: [["Versions", "Universities: the full story, closing with the slogan for institutions. Students: the same screens and voice; the question, the “why” and the slogan speak to the student. Landing teaser: about 30 seconds, the figure, the question, three glimpses of the product and the free trial."], ["Spanish voice", "Paloma now says “IA” the Spanish way: the script writes it as the phoneme /i.ˈa/."], ["Figure", "95% comes from the HEPI Student Generative AI Survey 2026 (1,054 full-time UK undergraduates, fieldwork Dec 2025): 95% use AI in at least one way. The narration says “in the UK” so the figure is not stretched."], ["Voices", "ElevenLabs eleven_v4: Kayleigh (EN), Paloma (ES), Perle (FR) and Sonja (DE), chosen for a natural, teacherly and persuasive delivery. Each scene starts with its sentence, from the pauses in the narration."], ["Music", "The connected ElevenLabs connector only covers voice, and this month's ElevenLabs credits are used up. A soft piano bed under the voice needs the full ElevenLabs connector."], ["Léa and Stanford", "The screens use the demo data with the student renamed to Léa Martin and a deadline three months out. Naming a real university in a public video can read as an endorsement; a fictional one avoids that."]],
+  },
+  es: {
+    ui: { sub: "Tres versiones de la introducción, a partir de la idea de Chloé, narradas con ElevenLabs en cuatro idiomas: para universidades, para estudiantes y un teaser breve para la landing.", vid: "Vídeo renderizado (MP4, 720p)", play: "Reproducir", pause: "Pausa", restart: "Reiniciar", uni: "Para universidades", stu: "Para estudiantes", script: "Guion", cols: ["Escena", "En pantalla", "Narración", "Sonido"], hint: "Haz clic en una escena para ir a ella.", lang: "Idioma", audience: "Público", tl: { s01: "95%", s02: "La pregunta", s03: "Thesisfic", s13: "Cierre", t02: "La pregunta", t03: "Atribuida", t04: "Declarada", t05: "Visible" }, cuts: {"uni": "Universidades", "stu": "Estudiantes", "teaser": "Teaser de la landing"}, cutLabel: "Versión", voice: "Voz", off: "Sin voz", take: "Toma", voiceOnlyEs: "La muestra de voz está en español, versión para universidades." },
+    s01: { n: "En el Reino Unido, el 95% de los universitarios ya usa la IA en sus estudios.", label: "de los universitarios del Reino Unido ya usa la IA en sus estudios", src: "HEPI · Student Generative AI Survey 2026 · 1.054 estudiantes", vis: "Verde oscuro. La cifra sube hasta 95% y aparecen el texto y la fuente." },
+    s02: { n: { u: "La pregunta ya no es cómo impedir que la usen. Es cómo guiarles para que la usen bien.", s: "La pregunta ya no es si la usas. Es cómo la usas bien." }, old: { u: "¿Cómo impedimos que la usen?", s: "¿Debería usarla?" }, nw: { u: "¿Cómo les guiamos para que la usen <em>bien</em>?", s: "¿Cómo la uso <em>bien</em>?" }, vis: "Aparece la pregunta antigua y se tacha. La nueva la sustituye." },
+    s03: { n: { u: "Por eso creamos Thesisfic. Más que una plataforma, es el marco que tus estudiantes necesitan para combinar la IA con su propio pensamiento.", s: "Por eso creamos Thesisfic. Más que una plataforma, es el marco que necesitas para combinar la IA con tu propio pensamiento." }, h: "Por eso creamos Thesisfic.", sub: { u: "Más que una plataforma: el marco que tus estudiantes necesitan para combinar la IA con su propio pensamiento.", s: "Más que una plataforma: el marco que necesitas para combinar la IA con tu propio pensamiento." }, vis: "Logo y después las dos frases." },
+    s04: { n: "Pongamos un ejemplo. Léa estudia en la Universidad de Stanford, como ves en sus ajustes.", title: "Pongamos un ejemplo.", chip: "Ajustes", lowerA: "Léa Martin", lowerB: "Universidad de Stanford", vis: "Cartela y después los ajustes de Léa: nombre e institución." },
+    s05: { n: "Su profesor le ha dado tres meses para escribir su tesis sobre aprendizaje automático para predecir el clima.", chip: "Mis tesis", vis: "Su tesis, quedan 91 días." },
+    s06: { n: "Escribe en un editor que ya conoce. Todo lo que teclea queda marcado en el margen, en verde, como escrito por ella.", chip: "Escrito", vis: "Editor. Marcas verdes en el margen de procedencia." },
+    s07: { n: "Cuando se atasca, pregunta al Research copilot. Le explica, le hace preguntas y le señala fuentes. Nunca escribe la tesis por ella.", chip: "Research copilot", vis: "El copilot responde con preguntas y próximos pasos." },
+    s08: { n: "Si inserta una sugerencia de la IA, primero ve lo que cuesta: las palabras que añade y su nuevo porcentaje de IA frente al límite de su universidad.", chip: "Antes de insertar texto de IA", vis: "Tarjeta de coste: 92 palabras con ayuda de IA, del 5% al 22% del 25% permitido." },
+    s09: { n: "Cuando pega un pasaje, Thesisfic le pregunta de dónde viene, y queda marcado como citado.", chip: "Citado o pegado", vis: "Diálogo de pegado: texto propio, una fuente o una herramienta de IA." },
+    s10: { n: "Sus fuentes y referencias están en una sola biblioteca, y ella elige cuáles usa cada tesis.", chip: "Fuentes y referencias", vis: "Panel de fuentes (se vuelve a grabar con la nueva biblioteca)." },
+    s11: { n: "Su registro de integridad muestra exactamente lo que ve su profesor. Sin puntuaciones ocultas ni probabilidades de IA.", chip: "Registro de integridad", vis: "Registro: cada elemento que cambia la puntuación, con su solución." },
+    s12: { n: "Su profesor lee cómo se escribió la tesis, en lugar de adivinarlo.", chip: "Vista del tutor", vis: "Vista del tutor: informe de procedencia, sesiones y registro de IA." },
+    s13: { n: "Enseña a tus estudiantes a usar la IA de forma correcta, ética y responsable.", pre: "Enseña a tus estudiantes a usar la IA de forma", words: ["correcta", "ética", "responsable"], post: ".", vis: "Logo. El lema con las tres palabras apareciendo una a una, como en la web, mientras la voz las dice." },
+    s13s: {"n": "Aprende a usar la IA de forma correcta, ética y responsable.", "pre": "Aprende a usar la IA de forma", "words": ["correcta", "ética", "responsable"], "post": ".", "vis": "Logo. El lema para estudiantes, con las tres palabras apareciendo mientras la voz las dice."},
+    t01: {"n": "En el Reino Unido, el 95% de los universitarios ya usa la IA en sus estudios.", "vis": "Verde oscuro. La cifra sube hasta 95%, con su fuente."},
+    t02: {"n": "Así que la pregunta ya no es si la usan. Es si aprenden a pensar con ella.", "a": "La pregunta ya no es si la usan.", "b": "Es si aprenden a <em>pensar</em> con ella.", "vis": "Dos frases; la segunda entra con la voz."},
+    t03: {"n": "Cada palabra que escriben, atribuida.", "text": "Cada palabra, atribuida.", "vis": "Vistazo rápido al editor y su margen verde."},
+    t04: {"n": "Cada sugerencia de la IA, declarada.", "text": "Cada sugerencia de la IA, declarada.", "vis": "Vistazo rápido al coste antes de insertar IA."},
+    t05: {"n": "Cada paso, visible para ellos y para ti.", "text": "Cada paso, visible para ellos y para ti.", "vis": "Vistazo rápido al registro de integridad."},
+    t06: {"n": "Thesisfic. Enseña a tus estudiantes a usar la IA de forma correcta, ética y responsable.", "pre": "Enseña a tus estudiantes a usar la IA de forma", "words": ["correcta", "ética", "responsable"], "post": ".", "cta": "Solicitar una prueba gratuita", "vis": "Logo, lema que rota y la invitación a la prueba gratuita."},
+    snd: { s01: "Entra la música: piano suave, bajo", s02: "Música", s03: "La música sube un poco", s04: "La música baja bajo la voz", s13: "La música se resuelve y sale" },
+    notes: [["Versiones", "Universidades: la historia completa, con el lema para instituciones. Estudiantes: mismas pantallas y misma voz; la pregunta, el «por qué» y el lema hablan al estudiante. Teaser de la landing: unos 30 segundos, la cifra, la pregunta, tres vistazos al producto y la prueba gratuita."], ["Voz en español", "Paloma ya dice «IA» en español: el guion lo escribe como el fonema /i.ˈa/."], ["Cifra", "El 95% viene del HEPI Student Generative AI Survey 2026 (1.054 universitarios de grado a tiempo completo del Reino Unido, encuesta de diciembre de 2025): el 95% usa la IA de al menos una forma. La narración dice «en el Reino Unido» para no estirar el dato."], ["Voces", "ElevenLabs eleven_v4: Kayleigh (EN), Paloma (ES), Perle (FR) y Sonja (DE), elegidas por una lectura natural, pedagógica y persuasiva. Cada escena empieza con su frase, a partir de las pausas de la narración."], ["Música", "El conector de ElevenLabs conectado solo cubre la voz y los créditos de ElevenLabs de este mes se han agotado. Una base suave de piano bajo la voz necesita el conector completo de ElevenLabs."], ["Léa y Stanford", "Las pantallas usan los datos demo con la estudiante renombrada como Léa Martin y una entrega a tres meses. Nombrar una universidad real en un vídeo público puede leerse como un respaldo; una ficticia lo evita."]],
+  },
+  fr: {
+    ui: { sub: "Trois versions de l'introduction, d'après l'idée de Chloé, narrées avec ElevenLabs en quatre langues : pour les universités, pour les étudiants et un court teaser pour la page d'accueil.", vid: "Vidéo rendue (MP4, 720p)", play: "Lecture", pause: "Pause", restart: "Recommencer", uni: "Pour les universités", stu: "Pour les étudiants", script: "Script", cols: ["Scène", "À l'écran", "Narration", "Son"], hint: "Cliquez sur une scène pour y aller.", lang: "Langue", audience: "Public", tl: { s01: "95 %", s02: "La question", s03: "Thesisfic", s13: "Fin", t02: "La question", t03: "Attribué", t04: "Déclarée", t05: "Visible" }, cuts: {"uni": "Universités", "stu": "Étudiants", "teaser": "Teaser de la page d'accueil"}, cutLabel: "Version", voice: "Voix", off: "Sans voix", take: "Prise", voiceOnlyEs: "L'échantillon de voix est en espagnol, version pour les universités." },
+    s01: { n: "Au Royaume-Uni, 95 % des étudiants de premier cycle utilisent déjà l'IA dans leurs études.", label: "des étudiants de premier cycle au Royaume-Uni utilisent déjà l'IA dans leurs études", src: "HEPI · Student Generative AI Survey 2026 · 1 054 étudiants", vis: "Vert foncé. Le chiffre monte jusqu'à 95 %, puis le texte et sa source." },
+    s02: { n: { u: "La question n'est plus de savoir comment les en empêcher, mais comment les guider pour bien l'utiliser.", s: "La question n'est plus de savoir si vous l'utilisez, mais comment bien l'utiliser." }, old: { u: "Comment les empêcher de l'utiliser ?", s: "Dois-je l'utiliser ?" }, nw: { u: "Comment les guider pour <em>bien</em> l'utiliser ?", s: "Comment <em>bien</em> l'utiliser ?" }, vis: "L'ancienne question apparaît puis est barrée. La nouvelle la remplace." },
+    s03: { n: { u: "C'est pour cela que nous avons créé Thesisfic. Plus qu'une plateforme, c'est le cadre dont vos étudiants ont besoin pour combiner l'IA et leur propre réflexion.", s: "C'est pour cela que nous avons créé Thesisfic. Plus qu'une plateforme, c'est le cadre dont vous avez besoin pour combiner l'IA et votre propre réflexion." }, h: "C'est pour cela que nous avons créé Thesisfic.", sub: { u: "Plus qu'une plateforme : le cadre dont vos étudiants ont besoin pour combiner l'IA et leur propre réflexion.", s: "Plus qu'une plateforme : le cadre dont vous avez besoin pour combiner l'IA et votre propre réflexion." }, vis: "Logo, puis les deux phrases." },
+    s04: { n: "Prenons un exemple. Léa étudie à l'université Stanford, comme vous le voyez dans ses paramètres.", title: "Prenons un exemple.", chip: "Paramètres", lowerA: "Léa Martin", lowerB: "Université Stanford", vis: "Carton, puis les paramètres de Léa : nom et établissement." },
+    s05: { n: "Son professeur lui a donné trois mois pour rédiger sa thèse sur l'apprentissage automatique appliqué à la prévision climatique.", chip: "Mes thèses", vis: "Sa thèse, 91 jours restants." },
+    s06: { n: "Elle écrit dans un éditeur qu'elle connaît déjà. Tout ce qu'elle tape est marqué dans la marge, en vert, comme rédigé par elle.", chip: "Rédigé", vis: "Éditeur. Marques vertes dans la marge de provenance." },
+    s07: { n: "Quand elle bloque, elle interroge le Research copilot. Il explique, pose des questions et indique des sources. Il n'écrit jamais sa thèse à sa place.", chip: "Research copilot", vis: "Le copilot répond par des questions et des étapes." },
+    s08: { n: "Si elle insère une suggestion de l'IA, elle en voit d'abord le coût : les mots ajoutés et sa nouvelle part d'IA par rapport à la limite de son université.", chip: "Avant d'insérer du texte d'IA", vis: "Carte de coût : 92 mots assistés par IA, de 5 % à 22 % des 25 % autorisés." },
+    s09: { n: "Quand elle colle un passage, Thesisfic lui demande d'où il vient, et il est marqué comme cité.", chip: "Cité ou collé", vis: "Boîte de collage : son texte, une source ou un outil d'IA." },
+    s10: { n: "Ses sources et ses références sont réunies dans une seule bibliothèque, et elle choisit celles que chaque thèse utilise.", chip: "Sources et références", vis: "Panneau des sources (à refilmer avec la nouvelle bibliothèque)." },
+    s11: { n: "Son registre d'intégrité montre exactement ce que voit son professeur. Pas de score caché, pas de probabilité d'IA.", chip: "Registre d'intégrité", vis: "Registre : chaque élément qui modifie le score, avec sa correction." },
+    s12: { n: "Son professeur lit comment la thèse a été écrite, au lieu de le deviner.", chip: "Vue du directeur", vis: "Vue du directeur : rapport de provenance, sessions, journal IA." },
+    s13: { n: "Apprenez à vos étudiants à utiliser l'IA de façon appropriée, éthique et responsable.", pre: "Apprenez à vos étudiants à utiliser l'IA de façon", words: ["appropriée", "éthique", "responsable"], post: ".", vis: "Logo. Le slogan avec les trois mots qui apparaissent un à un, comme sur le site, pendant que la voix les prononce." },
+    s13s: {"n": "Apprenez à utiliser l'IA de façon appropriée, éthique et responsable.", "pre": "Apprenez à utiliser l'IA de façon", "words": ["appropriée", "éthique", "responsable"], "post": ".", "vis": "Logo. Le slogan pour les étudiants, avec les trois mots qui apparaissent pendant que la voix les prononce."},
+    t01: {"n": "Au Royaume-Uni, 95 % des étudiants de premier cycle utilisent déjà l'IA dans leurs études.", "vis": "Vert foncé. Le chiffre monte jusqu'à 95 %, avec sa source."},
+    t02: {"n": "La question n'est donc plus de savoir s'ils l'utilisent. C'est de savoir s'ils apprennent à penser avec elle.", "a": "La question n'est plus de savoir s'ils l'utilisent.", "b": "C'est de savoir s'ils apprennent à <em>penser</em> avec elle.", "vis": "Deux phrases ; la seconde arrive avec la voix."},
+    t03: {"n": "Chaque mot écrit, attribué.", "text": "Chaque mot, attribué.", "vis": "Aperçu rapide de l'éditeur et de sa marge verte."},
+    t04: {"n": "Chaque suggestion de l'IA, déclarée.", "text": "Chaque suggestion de l'IA, déclarée.", "vis": "Aperçu rapide du coût affiché avant une insertion d'IA."},
+    t05: {"n": "Chaque étape, visible pour eux et pour vous.", "text": "Chaque étape, visible pour eux et pour vous.", "vis": "Aperçu rapide du registre d'intégrité."},
+    t06: {"n": "Thesisfic. Apprenez à vos étudiants à utiliser l'IA de façon appropriée, éthique et responsable.", "pre": "Apprenez à vos étudiants à utiliser l'IA de façon", "words": ["appropriée", "éthique", "responsable"], "post": ".", "cta": "Demander un essai gratuit", "vis": "Logo, slogan qui tourne et l'invitation à l'essai gratuit."},
+    snd: { s01: "Entrée de la musique : piano doux, bas", s02: "Musique", s03: "La musique monte un peu", s04: "La musique baisse sous la voix", s13: "La musique se résout, sortie" },
+    notes: [["Versions", "Universités : l'histoire complète, avec le slogan pour les établissements. Étudiants : mêmes écrans et même voix ; la question, le « pourquoi » et le slogan s'adressent à l'étudiant. Teaser de la page d'accueil : une trentaine de secondes, le chiffre, la question, trois aperçus du produit et l'essai gratuit."], ["Voix espagnole", "Paloma prononce désormais « IA » à l'espagnole : le script l'écrit avec le phonème /i.ˈa/."], ["Chiffre", "Les 95 % viennent du HEPI Student Generative AI Survey 2026 (1 054 étudiants de premier cycle à temps plein au Royaume-Uni, enquête de décembre 2025) : 95 % utilisent l'IA d'au moins une façon. La narration dit « au Royaume-Uni » pour ne pas étirer le chiffre."], ["Voix", "ElevenLabs eleven_v4 : Kayleigh (EN), Paloma (ES), Perle (FR) et Sonja (DE), choisies pour une lecture naturelle, pédagogique et convaincante. Chaque scène commence avec sa phrase, d'après les pauses de la narration."], ["Musique", "Le connecteur ElevenLabs connecté ne couvre que la voix et les crédits ElevenLabs du mois sont épuisés. Un fond de piano doux sous la voix demande le connecteur ElevenLabs complet."], ["Léa et Stanford", "Les écrans utilisent les données de démo avec l'étudiante renommée Léa Martin et un rendu dans trois mois. Citer une vraie université dans une vidéo publique peut passer pour un soutien ; une université fictive l'évite."]],
+  },
+  de: {
+    ui: { sub: "Drei Fassungen der Einführung nach Chloés Idee, mit ElevenLabs in vier Sprachen gesprochen: für Hochschulen, für Studierende und ein kurzer Teaser für die Startseite.", vid: "Gerenderte Fassung (MP4, 720p)", play: "Abspielen", pause: "Pause", restart: "Neu starten", uni: "Für Hochschulen", stu: "Für Studierende", script: "Drehbuch", cols: ["Szene", "Im Bild", "Sprechertext", "Ton"], hint: "Klicken Sie auf eine Szene, um dorthin zu springen.", lang: "Sprache", audience: "Zielgruppe", tl: { s01: "95 %", s02: "Die Frage", s03: "Thesisfic", s13: "Schluss", t02: "Die Frage", t03: "Zugeordnet", t04: "Offengelegt", t05: "Sichtbar" }, cuts: {"uni": "Hochschulen", "stu": "Studierende", "teaser": "Teaser der Startseite"}, cutLabel: "Fassung", voice: "Stimme", off: "Aus", take: "Take", voiceOnlyEs: "Die Stimmprobe ist auf Spanisch, Fassung für Hochschulen." },
+    s01: { n: "Im Vereinigten Königreich nutzen 95 % der Bachelorstudierenden KI bereits im Studium.", label: "der Bachelorstudierenden im Vereinigten Königreich nutzen KI bereits im Studium", src: "HEPI · Student Generative AI Survey 2026 · 1.054 Studierende", vis: "Dunkelgrün. Die Zahl zählt bis 95 % hoch, dann Text und Quelle." },
+    s02: { n: { u: "Die Frage ist nicht mehr, wie man sie davon abhält, sondern wie man sie zu einem guten Umgang damit anleitet.", s: "Die Frage ist nicht mehr, ob Sie sie nutzen, sondern wie Sie sie gut nutzen." }, old: { u: "Wie halten wir sie davon ab?", s: "Soll ich sie nutzen?" }, nw: { u: "Wie leiten wir sie zu einem <em>guten</em> Umgang an?", s: "Wie nutze ich sie <em>gut</em>?" }, vis: "Die alte Frage erscheint und wird durchgestrichen. Die neue ersetzt sie." },
+    s03: { n: { u: "Deshalb haben wir Thesisfic entwickelt. Mehr als eine Plattform: der Rahmen, den Ihre Studierenden brauchen, um KI mit ihrem eigenen Denken zu verbinden.", s: "Deshalb haben wir Thesisfic entwickelt. Mehr als eine Plattform: der Rahmen, den Sie brauchen, um KI mit Ihrem eigenen Denken zu verbinden." }, h: "Deshalb haben wir Thesisfic entwickelt.", sub: { u: "Mehr als eine Plattform: der Rahmen, den Ihre Studierenden brauchen, um KI mit ihrem eigenen Denken zu verbinden.", s: "Mehr als eine Plattform: der Rahmen, den Sie brauchen, um KI mit Ihrem eigenen Denken zu verbinden." }, vis: "Logo, dann die beiden Sätze." },
+    s04: { n: "Nehmen wir ein Beispiel. Léa studiert an der Stanford University, wie Sie in ihren Einstellungen sehen.", title: "Nehmen wir ein Beispiel.", chip: "Einstellungen", lowerA: "Léa Martin", lowerB: "Stanford University", vis: "Titeltafel, dann Léas Einstellungen: Name und Hochschule." },
+    s05: { n: "Ihr Professor hat ihr drei Monate gegeben, um ihre Abschlussarbeit über maschinelles Lernen für Klimavorhersagen zu schreiben.", chip: "Meine Abschlussarbeiten", vis: "Ihre Arbeit, noch 91 Tage." },
+    s06: { n: "Sie schreibt in einem Editor, den sie bereits kennt. Alles, was sie tippt, wird am Rand grün als von ihr geschrieben markiert.", chip: "Geschrieben", vis: "Editor. Grüne Markierungen am Herkunftsrand." },
+    s07: { n: "Wenn sie nicht weiterkommt, fragt sie den Research copilot. Er erklärt, stellt Fragen und verweist auf Quellen. Ihre Arbeit schreibt er nie für sie.", chip: "Research copilot", vis: "Der Copilot antwortet mit Fragen und nächsten Schritten." },
+    s08: { n: "Fügt sie einen KI-Vorschlag ein, sieht sie zuerst, was das bedeutet: die zusätzlichen Wörter und ihren neuen KI-Anteil gegenüber dem Limit ihrer Universität.", chip: "Bevor Sie KI-Text einfügen", vis: "Kostenkarte: 92 KI-unterstützte Wörter, von 5 % auf 22 % der erlaubten 25 %." },
+    s09: { n: "Wenn sie eine Passage einfügt, fragt Thesisfic nach der Herkunft, und sie wird als zitiert markiert.", chip: "Zitiert oder eingefügt", vis: "Einfügedialog: eigener Text, eine Quelle oder ein KI-Werkzeug." },
+    s10: { n: "Ihre Quellen und Literaturangaben liegen in einer Bibliothek, und sie wählt aus, welche jede Arbeit verwendet.", chip: "Quellen und Literatur", vis: "Quellenbereich (wird mit der neuen Bibliothek neu aufgenommen)." },
+    s11: { n: "Ihr Integritätsregister zeigt genau das, was ihr Professor sieht. Keine versteckte Bewertung, keine KI-Wahrscheinlichkeit.", chip: "Integritätsregister", vis: "Register: jeder Posten, der die Punktzahl ändert, mit seiner Lösung." },
+    s12: { n: "Ihr Professor liest, wie die Arbeit entstanden ist, statt zu raten.", chip: "Ansicht der Betreuung", vis: "Betreuungsansicht: Herkunftsbericht, Sitzungen, KI-Protokoll." },
+    s13: { n: "Zeigen Sie Ihren Studierenden, wie man KI richtig, ethisch und verantwortungsvoll nutzt.", pre: "Zeigen Sie Ihren Studierenden, wie man KI", words: ["richtig", "ethisch", "verantwortungsvoll"], post: " nutzt.", vis: "Logo. Der Slogan, dessen drei Wörter wie auf der Website nacheinander erscheinen, während die Stimme sie spricht." },
+    s13s: {"n": "Lernen Sie, KI richtig, ethisch und verantwortungsvoll zu nutzen.", "pre": "Lernen Sie, KI", "words": ["richtig", "ethisch", "verantwortungsvoll"], "post": " zu nutzen.", "vis": "Logo. Der Slogan für Studierende, dessen drei Wörter erscheinen, während die Stimme sie spricht."},
+    t01: {"n": "Im Vereinigten Königreich nutzen 95 % der Bachelorstudierenden KI bereits im Studium.", "vis": "Dunkelgrün. Die Zahl zählt bis 95 % hoch, mit Quelle."},
+    t02: {"n": "Die Frage ist also nicht mehr, ob sie sie nutzen. Sondern ob sie lernen, mit ihr zu denken.", "a": "Die Frage ist nicht mehr, ob sie sie nutzen.", "b": "Sondern ob sie lernen, mit ihr zu <em>denken</em>.", "vis": "Zwei Sätze; der zweite kommt mit der Stimme."},
+    t03: {"n": "Jedes geschriebene Wort, zugeordnet.", "text": "Jedes Wort, zugeordnet.", "vis": "Kurzer Blick auf den Editor und seinen grünen Rand."},
+    t04: {"n": "Jeder KI-Vorschlag, offengelegt.", "text": "Jeder KI-Vorschlag, offengelegt.", "vis": "Kurzer Blick auf die Kosten vor einem KI-Einfügen."},
+    t05: {"n": "Jeder Schritt, sichtbar für Ihre Studierenden und für Sie.", "text": "Jeder Schritt, sichtbar für Ihre Studierenden und für Sie.", "vis": "Kurzer Blick auf das Integritätsregister."},
+    t06: {"n": "Thesisfic. Zeigen Sie Ihren Studierenden, wie man KI richtig, ethisch und verantwortungsvoll nutzt.", "pre": "Zeigen Sie Ihren Studierenden, wie man KI", "words": ["richtig", "ethisch", "verantwortungsvoll"], "post": " nutzt.", "cta": "Kostenlose Testphase anfragen", "vis": "Logo, wechselnder Slogan und die Einladung zur kostenlosen Testphase."},
+    snd: { s01: "Musik setzt ein: sanftes Klavier, leise", s02: "Musik", s03: "Musik wird etwas lauter", s04: "Musik leiser unter der Stimme", s13: "Musik löst sich auf, Ende" },
+    notes: [["Fassungen", "Hochschulen: die ganze Geschichte, mit dem Slogan für Einrichtungen. Studierende: dieselben Bildschirme und dieselbe Stimme; die Frage, das „Warum“ und der Slogan sprechen die Studierenden an. Teaser der Startseite: rund 30 Sekunden, die Zahl, die Frage, drei kurze Blicke auf das Produkt und die kostenlose Testphase."], ["Spanische Stimme", "Paloma spricht „IA“ jetzt spanisch aus: Das Skript schreibt es als Phonem /i.ˈa/."], ["Zahl", "Die 95 % stammen aus dem HEPI Student Generative AI Survey 2026 (1.054 Vollzeit-Bachelorstudierende im Vereinigten Königreich, Befragung Dezember 2025): 95 % nutzen KI auf mindestens eine Weise. Der Sprechertext sagt „im Vereinigten Königreich“, damit die Zahl nicht überdehnt wird."], ["Stimmen", "ElevenLabs eleven_v4: Kayleigh (EN), Paloma (ES), Perle (FR) und Sonja (DE), ausgewählt für einen natürlichen, didaktischen und überzeugenden Vortrag. Jede Szene beginnt mit ihrem Satz, anhand der Pausen im Sprechertext."], ["Musik", "Der verbundene ElevenLabs-Connector deckt nur Stimmen ab, und die ElevenLabs-Credits dieses Monats sind aufgebraucht. Ein sanftes Klavierbett unter der Stimme braucht den vollständigen ElevenLabs-Connector."], ["Léa und Stanford", "Die Bildschirme nutzen die Demodaten, mit der Studentin umbenannt in Léa Martin und einer Abgabe in drei Monaten. Eine echte Universität in einem öffentlichen Video zu nennen, kann wie eine Empfehlung wirken; eine fiktive vermeidet das."]],
+  },
+};
+
+const LANGS = [["en", "EN"], ["es", "ES"], ["fr", "FR"], ["de", "DE"]];
+const pref = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+let lang = pref("lea_lang", "es");
+let cut = pref("lea_cut", "uni");
+if (!CUT_SCENES[cut]) cut = "uni";
+let SCENES = CUT_SCENES[cut];
+let aud = cut === "stu" ? "s" : "u";
+let idx = 0, t0 = 0, elapsed = 0, playing = false, raf = 0;
+// ElevenLabs narration, one take per language; scene starts and the slogan's word onsets come from its pauses.
+const NARR = /*NARR*/{"uni":{"en":{"dur":92.918,"starts":[0.0,6.351,13.047,21.938,28.537,34.713,42.748,52.659,61.92,68.185,74.775,82.145,86.625],"words":[89.475,90.645,91.815]},"es":{"dur":89.966,"starts":[0.0,6.15,12.726,21.626,27.392,33.689,40.904,50.002,59.044,64.791,71.076,78.789,83.199],"words":[86.729,87.809,88.889]},"fr":{"dur":84.924,"starts":[0.0,6.708,13.116,21.905,27.265,34.302,40.707,49.231,56.987,61.814,67.613,74.213,78.174],"words":[81.634,82.864,83.864]},"de":{"dur":96.522,"starts":[0.0,6.719,13.375,23.4,29.442,36.733,44.043,53.406,63.417,69.919,77.137,85.265,89.5],"words":[92.83,94.02,95.2]}},"stu":{"en":{"dur":90.604,"starts":[0,6.351,11.864,20.383,26.982,33.158,41.193,51.104,60.365,66.63,73.22,80.59,85.07],"words":[87.05,88.34,89.5]},"es":{"dur":87.367,"starts":[0,6.15,11.032,19.836,25.602,31.899,39.114,48.212,57.254,63.001,69.286,76.999,81.409],"words":[84.049,85.209,86.299]},"fr":{"dur":83.823,"starts":[0,6.708,12.056,21.208,26.568,33.605,40.01,48.534,56.29,61.117,66.916,73.516,77.477],"words":[80.437,81.637,82.727]},"de":{"dur":94.135,"starts":[0,6.719,12.214,21.988,28.03,35.321,42.631,51.994,62.005,68.507,75.725,83.853,88.088],"words":[90.618,91.718,92.878]}},"teaser":{"en":{"dur":30.589,"starts":[0.0,6.268,12.805,15.91,19.065,23.09],"words":[27.35,28.45,29.5],"pair":3.851},"es":{"dur":30.041,"starts":[0.0,6.45,12.581,15.518,18.52,22.204],"words":[27.044,28.084,28.974],"pair":3.574},"fr":{"dur":31.556,"starts":[0.0,6.729,14.103,16.688,19.727,23.321],"words":[28.421,29.621,30.581],"pair":3.999},"de":{"dur":31.948,"starts":[0.0,6.676,13.625,16.794,19.86,24.02],"words":[28.77,29.78,30.74],"pair":3.849}}}/*END*/;
+let voice = pref("lea_voice2", "on");
+const audio = new Audio(); audio.preload = "auto";
+const NR = () => NARR[cut] && NARR[cut][lang];
+const voiceOn = () => voice === "on" && !!NR();
+const vStart = (i) => NR().starts[i];
+
+const $ = (id) => document.getElementById(id);
+const stage = $("stage");
+const pick = (v) => (v && typeof v === "object" ? v[aud] : v);
+const L = () => TXT[lang];
+const S = (id) => L()[id];
+const TX = (sc) => S(sc.tx || sc.id);
+const words = (s) => s.replace(/<[^>]+>/g, "").split(/\s+/).filter(Boolean).length;
+const dur = (i) => {
+  if (voiceOn()) { const st = NR().starts; return (i < st.length - 1 ? st[i + 1] : NR().dur + 1.4) - st[i]; }
+  const sc = SCENES[i];
+  const base = Math.min(12.5, Math.max(cut === "teaser" ? 3.2 : 5, words(pick(TX(sc).n)) * 0.41 + 1.8));
+  return sc.kind === "stat" ? Math.max(base, 6.2) : sc.kind === "question" ? Math.max(base, 6.5) : sc.title ? base + 1.6 : base;
+};
+const total = () => SCENES.reduce((a, _, i) => a + dur(i), 0);
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+function sceneHTML(sc) {
+  const s = TX(sc);
+  if (sc.kind === "stat") { const st = S("s01"); return `<div class="scene green" data-id="${sc.id}"><div class="stat-num" data-count>0%</div><div class="stat-label">${st.label}</div><div class="stat-src">${st.src}</div></div>`; }
+  if (sc.kind === "pair") return `<div class="scene green" data-id="${sc.id}" style="--d2:${voiceOn() && NR().pair ? Math.max(0.6, NR().pair - 0.15) : 2.6}s"><div class="q dimq">${s.a}</div><div class="q new pairb">${s.b}</div></div>`;
+  if (sc.kind === "question") return `<div class="scene green" data-id="${sc.id}"><div class="q old">${pick(s.old)}</div><div class="q new">${pick(s.nw)}</div></div>`;
+  if (sc.kind === "brand") return `<div class="scene green" data-id="${sc.id}"><img class="brand-logo" src="brand/logo-dark.png" alt="Thesisfic"><div class="brand-h">${s.h}</div><div class="brand-s">${pick(s.sub)}</div></div>`;
+  if (sc.kind === "end") return `<div class="scene green" data-id="${sc.id}"><img class="brand-logo" src="brand/logo-dark.png" alt="Thesisfic"><div class="end-line">${s.pre} <span class="rot">${s.words.map((w, n) => `<span data-w="${n}"${n ? "" : ' class="on"'}><b>${w}</b>${s.post}</span>`).join("")}</span></div>${s.cta ? `<div class="end-cta">${s.cta}</div>` : ""}</div>`;
+  const [fx, fy, fw, fh] = sc.focus;
+  const ox = (fx + fw / 2) * 100, oy = (fy + fh / 2) * 100;
+  const ring = fw > 0 ? `<div class="ring" style="--fx:${fx * 100}%;--fy:${fy * 100}%;--fw:${fw * 100}%;--fh:${fh * 100}%"></div>` : "";
+  return `<div class="scene screen" data-id="${sc.id}">
+    <div class="frame"><div class="bar"><i></i><i></i><i></i></div>
+      <div class="viewport"><div class="zoom" style="--ox:${ox}%;--oy:${oy}%;--zs:${sc.zoom}"><img src="${sc.img}" alt="">${ring}</div></div>
+      ${sc.kind === "flash" ? `<div class="flash-text">${s.text}</div>` : `<div class="chip" style="--dot:${sc.dot || "var(--mint)"}"><b></b>${s.chip}</div>`}
+      ${sc.lower ? `<div class="lower"><strong>${s.lowerA}</strong><span>${s.lowerB}</span></div>` : ""}
+    </div>
+    ${sc.title ? `<div class="title-card">${s.title}</div>` : ""}
+  </div>`;
+}
+
+function render() {
+  const ui = L().ui;
+  document.documentElement.lang = lang;
+  $("sub").textContent = ui.sub;
+  $("vidTitle").textContent = ui.vid;
+  { const v = $("vid"), src = `videos/${{ uni: "intro-university", stu: "intro-student", teaser: "teaser" }[cut]}-${lang}.mp4`; if (v.getAttribute("src") !== src) v.setAttribute("src", src); }
+  $("restart").innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>${ui.restart}`;
+  $("cuts").setAttribute("aria-label", ui.cutLabel);
+  $("cuts").innerHTML = ["uni", "stu", "teaser"].map((k) => `<button type="button" data-cut="${k}" aria-pressed="${cut === k}">${ui.cuts[k]}</button>`).join("");
+  $("langs").setAttribute("aria-label", ui.lang);
+  $("langs").innerHTML = LANGS.map(([k, l]) => `<button type="button" data-lang="${k}" aria-pressed="${k === lang}">${l}</button>`).join("");
+  const vbox = $("voice");
+  vbox.setAttribute("aria-label", ui.voice);
+  vbox.innerHTML = [["on", ui.voice], ["off", ui.off]].map(([k, l]) => `<button type="button" data-voice="${k}" aria-pressed="${voice === k}">${l}</button>`).join("");
+  $("scriptTitle").textContent = ui.script;
+  $("hint").textContent = ui.hint;
+  $("thead").innerHTML = ui.cols.map((c) => `<th>${c}</th>`).join("");
+  let acc = 0;
+  $("tbody").innerHTML = SCENES.map((sc, i) => {
+    const s = TX(sc), start = acc; acc += dur(i);
+    const snd = L().snd[sc.id] || "";
+    return `<tr class="row" data-i="${i}"><td class="n">${String(i + 1).padStart(2, "0")} · ${fmt(start)}</td><td class="vis">${s.vis}</td><td>${pick(s.n)}</td><td class="snd">${snd}</td></tr>`;
+  }).join("");
+  $("timeline").innerHTML = SCENES.map((sc, i) => `<button type="button" class="tl" data-i="${i}" style="--w:${dur(i).toFixed(2)}" aria-label="${ui.cols[0]} ${i + 1}"><div class="fill"></div><span>${String(i + 1).padStart(2, "0")} ${(TX(sc).chip || L().ui.tl[sc.id] || "").replace(/<[^>]+>/g, "")}</span></button>`).join("");
+  $("notes").innerHTML = L().notes.map(([h, b]) => `<div class="note"><strong>${h}</strong>${b}</div>`).join("");
+  stage.innerHTML = SCENES.map(sceneHTML).join("") + `<div class="caption" id="cap"><span></span></div>`;
+  show(idx, true);
+  syncPlay();
+  let past = 0; for (let k = 0; k < idx; k++) past += dur(k);
+  $("clock").textContent = `${fmt(past)} / ${fmt(total())}`;
+}
+
+function show(i, restart) {
+  idx = i;
+  stage.querySelectorAll(".scene").forEach((el, k) => {
+    if (k === i) {
+      el.style.setProperty("--dur", dur(i) + "s");
+      if (restart || !el.classList.contains("on")) { el.classList.remove("on"); void el.offsetWidth; el.classList.add("on"); }
+    } else el.classList.remove("on");
+  });
+  $("cap").firstElementChild.textContent = pick(TX(SCENES[i]).n);
+  document.querySelectorAll("tr.row").forEach((r, k) => r.classList.toggle("cur", k === i));
+  document.querySelectorAll(".tl").forEach((b, k) => { b.classList.toggle("cur", k === i); b.classList.toggle("done", k < i); if (k >= i) b.querySelector(".fill").style.width = k > i ? "0" : ""; });
+}
+
+function tick(now) {
+  if (!playing) return;
+  elapsed = (now - t0) / 1000;
+  const d = dur(idx);
+  const cur = document.querySelector(`.tl[data-i="${idx}"] .fill`);
+  if (cur) cur.style.width = Math.min(100, (elapsed / d) * 100) + "%";
+  const sc = SCENES[idx];
+  if (sc.kind === "stat") {
+    const p = Math.min(1, Math.max(0, (elapsed - 0.3) / 1.4));
+    const v = Math.round(95 * (1 - Math.pow(1 - p, 3)));
+    const el = stage.querySelector('[data-id="s01"] [data-count]');
+    if (el) el.textContent = (lang === "fr" || lang === "de" ? `${v} %` : `${v}%`);
+  }
+  if (sc.kind === "end") setWord(wordAt(elapsed));
+  let past = 0; for (let k = 0; k < idx; k++) past += dur(k);
+  $("clock").textContent = `${fmt(past + Math.min(elapsed, d))} / ${fmt(total())}`;
+  if (elapsed >= d) {
+    if (idx < SCENES.length - 1) { show(idx + 1, true); t0 = now; elapsed = 0; }
+    else { playing = false; syncPlay(); return; }
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+function wordAt(x) {
+  const on = voiceOn() ? NR().words.map((w) => w - NR().starts[SCENES.length - 1] - 0.12) : [0.9, 2.2, 3.5];
+  let k = 0; on.forEach((t, n) => { if (x >= t) k = n; });
+  return k;
+}
+function setWord(k) {
+  const rot = stage.querySelector('[data-id="s13"] .rot');
+  if (!rot || rot.dataset.k === String(k)) return;
+  rot.dataset.k = String(k);
+  rot.querySelectorAll("[data-w]").forEach((el, n) => { el.classList.toggle("on", n === k); el.classList.remove("swap"); if (n === k) { void el.offsetWidth; el.classList.add("swap"); } });
+}
+function syncPlay() {
+  const ui = L().ui;
+  $("play").innerHTML = playing
+    ? `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>${ui.pause}`
+    : `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5v14l12-7z"/></svg>${ui.play}`;
+  stage.classList.toggle("paused", !playing);
+}
+function startVoice() {
+  if (!voiceOn()) return;
+  const src = `narration/${cut}-${lang}.mp3`;
+  if (!audio.src.endsWith(src)) audio.src = src;
+  try { audio.currentTime = vStart(idx) + elapsed; } catch {}
+  audio.play().catch(() => {});
+}
+function play() { if (playing) return; playing = true; t0 = performance.now() - elapsed * 1000; syncPlay(); startVoice(); raf = requestAnimationFrame(tick); }
+function pause() { playing = false; cancelAnimationFrame(raf); audio.pause(); syncPlay(); }
+function jump(i) { cancelAnimationFrame(raf); audio.pause(); elapsed = 0; show(i, true); if (playing) startVoice(); { let past = 0; for (let k = 0; k < i; k++) past += dur(k); $("clock").textContent = `${fmt(past)} / ${fmt(total())}`; } if (playing) { t0 = performance.now(); raf = requestAnimationFrame(tick); } else { stage.classList.add("paused"); setStatFrame(); } }
+function setStatFrame() { const el = stage.querySelector('[data-id="s01"] [data-count]'); if (el && idx !== 0) return; if (el) el.textContent = lang === "fr" || lang === "de" ? "95 %" : "95%"; }
+
+$("play").addEventListener("click", () => (playing ? pause() : play()));
+$("restart").addEventListener("click", () => { jump(0); if (!playing) play(); });
+document.addEventListener("click", (e) => {
+  const l = e.target.closest("[data-lang]"); if (l) { lang = l.dataset.lang; save("lea_lang", lang); pause(); audio.removeAttribute("src"); elapsed = 0; idx = 0; render(); return; }
+  const c = e.target.closest("[data-cut]"); if (c) { cut = c.dataset.cut; save("lea_cut", cut); SCENES = CUT_SCENES[cut]; aud = cut === "stu" ? "s" : "u"; pause(); audio.removeAttribute("src"); elapsed = 0; idx = 0; render(); return; }
+  const v = e.target.closest("[data-voice]"); if (v) { voice = v.dataset.voice; save("lea_voice2", voice); pause(); audio.removeAttribute("src"); elapsed = 0; render(); return; }
+  const j = e.target.closest("[data-i]"); if (j) jump(Number(j.dataset.i));
+});
+document.addEventListener("keydown", (e) => { if (e.code === "Space" && !/INPUT|TEXTAREA|BUTTON/.test(e.target.tagName)) { e.preventDefault(); playing ? pause() : play(); } });
+
+window.__render = {
+  setup(l, c) { lang = l; cut = c || "uni"; SCENES = CUT_SCENES[cut]; aud = cut === "stu" ? "s" : "u"; voice = "on"; document.body.classList.add("render"); render(); pause(); return { total: total(), starts: SCENES.map((_, i) => SCENES.slice(0, i).reduce((a, __, k) => a + dur(k), 0)) }; },
+  seek(T) {
+    let i = 0, acc = 0; while (i < SCENES.length - 1 && T >= acc + dur(i)) { acc += dur(i); i++; }
+    const x = T - acc, fade = 0.5;
+    stage.querySelectorAll(".scene").forEach((el, k) => {
+      const prev = k === i - 1 && x < fade;
+      if (k === i || prev) {
+        el.style.setProperty("--dur", dur(k) + "s");
+        if (!el.classList.contains("on")) el.classList.add("on");
+        el.style.opacity = k === i ? (i === 0 ? 1 : Math.min(1, x / fade)) : 1 - x / fade;
+        el.style.zIndex = k === i ? 2 : 1;
+        const lt = k === i ? x : dur(k);
+        el.getAnimations({ subtree: true }).forEach((a) => { a.pause(); a.currentTime = lt * 1000; });
+      } else { el.classList.remove("on"); el.style.opacity = ""; el.style.zIndex = ""; }
+    });
+    if (i === 0) { const p = Math.min(1, Math.max(0, (x - 0.3) / 1.4)); const v = Math.round(95 * (1 - Math.pow(1 - p, 3))); stage.querySelector('.scene [data-count]').textContent = lang === "fr" || lang === "de" ? `${v} %` : `${v}%`; }
+    if (SCENES[i].kind === "end") { const k = wordAt(x); const on = voiceOn() ? NR().words[k] - NR().starts[SCENES.length - 1] - 0.12 : [0.9, 2.2, 3.5][k]; const a = k === 0 && x < on ? 1 : Math.min(1, Math.max(0, (x - on) / 0.45)); stage.querySelectorAll('[data-id="s13"] [data-w]').forEach((el, n) => { el.classList.remove("swap"); el.classList.toggle("on", n === k); el.style.opacity = n === k ? a : 0; el.style.transform = n === k ? `translateY(${(1 - a) * 0.35}em)` : ""; }); }
+    return i;
+  },
+};
+render();
+// At rest the first frame is complete: the number reads 95% with its label and source visible.
+setStatFrame();
+stage.querySelectorAll('[data-id="s01"] .stat-label, [data-id="s01"] .stat-src').forEach((el) => { el.style.opacity = 1; el.style.transform = "none"; });
+$("play").addEventListener("click", () => stage.querySelectorAll('[data-id="s01"] .stat-label, [data-id="s01"] .stat-src').forEach((el) => { el.style.opacity = ""; el.style.transform = ""; }), { once: true });
+</script>
