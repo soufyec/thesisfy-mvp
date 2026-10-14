@@ -56,7 +56,6 @@ function PolicyPreview() {
   const rows = [
     [t("landing.how.policy.limit"), `${LIMIT}%`],
     [t("landing.how.policy.modes"), t("landing.how.policy.modesValue")],
-    [t("landing.how.policy.paid"), t("landing.how.policy.paidValue")],
     [t("landing.how.policy.scopes"), t("landing.how.policy.scopesValue")],
   ];
   return (

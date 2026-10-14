@@ -1,6 +1,6 @@
 /* Thesisfic service worker: app-shell caching for installable PWA use. API calls always go to the network. */
-const VERSION = "thesisfic-v3";
-const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon.svg"];
+const VERSION = "thesisfic-v4";
+const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

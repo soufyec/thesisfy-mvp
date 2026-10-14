@@ -14,7 +14,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 2. **El estudiante ve lo mismo que el tutor.** Ninguna métrica, aviso o registro es visible para el tutor y oculto para el estudiante.
 3. **La IA piensa contigo, no escribe por ti.** El asistente puede esquematizar, criticar, corregir texto del estudiante, explicar, citar y, en modo **Research copilot**, conversar libremente sobre cualquier tema de la investigación. Nunca redacta texto de tesis. `src/lib/ai/policy.ts` y `prompts.ts` son la fuente de verdad; no relajar `GENERATION_PATTERNS` ni `BASE_SYSTEM`.
 4. **Consentimiento primero, aplicado en servidor.** Los scopes de monitorización (interacciones con IA, ritmo de tecleo, pegados, actividad de pestañas) se eligen en cliente y se filtran en servidor (`/api/monitor/consent`, `/api/sessions/*`). No registrar texto tecleado, solo recuentos y huellas.
-5. **Cada inserción de IA muestra su coste antes de ocurrir.** Palabras añadidas, nuevo % de IA respecto al límite, quién paga. Sin excepciones.
+5. **Cada inserción de IA muestra su coste antes de ocurrir.** Palabras añadidas y nuevo % de IA respecto al límite. Sin excepciones. No se muestra quién paga el modelo (ni en la landing ni en el producto); la facturación vive solo en `Admin → AI access & billing`.
 6. **La universidad paga la IA.** Los modelos se ofrecen y presupuestan desde `Admin → AI access & billing` (`src/lib/ai/funding.ts`, `providers.ts`); el estudiante puede añadir su propia cuenta, nunca es obligatorio.
 7. **Honestidad comercial.** Ninguna cifra inventada (universidades, precisión, estudiantes). Si no hay dato, no hay número.
 

@@ -12,7 +12,6 @@ const BULLETS = [
   { dot: "bg-accent-500", text: "landing.hero.bullet1" },
   { dot: "bg-prov-ai", text: "landing.hero.bullet2" },
   { dot: "bg-prov-paste", text: "landing.hero.bullet3" },
-  { dot: "bg-brand-500", text: "landing.hero.bullet4" },
 ];
 
 const HI_WORDS = ["landing.hero.titleHi2", "landing.hero.titleHi3", "landing.hero.titleHi4"] as const;
@@ -31,28 +30,42 @@ function RotatingWord() {
   const [prev, setPrev] = useState<number | null>(null);
   const [width, setWidth] = useState<number | undefined>(undefined);
   const [glued, setGlued] = useState(true);
+  // When the longest word does not fit the headline (German "verantwortungsvoll nutzt." on a phone), the cell takes
+  // the full line and its words wrap instead of being clipped.
+  const [wrap, setWrap] = useState(false);
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const unitRef = useRef<HTMLSpanElement>(null);
+  // Every string the measurement depends on: a language switch re-renders without a resize, so it must re-measure.
+  const textKey = [t("landing.hero.titleA"), t("landing.hero.titleB"), ...HI_WORDS.map((k) => t(k))].join("|");
   useLayoutEffect(() => {
     const measure = () => {
-      const w = Math.max(0, ...wordRefs.current.map((el) => el?.offsetWidth || 0));
-      if (w) setWidth(w);
-      // Glue "forma" to the cell only while the pair fits on one line of the headline; on a narrow phone the
-      // cell (still fixed in width, so still stable) wraps on its own instead of overflowing the edge.
       const unit = unitRef.current;
       const h1 = unit?.closest("h1");
-      if (unit && h1) {
+      const words = wordRefs.current.filter(Boolean) as HTMLSpanElement[];
+      // Natural one-line width of each word, whatever the current mode.
+      const saved = words.map((el) => el.style.whiteSpace);
+      words.forEach((el) => { el.style.whiteSpace = "nowrap"; });
+      const natural = Math.max(0, ...words.map((el) => el.scrollWidth));
+      words.forEach((el, i) => { el.style.whiteSpace = saved[i]; });
+      const avail = h1 ? h1.clientWidth : natural;
+      const tooWide = natural > avail - 2;
+      setWrap(tooWide);
+      if (natural) setWidth(tooWide ? avail : natural);
+      // Glue the word before the cell to it only while the pair fits on one line of the headline.
+      if (unit && h1 && !tooWide) {
         unit.style.whiteSpace = "nowrap";
         const fits = unit.getBoundingClientRect().right <= h1.getBoundingClientRect().right + 1;
         unit.style.whiteSpace = "";
         setGlued(fits);
+      } else {
+        setGlued(false);
       }
     };
     measure();
     window.addEventListener("resize", measure);
     document.fonts?.ready.then(measure).catch(() => {});
     return () => window.removeEventListener("resize", measure);
-  }, []);
+  }, [textKey]);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let i = 0;
@@ -82,6 +95,7 @@ function RotatingWord() {
               key={k}
               ref={(el) => { wordRefs.current[i] = el; }}
               className={`hero-rotate-word gradient-text${i === idx ? " is-in" : i === prev ? " is-out" : ""}`}
+              style={wrap ? { whiteSpace: "normal", hyphens: "auto", overflowWrap: "anywhere" } : undefined}
               aria-hidden={i !== idx}
             >
               {t(k)}

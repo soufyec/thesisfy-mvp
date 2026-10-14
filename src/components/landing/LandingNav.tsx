@@ -25,14 +25,16 @@ export default function LandingNav() {
     <nav className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-gray-200" aria-label={t("landing.nav.main")}>
       <div className="mx-auto max-w-[1200px] px-5 sm:px-8 h-16 flex items-center justify-between gap-6">
         <Logo />
-        <div className="hidden md:flex items-center gap-7 text-[14px] font-medium">
-          {LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="text-gray-600 hover:text-gray-900 transition-colors">
+        {/* Section links only where they fit on one line in every language (German is the longest); the trial link
+            is left out here because the button next to it already goes there. */}
+        <div className="hidden md:flex items-center gap-5 xl:gap-6 text-[14px] font-medium">
+          {LINKS.filter((l) => l.href !== "#trial").map((l) => (
+            <a key={l.href} href={l.href} className="hidden xl:inline whitespace-nowrap text-gray-600 hover:text-gray-900 transition-colors">
               {t(l.label)}
             </a>
           ))}
           <LanguageSwitcher variant="inline" />
-          <a href="#trial" className={CTA}>
+          <a href="#trial" className={`${CTA} whitespace-nowrap`}>
             {t("landing.nav.requestPilot")}
           </a>
         </div>
