@@ -1,6 +1,6 @@
 /* Thesisfic service worker: app-shell caching for installable PWA use. API calls always go to the network. */
-const VERSION = "thesisfic-v1";
-const SHELL = ["/", "/login", "/offline.html", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon.svg"];
+const VERSION = "thesisfic-v3";
+const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -16,8 +16,13 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET" || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return; // never cache API responses
 
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
+  // Hashed build assets never change: cache first. Icons and brand files can change with a release: network first.
+  if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(caches.open(VERSION).then(async (cache) => (await cache.match(req)) || fetch(req).then((res) => (res.ok && cache.put(req, res.clone()), res))));
+    return;
+  }
+  if (url.pathname.startsWith("/icons/") || url.pathname.startsWith("/brand/")) {
+    event.respondWith(fetch(req).then((res) => (res.ok && caches.open(VERSION).then((c) => c.put(req, res.clone())), res)).catch(() => caches.match(req).then((r) => r || Response.error())));
     return;
   }
 
