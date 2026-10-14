@@ -257,9 +257,10 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     if (!reviewMode && isOwner && window.innerWidth >= 1280) setSidebar("ai");
   }, [reviewMode, isOwner]);
 
-  // First visit to the editor: the welcome modal, then the tour. Desktop only (the anchors are hidden on phones),
-  // students only, and never in review mode. Replayable from ⋯ → Help → Show the tour again, or with a link that
-  // ends in ?tour=1 (for sharing the tutorial with someone whose account has already seen it).
+  // First visit to the editor: the welcome modal, then the tour. Students only, never in review mode. The automatic
+  // start waits for a desktop width; a link that ends in ?tour=1 (for sharing the tutorial, even with an account that
+  // has already seen it) opens it on any screen, and narrow screens skip the coachmarks (their anchors are hidden).
+  // Replayable from ⋯ → Help → Show the tour again.
   const [onboardingPhase, setOnboardingPhase] = useState<OnboardingPhase>("off");
   const tourLinkRef = useRef<boolean | null>(null);
   useEffect(() => {
@@ -274,7 +275,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     }
     const forced = tourLinkRef.current;
     if (!forced && onboarded) return;
-    if (window.innerWidth < 1024 || (!forced && readOnboardingDone())) return;
+    if (!forced && (window.innerWidth < 1024 || readOnboardingDone())) return;
     const id = setTimeout(() => setOnboardingPhase("intro"), 700);
     return () => clearTimeout(id);
   }, [reviewMode, isOwner, userRole, onboarded]);

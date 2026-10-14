@@ -10,11 +10,13 @@ export const INTRO_PAGES: IntroPage[] = ["video", "provenance", "assistant", "in
 
 /** Four-page welcome dialog. The first page plays the tour video (or its chapter placeholder); the next three
  *  illustrate provenance, the assistant and the ledger with static cards drawn in the product's own tokens. */
-export default function IntroModal({ page, onPage, onSkip, onFinish, vars }: {
+export default function IntroModal({ page, onPage, onSkip, onFinish, tourNext = true, vars }: {
   page: number;
   onPage: (n: number) => void;
   onSkip: () => void;
   onFinish: () => void;
+  /** False on narrow screens, where the dialog ends without the coachmark tour. */
+  tourNext?: boolean;
   vars: { ai: number; limit: number };
 }) {
   const t = useT();
@@ -36,7 +38,7 @@ export default function IntroModal({ page, onPage, onSkip, onFinish, vars }: {
         <div className="px-7 pt-5 pb-4">
           <div className="text-[12px] font-semibold uppercase tracking-wide text-brand-700">{t(`onboarding.intro.${key}.kicker`)}</div>
           <h2 className="text-[22px] font-bold leading-[1.25] text-gray-900 mt-1.5">{t(`onboarding.intro.${key}.title`)}</h2>
-          <p className="text-[14px] leading-[1.6] text-gray-600 mt-2">{t(`onboarding.intro.${key}.body`)}</p>
+          <p className="text-[14px] leading-[1.6] text-gray-600 mt-2">{t(key === "video" && !tourNext ? "onboarding.intro.video.bodyNarrow" : `onboarding.intro.${key}.body`)}</p>
         </div>
         <div className="px-7 pb-5 flex items-center gap-3">
           <button type="button" onClick={onSkip} className="text-[13px] text-gray-500 hover:text-gray-700">{t("onboarding.skip")}</button>
@@ -46,7 +48,7 @@ export default function IntroModal({ page, onPage, onSkip, onFinish, vars }: {
             ))}
           </div>
           {page > 0 && <button type="button" onClick={() => onPage(page - 1)} className="px-3.5 py-2 rounded-lg border border-gray-200 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">{t("onboarding.back")}</button>}
-          <button type="button" onClick={() => (last ? onFinish() : onPage(page + 1))} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[13px] font-semibold">{last ? t("onboarding.startTour") : t("onboarding.next")}</button>
+          <button type="button" onClick={() => (last ? onFinish() : onPage(page + 1))} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[13px] font-semibold">{last ? t(tourNext ? "onboarding.startTour" : "onboarding.done") : t("onboarding.next")}</button>
         </div>
       </div>
     </div>
@@ -88,7 +90,7 @@ function VideoPage() {
           <div className="flex gap-1.5">
             {chapters.map((c, i) => <span key={c.label} className={`h-[3px] rounded-sm ${CHAPTER_COLORS[i % CHAPTER_COLORS.length]}`} style={{ flex: c.w }} />)}
           </div>
-          <div className="flex gap-4 flex-wrap text-[12px] text-gray-300">
+          <div className="hidden sm:flex gap-4 flex-wrap text-[12px] text-gray-300">
             {chapters.map((c) => (
               <span key={c.label} className="flex items-center gap-1.5"><span className="text-gray-400 tabular-nums">{formatClock(c.at)}</span>{t(`onboarding.chapter.${c.label}`)}</span>
             ))}
