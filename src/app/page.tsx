@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Check, Plug } from "lucide-react";
 import LandingNav, { Logo } from "@/components/landing/LandingNav";
+import QualitySeal from "@/components/QualitySeal";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
 import TrialForm from "@/components/landing/TrialForm";
@@ -115,6 +116,18 @@ export default function LandingPage() {
       </section>
 
       {/* 7-day trial */}
+      {/* Academic quality seal: what the seal certifies and why it tells institutions apart today */}
+      <section id="seal" className="py-20 px-5 sm:px-8 scroll-mt-16">
+        <Reveal><div className="mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[240px_minmax(0,1fr)] gap-10 md:gap-14 items-center">
+          <div className="flex justify-center"><QualitySeal size={200} /></div>
+          <div className="min-w-0 max-w-[640px]">
+            <div className="text-[12px] font-bold tracking-[0.14em] uppercase text-brand-600 mb-3">{t("landing.sealSection.kicker")}</div>
+            <h2 className="text-[28px] sm:text-[36px] font-bold leading-[1.15] tracking-[-0.02em] mb-4 [text-wrap:balance]">{t("landing.sealSection.title")}</h2>
+            <p className="text-[16px] sm:text-[17px] leading-[1.65] text-gray-600 m-0 [text-wrap:pretty]">{t("landing.sealSection.body")}</p>
+          </div>
+        </div></Reveal>
+      </section>
+
       <section id="trial" className="px-5 sm:px-8 pt-10 pb-24 scroll-mt-16">
         <Reveal><div className="mx-auto max-w-[1200px] bg-gradient-to-br from-brand-800 via-brand-600 to-brand-400 text-white rounded-3xl p-7 sm:p-10 lg:p-14 grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] gap-10 lg:gap-12 items-center">
           <div>

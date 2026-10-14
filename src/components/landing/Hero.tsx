@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
 import FallingPapers from "./FallingPapers";
 import HeroEditorPreview from "./HeroEditorPreview";
@@ -101,16 +100,10 @@ export default function Hero() {
 
   return (
     <section ref={heroRef} className="relative overflow-hidden px-5 sm:px-8 pt-12 lg:pt-[72px] pb-14">
-      <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_104px] gap-8 items-start lg:min-h-[560px]">
+      <div className="relative mx-auto max-w-[1200px] grid grid-cols-1 gap-8 items-start lg:min-h-[560px]">
         {/* Papers fall through the copy column and dissolve before its bottom; the orbit keeps the right */}
         <FallingPapers />
         <HeroScene heroRef={heroRef} textRef={textRef} />
-
-        {/* Seal: on the right from 768px; on phones it sits inside the orbital scene below the copy */}
-        <div className="relative z-[1] order-2 hidden md:flex flex-col items-center gap-1.5 w-full lg:w-[104px] lg:-mt-4 [&_figcaption]:hidden [&_svg]:w-20 [&_svg]:h-20 lg:[&_svg]:w-[100px] lg:[&_svg]:h-[100px]">
-          <QualitySeal size={100} className="!gap-0" />
-          <span className="text-[11px] font-semibold text-gray-900 text-center leading-[1.3]">{t("glossary.qualitySeal")}</span>
-        </div>
 
         {/* Copy */}
         <div ref={textRef} className="relative z-[1] order-1 min-w-0 max-w-[720px]">
@@ -140,13 +133,9 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Phones: the orbital scene gets its own band under the copy, with the seal inside it */}
+      {/* Phones: the orbital scene gets its own band under the copy */}
       <div className="md:hidden relative mt-6 h-[400px] -mx-5 overflow-hidden" aria-hidden="true">
         <HeroScene heroRef={heroRef} textRef={textRef} compact />
-        <div className="absolute top-2 right-4 z-[1] flex flex-col items-center gap-1 [&_figcaption]:hidden [&_svg]:!w-[72px] [&_svg]:!h-[72px]">
-          <QualitySeal size={72} className="!gap-0" />
-          <span className="text-[10px] font-semibold text-gray-900 text-center leading-[1.3] max-w-[88px]">{t("glossary.qualitySeal")}</span>
-        </div>
       </div>
 
       <HeroEditorPreview />

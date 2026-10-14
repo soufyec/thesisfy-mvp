@@ -13,7 +13,7 @@ export function generateMetadata(): Metadata {
     manifest: "/manifest.webmanifest",
     applicationName: "Thesisfic",
     appleWebApp: { capable: true, statusBarStyle: "default", title: "Thesisfic" },
-    icons: { icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }, { url: "/icons/icon-192.png", sizes: "192x192" }], apple: "/icons/apple-touch-icon.png" },
+    icons: { icon: [{ url: "/icons/icon.svg?v=3", type: "image/svg+xml" }, { url: "/icons/icon-192.png?v=3", sizes: "192x192" }], apple: "/icons/apple-touch-icon.png?v=3" },
     openGraph: { title: t("meta.title"), description: t("meta.ogDescription"), type: "website" },
   };
 }
