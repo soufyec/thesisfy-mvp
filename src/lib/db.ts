@@ -3,6 +3,8 @@
 // JSON-file persistence (DATA_FILE env). Swap for Postgres/Prisma in production:
 // every access goes through the `db` object below, so the surface stays stable.
 
+import type { TestResult } from "./data/inference/types";
+import type { DiagramSpec, DiagramWarning } from "./diagrams/types";
 import { randomBytes, randomUUID } from "crypto";
 import fs from "fs";
 import { ensureTable, readStore, readVersion, storeConfigured, writeStore } from "./store";
@@ -101,11 +103,13 @@ export interface Thesis {
   submittedAt?: string;
   /** Last time the staff recorded a review decision. */
   reviewedAt?: string;
-  /** Figures of the Final submission (`figure[data-chart]`), derived from `content` by `computeFigures`. All are AI-assisted in v1. */
+  /** Figures of the Final submission (`figure[data-chart]`), derived from `content` by `computeFigures`; `ai` counts `data-origin="ai"` (absent = ai). */
   figures?: PaperFigures;
+  /** Equations of the Final submission (`[data-math]`, `[data-math-block]`), derived from `content`; `ai` counts `data-origin="ai"`. */
+  equations?: PaperFigures;
 }
 
-/** Figures of a paper's Final submission. `ai` counts AI-assisted figures (every chart in v1, so `ai === total`). */
+/** Figures (or equations) of a paper's Final submission: all of them and the AI-assisted ones (`data-origin="ai"`). */
 export interface PaperFigures {
   total: number;
   ai: number;
@@ -385,17 +389,22 @@ export interface Dataset {
   sheets: DatasetSheet[];
   /** Cells stored across all sheets (counts toward the per-library cap). */
   cells: number;
+  /** Sheets dropped because the workbook had more than MAX_SHEETS. */
+  sheetsCut?: number;
   createdAt: string;
 }
 
 /** What a dataset looks like without its rows: what source views and the library page send. */
 export interface DatasetSummary {
+  /** Sheets dropped because the workbook had more than MAX_SHEETS. */
+  sheetsCut?: number;
   sheets: { name: string; rowCount: number; truncated: boolean; headerRow: number; columns: { name: string; label: string; type: DatasetColumn["type"]; role: DatasetColumn["role"] }[] }[];
 }
 
 /** Summary of a dataset for source views: sheet names, sizes and columns, never rows or statistics. */
 export function datasetSummary(d: Dataset): DatasetSummary {
   return {
+    ...(d.sheetsCut ? { sheetsCut: d.sheetsCut } : {}),
     sheets: d.sheets.map((s) => ({
       name: s.name,
       rowCount: s.rowCount,
@@ -415,7 +424,12 @@ function datasetCellCount(sheets: DatasetSheet[]): number {
 
 // ---------- Artifacts computed by Thesisfic from primary data (Research copilot) ----------
 
-export type AnalysisOp = "describe" | "frequencies" | "crosstab" | "groupSummary" | "correlation" | "distribution" | "trend" | "scatter";
+export type AnalysisOp =
+  | "describe" | "frequencies" | "crosstab" | "groupSummary" | "correlation" | "distribution" | "trend" | "scatter"
+  // Inferential tests (docs/papers.md §9, D24) and a timeline from task/start/end columns (D26).
+  | "ttest" | "pairedTtest" | "anova" | "chisquare" | "correlationTest" | "mannWhitney" | "kruskal" | "regression" | "gantt"
+  // Not computable from data: the spec of a diagram or equation artifact. validateSpec never accepts them.
+  | "diagram" | "equation";
 
 /** What the model (or the demo planner) asks Thesisfic to compute. Validated against the dataset before running. */
 export interface AnalysisSpec {
@@ -431,9 +445,20 @@ export interface AnalysisSpec {
   x?: string;
   y?: string;
   bins?: number;
-  chart?: "bar" | "groupedBar" | "line" | "scatter" | "histogram" | "none";
+  chart?: "bar" | "groupedBar" | "line" | "scatter" | "histogram" | "pie" | "box" | "none";
   /** Frequencies as shares (%), used for "pie" requests. */
   asShare?: boolean;
+  /** correlationTest: Pearson (default) or Spearman. */
+  method?: "pearson" | "spearman";
+  /** regression: predictor columns (≤ 6; numeric or categorical with ≤ 6 levels). */
+  predictors?: string[];
+  /** ttest / mannWhitney: the two levels of `by` to compare (default: the two largest groups). */
+  levels?: [string, string];
+  /** gantt: task label, start and end date columns, optional group column. */
+  label?: string;
+  start?: string;
+  end?: string;
+  group?: string;
 }
 
 /** A computed table: raw numbers plus presentation decimals per column. */
@@ -441,24 +466,32 @@ export interface ArtifactTable {
   columns: string[];
   rows: (string | number | null)[][];
   precision: number[];
+  /** Per-cell decimals when a column mixes scales (e.g. describe: n, mean, sd per variable); null = use `precision`. */
+  cellPrecision?: (number | null)[][];
   notes?: string[];
 }
 
 export interface ChartData {
-  type: "bar" | "groupedBar" | "line" | "scatter" | "histogram";
+  type: "bar" | "groupedBar" | "line" | "scatter" | "histogram" | "pie" | "box";
   xLabel: string;
   yLabel: string;
   categories?: string[];
   series: { name: string; values?: number[]; points?: [number, number][]; other?: boolean }[];
   fit?: { slope: number; intercept: number; r: number; n: number };
   percent?: boolean;
+  /** box: Tukey five-number summaries per group (≤ 12). */
+  boxes?: { label: string; n: number; min: number; q1: number; median: number; q3: number; max: number; whiskerLow: number; whiskerHigh: number; outliers: number[] }[];
 }
 
-/** A table or chart computed by Thesisfic from the student's data, attached to a copilot answer. */
+/**
+ * A table, chart, test result, diagram or equation attached to a copilot answer. Tables, charts and tests are computed by
+ * Thesisfic from the student's data. Diagrams and equations are proposed by the model, validated by the server, and have
+ * no data source: their `sourceId`, `fileName`, `sheet` and `datasetSha256` are "" and `n` is 0 (spec op "diagram"/"equation").
+ */
 export interface Artifact {
   id: string;
   interactionId: string;
-  kind: "table" | "chart";
+  kind: "table" | "chart" | "test" | "diagram" | "equation";
   /** Deterministic, in the paper's writing language. */
   title: string;
   spec: AnalysisSpec;
@@ -472,6 +505,14 @@ export interface Artifact {
   table: ArtifactTable;
   /** Scatter charts keep at most 500 points (deterministic sampling). */
   chart?: ChartData;
+  /** kind "test": the statistic line and its parts; `table` holds the results table. */
+  test?: TestResult;
+  /** kind "diagram": the sanitized spec (rendered with src/lib/diagrams). */
+  diagram?: DiagramSpec;
+  /** kind "equation": validated LaTeX (src/lib/math); regression artifacts also offer their fitted equation. */
+  equation?: { latex: string; display: boolean };
+  /** Non-blocking notices, e.g. PRISMA arithmetic (codes from src/lib/diagrams). */
+  warnings?: DiagramWarning[];
   computedAt: string;
 }
 

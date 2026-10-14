@@ -15,6 +15,8 @@ export * from "@/lib/papers/views";
  * build time, so nothing from the data layer reaches the client bundle): the mirror cannot drift.
  */
 export type { AnalysisOp, AnalysisSpec, Artifact, ArtifactRef, ArtifactTable, ChartData, ConversationMessage, DatasetCell, DatasetColumn, DatasetSheet, DatasetSummary, PaperFigures, SourceFile, SourceKind, SourceRole } from "@/lib/db";
+export type { TestResult } from "@/lib/data/inference/types";
+export type { DiagramSpec, DiagramWarning } from "@/lib/diagrams/types";
 
 export interface ThesisDoc {
   id: string;
@@ -58,6 +60,7 @@ export interface ThesisDoc {
   reviewedAt?: string;
   /** Figures of the Final submission (charts inserted from the copilot); all AI-assisted in v1. */
   figures?: PaperFigures;
+  equations?: PaperFigures;
   /** Response-only (`GET /api/theses/[id]`): the assignment the paper was started from, the same view for student and staff. */
   assignment?: AssignmentView;
   /** Response-only: who reviews the paper ("advisor" for thesis kinds, "teacher" otherwise, "none" without professorId). */
@@ -159,7 +162,7 @@ export interface LibraryResponse {
 /** Error body of the library and thesis-sources routes; `code` tells the UI which consequence to show. */
 export interface LibraryErrorBody {
   error: string;
-  code?: "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only" | "legacy_format" | "too_large" | "encrypted" | "empty" | "no_text";
+  code?: "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only" | "legacy_format" | "too_large" | "encrypted" | "empty" | "no_text" | "unsupported_type" | "unreadable";
   /** With `code: "cited"`: in-text citations per thesis id that the change would leave without an entry. */
   citedIn?: Record<string, number>;
 }
@@ -296,7 +299,7 @@ export function referenceHtml(r: Reference, style: ThesisDoc["citationStyle"]): 
 
 // ---------- Integrity ledger (mirrors src/lib/integrity.ts, which is server-only) ----------
 export type IntegrityFix = "attribute_paste" | "reduce_ai" | "open_notice" | "none";
-export type IntegrityLineCode = "ai_share" | "ai_figures" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
+export type IntegrityLineCode = "ai_share" | "ai_figures" | "ai_equations" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
 export interface IntegrityLine {
   /**
    * Translated on the client via `editor.ledger.line.<code>` (`ai_figures` with `vars.n`, and `ai_figures_one` when
