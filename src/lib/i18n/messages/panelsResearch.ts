@@ -240,8 +240,8 @@ const en = {
   "panelsResearch.evidence.use": "Use in {feature}",
   "panelsResearch.sources.answer.demoExtract": "The passages below are the closest matches in your library for this question. Demo mode: no model was called, so this is an extract, not a synthesis.",
   "panelsResearch.sources.answer.demoConnect": "Connect a model in AI connections, or ask your university to provide one, for a grounded answer.",
-  "panelsResearch.sources.answer.noMatch": "No passage in your library matches this question. Try other terms, or add the source you have in mind.",
-  "panelsResearch.sources.answer.noIndex": "Your library has no indexed text yet. Add a DOI, a URL, a PDF or pasted text, then ask again.",
+  "panelsResearch.sources.answer.noMatch": "No passage in the sources of this thesis matches this question. Try other terms, or add the source you have in mind.",
+  "panelsResearch.sources.answer.noIndex": "No source with indexed text is selected for this thesis yet. Add one, or choose one from your library, then ask again.",
 };
 
 const es: Record<keyof typeof en, string> = {
@@ -479,8 +479,8 @@ const es: Record<keyof typeof en, string> = {
   "panelsResearch.evidence.use": "Usar en {feature}",
   "panelsResearch.sources.answer.demoExtract": "Los pasajes siguientes son los que mejor coinciden con esta pregunta en tu biblioteca. Modo demo: no se ha llamado a ningún modelo, así que es un extracto, no una síntesis.",
   "panelsResearch.sources.answer.demoConnect": "Conecta un modelo en Conexiones de IA, o pide a tu universidad que ofrezca uno, para obtener una respuesta fundamentada.",
-  "panelsResearch.sources.answer.noMatch": "Ningún pasaje de tu biblioteca coincide con esta pregunta. Prueba con otros términos o añade la fuente que tienes en mente.",
-  "panelsResearch.sources.answer.noIndex": "Tu biblioteca aún no tiene texto indexado. Añade un DOI, una URL, un PDF o texto pegado y vuelve a preguntar.",
+  "panelsResearch.sources.answer.noMatch": "Ningún pasaje de las fuentes de esta tesis coincide con esta pregunta. Prueba con otros términos o añade la fuente que tienes en mente.",
+  "panelsResearch.sources.answer.noIndex": "Esta tesis aún no tiene ninguna fuente con texto indexado. Añade una o elige una de tu biblioteca y vuelve a preguntar.",
 };
 
 const fr: Record<keyof typeof en, string> = {
@@ -718,8 +718,8 @@ const fr: Record<keyof typeof en, string> = {
   "panelsResearch.evidence.use": "Utiliser dans {feature}",
   "panelsResearch.sources.answer.demoExtract": "Les passages ci-dessous sont ceux de votre bibliothèque qui correspondent le mieux à cette question. Mode démo : aucun modèle n'a été appelé, il s'agit donc d'un extrait, pas d'une synthèse.",
   "panelsResearch.sources.answer.demoConnect": "Connectez un modèle dans Connexions IA, ou demandez à votre université d'en fournir un, pour une réponse fondée sur vos sources.",
-  "panelsResearch.sources.answer.noMatch": "Aucun passage de votre bibliothèque ne correspond à cette question. Essayez d'autres termes ou ajoutez la source que vous avez en tête.",
-  "panelsResearch.sources.answer.noIndex": "Votre bibliothèque ne contient encore aucun texte indexé. Ajoutez un DOI, une URL, un PDF ou du texte collé, puis posez à nouveau la question.",
+  "panelsResearch.sources.answer.noMatch": "Aucun passage des sources de cette thèse ne correspond à cette question. Essayez d'autres termes ou ajoutez la source que vous avez en tête.",
+  "panelsResearch.sources.answer.noIndex": "Aucune source avec du texte indexé n'est encore sélectionnée pour cette thèse. Ajoutez-en une ou choisissez-en une dans votre bibliothèque, puis posez à nouveau la question.",
 };
 
 const de: Record<keyof typeof en, string> = {
@@ -957,8 +957,8 @@ const de: Record<keyof typeof en, string> = {
   "panelsResearch.evidence.use": "In {feature} verwenden",
   "panelsResearch.sources.answer.demoExtract": "Die folgenden Passagen sind die besten Treffer in Ihrer Bibliothek zu dieser Frage. Demo-Modus: Es wurde kein Modell aufgerufen, dies ist also ein Auszug, keine Synthese.",
   "panelsResearch.sources.answer.demoConnect": "Verbinden Sie ein Modell unter KI-Verbindungen oder bitten Sie Ihre Hochschule, eines bereitzustellen, um eine quellenbasierte Antwort zu erhalten.",
-  "panelsResearch.sources.answer.noMatch": "Keine Passage in Ihrer Bibliothek passt zu dieser Frage. Versuchen Sie andere Begriffe oder fügen Sie die Quelle hinzu, die Sie im Sinn haben.",
-  "panelsResearch.sources.answer.noIndex": "Ihre Bibliothek enthält noch keinen indexierten Text. Fügen Sie eine DOI, eine URL, ein PDF oder eingefügten Text hinzu und fragen Sie erneut.",
+  "panelsResearch.sources.answer.noMatch": "Keine Passage in den Quellen dieser Abschlussarbeit passt zu dieser Frage. Versuchen Sie andere Begriffe oder fügen Sie die Quelle hinzu, die Sie im Sinn haben.",
+  "panelsResearch.sources.answer.noIndex": "Für diese Abschlussarbeit ist noch keine Quelle mit indexiertem Text ausgewählt. Fügen Sie eine hinzu oder wählen Sie eine aus Ihrer Bibliothek aus und fragen Sie dann erneut.",
 };
 
 export const panelsResearch: Messages<typeof en> = { en, es, fr, de };

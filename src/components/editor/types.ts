@@ -62,6 +62,70 @@ export interface Reference {
   verification?: { status: "verified" | "unverified" | "retracted" | "mismatch"; checkedAt: string; source: "openalex" | "crossref" | "s2" | "manual"; mismatches?: string[] };
   supportSnippet?: { text: string; workId?: string; section?: string };
   interactionId?: string;
+  /** Library source (full text) this reference was created from. */
+  sourceId?: string;
+}
+
+// ---------- Personal library (GET /api/library, /api/library/*) ----------
+
+/** A source of the student's library as the owner sees it (`/api/library`): no extracted text, plus its links. */
+export interface LibrarySourceView {
+  id: string;
+  /** LEGACY: first linked thesis, or "" when the source is in the library only. Use `thesisIds`. */
+  thesisId: string;
+  /** Theses of the student that use this source. */
+  thesisIds: string[];
+  kind: "doi" | "url" | "pdf" | "text";
+  title: string;
+  authors?: string;
+  year?: string;
+  venue?: string;
+  doi?: string;
+  url?: string;
+  abstract?: string;
+  pages?: number;
+  wordCount: number;
+  parseStatus?: "pending" | "parsed" | "no_text" | "failed";
+  license?: string;
+  openalexId?: string;
+  addedAt: string;
+  lastUsedAt?: string;
+  coverage: "full_text" | "abstract" | "none";
+  chunkCount: number;
+}
+
+/** A reference of the student's library (`/api/library`), with the theses that use it and where it is cited. */
+export interface LibraryReferenceView extends Reference {
+  /** Theses whose reference list holds this reference (derived from `thesis.references`). */
+  thesisIds: string[];
+  /** In-text citations per thesis id (`data-citation` + `data-cite-ref`, all tabs); only theses with at least one. */
+  citedIn: Record<string, number>;
+  addedAt: string;
+  updatedAt: string;
+}
+
+/** A thesis of the student, as the library page lists it. `locked` = approved or submitted: links cannot change. */
+export interface LibraryThesisOption {
+  id: string;
+  title: string;
+  status: string;
+  citationStyle: ThesisDoc["citationStyle"];
+  locked: boolean;
+}
+
+/** GET /api/library. Staff get three empty arrays. */
+export interface LibraryResponse {
+  sources: LibrarySourceView[];
+  references: LibraryReferenceView[];
+  theses: LibraryThesisOption[];
+}
+
+/** Error body of the library and thesis-sources routes; `code` tells the UI which consequence to show. */
+export interface LibraryErrorBody {
+  error: string;
+  code?: "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only";
+  /** With `code: "cited"`: in-text citations per thesis id that the change would leave without an entry. */
+  citedIn?: Record<string, number>;
 }
 
 export interface CommentItem {

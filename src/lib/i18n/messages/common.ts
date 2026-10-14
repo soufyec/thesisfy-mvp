@@ -104,6 +104,8 @@ const en = {
   "glossary.notices": "Notices",
   "glossary.providedByUniversity": "Provided by your university",
   "glossary.tagline": "Thinks with you. Never writes your thesis.",
+  "glossary.sourcesReferences": "Sources & references",
+  "glossary.library": "Your library",
 };
 
 export const common: Messages<typeof en> = {
@@ -206,6 +208,8 @@ export const common: Messages<typeof en> = {
     "glossary.notices": "Avisos",
     "glossary.providedByUniversity": "Ofrecido por tu universidad",
     "glossary.tagline": "Piensa contigo. Nunca escribe tu tesis.",
+    "glossary.sourcesReferences": "Fuentes y referencias",
+    "glossary.library": "Tu biblioteca",
   },
   fr: {
     "common.save": "Enregistrer",
@@ -305,6 +309,8 @@ export const common: Messages<typeof en> = {
     "glossary.notices": "Avis",
     "glossary.providedByUniversity": "Fourni par votre université",
     "glossary.tagline": "Réfléchit avec vous. N'écrit jamais votre thèse.",
+    "glossary.sourcesReferences": "Sources et références",
+    "glossary.library": "Votre bibliothèque",
   },
   de: {
     "common.save": "Speichern",
@@ -404,5 +410,7 @@ export const common: Messages<typeof en> = {
     "glossary.notices": "Hinweise",
     "glossary.providedByUniversity": "Von Ihrer Hochschule bereitgestellt",
     "glossary.tagline": "Denkt mit Ihnen. Schreibt nie Ihre Abschlussarbeit.",
+    "glossary.sourcesReferences": "Quellen und Literatur",
+    "glossary.library": "Ihre Bibliothek",
   },
 };

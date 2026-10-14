@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
       tabs: undefined,
       tabCount: (t.tabs || []).length,
       sessionCount: t.sessions.length,
+      // Items of the student's library linked to this thesis (the library page and the theses cards show them).
+      sourceCount: db.sources.list(t.id).length,
+      referenceCount: Array.isArray(t.references) ? t.references.length : 0,
       openFlags: flags.filter((f) => !f.resolved).length,
       studentName: student?.name || "Unknown",
       professorName: professor?.name || "Unassigned",

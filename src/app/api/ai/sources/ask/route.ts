@@ -41,7 +41,9 @@ Every citation's quote must be copied character for character from the passage i
 
 /**
  * POST { thesisId, question, sourceIds?, sessionId?, provider? }
- * → { answer, citations, meta }: an answer grounded only in the library's top passages, with string-verified quotes.
+ * → { answer, citations, meta }: an answer grounded only in the top passages of the sources linked to the thesis, with
+ * string-verified quotes. Nothing to answer from → `meta.code` "no_match" or "no_index"; with "no_index", the owner also
+ * gets the optional `meta.librarySources` (indexed sources of their library this thesis does not use yet).
  */
 export async function POST(request: NextRequest) {
   const r = await requireUser(request);
@@ -103,8 +105,18 @@ export async function POST(request: NextRequest) {
   if (!candidates.length) {
     const indexed = db.sourceChunks.listByThesis(thesis.id).length;
     // `meta.code` lets the panel render these fixed messages in the UI language; `answer` stays in English for other clients.
-    const answer = indexed ? "No passage in your library matches this question. Try other terms, or add the source you have in mind." : "Your library has no indexed text yet. Add a DOI, a URL, a PDF or pasted text, then ask again.";
-    return json({ answer, citations: [], meta: { ...meta, passages: 0, reranked: false, empty: true, code: indexed ? "no_match" : "no_index" } });
+    // Retrieval only reads the sources linked to this thesis, so the messages speak of this thesis, not of the library.
+    const answer = indexed
+      ? "No passage in the sources of this thesis matches this question. Try other terms, or add the source you have in mind."
+      : "No source with indexed text is selected for this thesis yet. Add one, or choose one from your library, then ask again.";
+    const extra: Record<string, unknown> = {};
+    if (!indexed && user.id === thesis.studentId) {
+      // Owner only (staff never see the student's library): indexed sources of the library this thesis does not use yet,
+      // so the panel can offer to choose one instead of adding it again.
+      const counts = db.sourceChunks.countBySource();
+      extra.librarySources = db.sources.listByOwner(user.id).filter((s) => s.thesisIds.indexOf(thesis.id) === -1 && (counts.get(s.id) || 0) > 0).length;
+    }
+    return json({ answer, citations: [], meta: { ...meta, ...extra, passages: 0, reranked: false, empty: true, code: indexed ? "no_match" : "no_index" } });
   }
 
   // Demo mode: extractive answer from the top three passages; quotes are their opening sentences, verified by construction.

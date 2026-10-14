@@ -110,6 +110,20 @@ export interface Reference {
   /** Passage that supports the claim this reference was suggested for. */
   supportSnippet?: { text: string; workId?: string; section?: string };
   interactionId?: string;
+  /** Library source (full text) this reference was created from. */
+  sourceId?: string;
+}
+
+/**
+ * A reference in a student's personal library. Identity is (ownerId, id): the id is the one embedded in thesis HTML
+ * (`data-citation` / `data-cite-ref`), so a copy linked to another thesis keeps the same id and its citations resolve.
+ * Links are derived, never stored: the item is linked to thesis T iff T.references holds the same id and
+ * T.studentId === ownerId.
+ */
+export interface LibraryReference extends Reference {
+  ownerId: string;
+  addedAt: string;
+  updatedAt: string;
 }
 
 export interface ThesisVersion {
@@ -209,7 +223,8 @@ export interface Declaration {
 export interface SourceChunk {
   id: string;
   sourceId: string;
-  thesisId: string;
+  /** LEGACY: chunks belong to their source; a thesis reaches them through the source's `thesisIds`. Not read. */
+  thesisId?: string;
   index: number;
   page?: number;
   section?: string;
@@ -243,9 +258,18 @@ export interface LanguagePrefs {
 
 export type SourceKind = "doi" | "url" | "pdf" | "text";
 
-/** A source in a thesis's library: metadata plus extracted text the assistant can quote from. */
+/**
+ * A source in a student's personal library: metadata plus extracted text the assistant can quote from.
+ * The student picks which of their theses use it (`thesisIds`); grounding, summaries and paste recognition only see
+ * the sources linked to the thesis.
+ */
 export interface ThesisSource {
   id: string;
+  /** Student who owns the source (the owner of the thesis it was added from). */
+  ownerId: string;
+  /** Theses this source is selected for. May be empty: the source then lives in the library only. */
+  thesisIds: string[];
+  /** LEGACY, kept for API compatibility: `thesisIds[0] ?? ""`, recomputed on every change. */
   thesisId: string;
   kind: SourceKind;
   title: string;
@@ -622,6 +646,7 @@ interface Store {
   leads: Lead[];
   sources: ThesisSource[];
   sourceChunks: SourceChunk[];
+  libraryReferences: LibraryReference[];
   reviewRuns: ReviewRun[];
   snapshots: Snapshot[];
   declarations: Declaration[];
@@ -937,6 +962,9 @@ function seed(): Store {
     leads: [],
     sources: [],
     sourceChunks: [],
+    // Built by migrateLibrary() from the theses' references: never seed items here (fillMissingCollections would
+    // inject them into existing stores and duplicate the migrated ones).
+    libraryReferences: [],
     reviewRuns: [],
     snapshots: [],
     declarations: [],
@@ -1069,8 +1097,188 @@ function fillMissingCollections(store: Store): Store {
   return store;
 }
 
+/** Theses a source is linked to, tolerating the pre-library shape (a single `thesisId`). */
+function linkedThesisIds(s: Pick<ThesisSource, "thesisIds" | "thesisId">): string[] {
+  if (Array.isArray(s.thesisIds)) return s.thesisIds;
+  return s.thesisId ? [s.thesisId] : [];
+}
+
+/** Sets a source's links: deduplicated, only existing theses of its owner; recomputes the legacy `thesisId`. */
+function setSourceLinks(s: ThesisSource, ids: string[]) {
+  const theses = load().theses;
+  const next: string[] = [];
+  for (const id of ids) {
+    if (typeof id !== "string" || next.indexOf(id) !== -1) continue;
+    if (theses.some((t) => t.id === id && t.studentId === s.ownerId)) next.push(id);
+  }
+  s.thesisIds = next;
+  s.thesisId = next[0] ?? "";
+}
+
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+/** Deep copy of plain JSON data, so a thesis copy and its library item never share nested objects. */
+function cloneJson<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v)) as T;
+}
+
+/** Fields of a library reference that are not part of the bibliographic entry kept inside a thesis. */
+const LIBRARY_ONLY_KEYS = ["ownerId", "addedAt", "updatedAt"] as const;
+
+/** The copy of a library reference that goes into `thesis.references`. */
+export function thesisCopyOf(item: LibraryReference): Reference {
+  const copy = cloneJson(item) as Partial<LibraryReference>;
+  for (const k of LIBRARY_ONLY_KEYS) delete copy[k];
+  return copy as Reference;
+}
+
+/** Comparable form of a reference's bibliographic content (key order independent). */
+function refFingerprint(r: Reference | LibraryReference): string {
+  const o = r as unknown as Record<string, unknown>;
+  const keys = Object.keys(o).filter((k) => (LIBRARY_ONLY_KEYS as readonly string[]).indexOf(k) === -1 && o[k] !== undefined).sort();
+  return JSON.stringify(keys.map((k) => [k, o[k]]));
+}
+
+/** Fingerprint of each reference of a thesis, by id: what `syncLibraryFromThesis` compares a write against. */
+function referenceFingerprints(refs: Reference[] | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const r of Array.isArray(refs) ? refs : []) if (r && typeof r.id === "string" && r.id) out.set(r.id, refFingerprint(r));
+  return out;
+}
+
+/**
+ * Carries a write of `thesis.references` into the owner's library. A reference missing from the library is inserted.
+ * An existing library item is overwritten only by a copy this write changed, i.e. one whose content differs from the
+ * copy the thesis held before (`previous`, by id): an edit in the editor, or a reference check. Copies the write did
+ * not touch are left alone, because a thesis can hold an older copy of a shared reference (editor edits never reach
+ * the owner's other theses), and re-sending it with an unrelated change must not undo later edits or verification.
+ * A copy that is new to the thesis is a link to the library item, which stays as it is. `previous` null (a new
+ * thesis, `db.libraryReferences.syncFromThesis`) only inserts the missing ones.
+ */
+function syncLibraryFromThesis(t: Thesis, previous: Map<string, string> | null, stamp = now()): boolean {
+  if (!Array.isArray(t.references) || !t.studentId) return false;
+  const st = load();
+  let changed = false;
+  for (const ref of t.references) {
+    if (!ref || typeof ref.id !== "string" || !ref.id) continue;
+    if (st.libraryReferences.some((r) => r.ownerId === t.studentId && r.id === ref.id)) {
+      const before = previous?.get(ref.id);
+      if (before === undefined || before === refFingerprint(ref)) continue;
+    }
+    if (upsertLibraryReference(st, t.studentId, ref, stamp)) changed = true;
+  }
+  return changed;
+}
+
+function upsertLibraryReference(st: Store, ownerId: string, ref: Reference, stamp: string): LibraryReference | null {
+  const existing = st.libraryReferences.find((r) => r.ownerId === ownerId && r.id === ref.id);
+  if (!existing) {
+    const item: LibraryReference = { ...cloneJson(ref), ownerId, addedAt: stamp, updatedAt: stamp };
+    st.libraryReferences.push(item);
+    return item;
+  }
+  if (refFingerprint(existing) === refFingerprint(ref)) return null;
+  const next: LibraryReference = { ...cloneJson(ref), id: existing.id, ownerId, addedAt: existing.addedAt, updatedAt: stamp };
+  const idx = st.libraryReferences.indexOf(existing);
+  st.libraryReferences[idx] = next;
+  return next;
+}
+
+/**
+ * Personal library migration (sources and references). Idempotent and deterministic (no uid(), no clock), because
+ * every server instance migrates its own copy; returns true only when it changed something, so the caller persists.
+ * Every step is a permanent check, not a one-off: during a rolling deploy an older instance can still write the
+ * pre-library shape (sources with a single `thesisId`, references only inside theses), and the next hydrate fixes it.
+ *  1. Sources without a `thesisIds` array take the owner of their `thesisId` and `thesisIds = [thesisId]`; a source
+ *     whose thesis no longer exists (left behind by old deletes) is dropped with its chunks.
+ *  2. Every source keeps only links to existing theses of its owner; the legacy `thesisId` is recomputed. Chunks of
+ *     sources that no longer exist are dropped.
+ *  3. Every reference inside a thesis exists in `libraryReferences` for (studentId, id); missing ones are inserted with
+ *     the thesis's dates. Existing library items are never overwritten here. A thesis without a `references` array
+ *     gets an empty one.
+ */
+function migrateLibrary(store: Store): boolean {
+  let changed = false;
+  const ownerOf = new Map<string, string>();
+  for (const t of store.theses || []) ownerOf.set(t.id, t.studentId);
+
+  // 1 + 2: sources
+  const keptSources: ThesisSource[] = [];
+  for (const raw of store.sources || []) {
+    const s = raw as ThesisSource;
+    if (!s || typeof s.id !== "string") {
+      changed = true;
+      continue;
+    }
+    let ownerId = typeof s.ownerId === "string" && s.ownerId ? s.ownerId : undefined;
+    if (!ownerId) ownerId = linkedThesisIds(s).map((id) => ownerOf.get(id)).find((x): x is string => !!x);
+    if (!ownerId) {
+      // orphan: its thesis was deleted before sources had an owner
+      changed = true;
+      continue;
+    }
+    const wanted: string[] = [];
+    for (const id of linkedThesisIds(s)) if (typeof id === "string" && ownerOf.get(id) === ownerId && wanted.indexOf(id) === -1) wanted.push(id);
+    const legacy = wanted[0] ?? "";
+    if (s.ownerId !== ownerId || !Array.isArray(s.thesisIds) || !sameIds(s.thesisIds, wanted) || s.thesisId !== legacy) {
+      s.ownerId = ownerId;
+      s.thesisIds = wanted;
+      s.thesisId = legacy;
+      changed = true;
+    }
+    keptSources.push(s);
+  }
+  if (keptSources.length !== (store.sources || []).length) store.sources = keptSources;
+  const sourceIds = new Set(keptSources.map((s) => s.id));
+  const chunks = store.sourceChunks || [];
+  const keptChunks = chunks.filter((c) => c && sourceIds.has(c.sourceId));
+  if (keptChunks.length !== chunks.length) {
+    store.sourceChunks = keptChunks;
+    changed = true;
+  }
+
+  // 3: references
+  if (!Array.isArray(store.libraryReferences)) {
+    store.libraryReferences = [];
+    changed = true;
+  }
+  const known = new Set(store.libraryReferences.map((r) => `${r.ownerId}\u0000${r.id}`));
+  for (const t of store.theses || []) {
+    if (!Array.isArray(t.references)) {
+      // readers and the editor expect an array
+      t.references = [];
+      changed = true;
+      continue;
+    }
+    for (const ref of t.references) {
+      if (!ref || typeof ref.id !== "string" || !ref.id) continue;
+      const key = `${t.studentId}\u0000${ref.id}`;
+      if (known.has(key)) continue;
+      const at = t.createdAt || t.updatedAt;
+      store.libraryReferences.push({ ...cloneJson(ref), ownerId: t.studentId, addedAt: at, updatedAt: at });
+      known.add(key);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/**
+ * Whether this evaluation of the module has brought the store to the current shape. It resets when the module is
+ * evaluated again (a `next dev` hot reload) while the store survives on globalThis, possibly in an older shape.
+ */
+let hydratedHere = false;
+
 function load(): Store {
-  if (g.__thesisficStore) return g.__thesisficStore;
+  const kept = g.__thesisficStore;
+  if (kept) {
+    if (!hydratedHere) {
+      hydratedHere = true; // set first: persist() reads the store back through load()
+      fillMissingCollections(kept);
+      if (migrateLibrary(kept) && !storeConfigured) persist();
+    }
+    return kept;
+  }
+  hydratedHere = true;
   let store: Store | null = null;
   if (DATA_FILE) {
     try {
@@ -1079,7 +1287,12 @@ function load(): Store {
       console.warn("Could not read DATA_FILE, seeding:", e);
     }
   }
-  g.__thesisficStore = fillMissingCollections(store || seed());
+  const st = fillMissingCollections(store || seed());
+  const migrated = migrateLibrary(st);
+  g.__thesisficStore = st; // assigned before persisting: persist() reads the store back through load()
+  // With Postgres the authoritative document is the row, which ready() migrates and writes: writing this local
+  // copy (seed or DATA_FILE) here could overwrite it before it has been read.
+  if (migrated && !storeConfigured) persist();
   return g.__thesisficStore;
 }
 
@@ -1106,8 +1319,12 @@ async function ready(): Promise<void> {
       } else if (!g.__thesisficStore || version !== g.__thesisficVersion) {
         const row = await readStore<Store>();
         if (row) {
-          g.__thesisficStore = fillMissingCollections(row.data);
+          const st = fillMissingCollections(row.data);
+          const migrated = migrateLibrary(st);
+          g.__thesisficStore = st;
           g.__thesisficVersion = row.version;
+          // The migrated document goes back to the row (flushToDb reads it through load(), already assigned).
+          if (migrated) persist();
         }
       }
     } catch (e) {
@@ -1277,7 +1494,7 @@ export const db = {
     },
     getAll: () => load().theses,
     /** `headings` and `notesTitle` let the caller localise the starter document and the notes tab (defaults are English). */
-    create: (data: { title: string; description: string; studentId: string; professorId?: string; deadline?: string; targetWords?: number; citationStyle?: Thesis["citationStyle"]; content?: string; headings?: { abstract: string; introduction: string }; notesTitle?: string }): Thesis => {
+    create: (data: { title: string; description: string; studentId: string; professorId?: string; deadline?: string; targetWords?: number; citationStyle?: Thesis["citationStyle"]; content?: string; headings?: { abstract: string; introduction: string }; notesTitle?: string; references?: Reference[] }): Thesis => {
       const h = data.headings || { abstract: "Abstract", introduction: "1. Introduction" };
       const notesTitle = data.notesTitle || "Notes";
       const content = data.content || `<h1>${escapeHtml(data.title)}</h1><h2>${escapeHtml(h.abstract)}</h2><p></p><h2>${escapeHtml(h.introduction)}</h2><p></p>`;
@@ -1299,26 +1516,36 @@ export const db = {
         createdAt: now(),
         updatedAt: now(),
         sessions: [],
-        references: [],
+        references: data.references ? cloneJson(data.references) : [],
         tabs: [{ id: uid("tab"), title: notesTitle, content: `<h2>${escapeHtml(notesTitle)}</h2><p></p>`, updatedAt: now() }],
         pageSetup: { orientation: "portrait", size: "A4", margin: 2.54, lineSpacing: 1.5 },
       };
       load().theses.push(thesis);
+      syncLibraryFromThesis(thesis, null);
       persist();
       return thesis;
     },
+    /**
+     * Patches a thesis. When `references` is patched, the owner's library gets the references it lacks and the
+     * edits this write made to existing copies (see `syncLibraryFromThesis`); references removed from the thesis stay
+     * there. It does not propagate to the owner's other theses. Pass a new array (and new objects for changed
+     * references): a copy edited in place is indistinguishable from an unchanged one.
+     */
     update: (id: string, patch: Partial<Thesis>) => {
       const t = load().theses.find((x) => x.id === id);
       if (!t) return null;
+      const previousRefs = patch.references !== undefined ? referenceFingerprints(t.references) : null;
       Object.assign(t, patch, { updatedAt: now() });
       if (patch.content !== undefined) {
         t.wordCount = countWords(patch.content);
         t.provenance = computeProvenance(patch.content);
         t.aiUsagePercent = t.wordCount ? Math.round((t.provenance.ai / t.wordCount) * 100) : 0;
       }
+      if (previousRefs) syncLibraryFromThesis(t, previousRefs);
       persist();
       return t;
     },
+    /** Deletes a thesis and its versions, comments and notices; its sources and references stay in the owner's library. */
     remove: (id: string) => {
       const s = load();
       const idx = s.theses.findIndex((t) => t.id === id);
@@ -1327,6 +1554,10 @@ export const db = {
       s.versions = s.versions.filter((v) => v.thesisId !== id);
       s.comments = s.comments.filter((c) => c.thesisId !== id);
       s.flags = s.flags.filter((f) => f.thesisId !== id);
+      for (const src of s.sources) {
+        const ids = linkedThesisIds(src);
+        if (ids.indexOf(id) !== -1) setSourceLinks(src, ids.filter((x) => x !== id));
+      }
       persist();
       return true;
     },
@@ -1672,32 +1903,74 @@ export const db = {
     },
   },
 
+  /** Sources of the students' personal libraries. A source is linked to the theses in `thesisIds` (same owner only). */
   sources: {
-    list: (thesisId: string) => load().sources.filter((s) => s.thesisId === thesisId).sort((a, b) => b.addedAt.localeCompare(a.addedAt)),
+    /** Sources linked to a thesis, newest first. */
+    list: (thesisId: string) => load().sources.filter((s) => linkedThesisIds(s).indexOf(thesisId) !== -1).sort((a, b) => b.addedAt.localeCompare(a.addedAt)),
+    /** Every source of a student's library, newest first. */
+    listByOwner: (ownerId: string) => load().sources.filter((s) => s.ownerId === ownerId).sort((a, b) => b.addedAt.localeCompare(a.addedAt)),
     findById: (id: string) => load().sources.find((s) => s.id === id),
-    create: (data: Omit<ThesisSource, "id" | "addedAt">) => {
-      const s: ThesisSource = { ...data, id: uid("src"), addedAt: now() };
+    findByDoi: (ownerId: string, doi: string) => {
+      const d = doi.toLowerCase();
+      return load().sources.find((s) => s.ownerId === ownerId && !!s.doi && s.doi.toLowerCase() === d);
+    },
+    /** Only theses of the owner are kept in `thesisIds`; the legacy `thesisId` is derived. */
+    create: (data: Omit<ThesisSource, "id" | "addedAt" | "thesisId">) => {
+      const s: ThesisSource = { ...data, id: uid("src"), thesisIds: [], thesisId: "", addedAt: now() };
+      setSourceLinks(s, data.thesisIds || []);
       load().sources.push(s);
       persist();
       return s;
     },
+    /** `id` and `ownerId` never change; a `thesisIds` patch is deduplicated, limited to the owner's theses and recomputes `thesisId`. */
     update: (id: string, patch: Partial<ThesisSource>) => {
       const s = load().sources.find((x) => x.id === id);
       if (!s) return null;
-      Object.assign(s, patch, { id: s.id, thesisId: s.thesisId });
+      const { thesisIds, thesisId: _legacy, ...rest } = patch;
+      void _legacy;
+      Object.assign(s, rest, { id: s.id, ownerId: s.ownerId });
+      if (thesisIds !== undefined) setSourceLinks(s, thesisIds);
       persist();
       return s;
     },
+    link: (id: string, thesisId: string) => {
+      const s = load().sources.find((x) => x.id === id);
+      if (!s) return null;
+      setSourceLinks(s, [...linkedThesisIds(s), thesisId]);
+      persist();
+      return s;
+    },
+    unlink: (id: string, thesisId: string) => {
+      const s = load().sources.find((x) => x.id === id);
+      if (!s) return null;
+      setSourceLinks(s, linkedThesisIds(s).filter((x) => x !== thesisId));
+      persist();
+      return s;
+    },
+    /** Deletes the source from the library (and so from every thesis), with its chunks. */
     remove: (id: string) => {
       const st = load();
       st.sources = st.sources.filter((s) => s.id !== id);
+      st.sourceChunks = st.sourceChunks.filter((c) => c.sourceId !== id);
       persist();
     },
   },
 
   sourceChunks: {
     listBySource: (sourceId: string) => load().sourceChunks.filter((c) => c.sourceId === sourceId).sort((a, b) => a.index - b.index),
-    listByThesis: (thesisId: string) => load().sourceChunks.filter((c) => c.thesisId === thesisId),
+    /** Chunks of the sources linked to a thesis. */
+    listByThesis: (thesisId: string) => {
+      const st = load();
+      const ids = new Set(st.sources.filter((s) => linkedThesisIds(s).indexOf(thesisId) !== -1).map((s) => s.id));
+      if (!ids.size) return [];
+      return st.sourceChunks.filter((c) => ids.has(c.sourceId));
+    },
+    /** Chunk count per source id, in one pass. */
+    countBySource: () => {
+      const counts = new Map<string, number>();
+      for (const c of load().sourceChunks) counts.set(c.sourceId, (counts.get(c.sourceId) || 0) + 1);
+      return counts;
+    },
     replaceForSource: (sourceId: string, chunks: Omit<SourceChunk, "id">[]) => {
       const s = load();
       s.sourceChunks = s.sourceChunks.filter((c) => c.sourceId !== sourceId);
@@ -1711,6 +1984,41 @@ export const db = {
       s.sourceChunks = s.sourceChunks.filter((c) => c.sourceId !== sourceId);
       persist();
     },
+  },
+
+  /**
+   * References of the students' personal libraries, keyed by (ownerId, id). Links to theses are derived from
+   * `thesis.references` (same id, thesis of the same owner); `db.theses.update` keeps the library in sync.
+   */
+  libraryReferences: {
+    listByOwner: (ownerId: string) => load().libraryReferences.filter((r) => r.ownerId === ownerId),
+    find: (ownerId: string, id: string) => load().libraryReferences.find((r) => r.ownerId === ownerId && r.id === id),
+    findByDoi: (ownerId: string, doi: string) => {
+      const d = doi.toLowerCase();
+      return load().libraryReferences.find((r) => r.ownerId === ownerId && !!r.doi && r.doi.toLowerCase() === d);
+    },
+    /** Inserts the reference, or overwrites the library item with it (updatedAt only changes when the content does). */
+    upsert: (ownerId: string, ref: Reference) => {
+      const st = load();
+      const changed = upsertLibraryReference(st, ownerId, ref, now());
+      if (changed) persist();
+      return changed || st.libraryReferences.find((r) => r.ownerId === ownerId && r.id === ref.id)!;
+    },
+    /** Removes the item from the library only; the caller removes the thesis copies first (see /api/library/references). */
+    remove: (ownerId: string, id: string) => {
+      const st = load();
+      const before = st.libraryReferences.length;
+      st.libraryReferences = st.libraryReferences.filter((r) => !(r.ownerId === ownerId && r.id === id));
+      if (st.libraryReferences.length === before) return false;
+      persist();
+      return true;
+    },
+    /** Inserts into the owner's library the references of the thesis it lacks (existing items are not overwritten). */
+    syncFromThesis: (thesis: Thesis) => {
+      if (syncLibraryFromThesis(thesis, null)) persist();
+    },
+    /** Theses of the owner whose references hold this id. */
+    thesesUsing: (ownerId: string, id: string) => load().theses.filter((t) => t.studentId === ownerId && Array.isArray(t.references) && t.references.some((r) => r && r.id === id)),
   },
 
   reviewRuns: {
