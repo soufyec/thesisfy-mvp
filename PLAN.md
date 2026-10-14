@@ -93,16 +93,23 @@ Seis funciones construidas a partir de `reports/Editores académicos con IA.md`:
 ### Fase 8 · Español y francés (hecha)
 Infraestructura `src/lib/i18n` (cookie `locale`, rutas `/es` `/fr` `/en`, `useT`/`getT`/`useFormat`, diccionarios tipados por área: common, landing, dashboard, admin, editor, assistant, panelsReview, panelsResearch), `LanguageSwitcher` en landing, login y sidebar, metadatos por idioma. Pendiente: textos generados en servidor (líneas del ledger, descripciones de avisos, declaración de uso de IA, `BACKEND_META` de proveedores) siguen en inglés; la etiqueta "Page break" de `extensions.ts` no se tocó.
 
-## 3. Fuera de alcance (por ahora)
-Mobile nativo (Capacitor), migración a Postgres, SSO/LMS.
-
-
 ### Fase 10 · Estructura de tesis en el editor (hecha)
 **Archivos:** `src/components/editor/thesisBlocks.ts`, `DocsEditor.tsx`, `MenuBar.tsx`, `TableMenu.tsx`, `globals.css`, `src/lib/export.ts`, `src/lib/db.ts` (`countWords`), `messages/editor.ts`.
 - [x] Notas al pie reales: marcador numerado en línea + sección de notas al final, sincronizados en cada cambio (borrar el marcador borra la nota, pegar un marcador crea su nota, la numeración sigue el orden del texto). Clic en el marcador lleva a la nota; Escape vuelve al marcador; Ctrl+Alt+F inserta. Exportan como notas al pie nativas de Word.
 - [x] Índice automático: bloque que se redibuja con los títulos 2–4, su numeración (si está activa) y la página en la que empiezan; clic lleva al título. En Word se exporta como campo de tabla de contenido.
 - [x] Leyendas numeradas: "Figura n." en las imágenes con leyenda y "Tabla n." con Insertar › Leyenda de tabla (o el menú de tabla), localizadas; incluidas en DOCX, HTML, Markdown y texto.
 - [x] Contador de palabras único en cliente y servidor (las marcas en línea ya no parten palabras); el menú flotante de tablas no se desmonta al cambiar de disposición (fallo al abrir la vista previa de impresión).
+
+### Fase 11 · My papers, tareas y datos primarios (activa)
+Especificación completa en `docs/papers.md`.
+**Archivos:** `src/lib/papers/*`, `src/lib/data/*`, `src/lib/charts/*`, `src/lib/sources/{zip,ooxml,csv}.ts`, `src/lib/demo/papers.ts`, `src/lib/db.ts`, `src/components/editor/types.ts`, `src/app/dashboard/papers/**`, `src/app/admin/assignments/**`, `src/app/api/assignments/**`, `src/app/api/ai/chat/route.ts`, `src/components/papers/**`, `src/components/assignments/**`, `src/components/ai/**`, `src/components/editor/{chart.ts,ChartView.tsx,figureStats.ts,templateHints.ts}`, `messages/{papers,assignments,data}.ts`.
+- [ ] A · Base: `Thesis.kind` y 12 tipos con plantillas (solo encabezados + placeholders), colección `assignments`, `datasets` por columnas, acceso del profesor restringido a sus trabajos y tareas, línea `ai_figures`, componentes `KindTile`/`KindChip`/`DeadlineChip`, áreas i18n.
+- [ ] B · Servidor: rutas de tareas (crear, editar, empezar), bloqueo de trabajos entregados, lectura de `.xlsx/.csv/.docx/.txt/.md` sin dependencias, análisis descriptivo y gráficos SVG deterministas, artefactos del copilot (`thesisfic-artifact`), datos de demo.
+- [ ] C · Interfaz: «My papers» (asignados, continuar con tira de secciones, galería de plantillas, trabajos por tipo), tareas del profesor con roster, adjuntos y tarjetas de tabla/gráfico en el asistente, nodo `chart` en el editor con coste antes de insertar, panel Brief.
+- [ ] D · Revisión, build, capturas antes/después, prueba manual ampliada de §7.
+
+## 3. Fuera de alcance (por ahora)
+Mobile nativo (Capacitor), migración a Postgres, SSO/LMS. De la fase 11: tarta, caja y bigotes, pruebas inferenciales, Gantt, PRISMA, mapas conceptuales, ecuaciones, OCR, codificación cualitativa, descarga de tablas y gráficos, límite de IA y ampliaciones por tarea, notas, correo, grupos, LTI por tarea, plantillas por universidad.
 
 ## 4. Pendiente
 - Fase 5: el onboarding del editor está hecho; quedan `ConsentModal`, el mini-gutter del tutor y el código de invitación.

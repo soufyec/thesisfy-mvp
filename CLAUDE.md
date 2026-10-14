@@ -12,7 +12,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 
 1. **Atribución en el momento, nunca inferencia después.** Toda marca de procedencia nace de un evento real: inserción desde el asistente, pegado, o pegado que coincide con las huellas por frase de una respuesta del asistente o del Research copilot (`responseFingerprints`). No añadir heurísticas que "adivinen" IA. No existe extensión de navegador ni vigilancia de sitios externos: se eliminó a propósito.
 2. **El estudiante ve lo mismo que el tutor.** Ninguna métrica, aviso o registro es visible para el tutor y oculto para el estudiante.
-3. **La IA piensa contigo, no escribe por ti.** El asistente puede esquematizar, criticar, corregir texto del estudiante, explicar, citar y, en modo **Research copilot**, conversar libremente sobre cualquier tema de la investigación. Nunca redacta texto de tesis. `src/lib/ai/policy.ts` y `prompts.ts` son la fuente de verdad; no relajar `GENERATION_PATTERNS` ni `BASE_SYSTEM`.
+3. **La IA piensa contigo, no escribe por ti.** El asistente puede esquematizar, criticar, corregir texto del estudiante, explicar, citar y, en modo **Research copilot**, conversar libremente sobre cualquier tema de la investigación. Nunca redacta texto del trabajo (tesis, ensayo, informe…). Las **tablas y figuras** que el Research copilot propone sobre los datos primarios adjuntos los calcula siempre el servidor (`src/lib/data/`), nunca el modelo, y solo se insertan como AI-assisted con su coste. `src/lib/ai/policy.ts` y `prompts.ts` son la fuente de verdad; no relajar `GENERATION_PATTERNS` ni `BASE_SYSTEM`.
 4. **Consentimiento primero, aplicado en servidor.** Los scopes de monitorización (interacciones con IA, ritmo de tecleo, pegados, actividad de pestañas) se eligen en cliente y se filtran en servidor (`/api/monitor/consent`, `/api/sessions/*`). No registrar texto tecleado, solo recuentos y huellas.
 5. **Cada inserción de IA muestra su coste antes de ocurrir.** Palabras añadidas y nuevo % de IA respecto al límite. Sin excepciones. No se muestra quién paga el modelo (ni en la landing ni en el producto); la facturación vive solo en `Admin → AI access & billing`.
 6. **La universidad paga la IA.** Los modelos se ofrecen y presupuestan desde `Admin → AI access & billing` (`src/lib/ai/funding.ts`, `providers.ts`); el estudiante puede añadir su propia cuenta, nunca es obligatorio.
@@ -36,6 +36,12 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 | Barra inferior de estado de sesión | **Session bar** | `SessionBar` |
 | Aviso de integridad | **Notice** (nunca "flag" de cara al estudiante) | `IntegrityFlag` en datos |
 | Modelos pagados por la universidad | **Provided by your university** | `InstitutionModel`, `/admin/ai-access` |
+| Trabajos del estudiante (tesis, ensayos, informes…) | **My papers** · **paper** | `/dashboard/papers`, `Thesis.kind` (`PaperKind`, `src/lib/papers/kinds.ts`); `Thesis` y `/api/theses` no se renombran |
+| Trabajo encargado por un docente | **Assignment** | `Assignment`, `/api/assignments`, `/admin/assignments` |
+| Enunciado de la tarea | **Brief** | `AssignmentBrief`, panel `SidebarKind = "brief"` |
+| Docente del trabajo | **Advisor** (tesis) · **Teacher** (resto) | `teacherLabel` |
+| Archivos propios del estudiante (Excel, CSV, Word, PDF) | **Primary data** / **primary source** | `ThesisSource.role = "primary"`, `Dataset` |
+| Gráfico calculado e insertado desde el copilot | **AI-assisted figure** («Fig · AI» en el gutter) | nodo `chart` (`chart.ts`), `Artifact`, línea `ai_figures` |
 
 Cada modo lleva icono `lucide` (campo `icon` de `MODES` es el nombre del icono), una línea de ayuda y 2–4 sugerencias rápidas propias. No introducir agrupaciones intermedias.
 
@@ -48,6 +54,7 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 - `accent` (éxito, texto escrito por el estudiante, checks): `accent-500` `#20c997`.
 - Gradientes de marca solo en verde (`brand-800 → brand-600 → brand-400` en bandas, `brand-600 → brand-400` en texto): una palabra destacada por titular, las cifras de la evidencia y los bloques ENT y CTA. Nunca en tarjetas ni botones. El logo tiene sus propios colores (`Logo.tsx`) y no usa la escala.
 - Neutros: `gray-50…900`. Fondo de app `gray-50`, tarjetas `white`, área del editor `#f1f3f4` (`.docs-workspace`).
+- Gráficos: paleta propia en `src/lib/charts/palette.ts` (verde `#037947`, rosa `#e87ba4`, azul `#2a78d6`, naranja `#eb6834`, gris «Other»; validada para daltonismo), nunca `prov-*`. Miniaturas de plantillas sobre el token `paper-well`.
 - Procedencia (tokens `prov-*`): `prov-ai` `#7c3aed` (`prov-ai-deep`, `prov-ai-soft`, `prov-ai-line`), `prov-paste` `#f59e0b` (`prov-paste-deep`), `prov-human` = `accent-500`.
 - Estados: `green-600`, `amber-600`, `red-600`. Colores de proveedores de IA viven en `providers.ts`.
 
@@ -70,12 +77,14 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 - El bubble menu de selección ofrece: B, I, U, Cite, Comment, **Ask AI** (abre el asistente con la selección como contexto).
 - El provenance gutter es visible por defecto y se apaga con el interruptor de la barra; su estado se persiste en `localStorage` (`provenance_gutter`).
 - Panel del asistente: 400px, a la derecha, desmontable. En móvil, bottom sheet.
+- Los trabajos de una tarea abren el panel **Brief** (solo lectura, también en revisión) desde la session bar, el menú `⋯` y el menú móvil; sin tarea no aparece.
+- Las plantillas solo escriben encabezados; la guía de cada sección es un placeholder (`data-hint`) que no cuenta, no se exporta y no se ve en revisión.
 
 ## 6. Reglas de copy
 
 - Idiomas de la UI: inglés (base), español, francés y alemán. Documentación interna: español.
 - Ninguna cadena visible se escribe literal en un componente: pasa por `useT()` (cliente) o `getT()` (servidor) de `src/lib/i18n`. Las claves viven en `src/lib/i18n/messages/<área>.ts`, con el inglés como fuente de claves y `es`/`fr`/`de` tipados contra él (falta una traducción → error de compilación). Fechas y números con `useFormat()`.
-- Español en segunda persona informal (tú); francés con vous; alemán con Sie. Mismo tono sobrio, sin exclamaciones. Glosario obligatorio en `messages/common.ts` (`glossary.*`): Written → Escrito / Rédigé; AI-assisted → Con ayuda de IA / Assisté par IA; Quoted or pasted → Citado o pegado / Cité ou collé; Integrity ledger → Registro de integridad / Registre d'intégrité; Final submission → Entrega final / Dépôt final; Notice → Aviso / Avis. En alemán: Geschrieben / KI-unterstützt / Zitiert oder eingefügt / Integritätsregister / Endabgabe / Hinweis. "Thesisfic AI" y "Research copilot" no se traducen.
+- Español en segunda persona informal (tú); francés con vous; alemán con Sie. Mismo tono sobrio, sin exclamaciones. Glosario obligatorio en `messages/common.ts` (`glossary.*`): Written → Escrito / Rédigé; AI-assisted → Con ayuda de IA / Assisté par IA; Quoted or pasted → Citado o pegado / Cité ou collé; Integrity ledger → Registro de integridad / Registre d'intégrité; Final submission → Entrega final / Dépôt final; Notice → Aviso / Avis. En alemán: Geschrieben / KI-unterstützt / Zitiert oder eingefügt / Integritätsregister / Endabgabe / Hinweis. Paper → Trabajo / Travail / Arbeit; Assignment → Tarea / Devoir / Aufgabe; Brief → Enunciado / Consigne / Aufgabenstellung; Teacher → Docente / Enseignant / Lehrkraft; Primary data → Datos primarios / Données primaires / Primärdaten. "Thesisfic AI" y "Research copilot" no se traducen.
 - Entrada por idioma: `/es`, `/fr`, `/de`, `/en` (y `?lang=`) fijan la cookie `locale`; el selector `LanguageSwitcher` la cambia sin recargar y guarda `preferences.language` si hay sesión.
 - Tono: sobrio, concreto, segunda persona. Sin signos de exclamación, sin "¡Bienvenido!", sin "empower", "transform", "revolutionary".
 - Hablar de "notices", "attributed", "declared"; nunca de "detected", "caught", "suspicious", "cheating".
@@ -85,7 +94,8 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 
 - Stack fijo: Next 14 (App Router), React 18, Tailwind 3, TipTap 2, `lucide-react`. No añadir librerías de UI ni de estado global.
 - `src/lib/db.ts` es el único acceso a datos (memoria + `DATA_FILE` opcional). Cambios de esquema se hacen ahí y en `src/components/editor/types.ts`.
-- No tocar `extensions.ts` (Provenance, CommentMark, CitationMark) sin la prueba manual: insertar IA → marca; pegar → diálogo; pegar texto de una respuesta del copilot → reconocido y marcado; copiar entre pestañas → sin diálogo.
+- No tocar `extensions.ts` (Provenance, CommentMark, CitationMark) sin la prueba manual: insertar IA → marca; pegar → diálogo; pegar texto de una respuesta del copilot → reconocido y marcado; copiar entre pestañas → sin diálogo. Si se toca el nodo `chart`, el pegado o la inserción de artefactos, además: insertar tabla y gráfico del copilot → tarjeta de coste, marca y «Fig · AI»; pegar desde notas a Final submission contenido IA → tarjeta de coste antes de pegar; copiar o arrastrar el gráfico → no entra como imagen sin origen.
+- Los cuatro contadores de procedencia (cliente, `db.ts`, `integrity.ts`, `process.ts`) quitan las figuras `figure[data-chart]` antes de contar palabras; las figuras se cuentan aparte (`computeFigures` ≡ `figureStats.ts`).
 - Las rutas `/api/*` mantienen sus contratos; si se añade un campo a una respuesta, es opcional.
 - Componentes compartidos viven en `src/components/ui.tsx`. Si un patrón se repite 3 veces, se extrae ahí.
 - Accesibilidad mínima: cada control con `aria-label` o texto visible, foco visible, contraste 4.5:1.
@@ -93,7 +103,7 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 
 ## 8. Definición de hecho (cada cambio)
 
-- [ ] `npm run build` y `npm run lint` pasan.
+- [ ] `npx tsc --noEmit` y `npm run build` pasan (`npm run lint` no funciona hasta que se instale ESLint).
 - [ ] Captura antes/después para cualquier cambio visual.
 - [ ] Copy revisado contra la sección 6.
 - [ ] Sin hex sueltos: `grep -rn "#[0-9a-fA-F]\{6\}" src/components src/app --include=*.tsx` solo devuelve `QualitySeal.tsx`, el logo (`Logo.tsx`), paletas del editor en `types.ts`, los canvas de `HeroScene.tsx` y `FallingPapers.tsx` y colores de proveedores.
