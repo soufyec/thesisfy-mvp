@@ -1,0 +1,440 @@
+{
+ "uni": {
+  "en": {
+   "file": "animatic/narration/uni-en.mp3",
+   "dur": 92.918,
+   "starts": [
+    0.0,
+    6.351,
+    13.047,
+    21.938,
+    28.537,
+    34.713,
+    42.748,
+    52.659,
+    61.92,
+    68.185,
+    74.775,
+    82.145,
+    86.625
+   ],
+   "words": [
+    89.475,
+    90.645,
+    91.815
+   ],
+   "caps": [
+    "In the UK, 95% of undergraduates already use AI in their studies.",
+    "The question is no longer how to stop them using it. It's how to guide them to use it well.",
+    "That's why we created Thesisfic. More than a platform, it's the framework your students need to combine AI with their own thinking.",
+    "Let's take an example. Léa studies at Stanford University, as you can see in her settings.",
+    "Her professor has given her three months to write her thesis on machine learning for climate prediction.",
+    "She writes in an editor she already knows. Everything she types is marked in the margin, in green, as written by her.",
+    "When she gets stuck, she asks the Research copilot. It explains, asks questions and points to sources. It never writes her thesis for her.",
+    "If she inserts an AI suggestion, she sees the cost first: the words it adds, and her new AI share against her university's limit.",
+    "When she pastes a passage, Thesisfic asks where it comes from, and it's marked as quoted.",
+    "Her sources and references live in one library, and she chooses which ones each thesis uses.",
+    "Her integrity ledger shows exactly what her professor sees. No hidden score. No AI probability.",
+    "Her professor reads how the thesis was written, instead of guessing.",
+    "Teach your students how to use AI: properly, ethically, responsibly."
+   ],
+   "web": 94.13
+  },
+  "es": {
+   "file": "animatic/narration/uni-es.mp3",
+   "dur": 89.966,
+   "starts": [
+    0.0,
+    6.15,
+    12.726,
+    21.626,
+    27.392,
+    33.689,
+    40.904,
+    50.002,
+    59.044,
+    64.791,
+    71.076,
+    78.789,
+    83.199
+   ],
+   "words": [
+    86.729,
+    87.809,
+    88.889
+   ],
+   "caps": [
+    "En el Reino Unido, el 95% de los universitarios ya usa la IA en sus estudios.",
+    "La pregunta ya no es cómo impedir que la usen. Es cómo guiarles para que la usen bien.",
+    "Por eso creamos Thesisfic. Más que una plataforma, es el marco que tus estudiantes necesitan para combinar la IA con su propio pensamiento.",
+    "Pongamos un ejemplo. Léa estudia en la Universidad de Stanford, como ves en sus ajustes.",
+    "Su profesor le ha dado tres meses para escribir su tesis sobre aprendizaje automático para predecir el clima.",
+    "Escribe en un editor que ya conoce. Todo lo que teclea queda marcado en el margen, en verde, como escrito por ella.",
+    "Cuando se atasca, pregunta al Research copilot. Le explica, le hace preguntas y le señala fuentes. Nunca escribe la tesis por ella.",
+    "Si inserta una sugerencia de la IA, primero ve lo que cuesta: las palabras que añade y su nuevo porcentaje de IA frente al límite de su universidad.",
+    "Cuando pega un pasaje, Thesisfic le pregunta de dónde viene, y queda marcado como citado.",
+    "Sus fuentes y referencias están en una sola biblioteca, y ella elige cuáles usa cada tesis.",
+    "Su registro de integridad muestra exactamente lo que ve su profesor. Sin puntuaciones ocultas. Sin probabilidades de IA.",
+    "Su profesor lee cómo se escribió la tesis, en lugar de adivinarlo.",
+    "Enseña a tus estudiantes a usar la IA de forma correcta, ética y responsable."
+   ],
+   "web": 91.42
+  },
+  "fr": {
+   "file": "animatic/narration/uni-fr.mp3",
+   "dur": 84.924,
+   "starts": [
+    0.0,
+    6.708,
+    13.116,
+    21.905,
+    27.265,
+    34.302,
+    40.707,
+    49.231,
+    56.987,
+    61.814,
+    67.613,
+    74.213,
+    78.174
+   ],
+   "words": [
+    81.634,
+    82.864,
+    83.864
+   ],
+   "caps": [
+    "Au Royaume-Uni, 95 % des étudiants de premier cycle utilisent déjà l'IA dans leurs études.",
+    "La question n'est plus de savoir comment les en empêcher, mais comment les guider pour bien l'utiliser.",
+    "C'est pour cela que nous avons créé Thesisfic. Plus qu'une plateforme, c'est le cadre dont vos étudiants ont besoin pour combiner l'IA et leur propre réflexion.",
+    "Prenons un exemple. Léa étudie à l'université Stanford, comme vous le voyez dans ses paramètres.",
+    "Son professeur lui a donné trois mois pour rédiger sa thèse sur l'apprentissage automatique appliqué à la prévision climatique.",
+    "Elle écrit dans un éditeur qu'elle connaît déjà. Tout ce qu'elle tape est marqué dans la marge, en vert, comme rédigé par elle.",
+    "Quand elle bloque, elle interroge le Research copilot. Il explique, pose des questions et indique des sources. Il n'écrit jamais sa thèse à sa place.",
+    "Si elle insère une suggestion de l'IA, elle en voit d'abord le coût : les mots ajoutés et sa nouvelle part d'IA par rapport à la limite de son université.",
+    "Quand elle colle un passage, Thesisfic lui demande d'où il vient, et il est marqué comme cité.",
+    "Ses sources et ses références sont réunies dans une seule bibliothèque, et elle choisit celles que chaque thèse utilise.",
+    "Son registre d'intégrité montre exactement ce que voit son professeur. Pas de score caché. Pas de probabilité d'IA.",
+    "Son professeur lit comment la thèse a été écrite, au lieu de le deviner.",
+    "Apprenez à vos étudiants à utiliser l'IA de façon appropriée, éthique et responsable."
+   ],
+   "web": 86.38
+  },
+  "de": {
+   "file": "animatic/narration/uni-de.mp3",
+   "dur": 96.522,
+   "starts": [
+    0.0,
+    6.719,
+    13.375,
+    23.4,
+    29.442,
+    36.733,
+    44.043,
+    53.406,
+    63.417,
+    69.919,
+    77.137,
+    85.265,
+    89.5
+   ],
+   "words": [
+    92.83,
+    94.02,
+    95.2
+   ],
+   "caps": [
+    "Im Vereinigten Königreich nutzen 95 % der Bachelorstudierenden KI bereits im Studium.",
+    "Die Frage ist nicht mehr, wie man sie davon abhält, sondern wie man sie zu einem guten Umgang damit anleitet.",
+    "Deshalb haben wir Thesisfic entwickelt. Mehr als eine Plattform: der Rahmen, den Ihre Studierenden brauchen, um KI mit ihrem eigenen Denken zu verbinden.",
+    "Nehmen wir ein Beispiel. Léa studiert an der Stanford University, wie Sie in ihren Einstellungen sehen.",
+    "Ihr Professor hat ihr drei Monate gegeben, um ihre Abschlussarbeit über maschinelles Lernen für Klimavorhersagen zu schreiben.",
+    "Sie schreibt in einem Editor, den sie bereits kennt. Alles, was sie tippt, wird am Rand grün als von ihr geschrieben markiert.",
+    "Wenn sie nicht weiterkommt, fragt sie den Research copilot. Er erklärt, stellt Fragen und verweist auf Quellen. Ihre Arbeit schreibt er nie für sie.",
+    "Fügt sie einen KI-Vorschlag ein, sieht sie zuerst, was das bedeutet: die zusätzlichen Wörter und ihren neuen KI-Anteil gegenüber dem Limit ihrer Universität.",
+    "Wenn sie eine Passage einfügt, fragt Thesisfic nach der Herkunft, und sie wird als zitiert markiert.",
+    "Ihre Quellen und Literaturangaben liegen in einer Bibliothek, und sie wählt aus, welche jede Arbeit verwendet.",
+    "Ihr Integritätsregister zeigt genau das, was ihr Professor sieht. Keine versteckte Bewertung. Keine KI-Wahrscheinlichkeit.",
+    "Ihr Professor liest, wie die Arbeit entstanden ist, statt zu raten.",
+    "Zeigen Sie Ihren Studierenden, wie man KI richtig, ethisch und verantwortungsvoll nutzt."
+   ],
+   "web": 97.97
+  }
+ },
+ "stu": {
+  "en": {
+   "file": "animatic/narration/stu-en.mp3",
+   "dur": 90.604,
+   "starts": [
+    0,
+    6.351,
+    11.864,
+    20.383,
+    26.982,
+    33.158,
+    41.193,
+    51.104,
+    60.365,
+    66.63,
+    73.22,
+    80.59,
+    85.07
+   ],
+   "words": [
+    87.05,
+    88.34,
+    89.5
+   ],
+   "caps": [
+    "In the UK, 95% of undergraduates already use AI in their studies.",
+    "The question is no longer whether you use it. It's how you use it well.",
+    "That's why we created Thesisfic. More than a platform, it's the framework you need to combine AI with your own thinking.",
+    "Let's take an example. Léa studies at Stanford University, as you can see in her settings.",
+    "Her professor has given her three months to write her thesis on machine learning for climate prediction.",
+    "She writes in an editor she already knows. Everything she types is marked in the margin, in green, as written by her.",
+    "When she gets stuck, she asks the Research copilot. It explains, asks questions and points to sources. It never writes her thesis for her.",
+    "If she inserts an AI suggestion, she sees the cost first: the words it adds, and her new AI share against her university's limit.",
+    "When she pastes a passage, Thesisfic asks where it comes from, and it's marked as quoted.",
+    "Her sources and references live in one library, and she chooses which ones each thesis uses.",
+    "Her integrity ledger shows exactly what her professor sees. No hidden score. No AI probability.",
+    "Her professor reads how the thesis was written, instead of guessing.",
+    "Learn to use AI: properly, ethically, responsibly."
+   ],
+   "gain": -0.1,
+   "web": 92.04
+  },
+  "es": {
+   "file": "animatic/narration/stu-es.mp3",
+   "dur": 87.367,
+   "starts": [
+    0,
+    6.15,
+    11.032,
+    19.836,
+    25.602,
+    31.899,
+    39.114,
+    48.212,
+    57.254,
+    63.001,
+    69.286,
+    76.999,
+    81.409
+   ],
+   "words": [
+    84.049,
+    85.209,
+    86.299
+   ],
+   "caps": [
+    "En el Reino Unido, el 95% de los universitarios ya usa la IA en sus estudios.",
+    "La pregunta ya no es si la usas. Es cómo la usas bien.",
+    "Por eso creamos Thesisfic. Más que una plataforma, es el marco que necesitas para combinar la IA con tu propio pensamiento.",
+    "Pongamos un ejemplo. Léa estudia en la Universidad de Stanford, como ves en sus ajustes.",
+    "Su profesor le ha dado tres meses para escribir su tesis sobre aprendizaje automático para predecir el clima.",
+    "Escribe en un editor que ya conoce. Todo lo que teclea queda marcado en el margen, en verde, como escrito por ella.",
+    "Cuando se atasca, pregunta al Research copilot. Le explica, le hace preguntas y le señala fuentes. Nunca escribe la tesis por ella.",
+    "Si inserta una sugerencia de la IA, primero ve lo que cuesta: las palabras que añade y su nuevo porcentaje de IA frente al límite de su universidad.",
+    "Cuando pega un pasaje, Thesisfic le pregunta de dónde viene, y queda marcado como citado.",
+    "Sus fuentes y referencias están en una sola biblioteca, y ella elige cuáles usa cada tesis.",
+    "Su registro de integridad muestra exactamente lo que ve su profesor. Sin puntuaciones ocultas. Sin probabilidades de IA.",
+    "Su profesor lee cómo se escribió la tesis, en lugar de adivinarlo.",
+    "Aprende a usar la IA de forma correcta, ética y responsable."
+   ],
+   "gain": 0.9,
+   "web": 88.82
+  },
+  "fr": {
+   "file": "animatic/narration/stu-fr.mp3",
+   "dur": 83.823,
+   "starts": [
+    0,
+    6.708,
+    12.056,
+    21.208,
+    26.568,
+    33.605,
+    40.01,
+    48.534,
+    56.29,
+    61.117,
+    66.916,
+    73.516,
+    77.477
+   ],
+   "words": [
+    80.437,
+    81.637,
+    82.727
+   ],
+   "caps": [
+    "Au Royaume-Uni, 95 % des étudiants de premier cycle utilisent déjà l'IA dans leurs études.",
+    "La question n'est plus de savoir si vous l'utilisez, mais comment bien l'utiliser.",
+    "C'est pour cela que nous avons créé Thesisfic. Plus qu'une plateforme, c'est le cadre dont vous avez besoin pour combiner l'IA et votre propre réflexion.",
+    "Prenons un exemple. Léa étudie à l'université Stanford, comme vous le voyez dans ses paramètres.",
+    "Son professeur lui a donné trois mois pour rédiger sa thèse sur l'apprentissage automatique appliqué à la prévision climatique.",
+    "Elle écrit dans un éditeur qu'elle connaît déjà. Tout ce qu'elle tape est marqué dans la marge, en vert, comme rédigé par elle.",
+    "Quand elle bloque, elle interroge le Research copilot. Il explique, pose des questions et indique des sources. Il n'écrit jamais sa thèse à sa place.",
+    "Si elle insère une suggestion de l'IA, elle en voit d'abord le coût : les mots ajoutés et sa nouvelle part d'IA par rapport à la limite de son université.",
+    "Quand elle colle un passage, Thesisfic lui demande d'où il vient, et il est marqué comme cité.",
+    "Ses sources et ses références sont réunies dans une seule bibliothèque, et elle choisit celles que chaque thèse utilise.",
+    "Son registre d'intégrité montre exactement ce que voit son professeur. Pas de score caché. Pas de probabilité d'IA.",
+    "Son professeur lit comment la thèse a été écrite, au lieu de le deviner.",
+    "Apprenez à utiliser l'IA de façon appropriée, éthique et responsable."
+   ],
+   "gain": 1.3,
+   "web": 85.24
+  },
+  "de": {
+   "file": "animatic/narration/stu-de.mp3",
+   "dur": 94.135,
+   "starts": [
+    0,
+    6.719,
+    12.214,
+    21.988,
+    28.03,
+    35.321,
+    42.631,
+    51.994,
+    62.005,
+    68.507,
+    75.725,
+    83.853,
+    88.088
+   ],
+   "words": [
+    90.618,
+    91.718,
+    92.878
+   ],
+   "caps": [
+    "Im Vereinigten Königreich nutzen 95 % der Bachelorstudierenden KI bereits im Studium.",
+    "Die Frage ist nicht mehr, ob Sie sie nutzen, sondern wie Sie sie gut nutzen.",
+    "Deshalb haben wir Thesisfic entwickelt. Mehr als eine Plattform: der Rahmen, den Sie brauchen, um KI mit Ihrem eigenen Denken zu verbinden.",
+    "Nehmen wir ein Beispiel. Léa studiert an der Stanford University, wie Sie in ihren Einstellungen sehen.",
+    "Ihr Professor hat ihr drei Monate gegeben, um ihre Abschlussarbeit über maschinelles Lernen für Klimavorhersagen zu schreiben.",
+    "Sie schreibt in einem Editor, den sie bereits kennt. Alles, was sie tippt, wird am Rand grün als von ihr geschrieben markiert.",
+    "Wenn sie nicht weiterkommt, fragt sie den Research copilot. Er erklärt, stellt Fragen und verweist auf Quellen. Ihre Arbeit schreibt er nie für sie.",
+    "Fügt sie einen KI-Vorschlag ein, sieht sie zuerst, was das bedeutet: die zusätzlichen Wörter und ihren neuen KI-Anteil gegenüber dem Limit ihrer Universität.",
+    "Wenn sie eine Passage einfügt, fragt Thesisfic nach der Herkunft, und sie wird als zitiert markiert.",
+    "Ihre Quellen und Literaturangaben liegen in einer Bibliothek, und sie wählt aus, welche jede Arbeit verwendet.",
+    "Ihr Integritätsregister zeigt genau das, was ihr Professor sieht. Keine versteckte Bewertung. Keine KI-Wahrscheinlichkeit.",
+    "Ihr Professor liest, wie die Arbeit entstanden ist, statt zu raten.",
+    "Lernen Sie, KI richtig, ethisch und verantwortungsvoll zu nutzen."
+   ],
+   "gain": -0.4,
+   "web": 95.57
+  }
+ },
+ "teaser": {
+  "en": {
+   "file": "animatic/narration/teaser-en.mp3",
+   "dur": 30.589,
+   "starts": [
+    0.0,
+    6.268,
+    12.805,
+    15.91,
+    19.065,
+    23.09
+   ],
+   "words": [
+    27.35,
+    28.45,
+    29.5
+   ],
+   "pair": 3.851,
+   "caps": [
+    "In the UK, 95% of undergraduates already use AI in their studies.",
+    "So the question is no longer whether they use it. It's whether they learn to think with it.",
+    "Every word they write, attributed.",
+    "Every AI suggestion, declared.",
+    "Every step, visible to them and to you.",
+    "Thesisfic. Teach your students how to use AI: properly, ethically, responsibly."
+   ],
+   "web": 32.02
+  },
+  "es": {
+   "file": "animatic/narration/teaser-es.mp3",
+   "dur": 30.041,
+   "starts": [
+    0.0,
+    6.45,
+    12.581,
+    15.518,
+    18.52,
+    22.204
+   ],
+   "words": [
+    27.044,
+    28.084,
+    28.974
+   ],
+   "pair": 3.574,
+   "caps": [
+    "En el Reino Unido, el 95% de los universitarios ya usa la IA en sus estudios.",
+    "Así que la pregunta ya no es si la usan. Es si aprenden a pensar con ella.",
+    "Cada palabra que escriben, atribuida.",
+    "Cada sugerencia de la IA, declarada.",
+    "Cada paso, visible para ellos y para ti.",
+    "Thesisfic. Enseña a tus estudiantes a usar la IA de forma correcta, ética y responsable."
+   ],
+   "web": 31.49
+  },
+  "fr": {
+   "file": "animatic/narration/teaser-fr.mp3",
+   "dur": 31.556,
+   "starts": [
+    0.0,
+    6.729,
+    14.103,
+    16.688,
+    19.727,
+    23.321
+   ],
+   "words": [
+    28.421,
+    29.621,
+    30.581
+   ],
+   "pair": 3.999,
+   "caps": [
+    "Au Royaume-Uni, 95 % des étudiants de premier cycle utilisent déjà l'IA dans leurs études.",
+    "La question n'est donc plus de savoir s'ils l'utilisent. C'est de savoir s'ils apprennent à penser avec elle.",
+    "Chaque mot écrit, attribué.",
+    "Chaque suggestion de l'IA, déclarée.",
+    "Chaque étape, visible pour eux et pour vous.",
+    "Thesisfic. Apprenez à vos étudiants à utiliser l'IA de façon appropriée, éthique et responsable."
+   ],
+   "web": 32.97
+  },
+  "de": {
+   "file": "animatic/narration/teaser-de.mp3",
+   "dur": 31.948,
+   "starts": [
+    0.0,
+    6.676,
+    13.625,
+    16.794,
+    19.86,
+    24.02
+   ],
+   "words": [
+    28.77,
+    29.78,
+    30.74
+   ],
+   "pair": 3.849,
+   "caps": [
+    "Im Vereinigten Königreich nutzen 95 % der Bachelorstudierenden KI bereits im Studium.",
+    "Die Frage ist also nicht mehr, ob sie sie nutzen. Sondern ob sie lernen, mit ihr zu denken.",
+    "Jedes geschriebene Wort, zugeordnet.",
+    "Jeder KI-Vorschlag, offengelegt.",
+    "Jeder Schritt, sichtbar für Ihre Studierenden und für Sie.",
+    "Thesisfic. Zeigen Sie Ihren Studierenden, wie man KI richtig, ethisch und verantwortungsvoll nutzt."
+   ],
+   "web": 33.37
+  }
+ }
+}

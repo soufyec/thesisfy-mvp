@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Bot, CheckCircle2, ExternalLink, FileText, Flag, Monitor, Smartphone } from "lucide-react";
+import { Bot, CheckCircle2, FileText, Flag, Monitor, Smartphone } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { DeadlineChip, Modal, ScoreRing, Toast } from "@/components/ui";
 import { useUser } from "@/components/useUser";
@@ -11,9 +11,11 @@ import { api, statusColors } from "@/lib/client";
 import { useT, useFormat } from "@/lib/i18n/client";
 import { modeLabel, noticeTypeLabel, plural, statusLabel, timeAgoLabel } from "@/lib/i18n/messages/admin";
 import ProcessPanel from "@/components/editor/process/ProcessPanel";
+import ThesisSourcesCard from "@/components/library/ThesisSourcesCard";
+import type { Reference } from "@/components/editor/types";
 
 interface Detail {
-  thesis: { id: string; title: string; description: string; status: string; wordCount: number; targetWords: number; aiUsagePercent: number; integrityScore: number; provenance: { human: number; paste: number; ai: number }; studentName: string; professorName: string; updatedAt: string; deadline?: string; citationStyle: string; createdAt: string };
+  thesis: { id: string; title: string; description: string; status: string; wordCount: number; targetWords: number; aiUsagePercent: number; integrityScore: number; provenance: { human: number; paste: number; ai: number }; studentName: string; professorName: string; updatedAt: string; deadline?: string; citationStyle: string; createdAt: string; references?: Reference[]; content?: string; tabs?: { content?: string }[] };
   comments: { id: string; authorName: string; authorRole?: string; text: string; resolved: boolean; createdAt: string; quote: string }[];
   flags: { id: string; type: string; severity: string; description: string; timestamp: string; resolved: boolean; resolvedBy?: string; resolutionNote?: string }[];
   versionCount: number;
@@ -127,6 +129,8 @@ export default function AdminThesisDetail() {
             </div>
           </div>
         </div>
+
+        <ThesisSourcesCard thesis={th} />
 
         <div className="card mt-6">
           <div className="p-5 border-b border-gray-100"><h2 className="font-semibold">{t("admin.detail.processTitle")}</h2><p className="text-xs text-gray-400 mt-0.5">{t("admin.detail.processDesc")}</p></div>

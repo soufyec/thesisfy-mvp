@@ -1,5 +1,6 @@
 /**
- * Retrieval over a thesis's source chunks (F5).
+ * Retrieval over the chunks of the sources linked to a thesis (F5). Sources live in the student's personal library;
+ * only the ones linked to the thesis (`ThesisSource.thesisIds`) are searched, quoted or matched.
  *
  * - `bm25Rank` / `retrieve`: lexical BM25 (k1 = 1.5, b = 0.75) over `SourceChunk.text`, tokenised lowercase without
  *   accents and without EN/ES/FR stopwords. There are no embeddings in this MVP; BM25 is the half of "hybrid
@@ -7,9 +8,9 @@
  * - `rerankAndSummarize`: PaperQA2's RCS step when a live model is available: the model scores each candidate for the
  *   question and writes a ~60-word contextual summary; the answer is then built from the best five only.
  * - `groundingBlock`: the numbered passages the model may answer from, `[S1] Author (Year), p. N: "…"`, plus the rule.
- * - `matchPasteToSources`: the constructive side of provenance. Text the student pastes is checked against the
- *   library; when most of its sentences appear in one source, that source is returned so the paste can be attributed
- *   and cited at the moment it happens.
+ * - `matchPasteFingerprintsToSources`: the constructive side of provenance. The sentence fingerprints of a paste are
+ *   checked against the thesis's linked sources; when most of them appear in one source, that source is returned so
+ *   the paste can be attributed and cited at the moment it happens.
  */
 
 import { db, SourceChunk, ThesisSource } from "@/lib/db";
@@ -114,7 +115,7 @@ function sourceMeta(s?: ThesisSource) {
   return { title: s?.title || "Untitled source", authors: s?.authors, year: s?.year };
 }
 
-/** Top `k` chunks of a thesis's library for `query`, optionally restricted to some sources. */
+/** Top `k` chunks of the sources linked to a thesis for `query`, optionally restricted to some of them. */
 export function retrieve(thesisId: string, query: string, k = 12, sourceIds?: string[]): RetrievedPassage[] {
   let chunks = db.sourceChunks.listByThesis(thesisId);
   if (sourceIds?.length) {
@@ -215,13 +216,37 @@ export function coverageOf(s: ThesisSource): SourceCoverage {
   return "full_text";
 }
 
-export type PublicSource = Omit<ThesisSource, "text"> & { coverage: SourceCoverage; chunkCount: number };
+/**
+ * A source as the thesis-scoped routes return it (`/api/theses/[id]/sources`): no extracted text (that lives in
+ * chunks), no owner and no links to the student's other theses (staff can read these routes). `thesisId` is the
+ * thesis that was asked for.
+ */
+export type PublicSource = Omit<ThesisSource, "text" | "ownerId" | "thesisIds"> & { coverage: SourceCoverage; chunkCount: number };
 
-/** The source as the API returns it: no extracted text (that lives in chunks), plus coverage and chunk count. */
-export function publicSource(s: ThesisSource): PublicSource {
-  const { text: _text, ...rest } = s;
+/** A source as its owner sees it in the library (`/api/library`): the public fields plus the theses that use it. */
+export type LibrarySourceView = PublicSource & { thesisIds: string[] };
+
+function chunkCountOf(s: ThesisSource, counts?: Map<string, number>) {
+  return counts ? counts.get(s.id) || 0 : db.sourceChunks.listBySource(s.id).length;
+}
+
+/**
+ * Thesis-scoped view of a source. `thesisId` is the thesis of the request (defaults to the legacy first link).
+ * `counts` (from `db.sourceChunks.countBySource()`) avoids one chunk scan per source when listing.
+ * Do not pass it straight to `Array.map`: the index would become the thesis id.
+ */
+export function publicSource(s: ThesisSource, thesisId?: string, counts?: Map<string, number>): PublicSource {
+  const { text: _text, ownerId: _owner, thesisIds: _links, ...rest } = s;
   void _text;
-  return { ...rest, coverage: coverageOf(s), chunkCount: db.sourceChunks.listBySource(s.id).length };
+  void _owner;
+  void _links;
+  return { ...rest, thesisId: thesisId ?? s.thesisId ?? "", coverage: coverageOf(s), chunkCount: chunkCountOf(s, counts) };
+}
+
+/** Owner view of a library source: no text, plus `thesisIds`. */
+export function librarySourceView(s: ThesisSource, counts?: Map<string, number>): LibrarySourceView {
+  const links = Array.isArray(s.thesisIds) ? s.thesisIds.slice() : s.thesisId ? [s.thesisId] : [];
+  return { ...publicSource(s, links[0] ?? "", counts), thesisIds: links };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -254,7 +279,7 @@ export function pasteSentences(text: string): string[] {
     .slice(0, 60);
 }
 
-/** Pure matcher over a chunk list, used by `matchPasteToSources` and by tests. */
+/** Pure matcher over a chunk list by pasted text (the editor sends fingerprints instead; kept for tests and tools). */
 export function matchPasteToChunks(chunks: SourceChunk[], text: string, sources: (id: string) => ThesisSource | undefined): PasteSourceMatch | null {
   const sentences = pasteSentences(text);
   if (!sentences.length) return null;
@@ -286,22 +311,16 @@ export function matchPasteToChunks(chunks: SourceChunk[], text: string, sources:
   return best;
 }
 
-/** Best library source for a pasted text, when at least 60 % of its sentences appear in that source; else null. */
-export function matchPasteToSources(thesisId: string, text: string): PasteSourceMatch | null {
-  const chunks = db.sourceChunks.listByThesis(thesisId);
-  if (!chunks.length) return null;
-  return matchPasteToChunks(chunks, text, (id) => db.sources.findById(id));
-}
-
 // ---------- paste attribution by fingerprints ----------
 import { passageFingerprints } from "../crypto";
 
 const chunkFpCache = new Map<string, string[]>();
 
 /**
- * Attribute a paste to a library source using the sentence fingerprints the editor already sends
+ * Attribute a paste to a source linked to the thesis using the sentence fingerprints the editor already sends
  * (the pasted text itself never reaches the server). A source wins when at least 60% of the
- * pasted sentence fingerprints appear in its chunks, or 2+ sentences for short pastes.
+ * pasted sentence fingerprints appear in its chunks, or 2+ sentences for short pastes. Sources of the student's
+ * library that are not linked to this thesis are not considered.
  */
 export function matchPasteFingerprintsToSources(thesisId: string, fps: string[]): { sourceId: string; title: string; authors?: string; year?: string; page?: number; share: number; doi?: string; url?: string } | null {
   const wanted = new Set(fps);

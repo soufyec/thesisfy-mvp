@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bot, FileText, Plug, Smartphone, Sparkles } from "lucide-react";
+import { BookMarked, Bot, FileText, Plug, Smartphone, Sparkles } from "lucide-react";
 import DashboardLayout, { useTimeAgo } from "@/components/DashboardLayout";
 import { DeadlineChip, DeadlineDialog, ScoreRing } from "@/components/ui";
 import DeadlineCalendar from "@/components/DeadlineCalendar";
@@ -143,6 +143,7 @@ export default function StudentDashboard() {
             <h2 className="font-semibold mb-3">{t("dashboard.home.quickActions")}</h2>
             <div className="space-y-2">
               <Link href="/dashboard/theses?new=1" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><FileText className="w-5 h-5 text-brand-600" />{t("dashboard.home.newThesis")}</Link>
+              <Link href="/dashboard/sources" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><BookMarked className="w-5 h-5 text-brand-600" />{t("glossary.sourcesReferences")}</Link>
               <Link href="/dashboard/ai-chat?mode=copilot" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Sparkles className="w-5 h-5 text-emerald-600" />{t("glossary.copilot")}</Link>
               <Link href="/dashboard/ai-chat" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Bot className="w-5 h-5 text-brand-600" />{t("dashboard.home.askAssistant")}</Link>
               <Link href="/dashboard/connections" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-sm"><Plug className="w-5 h-5 text-brand-600" />{stats?.connectedProviders?.length ? t("dashboard.home.connected", { list: stats.connectedProviders.join(", ") }) : t("dashboard.home.connect")}</Link>

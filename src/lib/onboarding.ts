@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import { film } from "@/lib/films";
 
 /** Student onboarding: shown once, at the first visit to the editor. `localStorage` remembers it on this device and
  *  `users.onboardedAt` on the account, so a second device does not repeat it. Replayable from the ⋯ menu. */
@@ -27,27 +28,27 @@ export interface OnboardingVideo {
   /** Total length in seconds, for the badge and the chapter bar. */
   duration: number;
   /** Chapter start times in seconds; labels come from `onboarding.chapter.*`. */
-  chapters: { at: number; label: "writing" | "assistant" | "ledger" | "advisor" }[];
+  chapters: { at: number; label: "why" | "writing" | "assistant" | "ledger" | "advisor" }[];
 }
 
-const chapters = (assistant: number, ledger: number, advisor: number): OnboardingVideo["chapters"] => [
-  { at: 0, label: "writing" },
+const chapters = (writing: number, assistant: number, ledger: number, advisor: number): OnboardingVideo["chapters"] => [
+  { at: 0, label: "why" },
+  { at: writing, label: "writing" },
   { at: assistant, label: "assistant" },
   { at: ledger, label: "ledger" },
   { at: advisor, label: "advisor" },
 ];
 
-const files = (locale: Locale) => ({ src: `/videos/tour-${locale}.mp4`, poster: `/videos/tour-${locale}.jpg`, captions: `/videos/tour-${locale}.vtt` });
+const student = (locale: Locale) => film("student", locale);
 
-/** One video per UI language, narrated in that language (see `docs/academy/tour.md`; regenerate with
- *  `scripts/academy/make-tour.sh`, which prints these durations and chapter marks). Set `src` to `null` to fall
- *  back to the chapter placeholder. */
+/** The students' film (`src/lib/films.ts`), narrated in each UI language. Chapter marks are the starts of the
+ *  editor, Research copilot, integrity ledger and advisor scenes, printed by the render pipeline with the durations.
+ *  Set `src` to `null` to fall back to the chapter placeholder. */
 export const ONBOARDING_VIDEO: Record<Locale, OnboardingVideo> = {
-  en: { ...files("en"), duration: 93, chapters: chapters(33, 63, 73) },
-  es: { ...files("es"), duration: 85, chapters: chapters(29, 58, 68) },
-  fr: { ...files("fr"), duration: 107, chapters: chapters(32, 64, 74) },
-  // No German narration yet: German users get the English tour until `make-tour.sh` produces tour-de.*.
-  de: { ...files("en"), duration: 93, chapters: chapters(33, 63, 73) },
+  en: { ...student("en"), chapters: chapters(33, 41, 73, 80) },
+  es: { ...student("es"), chapters: chapters(31, 39, 69, 76) },
+  fr: { ...student("fr"), chapters: chapters(33, 40, 66, 73) },
+  de: { ...student("de"), chapters: chapters(35, 42, 75, 83) },
 };
 
 export function formatClock(seconds: number): string {

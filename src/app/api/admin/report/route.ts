@@ -253,7 +253,7 @@ export async function GET(request: NextRequest) {
     reviewRuns += runs.length;
     reviewComments += runs.reduce((a, x) => a + x.commentCount, 0);
     evidenceChecks += db.evidenceChecks.list(t.id).filter((e) => inRange(e.createdAt)).length;
-    citationsVerified += t.references.filter((ref) => ref.verification && inRange(ref.verification.checkedAt)).length;
+    citationsVerified += (t.references || []).filter((ref) => ref.verification && inRange(ref.verification.checkedAt)).length;
   }
   // Language reviews with the AI style layer are logged as "grammar" interactions with a fixed prompt prefix (see /api/language/check).
   const languageReviews = interactions.filter((i) => i.mode === "grammar" && i.promptPreview.indexOf("Language review:") === 0).length;

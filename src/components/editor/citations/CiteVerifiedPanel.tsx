@@ -6,7 +6,8 @@ import { AlertTriangle, BookMarked, BookOpenCheck, CheckCircle2, ExternalLink, H
 import { api, ApiError } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
 import type { ScholarWork } from "@/lib/scholar";
-import { formatReference, Reference, ThesisDoc } from "../types";
+import { formatReference, Reference, referenceHtml, ThesisDoc } from "../types";
+import { newReferenceId } from "../sources/match";
 
 // ---------- Types shared with /api/ai/cite-verified and /api/theses/[id]/references/check ----------
 
@@ -72,7 +73,7 @@ const refType = (t?: string): Reference["type"] => (/chapter/.test(t || "") ? "c
 export function referenceFromCandidate(c: SupportCandidate, existing: Reference | undefined, interactionId?: string): Reference {
   const w = c.work;
   const base: Reference = existing || {
-    id: `ref_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    id: newReferenceId(),
     type: refType(w.type),
     authors: w.authors || "",
     year: w.year || "",
@@ -251,7 +252,10 @@ function CandidateCard({ c, inLibrary, style, canEdit, onCite, onAddToLibrary }:
   const t = useT();
   const fmt = useFormat();
   const w = c.work;
-  const preview = useMemo(() => formatReference(referenceFromCandidate(c, undefined), style), [c, style]);
+  const preview = useMemo(() => {
+    const ref = referenceFromCandidate(c, undefined);
+    return { inText: formatReference(ref, style).inText, html: referenceHtml(ref, style) };
+  }, [c, style]);
   const record = w.doi ? `https://doi.org/${w.doi}` : w.openalexId ? `https://openalex.org/${w.openalexId}` : w.landingUrl;
   return (
     <div className={`p-2.5 rounded-xl border text-xs ${w.isRetracted ? "border-red-200 bg-red-50/40" : "border-gray-100 hover:border-gray-200"}`}>
@@ -278,7 +282,7 @@ function CandidateCard({ c, inLibrary, style, canEdit, onCite, onAddToLibrary }:
         <div className="text-[11px] text-gray-400 mt-0.5 not-italic">{t("panelsReview.cite.verbatim", { section: c.section || t("panelsReview.cite.passage") })}</div>
       </blockquote>
       {c.why && <div className="text-gray-600 mt-1.5">{c.why}</div>}
-      <div className="text-gray-400 mt-1.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: preview.full }} />
+      <div className="text-gray-400 mt-1.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: preview.html }} />
       <div className="flex flex-wrap items-center gap-2 mt-2">
         {canEdit && (
           <button onClick={onCite} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-brand-600 text-white hover:bg-brand-700 font-medium" aria-label={t("panelsReview.cite.citeAria", { title: w.title })}>
@@ -332,7 +336,8 @@ function ReferenceCheck({ thesisId, references, style, canEdit, onReferencesChan
 
   return (
     <div className="p-3 space-y-3 text-sm">
-      {references.length > 0 && (
+      {/* Checking writes the results into the thesis's references: owner of an editable thesis only. */}
+      {references.length > 0 && canEdit && (
         <div className="space-y-1.5">
           <p className="text-[12px] text-gray-500">
             {t(n === 1 ? "panelsReview.cite.checkNote_one" : "panelsReview.cite.checkNote", { n })}
@@ -366,7 +371,7 @@ function ReferenceCheck({ thesisId, references, style, canEdit, onReferencesChan
           return (
             <li key={r.id} className={`p-2.5 rounded-xl border text-xs ${v?.status === "retracted" ? "border-red-200 bg-red-50/40" : "border-gray-100"}`}>
               <div className="flex items-start gap-2">
-                <div className="flex-1 text-gray-700" dangerouslySetInnerHTML={{ __html: formatReference(r, style).full }} />
+                <div className="flex-1 text-gray-700" dangerouslySetInnerHTML={{ __html: referenceHtml(r, style) }} />
                 {s ? (
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] border text-[11px] whitespace-nowrap ${s.className}`} title={v ? t("panelsReview.cite.checkedTitle", { date: fmt.dateTime(v.checkedAt), source: v.source }) : undefined}>
                     {s.icon} {t(s.label)}

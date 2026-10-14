@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, ShieldCheck, StickyNote } from "lucide-react";
+import { BookMarked, CalendarClock, ShieldCheck, StickyNote } from "lucide-react";
 import type { ConsentScopes } from "../useUser";
 import { useFormat, useT } from "@/lib/i18n/client";
 import { richText } from "./types";
@@ -24,6 +24,11 @@ interface Props {
   /** Estimated page count of the open tab (about 350 words a page). */
   pages: number;
   citationStyle: string;
+  /**
+   * Sources & references of the thesis: the citation style becomes a button "N sources · M references · APA" that
+   * opens the panel. `sources` is null while the list loads.
+   */
+  library?: { sources: number | null; references: number; open: boolean; onToggle: () => void };
   zoom: number;
   onWordCount: () => void;
   /** Thesis deadline (ISO); the chip shows the days left and opens the deadline dialog for the owner. */
@@ -49,7 +54,7 @@ function joinList(items: string[], and: string) {
  * Session bar (30px, bottom of the editor): what the current session records, in the student's own consent
  * terms, and the document facts an advisor glances at (status, words, page, citation style).
  */
-export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, advisorName, words, targetWords, pages, citationStyle, zoom, onWordCount, deadline, onDeadline, workingTab }: Props) {
+export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, advisorName, words, targetWords, pages, citationStyle, library, zoom, onWordCount, deadline, onDeadline, workingTab }: Props) {
   const t = useT();
   const fmt = useFormat();
   const deadlineLabel = useDeadlineLabel();
@@ -122,8 +127,32 @@ export default function SessionBar({ sessionActive, scopes, onChange, isOwner, r
           <CalendarClock className="w-3.5 h-3.5" />{t("deadline.add")}
         </button>
       ) : null}
-      <span className="flex-shrink-0">{citationStyle}</span>
+      {library ? <LibraryButton library={library} citationStyle={citationStyle} /> : <span className="flex-shrink-0">{citationStyle}</span>}
       {zoom !== 100 && <span className="flex-shrink-0">{zoom}%</span>}
     </footer>
+  );
+}
+
+/** "N sources · M references · APA": opens (or closes) the Sources & references panel without adding a row of chrome. */
+function LibraryButton({ library, citationStyle }: { library: NonNullable<Props["library"]>; citationStyle: string }) {
+  const t = useT();
+  const fmt = useFormat();
+  const sources = library.sources === null ? null : t(library.sources === 1 ? "editor.session.sources_one" : "editor.session.sources", { n: fmt.number(library.sources) });
+  const references = t(library.references === 1 ? "editor.session.references_one" : "editor.session.references", { n: fmt.number(library.references) });
+  const summary = [sources, references].filter(Boolean).join(" · ");
+  const label = t("editor.session.libraryAria", { area: t("glossary.sourcesReferences"), summary, style: citationStyle });
+  const numbers = [library.sources, library.references].filter((n): n is number => n !== null).map((n) => fmt.number(n));
+  return (
+    <button onClick={library.onToggle} aria-pressed={library.open} aria-label={label} title={label} className={`flex items-center gap-1 flex-shrink-0 rounded px-1 -mx-1 hover:text-gray-900 hover:bg-gray-100 ${library.open ? "text-brand-700" : ""}`} data-testid="session-library">
+      <BookMarked className="w-3.5 h-3.5" aria-hidden="true" />
+      {/* Full words from 1280px; below, the numbers only (the label says it all), so the consent sentence on the left
+          keeps its room on laptop widths. */}
+      <span className="hidden xl:inline">
+        {summary} · {citationStyle}
+      </span>
+      <span className="xl:hidden">
+        {numbers.join(" · ")} · {citationStyle}
+      </span>
+    </button>
   );
 }

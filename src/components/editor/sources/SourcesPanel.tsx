@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ExternalLink, FileText, Library, Link2, Loader2, Quote, Trash2, Upload, Type as TypeIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, ExternalLink, FileText, Link2, Loader2, Quote, Trash2, Upload, Type as TypeIcon } from "lucide-react";
 import { api, ApiError } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
 import type { Translate } from "@/lib/i18n/dictionary";
 import Markdown from "@/components/Markdown";
 import { Modal, Spinner } from "@/components/ui";
-import { PanelShell } from "../Sidebars";
+import type { Reference } from "../types";
+import { referenceForSource } from "./match";
 
-/** A source as `/api/theses/[id]/sources` returns it (no extracted text). */
+/** A source linked to the thesis, as `/api/theses/[id]/sources` returns it (no extracted text). The source itself lives in the student's library. */
 export interface LibrarySource {
   id: string;
   thesisId: string;
@@ -53,26 +54,31 @@ export interface LibraryCitation {
   year?: string;
 }
 
-export interface CitationRef {
-  authors: string;
-  year: string;
-  title: string;
-  source: string;
-  doi?: string;
-  url?: string;
-}
-
-export interface SourcesPanelProps {
+export interface SourcesTabProps {
   thesisId: string;
+  /** Owner of an editable thesis: add, remove and cite. Read-only viewers only list, open, summarize and ask. */
   canEdit: boolean;
+  /** The sources linked to this thesis (state lives in DocsEditor, which also shows the count in the session bar). */
+  sources: LibrarySource[];
+  loading: boolean;
+  /** Set when the list could not be loaded (shown with `onRetry` instead of "no sources yet"). */
+  loadError?: string;
+  onRetry?: () => void;
+  /** Applies a local change to the list (after an add or a removal). */
+  onSourcesChange: (update: (list: LibrarySource[]) => LibrarySource[]) => void;
+  /** The references of this thesis and the in-text citations per reference id, for the "In references" / "Cited" chips. */
+  references: Reference[];
+  citations: Record<string, number>;
   /** Current editor selection; pre-fills the question box. */
   selectionText?: string;
-  onInsertCitation?: (ref: CitationRef) => void;
-  onClose: () => void;
+  /** Inserts a citation of the source at the cursor (DocsEditor reuses or creates its reference). */
+  onCite?: (source: LibrarySource) => void;
   /** Writing session id, so questions are attached to the session's event log. */
   sessionId?: string;
   /** Called when the server asks for monitoring consent (HTTP 428). */
   onConsentRequired?: () => void;
+  /** Source to bring into view (from a reference's "Full text" chip). */
+  focusId?: string | null;
 }
 
 type AddTab = "doi" | "url" | "pdf" | "text";
@@ -104,8 +110,9 @@ function hostOf(url?: string) {
   }
 }
 
-function toCitationRef(s: LibrarySource): CitationRef {
-  return { authors: s.authors || "", year: s.year || "", title: s.title, source: s.venue || hostOf(s.url) || (s.kind === "pdf" ? "PDF" : ""), doi: s.doi, url: s.url };
+/** A new reference made from a source: its metadata and `sourceId`, so the reference keeps pointing to the full text. */
+export function referenceFromSource(s: LibrarySource, id: string): Reference {
+  return { id, type: s.doi ? "article" : "web", authors: s.authors || "", year: s.year || "", title: s.title, source: s.venue || hostOf(s.url) || (s.kind === "pdf" ? "PDF" : ""), doi: s.doi, url: s.url, sourceId: s.id };
 }
 
 /** Index of `quote` inside `text`, ignoring case and whitespace/quote differences; -1 when absent. */
@@ -135,11 +142,9 @@ function locateQuote(text: string, quote: string): { start: number; end: number 
   return { start: map[at], end: map[Math.min(at + q.length - 1, map.length - 1)] + 1 };
 }
 
-export default function SourcesPanel({ thesisId, canEdit, selectionText, onInsertCitation, onClose, sessionId, onConsentRequired }: SourcesPanelProps) {
+export default function SourcesTab({ thesisId, canEdit, sources, loading, loadError, onRetry, onSourcesChange, references, citations, selectionText, onCite, sessionId, onConsentRequired, focusId }: SourcesTabProps) {
   const t = useT();
   const fmt = useFormat();
-  const [sources, setSources] = useState<LibrarySource[]>([]);
-  const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<{ text: string; kind: "info" | "error" } | null>(null);
 
   // Add form
@@ -166,19 +171,11 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
     if (!questionTouched.current && selectionText) setQuestion(selectionText.slice(0, 1500));
   }, [selectionText]);
 
-  const load = useCallback(async () => {
-    try {
-      const d = await api<{ sources: LibrarySource[] }>(`/api/theses/${thesisId}/sources`);
-      setSources(d.sources);
-    } catch (e) {
-      setNotice({ text: (e as Error).message, kind: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }, [thesisId]);
+  // A reference's "Full text" chip brings its source into view.
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!focusId || loading) return;
+    document.getElementById(`library-source-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusId, loading]);
 
   const indexed = useMemo(() => sources.filter((s) => s.parseStatus === "parsed" && s.chunkCount > 0), [sources]);
 
@@ -200,22 +197,24 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
     if (adding) return;
     setAdding(true);
     try {
-      let res: { source: LibrarySource };
+      let res: { source: LibrarySource; linked?: boolean };
       if (tab === "pdf") {
         if (!file) return say(t("panelsResearch.sources.choosePdfFirst"), "error");
         const form = new FormData();
         form.append("file", file);
         if (title.trim()) form.append("title", title.trim());
-        res = await api<{ source: LibrarySource }>(`/api/theses/${thesisId}/sources`, { method: "POST", body: form });
+        res = await api<{ source: LibrarySource; linked?: boolean }>(`/api/theses/${thesisId}/sources`, { method: "POST", body: form });
       } else {
         if (!value.trim()) return say(tab === "text" ? t("panelsResearch.sources.pasteTextFirst") : t("panelsResearch.sources.enterFirst", { kind: tab.toUpperCase() }), "error");
-        res = await api<{ source: LibrarySource }>(`/api/theses/${thesisId}/sources`, { method: "POST", json: { kind: tab, value: value.trim(), title: title.trim() || undefined } });
+        res = await api<{ source: LibrarySource; linked?: boolean }>(`/api/theses/${thesisId}/sources`, { method: "POST", json: { kind: tab, value: value.trim(), title: title.trim() || undefined } });
       }
-      setSources((list) => [res.source, ...list.filter((s) => s.id !== res.source.id)]);
+      onSourcesChange((list) => [res.source, ...list.filter((s) => s.id !== res.source.id)]);
       setValue("");
       setTitle("");
       setFile(null);
       if (fileInput.current) fileInput.current.value = "";
+      // The DOI was already in the library: the existing source (and its passages) now also serves this thesis.
+      if (res.linked) return say(t("panelsResearch.sources.linkedExisting"), "info");
       const chip = statusChip(res.source, t).label;
       const from = res.source.pages ? t(res.source.pages === 1 ? "panelsResearch.sources.fromPages_one" : "panelsResearch.sources.fromPages", { n: res.source.pages }) : "";
       say(res.source.parseStatus === "parsed" ? t(res.source.chunkCount === 1 ? "panelsResearch.sources.added_one" : "panelsResearch.sources.added", { n: res.source.chunkCount, from }) : t("panelsResearch.sources.addedButStatus", { status: chip.toLowerCase(), detail: res.source.abstract || t("panelsResearch.sources.couldNotIndex") }), res.source.parseStatus === "parsed" ? "info" : "error");
@@ -226,11 +225,12 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
     }
   };
 
+  /** Unlinks the source from this thesis; it stays in the student's library. */
   const remove = async (s: LibrarySource) => {
     setBusyId(s.id);
     try {
       await api(`/api/theses/${thesisId}/sources/${s.id}`, { method: "DELETE" });
-      setSources((list) => list.filter((x) => x.id !== s.id));
+      onSourcesChange((list) => list.filter((x) => x.id !== s.id));
       setConfirmRemove(null);
     } catch (e) {
       handleApiError(e, t("panelsResearch.sources.errRemove"));
@@ -293,7 +293,7 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
   };
 
   return (
-    <PanelShell title={t("panelsResearch.sources.title")} icon={<Library className="w-4 h-4 text-gray-500" />} onClose={onClose} actions={<span className="text-[11px] text-gray-400">{sources.length}/40</span>}>
+    <>
       <div className="p-3 space-y-3 text-[13px]">
         {notice && (
           <div role="status" className={`text-xs rounded-lg px-3 py-2 ${notice.kind === "error" ? "bg-red-50 text-red-700" : "bg-brand-50 text-brand-700"}`}>
@@ -316,7 +316,7 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
             {tab === "pdf" && (
               <label className="flex items-center gap-2 text-xs text-gray-600 border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:border-brand-400">
                 <Upload className="w-4 h-4 text-gray-400" />
-                <span className="flex-1 truncate">{file ? `${file.name} (${(file.size / 1048576).toFixed(1)} MB)` : t("panelsResearch.sources.choosePdf")}</span>
+                <span className="flex-1 truncate">{file ? t("dashboard.sources.form.pdfPicked", { name: file.name, size: fmt.number(file.size / 1048576, { maximumFractionDigits: 1 }) }) : t("panelsResearch.sources.choosePdf")}</span>
                 <input ref={fileInput} type="file" accept="application/pdf,.pdf" className="sr-only" aria-label={t("panelsResearch.sources.pdfFile")} onChange={(e) => setFile(e.target.files?.[0] || null)} />
               </label>
             )}
@@ -336,19 +336,28 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
         )}
 
         <section aria-label={t("panelsResearch.sources.libraryLabel")}>
+          {canEdit && !loading && !loadError && sources.length > 0 && <div className="text-[11px] text-gray-500 mb-1.5">{t("editor.library.sourcesCap", { n: sources.length, max: 40 })}</div>}
           {loading && (
             <div className="flex items-center gap-2 text-xs text-gray-500 py-3">
               <Spinner /> {t("panelsResearch.sources.loading")}
             </div>
           )}
-          {!loading && sources.length === 0 && <div className="text-xs text-gray-400 text-center py-4">{t("panelsResearch.sources.empty")}</div>}
+          {loadError && (
+            <div role="alert" className="text-xs rounded-lg px-3 py-2 bg-red-50 text-red-700 flex items-center gap-2">
+              <span className="flex-1">{loadError}</span>
+              {onRetry && <button onClick={onRetry} className="underline hover:no-underline">{t("editor.library.retry")}</button>}
+            </div>
+          )}
+          {!loading && !loadError && sources.length === 0 && <div className="text-xs text-gray-400 text-center py-4">{t(canEdit ? "panelsResearch.sources.empty" : "panelsResearch.sources.emptyReadOnly")}</div>}
           <ul className="space-y-2">
             {sources.map((s) => {
               const chip = statusChip(s, t);
               const link = s.doi ? `https://doi.org/${s.doi}` : s.url;
               const busy = busyId === s.id;
+              const ref = referenceForSource(s, references);
+              const cited = ref ? citations[ref.id] || 0 : 0;
               return (
-                <li key={s.id} className="rounded-2xl border border-gray-100 hover:border-gray-200 p-2.5">
+                <li key={s.id} id={`library-source-${s.id}`} className={`rounded-2xl border p-2.5 ${focusId === s.id ? "border-brand-400 ring-2 ring-brand-100" : "border-gray-100 hover:border-gray-200"}`}>
                   <div className="flex items-start gap-2">
                     <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -358,6 +367,12 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px]">
                     <span className={`px-2 py-0.5 rounded-full ${chip.className}`}>{chip.label}</span>
+                    {ref && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] ${cited ? "bg-brand-50 text-brand-700" : "bg-gray-100 text-gray-600"}`} title={t("editor.library.citedTitle")}>
+                        <Quote className="w-3 h-3" aria-hidden="true" />
+                        {cited ? t("editor.library.citedTimes", { n: cited }) : t("editor.library.inReferences")}
+                      </span>
+                    )}
                     {s.pages ? <span className="text-gray-500">{countLabel(t, "panelsResearch.sources.pages", s.pages)}</span> : null}
                     {s.wordCount ? <span className="text-gray-500">{s.wordCount === 1 ? t("common.word_one") : t("common.words", { n: fmt.number(s.wordCount) })}</span> : null}
                     {s.license && <span className="text-gray-500">{s.license}</span>}
@@ -381,14 +396,14 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
                     <button onClick={() => summarize(s)} disabled={busy || s.parseStatus !== "parsed"} className="text-brand-600 hover:underline disabled:opacity-40" aria-label={t("panelsResearch.sources.summarizeLabel", { title: s.title })}>
                       {t("panelsResearch.sources.summarize")}
                     </button>
-                    {onInsertCitation && canEdit && (
-                      <button onClick={() => onInsertCitation(toCitationRef(s))} className="text-brand-600 hover:underline inline-flex items-center gap-1" aria-label={t("panelsResearch.sources.citeLabel", { title: s.title })}>
+                    {onCite && canEdit && (
+                      <button onClick={() => onCite(s)} className="text-brand-600 hover:underline inline-flex items-center gap-1" aria-label={t("panelsResearch.sources.citeLabel", { title: s.title })}>
                         <Quote className="w-3 h-3" /> {t("panelsResearch.sources.cite")}
                       </button>
                     )}
                     {canEdit && confirmRemove !== s.id && (
-                      <button onClick={() => setConfirmRemove(s.id)} className="text-gray-400 hover:text-red-600 ml-auto" aria-label={t("panelsResearch.sources.removeLabel", { title: s.title })}>
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <button onClick={() => setConfirmRemove(s.id)} className="text-gray-400 hover:text-red-600 ml-auto" aria-label={t("panelsResearch.sources.removeLabel", { title: s.title })} title={t("panelsResearch.sources.removeLabel", { title: s.title })}>
+                        <Trash2 className="w-[15px] h-[15px]" />
                       </button>
                     )}
                     {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 ml-auto" aria-label={t("panelsResearch.sources.working")} />}
@@ -397,7 +412,7 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
                     <div className="mt-2 rounded-xl bg-gray-50 p-2 text-xs text-gray-600 flex flex-wrap items-center gap-2">
                       <span className="flex-1">{t("panelsResearch.sources.removeConsequence")}</span>
                       <button onClick={() => setConfirmRemove(null)} className="px-2 py-1 rounded-lg hover:bg-gray-200">{t("panelsResearch.sources.keep")}</button>
-                      <button onClick={() => remove(s)} className="px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700">{t("common.remove")}</button>
+                      <button onClick={() => remove(s)} className="px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700">{t("panelsResearch.sources.removeConfirm")}</button>
                     </div>
                   )}
                 </li>
@@ -463,7 +478,7 @@ export default function SourcesPanel({ thesisId, canEdit, selectionText, onInser
       </Modal>
 
       <ChunkViewer viewer={viewer} onClose={() => setViewer(null)} />
-    </PanelShell>
+    </>
   );
 }
 

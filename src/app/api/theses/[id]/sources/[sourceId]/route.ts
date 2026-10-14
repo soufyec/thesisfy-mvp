@@ -8,6 +8,8 @@ import { checkPolicy, detectLang } from "@/lib/ai/policy";
 import { costOf, resolveProvider, streamCompletion } from "@/lib/ai/providers";
 import { splitSentences } from "@/lib/sources/chunk";
 import { publicSource } from "@/lib/sources/retrieve";
+import { getT } from "@/lib/i18n/server";
+import { fail, isLocked, lockedFail } from "@/lib/sources/library";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,10 +19,12 @@ const SUMMARY_WORDS = 3000;
 async function load(request: NextRequest, params: { id: string; sourceId: string }) {
   const r = await requireUser(request);
   if ("response" in r) return { response: r.response };
+  const t = getT();
   const thesis = canAccessThesis(r.user, params.id);
-  if (!thesis) return { response: error("Thesis not found", 404) };
+  if (!thesis) return { response: error(t("library.error.thesisNotFound"), 404) };
   const source = db.sources.findById(params.sourceId);
-  if (!source || source.thesisId !== thesis.id) return { response: error("Source not found", 404) };
+  // Only sources linked to this thesis are reachable through it.
+  if (!source || !Array.isArray(source.thesisIds) || source.thesisIds.indexOf(thesis.id) === -1) return { response: error(t("library.error.sourceNotFound"), 404) };
   return { user: r.user, thesis, source };
 }
 
@@ -29,16 +33,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   const l = await load(request, params);
   if ("response" in l) return l.response;
   const chunks = db.sourceChunks.listBySource(l.source.id).map((c) => ({ id: c.id, index: c.index, page: c.page, section: c.section, text: c.text }));
-  return json({ source: publicSource(l.source), chunks });
+  return json({ source: publicSource(l.source, l.thesis.id), chunks });
 }
 
-/** DELETE → removes the source and its chunks. */
+/**
+ * DELETE → removes the source from this thesis (owner only). The source stays in the student's library with its
+ * chunks; deleting it from the library is `DELETE /api/library/sources/[id]`.
+ */
 export async function DELETE(request: NextRequest, { params }: { params: { id: string; sourceId: string } }) {
   const l = await load(request, params);
   if ("response" in l) return l.response;
-  db.sourceChunks.removeForSource(l.source.id);
-  db.sources.remove(l.source.id);
-  return json({ ok: true });
+  const t = getT();
+  if (l.user.id !== l.thesis.studentId) return fail(t("library.error.ownerOnly"), 403, "owner_only").fail;
+  if (isLocked(l.thesis)) return lockedFail(l.thesis, t).fail;
+  db.sources.unlink(l.source.id, l.thesis.id);
+  return json({ ok: true, unlinked: true });
 }
 
 /** POST { action: "summarize" } → a short summary of the source's first ~3000 words, logged as a "summarize" interaction. */

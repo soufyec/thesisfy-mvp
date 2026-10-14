@@ -275,10 +275,10 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
         { label: t("editor.menu.aiReviewer"), action: "reviewer" },
         { label: t("editor.menu.languageReview"), action: "language" },
         { sep: true, label: "" },
-        { label: t("editor.menu.citationsRefs"), action: "references" },
+        // One entry for the Sources & references panel (its References, Sources and Your library tabs).
+        { label: t("glossary.sourcesReferences"), action: "references" },
         { label: t("editor.menu.findSupport"), action: "cite" },
         { label: t("editor.menu.evidenceCheck"), action: "evidence" },
-        { label: t("editor.menu.sourceLibrary"), action: "sources" },
         { sep: true, label: "" },
         { label: t("glossary.integrityLedger"), action: "integrity" },
         { label: t("editor.menu.writingProcess"), action: "process" },

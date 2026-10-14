@@ -1,5 +1,7 @@
 # Vídeo del onboarding · «A two-minute tour»
 
+> Sustituido en el onboarding por el vídeo para estudiantes (`docs/academy/films.md`). Los archivos `tour-*` se retiraron de `public/videos`; siguen en el historial de git y estos scripts los regeneran.
+
 Tres vídeos, uno por idioma de la interfaz, que se reproducen en la primera página del onboarding del editor (`IntroModal`). Cada uno recorre la aplicación real con un ratón virtual mientras una voz narra en ese idioma: dashboard → editor → escribir → pegar y atribuir → Thesisfic AI (Critique) → tarjeta de coste e inserción (Outline) → Integrity ledger → la misma vista del tutor → lema.
 
 | Archivo | Qué es |

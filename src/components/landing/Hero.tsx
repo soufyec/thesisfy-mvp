@@ -6,6 +6,7 @@ import QualitySeal from "@/components/QualitySeal";
 import HeroScene from "./HeroScene";
 import FallingPapers from "./FallingPapers";
 import HeroEditorPreview from "./HeroEditorPreview";
+import FilmButton from "./FilmButton";
 import { useT } from "@/lib/i18n/client";
 
 const BULLETS = [
@@ -134,7 +135,7 @@ export default function Hero() {
           <p className="text-[17px] sm:text-[19px] leading-[1.6] text-gray-600 max-w-[560px] mb-9 [text-wrap:pretty]">
             {t("landing.hero.body")}
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <a href="#trial" className="btn-primary gap-2 !px-[26px] !py-[15px] !text-[16px]">
               {t("landing.hero.cta")}
               <ArrowRight className="w-[18px] h-[18px]" strokeWidth={2.2} aria-hidden="true" />
@@ -142,6 +143,7 @@ export default function Hero() {
             <a href="#how" className="btn-outline !px-[26px] !py-[15px] !text-[16px]">
               {t("landing.hero.ctaSecondary")}
             </a>
+            <FilmButton which="teaser" label={t("landing.film.watch")} title={t("landing.film.teaserTitle")} />
           </div>
           <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-gray-500 list-none p-0 m-0">
             {BULLETS.map((b) => (
