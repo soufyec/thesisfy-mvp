@@ -85,6 +85,9 @@ const en = {
   "deadline.wordsToGo": "{n} words to go.",
   "deadline.calendarAria": "{month}: past days crossed out, today ringed, deadline flagged",
   "deadline.calendarEmpty": "Set the date your thesis is due and this calendar will count the days down with the pace you need.",
+  "deadline.submitted": "Submitted",
+  "deadline.submittedLate": "Submitted late",
+  "deadline.submittedOn": "Submitted {date}",
 
   // Glossary — CLAUDE.md §3
   "glossary.assistant": "Thesisfic AI",
@@ -106,6 +109,15 @@ const en = {
   "glossary.tagline": "Thinks with you. Never writes your thesis.",
   "glossary.sourcesReferences": "Sources & references",
   "glossary.library": "Your library",
+  // Papers and assignments (docs/papers.md D5, §5)
+  "glossary.paper": "Paper",
+  "glossary.papers": "Papers",
+  "glossary.myPapers": "My papers",
+  "glossary.assignment": "Assignment",
+  "glossary.brief": "Brief",
+  "glossary.primaryData": "Primary data",
+  "glossary.figure": "AI-assisted figure",
+  "glossary.teacher": "Teacher",
 };
 
 export const common: Messages<typeof en> = {
@@ -190,6 +202,9 @@ export const common: Messages<typeof en> = {
     "deadline.wordsToGo": "Te faltan {n} palabras.",
     "deadline.calendarAria": "{month}: días pasados tachados, hoy marcado, fecha de entrega señalada",
     "deadline.calendarEmpty": "Pon la fecha en que entregas la tesis y este calendario contará los días que quedan con el ritmo que necesitas.",
+    "deadline.submitted": "Entregado",
+    "deadline.submittedLate": "Entregado con retraso",
+    "deadline.submittedOn": "Entregado el {date}",
 
     "glossary.assistant": "Thesisfic AI",
     "glossary.aiAssistant": "Asistente de IA",
@@ -210,6 +225,14 @@ export const common: Messages<typeof en> = {
     "glossary.tagline": "Piensa contigo. Nunca escribe tu tesis.",
     "glossary.sourcesReferences": "Fuentes y referencias",
     "glossary.library": "Tu biblioteca",
+    "glossary.paper": "Trabajo",
+    "glossary.papers": "Trabajos",
+    "glossary.myPapers": "Mis trabajos",
+    "glossary.assignment": "Tarea",
+    "glossary.brief": "Enunciado",
+    "glossary.primaryData": "Datos primarios",
+    "glossary.figure": "Figura con ayuda de IA",
+    "glossary.teacher": "Docente",
   },
   fr: {
     "common.save": "Enregistrer",
@@ -291,6 +314,9 @@ export const common: Messages<typeof en> = {
     "deadline.wordsToGo": "Il vous reste {n} mots.",
     "deadline.calendarAria": "{month} : jours passés barrés, aujourd'hui entouré, échéance signalée",
     "deadline.calendarEmpty": "Indiquez la date de dépôt de votre thèse et ce calendrier comptera les jours restants avec le rythme nécessaire.",
+    "deadline.submitted": "Rendu",
+    "deadline.submittedLate": "Rendu en retard",
+    "deadline.submittedOn": "Rendu le {date}",
 
     "glossary.assistant": "Thesisfic AI",
     "glossary.aiAssistant": "Assistant IA",
@@ -311,6 +337,14 @@ export const common: Messages<typeof en> = {
     "glossary.tagline": "Réfléchit avec vous. N'écrit jamais votre thèse.",
     "glossary.sourcesReferences": "Sources et références",
     "glossary.library": "Votre bibliothèque",
+    "glossary.paper": "Travail",
+    "glossary.papers": "Travaux",
+    "glossary.myPapers": "Mes travaux",
+    "glossary.assignment": "Devoir",
+    "glossary.brief": "Consigne",
+    "glossary.primaryData": "Données primaires",
+    "glossary.figure": "Figure assistée par IA",
+    "glossary.teacher": "Enseignant",
   },
   de: {
     "common.save": "Speichern",
@@ -392,6 +426,9 @@ export const common: Messages<typeof en> = {
     "deadline.wordsToGo": "Noch {n} Wörter.",
     "deadline.calendarAria": "{month}: vergangene Tage durchgestrichen, heute umkreist, Abgabetermin markiert",
     "deadline.calendarEmpty": "Legen Sie den Abgabetermin Ihrer Abschlussarbeit fest, und dieser Kalender zählt die Tage herunter, mit dem Tempo, das Sie brauchen.",
+    "deadline.submitted": "Abgegeben",
+    "deadline.submittedLate": "Verspätet abgegeben",
+    "deadline.submittedOn": "Abgegeben am {date}",
 
     "glossary.assistant": "Thesisfic AI",
     "glossary.aiAssistant": "KI-Assistent",
@@ -412,5 +449,13 @@ export const common: Messages<typeof en> = {
     "glossary.tagline": "Denkt mit Ihnen. Schreibt nie Ihre Abschlussarbeit.",
     "glossary.sourcesReferences": "Quellen und Literatur",
     "glossary.library": "Ihre Bibliothek",
+    "glossary.paper": "Arbeit",
+    "glossary.papers": "Arbeiten",
+    "glossary.myPapers": "Meine Arbeiten",
+    "glossary.assignment": "Aufgabe",
+    "glossary.brief": "Aufgabenstellung",
+    "glossary.primaryData": "Primärdaten",
+    "glossary.figure": "KI-unterstützte Abbildung",
+    "glossary.teacher": "Lehrkraft",
   },
 };

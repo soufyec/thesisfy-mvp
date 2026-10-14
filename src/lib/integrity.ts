@@ -1,10 +1,13 @@
-import { countWords, db, IntegrityFlag, Policy, Thesis, WritingSession } from "./db";
+import { computeFigures, countWords, db, IntegrityFlag, Policy, stripChartFigures, Thesis, WritingSession } from "./db";
 import { notifyUser } from "./notify";
 
 export type IntegrityFix = "attribute_paste" | "reduce_ai" | "open_notice" | "none";
 
-/** Stable identifiers for ledger rows; the client translates by code (`editor.ledger.line.<code>`). */
-export type IntegrityLineCode = "ai_share" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
+/**
+ * Stable identifiers for ledger rows; the client translates by code (`editor.ledger.line.<code>`, and
+ * `editor.ledger.line.ai_figures_one` when `vars.n === 1`).
+ */
+export type IntegrityLineCode = "ai_share" | "ai_figures" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
 
 export interface IntegrityLine {
   code: IntegrityLineCode;
@@ -46,8 +49,11 @@ export function formatPercent(value: number, limit?: number): string {
 
 /** Pasted words that carry no attribution: `data-provenance="paste"` spans without a `data-source` label. */
 export function countUnattributedPaste(rawHtml: string): number {
-  // The AI-use declaration appendix (data-declaration="true") is a record, not thesis text.
-  const html = rawHtml.replace(/<span[^>]*data-declaration="true"[^>]*>[\s\S]*?<\/span>/gi, "");
+  // The AI-use declaration appendix (data-declaration="true") is a record, not thesis text; chart figures are figures,
+  // not words, and image captions are left out as in countWords.
+  const html = stripChartFigures(rawHtml)
+    .replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " ")
+    .replace(/<span[^>]*data-declaration="true"[^>]*>[\s\S]*?<\/span>/gi, "");
   let words = 0;
   const re = /<span([^>]*)data-provenance="paste"([^>]*)>([\s\S]*?)<\/span>/gi;
   let m: RegExpExecArray | null;
@@ -73,6 +79,14 @@ export function integrityBreakdown(thesis: Thesis, policy: Policy, flags: Integr
   const aiPoints = aiPct > limit ? Math.min(30, Math.max(1, Math.round(aiPct - limit))) : 0;
   const aiShown = formatPercent(aiPct, limit);
   lines.push({ code: "ai_share", vars: { pct: aiShown, limit }, reason: `AI share ${aiShown}% of ${limit}% limit`, points: aiPoints, fix: aiPoints > 0 ? "reduce_ai" : "none" });
+
+  // AI-assisted figures (charts computed from the student's data and inserted from the copilot) add no words, so they
+  // do not move the AI share: listed for information at 0 points, only when the Final submission holds at least one.
+  const figures = typeof thesis.content === "string" ? computeFigures(thesis.content) : thesis.figures;
+  const aiFigures = figures?.ai || 0;
+  if (aiFigures > 0) {
+    lines.push({ code: "ai_figures", vars: { n: aiFigures }, reason: aiFigures === 1 ? "1 AI-assisted figure, computed from your data and inserted from the assistant" : `${aiFigures} AI-assisted figures, computed from your data and inserted from the assistant`, points: 0, fix: "none" });
+  }
 
   // Pasted text costs only while it has no attribution: 0.5 point per percent of the document (max 20).
   // Quoted text with a named source (or recognised from the copilot) is shown for information at 0 points.

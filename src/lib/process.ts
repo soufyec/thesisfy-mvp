@@ -13,7 +13,7 @@
 // Server-only module (uses node:crypto and the data layer). Client code imports types only.
 
 import { createHash } from "crypto";
-import { db } from "./db";
+import { db, stripChartFigures } from "./db";
 import type { AIInteraction, AIMode, Consent, Policy, Snapshot, Thesis, ThesisVersion, WritingSession } from "./db";
 
 export const FULL_SNAPSHOT_EVERY = 20;
@@ -83,7 +83,7 @@ export function countWords(text: string) {
 
 /** Plain-text paragraphs of a TipTap document, one per block, whitespace collapsed, empty blocks dropped. */
 export function htmlToParagraphs(html: string): string[] {
-  return html
+  return stripChartFigures(html) // chart figures (caption and data attributes included) are figures, not text
     .replace(/<figcaption[\s\S]*?<\/figcaption>/gi, "") // image captions are not thesis text
     .replace(BLOCK_END, "\n")
     .replace(/<[^>]*>/g, "")
@@ -121,7 +121,9 @@ export interface HtmlScan {
  */
 export function scanHtml(html: string): HtmlScan {
   const scan: HtmlScan = { chapters: [], words: 0, ai: 0, paste: 0, human: 0, pasteAttributed: 0, aiByInteraction: {} };
-  const tokens = html.match(/<[^>]*>|[^<]+/g) || [];
+  // Chart figures and image captions are not thesis words, as in countWords (db.ts) and the editor's own counter.
+  const counted = stripChartFigures(html).replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " ");
+  const tokens = counted.match(/<[^>]*>|[^<]+/g) || [];
   // One entry per open <span>: the provenance it carries, or null for an unrelated span.
   const spans: ({ kind: ProvenanceKind; attributed: boolean; interactionId?: string } | null)[] = [];
   let current: ChapterStats | null = null;

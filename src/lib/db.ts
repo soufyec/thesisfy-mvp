@@ -6,6 +6,11 @@
 import { randomBytes, randomUUID } from "crypto";
 import fs from "fs";
 import { ensureTable, readStore, readVersion, storeConfigured, writeStore } from "./store";
+import type { PaperKind, WritingLanguage } from "./papers/kinds";
+import { templateFor } from "./papers/templates";
+import type { AssignmentView, StudentAssignmentView } from "./papers/views";
+
+export type { PaperKind, WritingLanguage } from "./papers/kinds";
 
 export type Role = "student" | "professor" | "admin";
 export type ThesisStatus = "draft" | "in_progress" | "under_review" | "revision_requested" | "approved" | "submitted";
@@ -80,6 +85,29 @@ export interface Thesis {
     pageNumbers?: "none" | "footerCenter" | "footerRight" | "headerRight";
     numberHeadings?: boolean;
   };
+  /**
+   * Kind of paper (thesis, essay, report…). Absent on papers created before kinds existed, and on papers an older
+   * server instance creates during a rolling deploy: always read it with `paperKind(t)` (absent = "thesis").
+   */
+  kind?: PaperKind;
+  /** Template the paper started from (`templateId = kind` in v1); informative, never re-applied. */
+  templateId?: string;
+  /** Set when the paper was started from an assignment; its deadline, target and citation style then come from it. */
+  assignmentId?: string;
+  /** Language the paper is written in (template headings, artifact titles, chart labels, number format). */
+  writingLanguage?: WritingLanguage;
+  /** Last time the student sent the paper for review (`under_review`). */
+  submittedAt?: string;
+  /** Last time the staff recorded a review decision. */
+  reviewedAt?: string;
+  /** Figures of the Final submission (`figure[data-chart]`), derived from `content` by `computeFigures`. All are AI-assisted in v1. */
+  figures?: PaperFigures;
+}
+
+/** Figures of a paper's Final submission. `ai` counts AI-assisted figures (every chart in v1, so `ai === total`). */
+export interface PaperFigures {
+  total: number;
+  ai: number;
 }
 
 export interface ThesisTab {
@@ -256,7 +284,19 @@ export interface LanguagePrefs {
   updatedAt: string;
 }
 
-export type SourceKind = "doi" | "url" | "pdf" | "text";
+/** `docx` = Word document; `sheet` = spreadsheet (.xlsx, .csv, .tsv; the format is in `file.mime`). */
+export type SourceKind = "doi" | "url" | "pdf" | "text" | "docx" | "sheet";
+
+/** The student's own research material (data, transcripts, field notes) or literature. Absent = "secondary". */
+export type SourceRole = "primary" | "secondary";
+
+/** Metadata of an uploaded file. The bytes are never stored: only the extracted text or the parsed table. */
+export interface SourceFile {
+  name: string;
+  mime: string;
+  bytes: number;
+  sha256: string;
+}
 
 /**
  * A source in a student's personal library: metadata plus extracted text the assistant can quote from.
@@ -288,6 +328,158 @@ export interface ThesisSource {
   openalexId?: string;
   addedAt: string;
   lastUsedAt?: string;
+  /** Primary data or literature; absent = "secondary". Sheets are always "primary". */
+  role?: SourceRole;
+  /** Uploaded file (pdf, docx, sheet, txt, md): name, type, size and hash (deduplication with `db.sources.findByHash`). */
+  file?: SourceFile;
+  /** kind "sheet": the parsed table lives in `datasets` (never here, so source lists stay light). */
+  datasetId?: string;
+}
+
+// ---------- Primary data (datasets parsed from uploaded sheets) ----------
+
+export type DatasetCell = string | number | boolean | null;
+
+export interface DatasetColumn {
+  /** Column name as found in the header row ("Column N" when empty, suffixed when duplicated). */
+  name: string;
+  /** Readable label (`annual_rainfall_mm` → "Annual rainfall (mm)"). */
+  label: string;
+  type: "number" | "text" | "date" | "boolean" | "empty";
+  role: "measure" | "category" | "time" | "identifier" | "freeText" | "empty";
+  n: number;
+  missing: number;
+  distinct: number;
+  /** Only for number and date columns. */
+  min?: number;
+  max?: number;
+  mean?: number;
+  median?: number;
+  sd?: number;
+  /** Only for columns with role "category" (2–30 distinct values, each with n ≥ 3). */
+  categories?: { value: string; n: number }[];
+  /** Decimals used to present the column's numbers. */
+  precision?: number;
+}
+
+export interface DatasetSheet {
+  name: string;
+  columns: DatasetColumn[];
+  /** Column-major: `data[c][r]` is row r of column c (same order as `columns`). */
+  data: DatasetCell[][];
+  /** Rows kept (after the header row and any cut). */
+  rowCount: number;
+  /** 1-based row of the header in the original sheet. */
+  headerRow: number;
+  /** True when the sheet was cut at the cell, column or row caps. */
+  truncated: boolean;
+}
+
+/** The table parsed from a `sheet` source. One per source; removed with it. */
+export interface Dataset {
+  id: string;
+  sourceId: string;
+  ownerId: string;
+  sha256: string;
+  sheets: DatasetSheet[];
+  /** Cells stored across all sheets (counts toward the per-library cap). */
+  cells: number;
+  createdAt: string;
+}
+
+/** What a dataset looks like without its rows: what source views and the library page send. */
+export interface DatasetSummary {
+  sheets: { name: string; rowCount: number; truncated: boolean; headerRow: number; columns: { name: string; label: string; type: DatasetColumn["type"]; role: DatasetColumn["role"] }[] }[];
+}
+
+/** Summary of a dataset for source views: sheet names, sizes and columns, never rows or statistics. */
+export function datasetSummary(d: Dataset): DatasetSummary {
+  return {
+    sheets: d.sheets.map((s) => ({
+      name: s.name,
+      rowCount: s.rowCount,
+      truncated: s.truncated,
+      headerRow: s.headerRow,
+      columns: s.columns.map((c) => ({ name: c.name, label: c.label, type: c.type, role: c.role })),
+    })),
+  };
+}
+
+/** Cells held by a dataset's sheets (column-major data). */
+function datasetCellCount(sheets: DatasetSheet[]): number {
+  let n = 0;
+  for (const s of sheets) for (const col of s.data || []) n += Array.isArray(col) ? col.length : 0;
+  return n;
+}
+
+// ---------- Artifacts computed by Thesisfic from primary data (Research copilot) ----------
+
+export type AnalysisOp = "describe" | "frequencies" | "crosstab" | "groupSummary" | "correlation" | "distribution" | "trend" | "scatter";
+
+/** What the model (or the demo planner) asks Thesisfic to compute. Validated against the dataset before running. */
+export interface AnalysisSpec {
+  op: AnalysisOp;
+  sheet?: string;
+  columns?: string[];
+  column?: string;
+  row?: string;
+  col?: string;
+  value?: string;
+  by?: string;
+  stat?: "mean" | "median" | "sum" | "count";
+  x?: string;
+  y?: string;
+  bins?: number;
+  chart?: "bar" | "groupedBar" | "line" | "scatter" | "histogram" | "none";
+  /** Frequencies as shares (%), used for "pie" requests. */
+  asShare?: boolean;
+}
+
+/** A computed table: raw numbers plus presentation decimals per column. */
+export interface ArtifactTable {
+  columns: string[];
+  rows: (string | number | null)[][];
+  precision: number[];
+  notes?: string[];
+}
+
+export interface ChartData {
+  type: "bar" | "groupedBar" | "line" | "scatter" | "histogram";
+  xLabel: string;
+  yLabel: string;
+  categories?: string[];
+  series: { name: string; values?: number[]; points?: [number, number][]; other?: boolean }[];
+  fit?: { slope: number; intercept: number; r: number; n: number };
+  percent?: boolean;
+}
+
+/** A table or chart computed by Thesisfic from the student's data, attached to a copilot answer. */
+export interface Artifact {
+  id: string;
+  interactionId: string;
+  kind: "table" | "chart";
+  /** Deterministic, in the paper's writing language. */
+  title: string;
+  spec: AnalysisSpec;
+  sourceId: string;
+  fileName: string;
+  sheet: string;
+  datasetSha256: string;
+  n: number;
+  lang: WritingLanguage;
+  /** Always present (data view); raw numbers with per-column precision. At most 200 rows are stored. */
+  table: ArtifactTable;
+  /** Scatter charts keep at most 500 points (deterministic sampling). */
+  chart?: ChartData;
+  computedAt: string;
+}
+
+/** The slice of an artifact an AI interaction records (shown in the interaction lists of student and staff). */
+export interface ArtifactRef {
+  id: string;
+  kind: Artifact["kind"];
+  title: string;
+  sourceId: string;
 }
 
 export type SessionEventType =
@@ -397,6 +589,26 @@ export interface AIInteraction {
   institutionModelId?: string;
   /** Fingerprints of the answer's paragraphs and sentences, so text taken from it can be recognised when pasted into a thesis. */
   responseFingerprints?: string[];
+  /** Library sources attached to the request (primary data the copilot read). */
+  attachmentIds?: string[];
+  /** Tables and charts Thesisfic computed for this answer (summary only; the full artifact lives in the conversation). */
+  artifacts?: ArtifactRef[];
+}
+
+export interface ConversationMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  mode?: AIMode;
+  provider?: string;
+  model?: string;
+  createdAt: string;
+  /** Library sources attached to this message (user turn) or read for it (assistant turn). */
+  attachmentIds?: string[];
+  /** Artifacts computed for this answer (at most 4; tables keep at most 200 rows). */
+  artifacts?: Artifact[];
+  /** The AI interaction this answer was logged as; required to insert its artifacts. */
+  interactionId?: string;
 }
 
 export interface Conversation {
@@ -404,7 +616,32 @@ export interface Conversation {
   userId: string;
   thesisId?: string;
   title: string;
-  messages: { id: string; role: "user" | "assistant"; content: string; mode?: AIMode; provider?: string; model?: string; createdAt: string }[];
+  messages: ConversationMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A piece of work a teacher (or an admin) sends to students. Each student's paper is a `Thesis` with `assignmentId`. */
+export interface Assignment {
+  id: string;
+  university: string;
+  /** Professor or admin who created it; becomes the `professorId` of each paper started from it. */
+  createdBy: string;
+  /** ≤ 200 characters; the default title of each student's paper. */
+  title: string;
+  /** ≤ 8000 characters, limited Markdown. */
+  brief: string;
+  briefUpdatedAt?: string;
+  kind: PaperKind;
+  templateId?: string;
+  /** At least one, at most 300 students of the same university, no duplicates. */
+  studentIds: string[];
+  /** ISO, noon UTC (see src/lib/deadline.ts). */
+  deadline?: string;
+  /** 100–200000. */
+  targetWords?: number;
+  citationStyle?: Thesis["citationStyle"];
+  status: "open" | "closed";
   createdAt: string;
   updatedAt: string;
 }
@@ -627,7 +864,7 @@ export interface LtiKey {
   createdAt: string;
 }
 
-interface Store {
+export interface Store {
   users: User[];
   theses: Thesis[];
   versions: ThesisVersion[];
@@ -659,6 +896,10 @@ interface Store {
   ltiPlatforms: LtiPlatform[];
   ltiLinks: LtiLink[];
   ltiKeys: LtiKey[];
+  assignments: Assignment[];
+  datasets: Dataset[];
+  /** Ids of the one-off data migrations already applied to this document (e.g. "demo_papers_v1"). */
+  migrations: string[];
 }
 
 const DEMO_HASH = "$2a$10$XQxBj1DGDlpOI/YqgXmQxOZvGjCH1WPo0XrVELGk1IVUbSMqP1Sbe";
@@ -977,6 +1218,11 @@ function seed(): Store {
     ltiPlatforms: [],
     ltiLinks: [],
     ltiKeys: [],
+    // New collections stay empty in the seed: fillMissingCollections copies seed values into existing stores, so
+    // anything seeded here would appear in a real pilot. Demo data goes through a guarded migration (see migrateStore).
+    assignments: [],
+    datasets: [],
+    migrations: [],
     versions: [
       { id: "ver_1", thesisId: "thesis_1", authorId: "usr_1", content: thesis1Content, wordCount: 2847, kind: "milestone", label: "Chapter 4 draft", createdAt: "2026-03-12T11:30:00Z" },
     ],
@@ -1090,7 +1336,8 @@ const DATA_FILE = process.env.DATA_FILE;
 const SYNC_INTERVAL_MS = 3000;
 
 function fillMissingCollections(store: Store): Store {
-  // collections added after a store was first created (hot reload, older DATA_FILE or row)
+  // Collections added after a store was first created (hot reload, older DATA_FILE or row). Existing data is never
+  // touched; `assignments`, `datasets` and `migrations` arrive empty from the seed.
   const fresh = seed();
   const st = store as unknown as Record<string, unknown>;
   for (const k of Object.keys(fresh) as (keyof Store)[]) if (st[k] === undefined) st[k] = fresh[k];
@@ -1190,8 +1437,8 @@ function upsertLibraryReference(st: Store, ownerId: string, ref: Reference, stam
  * pre-library shape (sources with a single `thesisId`, references only inside theses), and the next hydrate fixes it.
  *  1. Sources without a `thesisIds` array take the owner of their `thesisId` and `thesisIds = [thesisId]`; a source
  *     whose thesis no longer exists (left behind by old deletes) is dropped with its chunks.
- *  2. Every source keeps only links to existing theses of its owner; the legacy `thesisId` is recomputed. Chunks of
- *     sources that no longer exist are dropped.
+ *  2. Every source keeps only links to existing theses of its owner; the legacy `thesisId` is recomputed. Chunks and
+ *     datasets of sources that no longer exist are dropped (an older instance deletes sources without cascading).
  *  3. Every reference inside a thesis exists in `libraryReferences` for (studentId, id); missing ones are inserted with
  *     the thesis's dates. Existing library items are never overwritten here. A thesis without a `references` array
  *     gets an empty one.
@@ -1235,6 +1482,13 @@ function migrateLibrary(store: Store): boolean {
     store.sourceChunks = keptChunks;
     changed = true;
   }
+  if (Array.isArray(store.datasets)) {
+    const keptDatasets = store.datasets.filter((d) => d && typeof d.id === "string" && sourceIds.has(d.sourceId));
+    if (keptDatasets.length !== store.datasets.length) {
+      store.datasets = keptDatasets;
+      changed = true;
+    }
+  }
 
   // 3: references
   if (!Array.isArray(store.libraryReferences)) {
@@ -1263,6 +1517,39 @@ function migrateLibrary(store: Store): boolean {
 }
 
 /**
+ * Every migration, run at the three hydration points (`load()` from memory or DATA_FILE, `ready()` from Postgres).
+ * Same contract as `migrateLibrary`: idempotent, deterministic (no uid(), no clock), true only when something changed.
+ * One-off data migrations (demo data) record their id in `store.migrations` and check it first, so a deletion by a
+ * user is never undone by the next hydration. Add new steps here, not at the call sites.
+ */
+function migrateStore(store: Store): boolean {
+  let changed = false;
+  if (!Array.isArray(store.migrations)) {
+    store.migrations = [];
+    changed = true;
+  }
+  for (const key of ["assignments", "datasets"] as const) {
+    if (!Array.isArray(store[key])) {
+      (store as unknown as Record<string, unknown[]>)[key] = [];
+      changed = true;
+    }
+  }
+  if (migrateLibrary(store)) changed = true;
+  return changed;
+}
+
+/** Whether a one-off migration already ran on this document. */
+export function hasMigration(store: Store, id: string): boolean {
+  return Array.isArray(store.migrations) && store.migrations.indexOf(id) !== -1;
+}
+
+/** Records a one-off migration as applied (call it in the same synchronous step that applies it). */
+export function markMigration(store: Store, id: string): void {
+  if (!Array.isArray(store.migrations)) store.migrations = [];
+  if (store.migrations.indexOf(id) === -1) store.migrations.push(id);
+}
+
+/**
  * Whether this evaluation of the module has brought the store to the current shape. It resets when the module is
  * evaluated again (a `next dev` hot reload) while the store survives on globalThis, possibly in an older shape.
  */
@@ -1274,7 +1561,7 @@ function load(): Store {
     if (!hydratedHere) {
       hydratedHere = true; // set first: persist() reads the store back through load()
       fillMissingCollections(kept);
-      if (migrateLibrary(kept) && !storeConfigured) persist();
+      if (migrateStore(kept) && !storeConfigured) persist();
     }
     return kept;
   }
@@ -1288,7 +1575,7 @@ function load(): Store {
     }
   }
   const st = fillMissingCollections(store || seed());
-  const migrated = migrateLibrary(st);
+  const migrated = migrateStore(st);
   g.__thesisficStore = st; // assigned before persisting: persist() reads the store back through load()
   // With Postgres the authoritative document is the row, which ready() migrates and writes: writing this local
   // copy (seed or DATA_FILE) here could overwrite it before it has been read.
@@ -1320,7 +1607,7 @@ async function ready(): Promise<void> {
         const row = await readStore<Store>();
         if (row) {
           const st = fillMissingCollections(row.data);
-          const migrated = migrateLibrary(st);
+          const migrated = migrateStore(st);
           g.__thesisficStore = st;
           g.__thesisficVersion = row.version;
           // The migrated document goes back to the row (flushToDb reads it through load(), already assigned).
@@ -1412,9 +1699,34 @@ export function htmlToWordText(html: string): string {
     .trim();
 }
 
+/** A chart figure inserted from the Research copilot (`chart` node): `<figure data-chart …>…</figure>`. */
+const CHART_FIGURE_RE = /<figure\b[^>]*\bdata-chart\b[\s\S]*?<\/figure>/gi;
+/** The opening tag of a chart figure, for counting. */
+const CHART_FIGURE_OPEN_RE = /<figure\b[^>]*\bdata-chart\b[^>]*>/gi;
+
+/**
+ * Removes chart figures (caption, alt text and data attributes included) before any word or provenance count:
+ * a chart counts as one figure and 0 words. Every server counter (`countWords`, `computeProvenance`,
+ * `countUnattributedPaste`, `scanHtml`, `htmlToParagraphs`) calls this first.
+ */
+export function stripChartFigures(html: string): string {
+  return html.indexOf("data-chart") === -1 ? html : html.replace(CHART_FIGURE_RE, " ");
+}
+
+/**
+ * Figures of a document: one per chart figure (`figure[data-chart]`). Every chart is inserted from the Research
+ * copilot in v1, so all of them are AI-assisted (`ai === total`). Same count as the editor's `figureStats`.
+ */
+export function computeFigures(html: string): PaperFigures {
+  if (!html || html.indexOf("data-chart") === -1) return { total: 0, ai: 0 };
+  const total = (html.match(CHART_FIGURE_OPEN_RE) || []).length;
+  return { total, ai: total };
+}
+
 export function countWords(html: string): number {
   // Image captions live in <figcaption>; they are not thesis words, like the editor's own counter (it only sees text nodes).
-  const text = htmlToWordText(html.replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " "));
+  // Chart figures count as figures, not words.
+  const text = htmlToWordText(stripChartFigures(html).replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " "));
   return text ? text.split(/\s+/).filter(Boolean).length : 0;
 }
 
@@ -1423,7 +1735,8 @@ export function countWords(html: string): number {
 const DECLARATION_RE = /<span[^>]*data-declaration="true"[^>]*>[\s\S]*?<\/span>/gi;
 
 export function computeProvenance(rawHtml: string): ProvenanceStats {
-  const html = rawHtml.replace(DECLARATION_RE, "");
+  // Same exclusions as countWords (chart figures, image captions), so marked words never exceed the total.
+  const html = stripChartFigures(rawHtml).replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " ").replace(DECLARATION_RE, "");
   const total = countWords(html);
   let ai = 0;
   let paste = 0;
@@ -1443,6 +1756,47 @@ export function publicUser(u: User) {
 }
 
 type PublicUser = ReturnType<typeof publicUser>;
+
+/**
+ * Decision D8: whether a user may open a paper. A student: their own. A professor: papers they supervise
+ * (`professorId`) or papers started from an assignment they created. An admin: every paper of a student of their
+ * university. `canAccessThesis` (auth.ts) and `db.theses.visibleTo` apply this rule.
+ */
+export function paperVisibleTo(user: Pick<User, "id" | "role" | "university">, thesis: Thesis): boolean {
+  if (user.role === "student") return thesis.studentId === user.id;
+  if (user.role === "professor") {
+    if (thesis.professorId === user.id) return true;
+    if (!thesis.assignmentId) return false;
+    const a = load().assignments.find((x) => x.id === thesis.assignmentId);
+    return !!a && a.createdBy === user.id;
+  }
+  if (user.role === "admin") return load().users.find((u) => u.id === thesis.studentId)?.university === user.university;
+  return false;
+}
+
+/** Assignment fields written into every paper started from the assignment (decision D7: one source of truth, the paper). */
+const ASSIGNMENT_PAPER_FIELDS = ["deadline", "targetWords", "citationStyle"] as const;
+
+/** The view of an assignment shared by its students and its staff (identical for both, principle 2). */
+function assignmentView(a: Assignment): AssignmentView {
+  const view: AssignmentView = {
+    id: a.id,
+    title: a.title,
+    brief: a.brief,
+    kind: a.kind,
+    createdBy: a.createdBy,
+    createdByName: load().users.find((u) => u.id === a.createdBy)?.name || "",
+    status: a.status,
+    createdAt: a.createdAt,
+  };
+  if (a.briefUpdatedAt) view.briefUpdatedAt = a.briefUpdatedAt;
+  if (a.deadline) view.deadline = a.deadline;
+  if (typeof a.targetWords === "number") view.targetWords = a.targetWords;
+  if (a.citationStyle) view.citationStyle = a.citationStyle;
+  return view;
+}
+
+const dedupe = (ids: string[]) => ids.filter((id, i) => typeof id === "string" && !!id && ids.indexOf(id) === i);
 
 // ---------- data access ----------
 
@@ -1493,8 +1847,44 @@ export const db = {
       return s.theses.filter((t) => ids.has(t.studentId));
     },
     getAll: () => load().theses,
-    /** `headings` and `notesTitle` let the caller localise the starter document and the notes tab (defaults are English). */
-    create: (data: { title: string; description: string; studentId: string; professorId?: string; deadline?: string; targetWords?: number; citationStyle?: Thesis["citationStyle"]; content?: string; headings?: { abstract: string; introduction: string }; notesTitle?: string; references?: Reference[] }): Thesis => {
+    /**
+     * Papers a user may open (decision D8): a student their own; a professor those they supervise
+     * (`professorId`) and those started from an assignment they created; an admin every paper of a student of their
+     * university. Same rule as `canAccessThesis` in auth.ts; use it for every staff listing.
+     */
+    visibleTo: (user: Pick<User, "id" | "role" | "university">): Thesis[] => {
+      const st = load();
+      if (user.role === "student") return st.theses.filter((t) => t.studentId === user.id);
+      if (user.role === "admin") return db.theses.getByUniversity(user.university);
+      if (user.role !== "professor") return [];
+      const mine = new Set(st.assignments.filter((a) => a.createdBy === user.id).map((a) => a.id));
+      return st.theses.filter((t) => t.professorId === user.id || (!!t.assignmentId && mine.has(t.assignmentId)));
+    },
+    /** `visibleTo` for one paper (no list built). */
+    isVisibleTo: (user: Pick<User, "id" | "role" | "university">, thesis: Thesis): boolean => paperVisibleTo(user, thesis),
+    /**
+     * `headings` and `notesTitle` let the caller localise the starter document and the notes tab (defaults are English).
+     * `content` (a template built by the caller) replaces the default starter document. Paper fields (`kind`,
+     * `templateId`, `assignmentId`, `writingLanguage`) are stored only when given; `pageSetup` is merged over the defaults.
+     */
+    create: (data: {
+      title: string;
+      description: string;
+      studentId: string;
+      professorId?: string;
+      deadline?: string;
+      targetWords?: number;
+      citationStyle?: Thesis["citationStyle"];
+      content?: string;
+      headings?: { abstract: string; introduction: string };
+      notesTitle?: string;
+      references?: Reference[];
+      kind?: PaperKind;
+      templateId?: string;
+      assignmentId?: string;
+      writingLanguage?: WritingLanguage;
+      pageSetup?: Partial<Thesis["pageSetup"]>;
+    }): Thesis => {
       const h = data.headings || { abstract: "Abstract", introduction: "1. Introduction" };
       const notesTitle = data.notesTitle || "Notes";
       const content = data.content || `<h1>${escapeHtml(data.title)}</h1><h2>${escapeHtml(h.abstract)}</h2><p></p><h2>${escapeHtml(h.introduction)}</h2><p></p>`;
@@ -1510,7 +1900,8 @@ export const db = {
         aiUsagePercent: 0,
         integrityScore: 100,
         deadline: data.deadline,
-        targetWords: data.targetWords || 20000,
+        // Default word target of the kind's template (thesis: 20000, as before kinds existed).
+        targetWords: data.targetWords || templateFor(data.kind ?? "thesis").targetWords,
         citationStyle: data.citationStyle || "APA",
         provenance: computeProvenance(content),
         createdAt: now(),
@@ -1518,8 +1909,13 @@ export const db = {
         sessions: [],
         references: data.references ? cloneJson(data.references) : [],
         tabs: [{ id: uid("tab"), title: notesTitle, content: `<h2>${escapeHtml(notesTitle)}</h2><p></p>`, updatedAt: now() }],
-        pageSetup: { orientation: "portrait", size: "A4", margin: 2.54, lineSpacing: 1.5 },
+        pageSetup: { orientation: "portrait", size: "A4", margin: 2.54, lineSpacing: 1.5, ...(data.pageSetup || {}) },
+        figures: computeFigures(content),
       };
+      if (data.kind !== undefined) thesis.kind = data.kind;
+      if (data.templateId !== undefined) thesis.templateId = data.templateId;
+      if (data.assignmentId !== undefined) thesis.assignmentId = data.assignmentId;
+      if (data.writingLanguage !== undefined) thesis.writingLanguage = data.writingLanguage;
       load().theses.push(thesis);
       syncLibraryFromThesis(thesis, null);
       persist();
@@ -1540,6 +1936,7 @@ export const db = {
         t.wordCount = countWords(patch.content);
         t.provenance = computeProvenance(patch.content);
         t.aiUsagePercent = t.wordCount ? Math.round((t.provenance.ai / t.wordCount) * 100) : 0;
+        t.figures = computeFigures(patch.content);
       }
       if (previousRefs) syncLibraryFromThesis(t, previousRefs);
       persist();
@@ -1569,6 +1966,92 @@ export const db = {
       avgIntegrity: theses.length ? Math.round(theses.reduce((sum, t) => sum + t.integrityScore, 0) / theses.length) : 0,
       avgAiUsage: theses.length ? Math.round(theses.reduce((sum, t) => sum + t.aiUsagePercent, 0) / theses.length) : 0,
     }),
+  },
+
+  /**
+   * Assignments sent by a teacher (or an admin) to students. Papers are created lazily: a student's paper is the
+   * `Thesis` with this `assignmentId` and their `studentId`, created when they press Start (`paperFor` finds it).
+   * Validation (recipients, lengths, ranges) lives in the routes.
+   */
+  assignments: {
+    findById: (id: string) => load().assignments.find((a) => a.id === id),
+    /** Newest first. */
+    listByCreator: (userId: string) => load().assignments.filter((a) => a.createdBy === userId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    /** Newest first. */
+    listByUniversity: (university: string) => load().assignments.filter((a) => a.university === university).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    /** Assignments sent to the student that are open, or closed but already started by them. Newest first. */
+    listForStudent: (studentId: string) => {
+      const st = load();
+      return st.assignments
+        .filter((a) => Array.isArray(a.studentIds) && a.studentIds.indexOf(studentId) !== -1)
+        .filter((a) => a.status === "open" || st.theses.some((t) => t.assignmentId === a.id && t.studentId === studentId))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    /** Creates an open assignment (unless `status` says otherwise). Student ids are deduplicated. */
+    create: (data: Omit<Assignment, "id" | "createdAt" | "updatedAt" | "status" | "briefUpdatedAt"> & { status?: Assignment["status"] }): Assignment => {
+      const stamp = now();
+      const a: Assignment = { ...data, studentIds: dedupe(data.studentIds || []), status: data.status || "open", id: uid("asg"), createdAt: stamp, updatedAt: stamp };
+      load().assignments.push(a);
+      persist();
+      return a;
+    },
+    /**
+     * Patches an assignment; `id`, `university`, `createdBy` and `createdAt` never change. A changed `brief` sets
+     * `briefUpdatedAt`. A changed `deadline`, `targetWords` or `citationStyle` is written into every paper started from
+     * the assignment (D7); a cleared deadline clears the papers' deadline, a cleared target or style leaves the
+     * papers' value (both are required on a paper). The papers' `updatedAt` is not touched: it is the student's activity.
+     */
+    update: (id: string, patch: Partial<Assignment>) => {
+      const st = load();
+      const a = st.assignments.find((x) => x.id === id);
+      if (!a) return null;
+      const before = { deadline: a.deadline, targetWords: a.targetWords, citationStyle: a.citationStyle, brief: a.brief };
+      const rest: Partial<Assignment> = { ...patch };
+      delete rest.id;
+      delete rest.university;
+      delete rest.createdBy;
+      delete rest.createdAt;
+      if (rest.studentIds !== undefined) rest.studentIds = dedupe(Array.isArray(rest.studentIds) ? rest.studentIds : []);
+      const stamp = now();
+      Object.assign(a, rest, { updatedAt: stamp });
+      if (patch.brief !== undefined && patch.brief !== before.brief && patch.briefUpdatedAt === undefined) a.briefUpdatedAt = stamp;
+      const changed = ASSIGNMENT_PAPER_FIELDS.filter((k) => Object.prototype.hasOwnProperty.call(patch, k) && a[k] !== before[k]);
+      if (changed.length) {
+        for (const t of st.theses) {
+          if (t.assignmentId !== a.id) continue;
+          for (const k of changed) {
+            if (k === "deadline") t.deadline = a.deadline;
+            else if (k === "targetWords" && typeof a.targetWords === "number") t.targetWords = a.targetWords;
+            else if (k === "citationStyle" && a.citationStyle) t.citationStyle = a.citationStyle;
+          }
+        }
+      }
+      persist();
+      return a;
+    },
+    /** Deletes the assignment only when no student has started it; false when it does not exist or has papers. */
+    remove: (id: string) => {
+      const st = load();
+      const idx = st.assignments.findIndex((a) => a.id === id);
+      if (idx === -1) return false;
+      if (st.theses.some((t) => t.assignmentId === id)) return false;
+      st.assignments.splice(idx, 1);
+      persist();
+      return true;
+    },
+    /** The student's paper for this assignment, once started. */
+    paperFor: (assignmentId: string, studentId: string) => load().theses.find((t) => t.assignmentId === assignmentId && t.studentId === studentId),
+    /** Every paper started from this assignment. */
+    papers: (assignmentId: string) => load().theses.filter((t) => t.assignmentId === assignmentId),
+    /** What students and staff see about the assignment (`createdByName` resolved; "" if the creator was deleted). */
+    view: (a: Assignment): AssignmentView => assignmentView(a),
+    /** The assignment as listed for one of its students, with `paperId` once they started it. */
+    studentView: (a: Assignment, studentId: string): StudentAssignmentView => {
+      const v: StudentAssignmentView = assignmentView(a);
+      const paper = db.assignments.paperFor(a.id, studentId);
+      if (paper) v.paperId = paper.id;
+      return v;
+    },
   },
 
   versions: {
@@ -1761,6 +2244,20 @@ export const db = {
       const ids = new Set(load().users.filter((u) => u.university === uni).map((u) => u.id));
       return load().interactions.filter((i) => ids.has(i.userId));
     },
+    /**
+     * Interactions a user may list (D8), newest first: a student their own; an admin those of their university's
+     * users; a professor only those on papers they may open (`db.theses.visibleTo`).
+     */
+    listVisibleTo: (user: Pick<User, "id" | "role" | "university">) => {
+      let list: AIInteraction[];
+      if (user.role === "student") list = load().interactions.filter((i) => i.userId === user.id);
+      else if (user.role === "admin") list = db.interactions.listByUniversity(user.university);
+      else {
+        const ids = new Set(db.theses.visibleTo(user).map((t) => t.id));
+        list = load().interactions.filter((i) => !!i.thesisId && ids.has(i.thesisId));
+      }
+      return list.slice().sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    },
     create: (data: Omit<AIInteraction, "id" | "timestamp">) => {
       const i: AIInteraction = { ...data, id: uid("ai"), timestamp: now() };
       load().interactions.push(i);
@@ -1800,6 +2297,16 @@ export const db = {
       if (c.messages.length === 1 && msg.role === "user") c.title = msg.content.slice(0, 60);
       persist();
       return c;
+    },
+    /** Patches one message (e.g. its `artifacts` or `interactionId` once computed); `id`, `role` and `createdAt` never change. */
+    updateMessage: (id: string, messageId: string, patch: Partial<Omit<ConversationMessage, "id" | "role" | "createdAt">>) => {
+      const c = load().conversations.find((x) => x.id === id);
+      const m = c?.messages.find((x) => x.id === messageId);
+      if (!c || !m) return null;
+      Object.assign(m, patch, { id: m.id, role: m.role, createdAt: m.createdAt });
+      c.updatedAt = now();
+      persist();
+      return m;
     },
     remove: (id: string) => {
       const s = load();
@@ -1914,6 +2421,11 @@ export const db = {
       const d = doi.toLowerCase();
       return load().sources.find((s) => s.ownerId === ownerId && !!s.doi && s.doi.toLowerCase() === d);
     },
+    /** The owner's source uploaded from a file with this SHA-256 (`file.sha256`), for deduplication. */
+    findByHash: (ownerId: string, sha256: string) => {
+      const h = sha256.toLowerCase();
+      return load().sources.find((s) => s.ownerId === ownerId && !!s.file && typeof s.file.sha256 === "string" && s.file.sha256.toLowerCase() === h);
+    },
     /** Only theses of the owner are kept in `thesisIds`; the legacy `thesisId` is derived. */
     create: (data: Omit<ThesisSource, "id" | "addedAt" | "thesisId">) => {
       const s: ThesisSource = { ...data, id: uid("src"), thesisIds: [], thesisId: "", addedAt: now() };
@@ -1947,13 +2459,43 @@ export const db = {
       persist();
       return s;
     },
-    /** Deletes the source from the library (and so from every thesis), with its chunks. */
+    /** Deletes the source from the library (and so from every thesis), with its chunks and its dataset. */
     remove: (id: string) => {
       const st = load();
+      const datasetId = st.sources.find((s) => s.id === id)?.datasetId;
       st.sources = st.sources.filter((s) => s.id !== id);
       st.sourceChunks = st.sourceChunks.filter((c) => c.sourceId !== id);
+      st.datasets = st.datasets.filter((d) => d.sourceId !== id && (!datasetId || d.id !== datasetId));
       persist();
     },
+  },
+
+  /**
+   * Tables parsed from uploaded sheets (primary data), column-major, one per `sheet` source. Kept small by the caps
+   * in src/lib/sources/library.ts because the whole store is one JSON document rewritten on every mutation.
+   */
+  datasets: {
+    findById: (id: string) => load().datasets.find((d) => d.id === id),
+    findBySource: (sourceId: string) => load().datasets.find((d) => d.sourceId === sourceId),
+    /** `cells` is computed from the sheets when not given. The caller links it with `db.sources.update(sourceId, { datasetId })`. */
+    create: (data: Omit<Dataset, "id" | "createdAt" | "cells"> & { cells?: number }): Dataset => {
+      const d: Dataset = { ...data, cells: typeof data.cells === "number" ? data.cells : datasetCellCount(data.sheets || []), id: uid("ds"), createdAt: now() };
+      load().datasets.push(d);
+      persist();
+      return d;
+    },
+    remove: (id: string) => {
+      const st = load();
+      const before = st.datasets.length;
+      st.datasets = st.datasets.filter((d) => d.id !== id);
+      if (st.datasets.length === before) return false;
+      persist();
+      return true;
+    },
+    /** Cells stored across the owner's datasets (per-library cap). */
+    cellsByOwner: (ownerId: string) => load().datasets.reduce((n, d) => (d.ownerId === ownerId ? n + (d.cells || 0) : n), 0),
+    /** Sheet names, sizes and columns, never rows. */
+    summary: (d: Dataset): DatasetSummary => datasetSummary(d),
   },
 
   sourceChunks: {

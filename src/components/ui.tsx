@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { CalendarClock, X } from "lucide-react";
+import { BookOpen, Briefcase, CalendarClock, CircleCheck, FileBarChart, FileText, FlaskConical, GraduationCap, LibraryBig, Lightbulb, ListChecks, Newspaper, NotebookPen, PenLine, X, type LucideIcon } from "lucide-react";
 import { useFormat, useT } from "@/lib/i18n/client";
 import { deadlineState, fromDateInput, toDateInput, type DeadlineState, type DeadlineTone } from "@/lib/deadline";
+import type { PaperKind } from "@/lib/papers/kinds";
+import { templateFor } from "@/lib/papers/templates";
+import type { PaperStatus } from "@/lib/papers/views";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const focusables = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === document.activeElement);
@@ -116,12 +119,12 @@ export function Toast({ message, kind = "info", onClose }: { message: string; ki
 export function ScoreRing({ value, size = 56, stroke = 4 }: { value: number; size?: number; stroke?: number }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const color = value >= 90 ? "#22c55e" : value >= 70 ? "#f59e0b" : "#ef4444";
+  const color = value >= 90 ? "stroke-green-500" : value >= 70 ? "stroke-amber-500" : "stroke-red-500";
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={`${(value / 100) * c} ${c}`} strokeLinecap="round" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="stroke-gray-200" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" className={color} strokeWidth={stroke} strokeDasharray={`${(value / 100) * c} ${c}`} strokeLinecap="round" />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{value}%</div>
     </div>
@@ -179,16 +182,41 @@ export function useDeadlineLabel() {
   };
 }
 
+/** Statuses in which a paper counts as handed in (the deadline chip then says "Submitted" instead of counting down). */
+const SUBMITTED_STATUSES: ReadonlyArray<PaperStatus | "not_started"> = ["under_review", "approved", "submitted"];
+
+/** Late = handed in after the stored deadline (docs/papers.md §3.1: `submittedAt > deadline`), the same rule as the server. */
+export function isSubmittedLate(submittedAt?: string, deadline?: string): boolean {
+  if (!submittedAt || !deadline) return false;
+  const s = Date.parse(submittedAt);
+  const d = Date.parse(deadline);
+  return !Number.isNaN(s) && !Number.isNaN(d) && s > d;
+}
+
 /**
  * Deadline chip: the days left (coloured by urgency) with the date as a tooltip. Without a deadline it offers to add one
  * when `onClick` is given, so the student can set it from wherever they are. The same chip is shown to the advisor.
+ * Once the paper is handed in it says "Submitted" or "Submitted late" (amber) instead: pass `status` (a handed-in status
+ * shows the submitted chip, any other status the countdown, even if an older `submittedAt` exists) or only `submittedAt`.
+ * `late` overrides the client-side comparison with the server's value when the caller has it.
  */
-export function DeadlineChip({ deadline, wordCount, targetWords, onClick, className = "", withDate = false }: { deadline?: string; wordCount: number; targetWords: number; onClick?: () => void; className?: string; withDate?: boolean }) {
+export function DeadlineChip({ deadline, wordCount = 0, targetWords = 0, onClick, className = "", withDate = false, submittedAt, status, late }: { deadline?: string; wordCount?: number; targetWords?: number; onClick?: () => void; className?: string; withDate?: boolean; submittedAt?: string; status?: PaperStatus | "not_started"; late?: boolean }) {
   const t = useT();
   const fmt = useFormat();
   const label = useDeadlineLabel();
-  const d = deadlineState(deadline, wordCount, targetWords);
   const base = `inline-flex items-center gap-1 rounded-[10px] px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${className}`;
+  const handedIn = status ? SUBMITTED_STATUSES.includes(status) : !!submittedAt;
+  if (handedIn) {
+    const isLate = late ?? isSubmittedLate(submittedAt, deadline);
+    const title = [submittedAt ? t("deadline.submittedOn", { date: fmt.date(submittedAt) }) : "", deadline ? t("deadline.due", { date: fmt.date(deadline) }) : ""].filter(Boolean).join(" · ");
+    return (
+      <span className={`${base} ${isLate ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`} title={title || undefined}>
+        <CircleCheck className="w-3.5 h-3.5" aria-hidden="true" />
+        {t(isLate ? "deadline.submittedLate" : "deadline.submitted")}
+      </span>
+    );
+  }
+  const d = deadlineState(deadline, wordCount, targetWords);
   if (!d) {
     if (!onClick) return null;
     return (
@@ -204,6 +232,36 @@ export function DeadlineChip({ deadline, wordCount, targetWords, onClick, classN
     <button type="button" onClick={onClick} className={`${base} ${DEADLINE_TONE[d.tone]} hover:ring-2 hover:ring-brand-100`} title={title} aria-label={`${t("deadline.title")}: ${text}`}>
       <CalendarClock className="w-3.5 h-3.5" />{text}
     </button>
+  );
+}
+
+/** lucide components named by `PaperTemplate.icon` (docs/papers.md §2). */
+const KIND_ICONS: Record<string, LucideIcon> = { GraduationCap, BookOpen, PenLine, NotebookPen, FileBarChart, FlaskConical, Briefcase, LibraryBig, Lightbulb, Newspaper, ListChecks, FileText };
+
+/** Icon of a paper kind (decorative: the kind name is always shown or read next to it). */
+export function KindIcon({ kind, size = 16, className = "" }: { kind: PaperKind; size?: number; className?: string }) {
+  const Icon = KIND_ICONS[templateFor(kind).icon] ?? FileText;
+  return <Icon size={size} strokeWidth={2} className={className} aria-hidden="true" />;
+}
+
+/** Square tile with the kind icon: 32px (`md`) or 24px (`sm`), brand-50 on brand-700. */
+export function KindTile({ kind, size = "md", className = "" }: { kind: PaperKind; size?: "sm" | "md"; className?: string }) {
+  const box = size === "sm" ? "w-6 h-6 rounded-md" : "w-8 h-8 rounded-lg";
+  return (
+    <span className={`inline-flex items-center justify-center flex-shrink-0 bg-brand-50 text-brand-700 ${box} ${className}`} aria-hidden="true">
+      <KindIcon kind={kind} size={size === "sm" ? 14 : 16} />
+    </span>
+  );
+}
+
+/** Small chip with the kind icon and its translated name ("Essay", «Mémoire»…). */
+export function KindChip({ kind, className = "" }: { kind: PaperKind; className?: string }) {
+  const t = useT();
+  return (
+    <span className={`inline-flex items-center gap-1 max-w-full min-w-0 rounded-[10px] bg-brand-50 text-brand-700 px-2 py-0.5 text-[11px] font-medium ${className}`}>
+      <KindIcon kind={kind} size={14} className="flex-shrink-0" />
+      <span className="truncate">{t(`papers.kind.${kind}`)}</span>
+    </span>
   );
 }
 

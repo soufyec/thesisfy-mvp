@@ -7,14 +7,14 @@ import { useFormat, useT } from "@/lib/i18n/client";
 import type { Translate } from "@/lib/i18n/dictionary";
 import Markdown from "@/components/Markdown";
 import { Modal, Spinner } from "@/components/ui";
-import type { Reference } from "../types";
+import type { Reference, SourceKind } from "../types";
 import { referenceForSource } from "./match";
 
 /** A source linked to the thesis, as `/api/theses/[id]/sources` returns it (no extracted text). The source itself lives in the student's library. */
 export interface LibrarySource {
   id: string;
   thesisId: string;
-  kind: "doi" | "url" | "pdf" | "text";
+  kind: SourceKind;
   title: string;
   authors?: string;
   year?: string;

@@ -1,7 +1,7 @@
 "use client";
 
-import { BookOpen, ExternalLink, FileText, Link2, Quote, Type as TypeIcon } from "lucide-react";
-import type { Reference } from "@/components/editor/types";
+import { BookOpen, ExternalLink, FileSpreadsheet, FileText, Link2, Quote, Type as TypeIcon } from "lucide-react";
+import type { Reference, SourceKind } from "@/components/editor/types";
 import type { Translate } from "@/lib/i18n/dictionary";
 import { useFormat, useT } from "@/lib/i18n/client";
 
@@ -13,7 +13,7 @@ import { useFormat, useT } from "@/lib/i18n/client";
 
 /** The fields of a source both the owner view (`LibrarySourceView`) and the thesis view (`PublicSource`) carry. */
 export interface SourceLike {
-  kind: "doi" | "url" | "pdf" | "text";
+  kind: SourceKind;
   title: string;
   authors?: string;
   year?: string;
@@ -55,7 +55,7 @@ export function coverageChip(s: Pick<SourceLike, "parseStatus" | "coverage">, t:
   return { label: t("dashboard.sources.coverage.none"), className: "bg-gray-100 text-gray-600" };
 }
 
-const KIND_ICON: Record<SourceLike["kind"], typeof FileText> = { doi: BookOpen, url: Link2, pdf: FileText, text: TypeIcon };
+const KIND_ICON: Record<SourceLike["kind"], typeof FileText> = { doi: BookOpen, url: Link2, pdf: FileText, text: TypeIcon, docx: FileText, sheet: FileSpreadsheet };
 
 export function SourceKindIcon({ kind }: { kind: SourceLike["kind"] }) {
   const Icon = KIND_ICON[kind] || FileText;

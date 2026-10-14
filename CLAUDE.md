@@ -54,7 +54,7 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 - `accent` (éxito, texto escrito por el estudiante, checks): `accent-500` `#20c997`.
 - Gradientes de marca solo en verde (`brand-800 → brand-600 → brand-400` en bandas, `brand-600 → brand-400` en texto): una palabra destacada por titular, las cifras de la evidencia y los bloques ENT y CTA. Nunca en tarjetas ni botones. El logo tiene sus propios colores (`Logo.tsx`) y no usa la escala.
 - Neutros: `gray-50…900`. Fondo de app `gray-50`, tarjetas `white`, área del editor `#f1f3f4` (`.docs-workspace`).
-- Gráficos: paleta propia en `src/lib/charts/palette.ts` (verde `#037947`, rosa `#e87ba4`, azul `#2a78d6`, naranja `#eb6834`, gris «Other»; validada para daltonismo), nunca `prov-*`. Miniaturas de plantillas sobre el token `paper-well`.
+- Gráficos: paleta propia en `src/lib/charts/palette.ts` (verde `#037947`, rosa `#e87ba4`, azul `#2a78d6`, naranja `#eb6834`, gris «Other»; validada para daltonismo), nunca `prov-*`. Miniaturas de plantillas sobre el token `paper.well` (`bg-paper-well`).
 - Procedencia (tokens `prov-*`): `prov-ai` `#7c3aed` (`prov-ai-deep`, `prov-ai-soft`, `prov-ai-line`), `prov-paste` `#f59e0b` (`prov-paste-deep`), `prov-human` = `accent-500`.
 - Estados: `green-600`, `amber-600`, `red-600`. Colores de proveedores de IA viven en `providers.ts`.
 
