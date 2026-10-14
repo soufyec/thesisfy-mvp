@@ -42,6 +42,8 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 | Docente del trabajo | **Advisor** (tesis) · **Teacher** (resto) | `teacherLabel` |
 | Archivos propios del estudiante (Excel, CSV, Word, PDF) | **Primary data** / **primary source** | `ThesisSource.role = "primary"`, `Dataset` |
 | Gráfico calculado e insertado desde el copilot | **AI-assisted figure** («Fig · AI» en el gutter) | nodo `chart` (`chart.ts`), `Artifact`, línea `ai_figures` |
+| Ecuación | **Equation** («Eq · AI» si viene del copilot) | nodos `math` / `mathBlock`, `src/lib/math/`, línea `ai_equations` |
+| Cronograma, PRISMA, mapa conceptual | **Diagram** (Timeline · PRISMA flow · Concept map) | nodo `chart` con `spec.figure`, `src/lib/diagrams/` |
 
 Cada modo lleva icono `lucide` (campo `icon` de `MODES` es el nombre del icono), una línea de ayuda y 2–4 sugerencias rápidas propias. No introducir agrupaciones intermedias.
 

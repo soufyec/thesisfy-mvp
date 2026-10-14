@@ -106,10 +106,11 @@ Especificación completa en `docs/papers.md`.
 - [ ] A · Base: `Thesis.kind` y 12 tipos con plantillas (solo encabezados + placeholders), colección `assignments`, `datasets` por columnas, acceso del profesor restringido a sus trabajos y tareas, línea `ai_figures`, componentes `KindTile`/`KindChip`/`DeadlineChip`, áreas i18n.
 - [ ] B · Servidor: rutas de tareas (crear, editar, empezar), bloqueo de trabajos entregados, lectura de `.xlsx/.csv/.docx/.txt/.md` sin dependencias, análisis descriptivo y gráficos SVG deterministas, artefactos del copilot (`thesisfic-artifact`), datos de demo.
 - [ ] C · Interfaz: «My papers» (asignados, continuar con tira de secciones, galería de plantillas, trabajos por tipo), tareas del profesor con roster, adjuntos y tarjetas de tabla/gráfico en el asistente, nodo `chart` en el editor con coste antes de insertar, panel Brief.
+- [ ] B+ · Ampliación (§9 de `docs/papers.md`): tarta, caja y bigotes, pruebas inferenciales con p-valores, Gantt, PRISMA 2020, mapas conceptuales y ecuaciones (también hechas por el estudiante desde Insertar).
 - [ ] D · Revisión, build, capturas antes/después, prueba manual ampliada de §7.
 
 ## 3. Fuera de alcance (por ahora)
-Mobile nativo (Capacitor), migración a Postgres, SSO/LMS. De la fase 11: tarta, caja y bigotes, pruebas inferenciales, Gantt, PRISMA, mapas conceptuales, ecuaciones, OCR, codificación cualitativa, descarga de tablas y gráficos, límite de IA y ampliaciones por tarea, notas, correo, grupos, LTI por tarea, plantillas por universidad.
+Mobile nativo (Capacitor), migración a Postgres, SSO/LMS. De la fase 11: OCR, codificación cualitativa, descarga de tablas y gráficos, límite de IA y ampliaciones por tarea, notas, correo, grupos, LTI por tarea, plantillas por universidad.
 
 ## 4. Pendiente
 - Fase 5: el onboarding del editor está hecho; quedan `ConsentModal`, el mini-gutter del tutor y el código de invitación.
