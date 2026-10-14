@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
   const students = users
     .filter((u) => u.role === "student")
     .map((u) => {
-      const theses = db.theses.getByStudent(u.id);
+      // D8: every student of the university is listed, but a professor's metrics cover only the papers they may open.
+      const theses = db.theses.getByStudent(u.id).filter((t) => db.theses.isVisibleTo(r.user, t));
       const flags = theses.flatMap((t) => db.flags.listByThesis(t.id));
       const sessions = theses.flatMap((t) => t.sessions);
       return {

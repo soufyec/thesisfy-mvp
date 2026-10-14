@@ -33,6 +33,30 @@ export function demoGroundedResponse(passages: { label: string; quote: string }[
   return `I searched your library. These are the passages that best answer your question:\n\n${items}\n\nWithout a connected model I can only show you the passages, not synthesise them. Read them and tell me which one best supports your argument; the thesis text stays yours.`;
 }
 
+/** Translator of the student's interface language (`translator(locale)` from src/lib/i18n/dictionary.ts). */
+type Tr = (key: string, vars?: Record<string, string | number | undefined>) => string;
+
+/**
+ * Demo answer of the Research copilot when documents (docx, pdf, txt, md) are attached and no model is connected:
+ * the attached passages that best match the question, with a fixed intro and outro (docs/papers.md §3.5). In the four
+ * interface languages (keys `data.demo.passages*`).
+ */
+export function demoAttachmentsResponse(passages: { label: string; quote: string }[], tr: Tr): string {
+  if (!passages.length) return tr("data.demo.passagesNone");
+  const items = passages.map((p, i) => `${i + 1}. **${p.label}**\n   > ${p.quote}`).join("\n");
+  return `${tr("data.demo.passagesIntro")}\n\n${items}\n\n${tr("data.demo.passagesOutro")}`;
+}
+
+/**
+ * Demo answer of the Research copilot when a spreadsheet is attached and no model is connected: Thesisfic plans the
+ * analysis from the request (`planFromRequest`) and computes it; the text is one fixed sentence, plus the honest
+ * `data.unsupported` sentence for requests v1 does not compute (D13).
+ */
+export function demoDataResponse(opts: { file: string; computed: boolean; unsupported: boolean }, tr: Tr): string {
+  const lead = tr(opts.computed ? "data.demo.computed" : "data.demo.noResult", { file: opts.file });
+  return opts.unsupported ? `${lead}\n\n${tr("data.unsupported")}` : lead;
+}
+
 /** Simulated assistant used when no provider key is configured. Mode-aware, in the user's language; the demo notice is separate (see `demoNotice`). */
 export function demoResponse(mode: AIMode, messages: { role: string; content: string }[], lang: DemoLang): string {
   const last = messages[messages.length - 1]?.content || "";

@@ -9,6 +9,7 @@ import { ensureTable, readStore, readVersion, storeConfigured, writeStore } from
 import type { PaperKind, WritingLanguage } from "./papers/kinds";
 import { templateFor } from "./papers/templates";
 import type { AssignmentView, StudentAssignmentView } from "./papers/views";
+import { DEMO_PAPERS_MIGRATION, ensureDemoPapers } from "./demo/papers";
 
 export type { PaperKind, WritingLanguage } from "./papers/kinds";
 
@@ -1533,6 +1534,12 @@ function migrateStore(store: Store): boolean {
       (store as unknown as Record<string, unknown[]>)[key] = [];
       changed = true;
     }
+  }
+  // data-backend: demo papers, assignments and primary data (docs/papers.md §6), once per document; before
+  // migrateLibrary so the seeded sources go through the same link checks in this pass.
+  if (!hasMigration(store, DEMO_PAPERS_MIGRATION) && ensureDemoPapers(store, { countWords, computeProvenance, computeFigures })) {
+    markMigration(store, DEMO_PAPERS_MIGRATION);
+    changed = true;
   }
   if (migrateLibrary(store)) changed = true;
   return changed;

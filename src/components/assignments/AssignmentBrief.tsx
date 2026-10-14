@@ -52,7 +52,8 @@ export function AssignmentBrief({ view, compact = false }: { view: AssignmentVie
       {compact ? (
         (target || view.citationStyle) && <p className="text-xs text-gray-500 mt-1">{[target, view.citationStyle].filter(Boolean).join(" · ")}</p>
       ) : (
-        <dl aria-label={t("assignments.brief.detailsAria")} className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+        // Facts wrap as a row of three, or two plus one stretched across: never a hole in a narrow column.
+        <dl aria-label={t("assignments.brief.detailsAria")} className="flex flex-wrap gap-2 mt-3">
           <Fact label={t("assignments.brief.due")} value={view.deadline ? fmt.date(view.deadline) : t("assignments.brief.noDue")} />
           <Fact label={t("assignments.brief.target")} value={target || t("assignments.brief.notSet")} />
           <Fact label={t("assignments.brief.citationStyle")} value={view.citationStyle || t("assignments.brief.notSet")} />
@@ -78,7 +79,7 @@ export default AssignmentBrief;
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-lg bg-gray-50 px-3 py-2">
+    <div className="min-w-[8rem] flex-1 basis-[8rem] rounded-lg bg-gray-50 px-3 py-2">
       <dt className="text-xs text-gray-500">{label}</dt>
       <dd className="text-sm font-medium text-gray-900 truncate" title={value}>
         {value}

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
 import { refreshThesisMetrics } from "@/lib/integrity";
+import { getT } from "@/lib/i18n/server";
+import { isLockedStatus } from "@/lib/paperSections";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string; versionId: string } }) {
   const r = await requireUser(request);
@@ -20,6 +22,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const thesis = canAccessThesis(r.user, params.id);
   if (!thesis) return error("Thesis not found", 404);
   if (thesis.studentId !== r.user.id) return error("Only the author can restore versions", 403);
+  // An approved or submitted paper is frozen: restoring a version would change its content (409 locked, as in PUT).
+  if (isLockedStatus(thesis.status)) return json({ error: getT()("api.paper.locked"), code: "locked" }, 409);
   const v = db.versions.findById(params.versionId);
   if (!v || v.thesisId !== params.id) return error("Version not found", 404);
   db.versions.create({ thesisId: thesis.id, authorId: r.user.id, content: thesis.content, wordCount: thesis.wordCount, kind: "restore", label: "Before restore" });

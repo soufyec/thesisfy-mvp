@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Plus } from "lucide-react";
+import { ClipboardPlus, KeyRound, Plus } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Modal, Toast } from "@/components/ui";
+import { NewAssignmentModal } from "@/components/assignments/NewAssignmentModal";
 import InvitePeople, { copyText } from "@/components/accounts/InvitePeople";
 import { useUser } from "@/components/useUser";
 import { api } from "@/lib/client";
@@ -23,6 +24,8 @@ export default function StudentsPage() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState<{ message: string; kind?: "info" | "success" | "error" } | null>(null);
   const [resetShown, setResetShown] = useState<{ email: string; link: string } | null>(null);
+  /** "Assign work": the new-assignment dialog with this student already chosen (docs/papers.md §4.3). */
+  const [assignTo, setAssignTo] = useState<Student | null>(null);
   const load = useCallback(() => api<{ students: Student[] }>("/api/users").then((d) => setStudents(d.students)).catch(() => {}), []);
   useEffect(() => {
     load();
@@ -86,9 +89,12 @@ export default function StudentsPage() {
                   <div><div className="text-lg font-bold text-purple-600">{s.avgAiUsage}%</div><div className="text-xs text-gray-400">{t("admin.ai")}</div></div>
                   <div><div className={`text-lg font-bold ${s.openFlags ? "text-amber-600" : "text-gray-300"}`}>{s.openFlags}</div><div className="text-xs text-gray-400">{t("admin.students.statNotices")}</div></div>
                 </div>
-                {user?.role === "admin" && (
-                  <button type="button" onClick={() => resetLink(s)} title={t("accounts.admin.resetLinkTitle")} aria-label={`${t("accounts.admin.resetLink")}: ${s.email}`} className="btn-outline !py-1.5 !px-3 text-xs whitespace-nowrap self-start sm:self-center"><KeyRound className="w-3.5 h-3.5 mr-1" aria-hidden />{t("accounts.admin.resetLink")}</button>
-                )}
+                <div className="flex flex-wrap gap-2 self-start sm:self-center sm:flex-col sm:items-stretch">
+                  <button type="button" onClick={() => setAssignTo(s)} aria-label={t("assignments.assignWorkAria", { name: s.name })} className="btn-outline !py-1.5 !px-3 text-xs whitespace-nowrap"><ClipboardPlus className="w-3.5 h-3.5 mr-1" aria-hidden />{t("assignments.assignWork")}</button>
+                  {user?.role === "admin" && (
+                    <button type="button" onClick={() => resetLink(s)} title={t("accounts.admin.resetLinkTitle")} aria-label={`${t("accounts.admin.resetLink")}: ${s.email}`} className="btn-outline !py-1.5 !px-3 text-xs whitespace-nowrap"><KeyRound className="w-3.5 h-3.5 mr-1" aria-hidden />{t("accounts.admin.resetLink")}</button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -107,6 +113,17 @@ export default function StudentsPage() {
           </div>
         )}
       </Modal>
+      <NewAssignmentModal
+        open={!!assignTo}
+        onClose={() => setAssignTo(null)}
+        preselect={assignTo ? [assignTo.id] : undefined}
+        students={students.map((x) => ({ id: x.id, name: x.name, email: x.email }))}
+        onCreated={(a) => {
+          const n = a.studentIds.length;
+          showToast(n === 1 ? t("assignments.new.sent_one") : t("assignments.new.sent", { n: fmt.number(n) }), "success");
+          load();
+        }}
+      />
       {toast && <Toast message={toast.message} kind={toast.kind} onClose={() => setToast(null)} />}
     </DashboardLayout>
   );

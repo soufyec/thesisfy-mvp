@@ -13,7 +13,8 @@
  *   the paste can be attributed and cited at the moment it happens.
  */
 
-import { db, SourceChunk, ThesisSource } from "@/lib/db";
+import { datasetSummary, db, SourceChunk, ThesisSource } from "@/lib/db";
+import type { DatasetSummary } from "@/lib/db";
 import { quoteAppearsIn } from "@/lib/scholar";
 import { ResolvedProvider, streamCompletion } from "@/lib/ai/providers";
 
@@ -219,9 +220,10 @@ export function coverageOf(s: ThesisSource): SourceCoverage {
 /**
  * A source as the thesis-scoped routes return it (`/api/theses/[id]/sources`): no extracted text (that lives in
  * chunks), no owner and no links to the student's other theses (staff can read these routes). `thesisId` is the
- * thesis that was asked for.
+ * thesis that was asked for. `role`, `file` and `datasetId` pass through when set; a sheet adds `dataset`, its sheets
+ * and columns without any row (the rows are read page by page from `/api/theses/[id]/sources/[sourceId]/data`).
  */
-export type PublicSource = Omit<ThesisSource, "text" | "ownerId" | "thesisIds"> & { coverage: SourceCoverage; chunkCount: number };
+export type PublicSource = Omit<ThesisSource, "text" | "ownerId" | "thesisIds"> & { coverage: SourceCoverage; chunkCount: number; dataset?: DatasetSummary };
 
 /** A source as its owner sees it in the library (`/api/library`): the public fields plus the theses that use it. */
 export type LibrarySourceView = PublicSource & { thesisIds: string[] };
@@ -240,7 +242,10 @@ export function publicSource(s: ThesisSource, thesisId?: string, counts?: Map<st
   void _text;
   void _owner;
   void _links;
-  return { ...rest, thesisId: thesisId ?? s.thesisId ?? "", coverage: coverageOf(s), chunkCount: chunkCountOf(s, counts) };
+  const view: PublicSource = { ...rest, thesisId: thesisId ?? s.thesisId ?? "", coverage: coverageOf(s), chunkCount: chunkCountOf(s, counts) };
+  const dataset = s.datasetId ? db.datasets.findById(s.datasetId) : s.kind === "sheet" ? db.datasets.findBySource(s.id) : undefined;
+  if (dataset) view.dataset = datasetSummary(dataset);
+  return view;
 }
 
 /** Owner view of a library source: no text, plus `thesisIds`. */

@@ -31,6 +31,7 @@ export function TemplateGallery({ compact = false, selected, filter = "all", fea
 
   const meta = (tpl: PaperTemplate) => (tpl.sections.length ? t("papers.gallery.words", { words: fmt.number(tpl.targetWords), sections: tpl.sections.length }) : t("papers.gallery.empty"));
   const focus = "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2";
+  const chip = "inline-flex items-center whitespace-nowrap rounded-[10px] bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700";
 
   return (
     <div role="group" aria-label={t("papers.gallery.aria")} className={compact ? "grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 gap-2" : "grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3"}>
@@ -60,14 +61,24 @@ export function TemplateGallery({ compact = false, selected, filter = "all", fea
         }
         return (
           <button key={tpl.kind} {...common} className={`group flex flex-col min-w-0 text-left rounded-2xl border bg-white p-2.5 shadow-sm transition-colors ${state} ${focus}`}>
-            <TemplateThumbnail motif={tpl.motif} />
-            <span className="flex items-start gap-2 mt-2.5 min-w-0">
-              <KindTile kind={tpl.kind} />
-              <span className="min-w-0 pt-1.5 text-sm font-semibold text-gray-900 leading-snug break-words hyphens-auto">{name}</span>
+            <TemplateThumbnail motif={tpl.motif} kind={tpl.kind} />
+            {/* The tile sits on the lower edge of the well, so the name below gets the card's full width: long names
+                (Literaturübersicht, Forschungsexposé) wrap between words instead of breaking inside one. */}
+            <span className="relative z-[1] -mt-4 ml-2 flex">
+              <KindTile kind={tpl.kind} className="ring-[3px] ring-white" />
             </span>
-            <span id={descId} className="block text-xs text-gray-500 mt-1.5 line-clamp-2 break-words">{t(`papers.kindDesc.${tpl.kind}`)}</span>
-            <span className="mt-auto pt-2">
-              <span className="inline-block max-w-full rounded-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 text-[11px] font-medium leading-snug break-words">{meta(tpl)}</span>
+            <span className="mt-2 px-0.5 text-sm font-semibold leading-snug text-gray-900 break-words hyphens-auto">{name}</span>
+            <span id={descId} className="mt-1 px-0.5 text-xs leading-relaxed text-gray-500 line-clamp-2 break-words">{t(`papers.kindDesc.${tpl.kind}`)}</span>
+            {/* Two chips rather than one long one, so a narrow card wraps between them, never inside a chip. */}
+            <span className="mt-auto flex flex-wrap gap-1 px-0.5 pt-2.5" aria-hidden="true">
+              {tpl.sections.length ? (
+                <>
+                  <span className={chip}>{t("papers.gallery.wordsOnly", { words: fmt.number(tpl.targetWords) })}</span>
+                  <span className={chip}>{t("papers.gallery.sectionsOnly", { sections: tpl.sections.length })}</span>
+                </>
+              ) : (
+                <span className={chip}>{t("papers.gallery.empty")}</span>
+              )}
             </span>
           </button>
         );
@@ -92,7 +103,7 @@ export function TemplateFilterChips({ value, onChange }: { value: PaperGroup | "
             type="button"
             aria-pressed={on}
             onClick={() => onChange(c)}
-            className={`inline-flex items-center rounded-[10px] border px-3 py-1.5 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 ${on ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}
+            className={`inline-flex items-center rounded-[10px] border px-3 py-1.5 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 ${on ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}
           >
             {c === "all" ? t("papers.gallery.filterAll") : t(`papers.group.${c}`)}
           </button>
@@ -122,7 +133,7 @@ const Para = ({ widths = ["100%", "100%", "64%"], indent = false, hang = false }
 /** The provenance-style mark in the left margin; on the blank sheet it is the caret under the title. */
 const Mark = () => <span className="absolute left-[5%] top-[38%] h-[16%] w-[2px] rounded-full bg-brand-400" />;
 
-function Motif({ motif }: { motif: TemplateMotif }) {
+function Motif({ motif, kind }: { motif: TemplateMotif; kind?: PaperKind }) {
   switch (motif) {
     case "titlePage":
       return (
@@ -190,6 +201,23 @@ function Motif({ motif }: { motif: TemplateMotif }) {
         </span>
       );
     case "hangingEntries":
+      // An annotated bibliography: each reference followed by its indented annotation, so it reads apart from the
+      // literature review that shares the motif.
+      if (kind === "annotated_bibliography")
+        return (
+          <span className="flex flex-col gap-[6px]">
+            <TitleBar />
+            {["72%", "56%", "80%"].map((w, i) => (
+              <span key={i} className="flex flex-col gap-[3px]">
+                <Line tone="bg-gray-300" />
+                <span className="ml-[14%] flex flex-col gap-[3px] rounded-[2px] bg-gray-100 p-[5%]">
+                  <Line />
+                  <Line w={w} />
+                </span>
+              </span>
+            ))}
+          </span>
+        );
       return (
         <span className="flex flex-col gap-[6px]">
           <TitleBar />
@@ -264,12 +292,23 @@ function Motif({ motif }: { motif: TemplateMotif }) {
   }
 }
 
-/** Neutral well (`bg-paper-well`) with a white sheet (≈ 1:1.3) cut cleanly at the bottom; only the sheet lifts on hover. */
-export function TemplateThumbnail({ motif }: { motif: TemplateMotif }) {
+const SHEET = "absolute left-1/2 top-[14%] block aspect-[1/1.3] w-[58%] rounded-[4px] shadow-sm";
+
+/**
+ * Neutral well (`bg-paper-well`) with a white sheet (≈ 1:1.3) cut cleanly at the bottom; only the sheet lifts on hover.
+ * `kind` (optional) tells apart the kinds that share a motif: the doctoral thesis is a volume (two sheets behind).
+ */
+export function TemplateThumbnail({ motif, kind }: { motif: TemplateMotif; kind?: PaperKind }) {
   return (
     <span aria-hidden="true" className="relative block aspect-[4/3] w-full overflow-hidden rounded-xl bg-paper-well">
-      <span className="absolute left-1/2 top-[14%] block aspect-[1/1.3] w-[58%] -translate-x-1/2 overflow-hidden rounded-[4px] bg-white p-[6%] shadow-sm motion-safe:transition-transform motion-safe:duration-200 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-focus-visible:-translate-y-0.5">
-        <Motif motif={motif} />
+      {kind === "doctoral_thesis" && (
+        <>
+          <span className={`${SHEET} -translate-x-[34%] -translate-y-[7%] bg-gray-50`} />
+          <span className={`${SHEET} -translate-x-[42%] -translate-y-[3.5%] bg-white`} />
+        </>
+      )}
+      <span className={`${SHEET} -translate-x-1/2 overflow-hidden bg-white p-[6%] motion-safe:transition-transform motion-safe:duration-200 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-focus-visible:-translate-y-0.5`}>
+        <Motif motif={motif} kind={kind} />
         {motif !== "blank" && <Mark />}
       </span>
     </span>

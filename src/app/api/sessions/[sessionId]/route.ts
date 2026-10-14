@@ -1,12 +1,18 @@
 import { NextRequest } from "next/server";
 import { db, SessionEventType } from "@/lib/db";
 import { error, json, requireUser } from "@/lib/api";
+import { canAccessThesis } from "@/lib/auth";
 import { evaluateEvent, isEmptySession, refreshThesisMetrics, thesisMetrics } from "@/lib/integrity";
-import { passageFingerprints, textFingerprint } from "@/lib/crypto";
+import { passageFingerprints, passages, textFingerprint } from "@/lib/crypto";
 import { matchPasteFingerprintsToSources } from "@/lib/sources/retrieve";
 
 const ALLOWED: SessionEventType[] = ["typing", "paste", "ai_prompt", "ai_insert", "ai_suggestion_rejected", "tab_hidden", "tab_visible", "save"];
 const ATTRIBUTIONS = ["own", "source", "ai", "none", "pending"];
+/** Fingerprints kept per paste event (sent by the editor and computed here together). */
+const MAX_PASTE_FINGERPRINTS = 100;
+/** Characters of one pasted text read for fingerprints, and pasted characters fingerprinted per request. */
+const MAX_PASTE_TEXT = 200_000;
+const MAX_BATCH_PASTE_TEXT = 1_000_000;
 
 /** Batched session events from the editor. Scopes the student did not consent to are dropped server-side too. */
 export async function POST(request: NextRequest, { params }: { params: { sessionId: string } }) {
@@ -24,6 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: { session
 
   const created = [];
   const pasteResults: Record<string, unknown>[] = [];
+  let pastedChars = 0;
   for (const ev of events.slice(0, 200)) {
     if (!ALLOWED.includes(ev.type)) continue;
     const data = { ...(ev.data || {}) };
@@ -53,12 +60,23 @@ export async function POST(request: NextRequest, { params }: { params: { session
       delete data.declared;
 
       // Never store pasted text. Fingerprint it and match against the student's assistant answers.
-      const text = typeof data.text === "string" ? (data.text as string) : "";
+      // Bounded work per request: one pasted text is read up to 200 000 characters, and passages are fingerprinted
+      // until the request's pasted text passes 1 000 000 characters.
+      const text = typeof data.text === "string" ? (data.text as string).slice(0, MAX_PASTE_TEXT) : "";
       delete data.text;
       const fp = (data.fingerprint as string | undefined) || (text ? textFingerprint(text) : undefined);
       data.fingerprint = fp;
-      const fps = Array.isArray(data.fingerprints) ? (data.fingerprints as unknown[]).filter((f): f is string => typeof f === "string" && /^[0-9a-f]{32}$/.test(f)).slice(0, 100) : fp ? [fp] : [];
-      if (text) for (const f of passageFingerprints(text)) if (!fps.includes(f)) fps.push(f);
+      const fps = Array.isArray(data.fingerprints) ? (data.fingerprints as unknown[]).filter((f): f is string => typeof f === "string" && /^[0-9a-f]{32}$/.test(f)).slice(0, MAX_PASTE_FINGERPRINTS) : fp ? [fp] : [];
+      if (text && pastedChars < MAX_BATCH_PASTE_TEXT) {
+        pastedChars += text.length;
+        const add = (f: string) => {
+          if (fps.length < MAX_PASTE_FINGERPRINTS && !fps.includes(f)) fps.push(f);
+        };
+        passageFingerprints(text).forEach(add);
+        // Rows of a table copied from an answer (tab-separated, or one row per line) are short: they are matched with
+        // passages of 3 words or more, only when the pasted text has tabs or several lines (docs/papers.md §3.5).
+        if (/\t|\n\s*\S/.test(text.trim())) passages(text, 3).map(textFingerprint).forEach(add);
+      }
       delete data.fingerprints;
       data.fingerprintCount = fps.length;
       // Text taken from the Thesisfic assistant / research copilot: recognised by the answer's sentence fingerprints.
@@ -115,6 +133,7 @@ export async function GET(request: NextRequest, { params }: { params: { sessionI
   if ("response" in r) return r.response;
   const session = db.sessions.findById(params.sessionId);
   if (!session) return error("Session not found", 404);
-  if (session.userId !== r.user.id && r.user.role === "student") return error("Forbidden", 403);
+  // The writer, or someone who may open the paper (D8: its teacher, the assignment's creator, the university admin).
+  if (session.userId !== r.user.id && !canAccessThesis(r.user, session.thesisId)) return error("Session not found", 404);
   return json({ session });
 }

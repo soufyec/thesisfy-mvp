@@ -13,8 +13,10 @@
 // Server-only module (uses node:crypto and the data layer). Client code imports types only.
 
 import { createHash } from "crypto";
-import { db, stripChartFigures } from "./db";
-import type { AIInteraction, AIMode, Consent, Policy, Snapshot, Thesis, ThesisVersion, WritingSession } from "./db";
+import { computeFigures, db, stripChartFigures } from "./db";
+import type { AIInteraction, AIMode, Consent, PaperFigures, Policy, Snapshot, Thesis, ThesisVersion, WritingSession } from "./db";
+import { paperKind, teacherLabel } from "./papers/kinds";
+import type { PaperKind, TeacherLabel } from "./papers/kinds";
 
 export const FULL_SNAPSHOT_EVERY = 20;
 
@@ -405,6 +407,11 @@ export interface TimelineEvent {
   blocked?: boolean;
   label?: string;
   tabId?: string;
+  /** ai_insert of a copilot artifact: what was inserted (`data.kind` of the event, sent by the editor). */
+  artifactKind?: "table" | "chart";
+  artifactId?: string;
+  /** AI-assisted figures the insertion added (a chart, or the charts inside pasted notes). */
+  figures?: number;
 }
 
 export interface TimelineTotals {
@@ -427,6 +434,19 @@ export interface ProcessTimeline {
   events: TimelineEvent[];
   chapters: ChapterStats[];
   totals: TimelineTotals;
+  /** Figures of the Final submission (`computeFigures`, the same count as the editor and the ledger). */
+  figures: PaperFigures;
+}
+
+/** The kind of copilot artifact an `ai_insert` event inserted, from the event's `data.kind`. */
+function artifactKindOf(data: Record<string, unknown>): "table" | "chart" | undefined {
+  return data.kind === "table" || data.kind === "chart" ? data.kind : undefined;
+}
+
+/** Figures an `ai_insert` event added: its `data.figures`, else 1 for a chart. */
+function figuresOf(data: Record<string, unknown>): number {
+  const n = Math.max(0, Math.floor(Number(data.figures) || 0));
+  return n || (data.kind === "chart" ? 1 : 0);
 }
 
 const minutesBetween = (a: string, b: string) => Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000));
@@ -466,7 +486,24 @@ export function processTimeline(thesis: Thesis, sessions: WritingSession[], inte
         aiInserts++;
         const it = typeof ev.data.interactionId === "string" ? byInteraction.get(ev.data.interactionId) : undefined;
         const mode = (it?.mode || ev.data.mode) as string | undefined;
-        events.push({ id: ev.id, at: ev.timestamp, kind: "ai_insert", sessionId: s.id, words: Number(ev.data.words || 0), attribution: mode === "copilot" ? "copilot" : "assistant", interactionId: it?.id, mode, model: it?.model, provider: it?.provider || (ev.data.provider as string | undefined), costUsd: it?.costUsd });
+        const artifactKind = artifactKindOf(ev.data);
+        const figures = figuresOf(ev.data);
+        events.push({
+          id: ev.id,
+          at: ev.timestamp,
+          kind: "ai_insert",
+          sessionId: s.id,
+          words: Number(ev.data.words || 0),
+          attribution: mode === "copilot" ? "copilot" : "assistant",
+          interactionId: it?.id,
+          mode,
+          model: it?.model,
+          provider: it?.provider || (ev.data.provider as string | undefined),
+          costUsd: it?.costUsd,
+          ...(artifactKind ? { artifactKind } : {}),
+          ...(typeof ev.data.artifactId === "string" ? { artifactId: ev.data.artifactId } : {}),
+          ...(figures ? { figures } : {}),
+        });
       } else if (ev.type === "ai_prompt") {
         aiPrompts++;
         // Prompts are listed from the interaction log below; only orphans (no logged interaction) come from the session.
@@ -501,7 +538,7 @@ export function processTimeline(thesis: Thesis, sessions: WritingSession[], inte
     firstActivity: times[0],
     lastActivity: [...segments.map((g) => g.end), ...events.map((e) => e.at)].sort().pop(),
   };
-  return { segments, events, chapters: scan.chapters, totals };
+  return { segments, events, chapters: scan.chapters, totals, figures: computeFigures(thesis.content || "") };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -517,7 +554,7 @@ export interface LedgerSummary {
   pct: { ai: number; paste: number; human: number };
   aiLimitPct: number;
   interactions: { total: number; blocked: number; copilot: number; byMode: { mode: string; count: number }[]; providers: string[] };
-  aiInserts: { events: number; words: number; interactionsWithText: number };
+  aiInserts: { events: number; words: number; interactionsWithText: number; tables: number; figures: number };
   aiChapters: string[];
   pastes: { events: number; words: number; attributedToSource: number; recognisedFromAssistant: number; declaredAiTool: number; ownText: number; unattributed: number; attributedWords: number };
   budget: { currency: string; institutionUsd: number; institutionLocal: number; requests: number; studentPaidRequests: number } | null;
@@ -527,6 +564,13 @@ export interface LedgerSummary {
   snapshots: { count: number; chainOk: boolean; brokenAt?: string };
   notices: { open: number; resolved: number };
   versions: number;
+  /** What the student writes (D1); the declaration names the work and its reviewer with it. */
+  paperKind: PaperKind;
+  teacher: TeacherLabel;
+  /** Figures of the Final submission; every copilot chart is AI-assisted in v1. */
+  figures: PaperFigures;
+  /** Tables and charts Thesisfic computed for the copilot's answers (from `AIInteraction.artifacts`). */
+  artifacts: { tables: number; charts: number };
 }
 
 export function ledgerSummary(
@@ -540,6 +584,9 @@ export function ledgerSummary(
   const scan = scanHtml(thesis.content);
   const total = Math.max(1, thesis.wordCount);
   const pct = (n: number) => Math.round((n / total) * 1000) / 10;
+  // The ledger is the student's: what the advisor, teacher or an admin asked the assistant about this paper (and
+  // the tables they had computed) is not the student's use of AI. Interactions without a user are kept.
+  interactions = interactions.filter((i) => !i.userId || i.userId === thesis.studentId);
 
   const modeCounts = new Map<string, number>();
   interactions.forEach((i) => modeCounts.set(i.mode, (modeCounts.get(i.mode) || 0) + 1));
@@ -562,7 +609,13 @@ export function ledgerSummary(
     pct: { ai: pct(thesis.provenance.ai), paste: pct(thesis.provenance.paste), human: pct(thesis.provenance.human) },
     aiLimitPct: ctx.policy.maxAiUsagePercent,
     interactions: { total: interactions.length, blocked: interactions.filter((i) => i.blockedByPolicy).length, copilot: interactions.filter((i) => i.mode === "copilot").length, byMode, providers },
-    aiInserts: { events: inserts.length, words: inserts.reduce((a, e) => a + (e.words || 0), 0), interactionsWithText: Object.keys(scan.aiByInteraction).length },
+    aiInserts: {
+      events: inserts.length,
+      words: inserts.reduce((a, e) => a + (e.words || 0), 0),
+      interactionsWithText: Object.keys(scan.aiByInteraction).length,
+      tables: inserts.filter((e) => e.artifactKind === "table").length,
+      figures: inserts.reduce((a, e) => a + (e.figures || 0), 0),
+    },
     aiChapters: scan.chapters.filter((c) => c.ai > 0).map((c) => c.heading),
     pastes: {
       events: pastes.length,
@@ -581,6 +634,13 @@ export function ledgerSummary(
     snapshots: { count: snapshots.length, chainOk: chain.ok, brokenAt: chain.brokenAt },
     notices: { open: ctx.openNotices || 0, resolved: ctx.resolvedNotices || 0 },
     versions: ctx.versions || 0,
+    paperKind: paperKind(thesis),
+    teacher: teacherLabel(thesis),
+    figures: timeline.figures,
+    artifacts: {
+      tables: interactions.reduce((a, i) => a + (i.artifacts || []).filter((x) => x.kind === "table").length, 0),
+      charts: interactions.reduce((a, i) => a + (i.artifacts || []).filter((x) => x.kind === "chart").length, 0),
+    },
   };
 }
 

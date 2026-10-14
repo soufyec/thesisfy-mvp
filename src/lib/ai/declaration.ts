@@ -43,6 +43,95 @@ function listJoin(items: string[], lang: DeclarationLang) {
   return `${items.slice(0, -1).join(", ")} ${and} ${items[items.length - 1]}`;
 }
 
+/**
+ * How the declaration names the work and the person who reviews it. Summaries stored before paper kinds existed have
+ * no `paperKind`/`teacher`: they read as a thesis with an advisor, so their text stays exactly as it was.
+ */
+function workWords(s: Partial<Pick<LedgerSummary, "paperKind" | "teacher">>, lang: DeclarationLang) {
+  const kind = s.paperKind || "thesis";
+  const teacher = s.teacher || "advisor";
+  const doctoral = kind === "doctoral_thesis";
+  const thesis = kind === "thesis" || doctoral;
+  if (lang === "es") {
+    return {
+      my: thesis ? "mi tesis" : "mi trabajo",
+      text: thesis ? "texto de la tesis" : "texto del trabajo",
+      accompanies: thesis ? "acompaña a la tesis" : "acompaña al trabajo",
+      sees:
+        teacher === "none"
+          ? `Quien revise ${thesis ? "esta tesis" : "este trabajo"} en mi institución ve exactamente los mismos datos.`
+          : `${teacher === "teacher" ? "Mi docente" : doctoral ? "Mi director de tesis" : "Mi tutor"} ve exactamente los mismos datos.`,
+    };
+  }
+  if (lang === "fr") {
+    return {
+      my: doctoral ? "ma thèse" : thesis ? "mon mémoire" : "mon travail",
+      text: doctoral ? "texte de la thèse" : thesis ? "texte du mémoire" : "texte du travail",
+      accompanies: doctoral ? "jointe à la thèse" : thesis ? "jointe au mémoire" : "jointe au travail",
+      sees:
+        teacher === "none"
+          ? `Les personnes de mon établissement qui examinent ${doctoral ? "cette thèse" : thesis ? "ce mémoire" : "ce travail"} voient exactement les mêmes données.`
+          : `${teacher === "teacher" ? "Mon enseignant" : doctoral ? "Mon directeur de thèse" : "Mon directeur"} voit exactement les mêmes données.`,
+    };
+  }
+  return {
+    my: thesis ? "my thesis" : "my paper",
+    text: thesis ? "thesis text" : "text of the paper",
+    accompanies: thesis ? "accompanies the thesis" : "accompanies the paper",
+    sees:
+      teacher === "none"
+        ? `Anyone at my institution who reviews this ${thesis ? "thesis" : "paper"} sees exactly the same data.`
+        : `My ${teacher === "teacher" ? "teacher" : "advisor"} sees exactly the same data.`,
+  };
+}
+
+/**
+ * Tables and figures the Research copilot computed from attached data (D12, docs/papers.md §4.6): what Thesisfic
+ * computed, what was inserted with the AI mark (from `ai_insert` events) and the AI-assisted figures of the Final
+ * submission. Null when the student used none of it, so older declarations keep their paragraphs.
+ */
+function artifactsParagraph(s: LedgerSummary, lang: DeclarationLang): string | null {
+  const computedTables = s.artifacts?.tables ?? 0;
+  const computedCharts = s.artifacts?.charts ?? 0;
+  const insertedTables = s.aiInserts?.tables ?? 0;
+  const insertedFigures = s.aiInserts?.figures ?? 0;
+  const aiFigures = s.figures?.ai ?? 0;
+  if (!computedTables && !computedCharts && !insertedTables && !insertedFigures && !aiFigures) return null;
+  const nouns = {
+    en: { table: ["table", "tables"], figure: ["figure", "figures"] },
+    es: { table: ["tabla", "tablas"], figure: ["figura", "figuras"] },
+    fr: { table: ["tableau", "tableaux"], figure: ["figure", "figures"] },
+  }[lang];
+  const pair = (tables: number, figures: number) =>
+    listJoin(
+      [tables ? count(tables, nouns.table[0], nouns.table[1]) : "", figures ? count(figures, nouns.figure[0], nouns.figure[1]) : ""].filter(Boolean),
+      lang
+    );
+  const computed = pair(computedTables, computedCharts);
+  const inserted = pair(insertedTables, insertedFigures);
+  const parts: string[] = [];
+  if (lang === "es") {
+    parts.push("Tablas y figuras calculadas a partir de mis datos.");
+    if (computed) parts.push(`Calculadas por Thesisfic en conversaciones con Research copilot a partir de archivos que adjunté: ${computed}.`);
+    if (inserted) parts.push(`Insertadas desde el asistente con la marca de IA: ${inserted}.`);
+    parts.push(`Figuras asistidas por IA en la Final submission: ${n(aiFigures)}.`);
+    parts.push("Las tablas insertadas cuentan en las palabras asistidas por IA indicadas arriba; las figuras no añaden palabras.");
+  } else if (lang === "fr") {
+    parts.push("Tableaux et figures calculés à partir de mes données.");
+    if (computed) parts.push(`Calculés par Thesisfic dans des conversations Research copilot à partir de fichiers que j'ai joints : ${computed}.`);
+    if (inserted) parts.push(`Insérés depuis l'assistant avec la marque IA : ${inserted}.`);
+    parts.push(`Figures assistées par l'IA dans la Final submission : ${n(aiFigures)}.`);
+    parts.push("Les tableaux insérés comptent dans les mots assistés par l'IA indiqués plus haut ; les figures n'ajoutent aucun mot.");
+  } else {
+    parts.push("Tables and figures computed from my data.");
+    if (computed) parts.push(`Computed by Thesisfic in Research copilot conversations from files I attached: ${computed}.`);
+    if (inserted) parts.push(`Inserted from the assistant with the AI mark: ${inserted}.`);
+    parts.push(`AI-assisted figures in the Final submission: ${n(aiFigures)}.`);
+    parts.push("Inserted tables count toward the AI-assisted words above; figures add no words.");
+  }
+  return parts.join(" ");
+}
+
 function modesSentence(s: LedgerSummary, lang: DeclarationLang) {
   const names = MODE_NAMES[lang];
   return s.interactions.byMode.map((m) => `${names[m.mode] || m.mode} (${m.count})`);
@@ -65,20 +154,23 @@ export function renderDeclaration(s: LedgerSummary, opts: DeclarationOpts): stri
   const scopes = scopesList(s, lang);
   const chapters = s.aiChapters;
   const paragraphs: string[] = [];
+  const w = workWords(s, lang);
+  const artifacts = artifactsParagraph(s, lang);
 
   if (lang === "es") {
     paragraphs.push(`DECLARACIÓN DE USO DE IA`);
-    paragraphs.push(`Yo, ${opts.studentName}, declaro lo siguiente sobre la elaboración de mi tesis «${opts.thesisTitle}» (${opts.university}). Esta declaración se ha generado a partir del registro de procedencia de Thesisfic; cada cifra procede de un evento registrado en el editor o de una marca de procedencia del documento, no de una estimación.`);
+    paragraphs.push(`Yo, ${opts.studentName}, declaro lo siguiente sobre la elaboración de ${w.my} «${opts.thesisTitle}» (${opts.university}). Esta declaración se ha generado a partir del registro de procedencia de Thesisfic; cada cifra procede de un evento registrado en el editor o de una marca de procedencia del documento, no de una estimación.`);
     paragraphs.push(
       s.interactions.total === 0
         ? `Asistente de IA. No utilicé el asistente de Thesisfic durante la redacción.`
-        : `Asistente de IA. Utilicé el asistente de Thesisfic en ${count(s.interactions.total, "interacción", "interacciones")}, en ${s.interactions.byMode.length === 1 ? "el modo" : "los modos"} ${listJoin(modes, lang)}.${s.interactions.copilot ? ` ${n(s.interactions.copilot)} de ellas ${s.interactions.copilot === 1 ? "fue una conversación" : "fueron conversaciones"} en Research copilot sobre mi investigación.` : ""}${s.interactions.blocked ? ` ${count(s.interactions.blocked, "petición fue rechazada", "peticiones fueron rechazadas")} por la política de la institución y no ${s.interactions.blocked === 1 ? "produjo" : "produjeron"} texto.` : ""} El asistente no redactó texto de la tesis; solo pudo esquematizar, criticar, corregir, explicar y citar.`
+        : `Asistente de IA. Utilicé el asistente de Thesisfic en ${count(s.interactions.total, "interacción", "interacciones")}, en ${s.interactions.byMode.length === 1 ? "el modo" : "los modos"} ${listJoin(modes, lang)}.${s.interactions.copilot ? ` ${n(s.interactions.copilot)} de ellas ${s.interactions.copilot === 1 ? "fue una conversación" : "fueron conversaciones"} en Research copilot sobre mi investigación.` : ""}${s.interactions.blocked ? ` ${count(s.interactions.blocked, "petición fue rechazada", "peticiones fueron rechazadas")} por la política de la institución y no ${s.interactions.blocked === 1 ? "produjo" : "produjeron"} texto.` : ""} El asistente no redactó ${w.text}; solo pudo esquematizar, criticar, corregir, explicar y citar.`
     );
     paragraphs.push(
       s.words.ai === 0
         ? `Texto asistido por IA. Ningún pasaje de la Final submission lleva marca de IA.`
         : `Texto asistido por IA. ${n(s.words.ai)} palabras (${pct(s.pct.ai)} % de ${n(s.words.total)}; límite institucional ${s.aiLimitPct} %) están marcadas como asistidas por IA en la Final submission${chapters.length ? `, en las secciones: ${listJoin(chapters.map((c) => `«${c}»`), lang)}` : ""}. Son inserciones desde el asistente (${count(s.aiInserts.events, "inserción", "inserciones")}) o pegados reconocidos por huella como respuestas del asistente o del Research copilot.`
     );
+    if (artifacts) paragraphs.push(artifacts);
     paragraphs.push(
       s.pastes.events === 0 && s.words.paste === 0
         ? `Texto pegado o citado. No se registraron pegados.`
@@ -90,25 +182,26 @@ export function renderDeclaration(s: LedgerSummary, opts: DeclarationOpts): stri
         ? `Monitorización consentida. Autoricé el registro de: ${listJoin(scopes, lang)}${s.consent ? ` (consentimiento v${s.consent.version}, ${fmtDate(s.consent.grantedAt, lang)})` : ""}. Se ${s.sessions.count + s.snapshots.count === 1 ? "registró" : "registraron"} ${count(s.sessions.count, "sesión de escritura", "sesiones de escritura")} (${count(s.sessions.minutes, "minuto", "minutos")}) y ${count(s.snapshots.count, "instantánea del documento", "instantáneas del documento")}, encadenadas por hash${s.snapshots.chainOk ? " y verificadas" : "; la verificación de la cadena ha fallado"}.`
         : `Monitorización consentida. No hay consentimiento de monitorización registrado; el documento solo conserva las marcas de procedencia.`
     );
-    paragraphs.push(`Lo que este registro no demuestra. El registro refleja lo ocurrido dentro del editor de Thesisfic. No puede detectar texto generado por una IA externa y transcrito manualmente, ni acreditar la autoría de ideas. Es una prueba de proceso que acompaña a la tesis, no una puntuación de probabilidad.`);
-    paragraphs.push(`Generada el ${date} a partir del ledger de integridad. Mi tutor ve exactamente los mismos datos.`);
+    paragraphs.push(`Lo que este registro no demuestra. El registro refleja lo ocurrido dentro del editor de Thesisfic. No puede detectar texto generado por una IA externa y transcrito manualmente, ni acreditar la autoría de ideas. Es una prueba de proceso que ${w.accompanies}, no una puntuación de probabilidad.`);
+    paragraphs.push(`Generada el ${date} a partir del ledger de integridad. ${w.sees}`);
     paragraphs.push(`Firma: ______________________    ${opts.studentName}    Fecha: ______________`);
     return paragraphs.join("\n\n");
   }
 
   if (lang === "fr") {
     paragraphs.push(`DÉCLARATION D'UTILISATION DE L'IA`);
-    paragraphs.push(`Je, ${opts.studentName}, déclare ce qui suit concernant la rédaction de mon mémoire « ${opts.thesisTitle} » (${opts.university}). Cette déclaration est générée à partir du registre de provenance de Thesisfic ; chaque chiffre provient d'un événement enregistré dans l'éditeur ou d'une marque de provenance du document, jamais d'une estimation.`);
+    paragraphs.push(`Je, ${opts.studentName}, déclare ce qui suit concernant la rédaction de ${w.my} « ${opts.thesisTitle} » (${opts.university}). Cette déclaration est générée à partir du registre de provenance de Thesisfic ; chaque chiffre provient d'un événement enregistré dans l'éditeur ou d'une marque de provenance du document, jamais d'une estimation.`);
     paragraphs.push(
       s.interactions.total === 0
         ? `Assistant IA. Je n'ai pas utilisé l'assistant Thesisfic pendant la rédaction.`
-        : `Assistant IA. J'ai utilisé l'assistant Thesisfic lors de ${count(s.interactions.total, "interaction", "interactions")}, dans ${s.interactions.byMode.length === 1 ? "le mode" : "les modes"} ${listJoin(modes, lang)}.${s.interactions.copilot ? ` ${n(s.interactions.copilot)} d'entre elles ${s.interactions.copilot === 1 ? "était une conversation" : "étaient des conversations"} Research copilot sur ma recherche.` : ""}${s.interactions.blocked ? ` ${count(s.interactions.blocked, "demande a été refusée", "demandes ont été refusées")} par la politique de l'établissement et n'${s.interactions.blocked === 1 ? "a" : "ont"} produit aucun texte.` : ""} L'assistant n'a rédigé aucun texte du mémoire ; il a seulement pu structurer, critiquer, corriger, expliquer et citer.`
+        : `Assistant IA. J'ai utilisé l'assistant Thesisfic lors de ${count(s.interactions.total, "interaction", "interactions")}, dans ${s.interactions.byMode.length === 1 ? "le mode" : "les modes"} ${listJoin(modes, lang)}.${s.interactions.copilot ? ` ${n(s.interactions.copilot)} d'entre elles ${s.interactions.copilot === 1 ? "était une conversation" : "étaient des conversations"} Research copilot sur ma recherche.` : ""}${s.interactions.blocked ? ` ${count(s.interactions.blocked, "demande a été refusée", "demandes ont été refusées")} par la politique de l'établissement et n'${s.interactions.blocked === 1 ? "a" : "ont"} produit aucun texte.` : ""} L'assistant n'a rédigé aucun ${w.text} ; il a seulement pu structurer, critiquer, corriger, expliquer et citer.`
     );
     paragraphs.push(
       s.words.ai === 0
         ? `Texte assisté par l'IA. Aucun passage de la Final submission ne porte de marque IA.`
         : `Texte assisté par l'IA. ${n(s.words.ai)} mots (${pct(s.pct.ai)} % de ${n(s.words.total)} ; limite institutionnelle ${s.aiLimitPct} %) sont marqués comme assistés par l'IA dans la Final submission${chapters.length ? `, dans les sections : ${listJoin(chapters.map((c) => `« ${c} »`), lang)}` : ""}. Il s'agit d'insertions depuis l'assistant (${count(s.aiInserts.events, "insertion", "insertions")}) ou de collages reconnus par empreinte comme des réponses de l'assistant ou du Research copilot.`
     );
+    if (artifacts) paragraphs.push(artifacts);
     paragraphs.push(
       s.pastes.events === 0 && s.words.paste === 0
         ? `Texte collé ou cité. Aucun collage n'a été enregistré.`
@@ -120,24 +213,25 @@ export function renderDeclaration(s: LedgerSummary, opts: DeclarationOpts): stri
         ? `Suivi consenti. J'ai autorisé l'enregistrement de : ${listJoin(scopes, lang)}${s.consent ? ` (consentement v${s.consent.version}, ${fmtDate(s.consent.grantedAt, lang)})` : ""}. ${count(s.sessions.count, "session d'écriture", "sessions d'écriture")} (${count(s.sessions.minutes, "minute", "minutes")}) et ${count(s.snapshots.count, "instantané du document ont été enregistrés", "instantanés du document ont été enregistrés")}, chaînés par hachage${s.snapshots.chainOk ? " et vérifiés" : " ; la vérification de la chaîne a échoué"}.`
         : `Suivi consenti. Aucun consentement de suivi n'est enregistré ; le document ne conserve que les marques de provenance.`
     );
-    paragraphs.push(`Ce que ce registre ne prouve pas. Le registre reflète ce qui s'est passé dans l'éditeur Thesisfic. Il ne peut pas détecter un texte produit par une IA externe puis transcrit à la main, ni attester la paternité des idées. C'est une preuve de processus jointe au mémoire, pas un score de probabilité.`);
-    paragraphs.push(`Générée le ${date} à partir du registre d'intégrité. Mon directeur voit exactement les mêmes données.`);
+    paragraphs.push(`Ce que ce registre ne prouve pas. Le registre reflète ce qui s'est passé dans l'éditeur Thesisfic. Il ne peut pas détecter un texte produit par une IA externe puis transcrit à la main, ni attester la paternité des idées. C'est une preuve de processus ${w.accompanies}, pas un score de probabilité.`);
+    paragraphs.push(`Générée le ${date} à partir du registre d'intégrité. ${w.sees}`);
     paragraphs.push(`Signature : ______________________    ${opts.studentName}    Date : ______________`);
     return paragraphs.join("\n\n");
   }
 
   paragraphs.push(`AI-USE DECLARATION`);
-  paragraphs.push(`I, ${opts.studentName}, declare the following about the writing of my thesis "${opts.thesisTitle}" (${opts.university}). This declaration is generated from the Thesisfic provenance record; every figure comes from an event logged in the editor or from a provenance mark in the document, not from an estimate.`);
+  paragraphs.push(`I, ${opts.studentName}, declare the following about the writing of ${w.my} "${opts.thesisTitle}" (${opts.university}). This declaration is generated from the Thesisfic provenance record; every figure comes from an event logged in the editor or from a provenance mark in the document, not from an estimate.`);
   paragraphs.push(
     s.interactions.total === 0
       ? `AI assistant. I did not use the Thesisfic assistant while writing.`
-      : `AI assistant. I used the Thesisfic assistant in ${count(s.interactions.total, "interaction", "interactions")}, in the ${s.interactions.byMode.length === 1 ? "mode" : "modes"} ${listJoin(modes, lang)}.${s.interactions.copilot ? ` ${n(s.interactions.copilot)} of them ${s.interactions.copilot === 1 ? "was a Research copilot conversation" : "were Research copilot conversations"} about my research.` : ""}${s.interactions.blocked ? ` ${count(s.interactions.blocked, "request was", "requests were")} declined by the institution's policy and produced no text.` : ""} The assistant did not write thesis text; it could only outline, critique, correct, explain and cite.`
+      : `AI assistant. I used the Thesisfic assistant in ${count(s.interactions.total, "interaction", "interactions")}, in the ${s.interactions.byMode.length === 1 ? "mode" : "modes"} ${listJoin(modes, lang)}.${s.interactions.copilot ? ` ${n(s.interactions.copilot)} of them ${s.interactions.copilot === 1 ? "was a Research copilot conversation" : "were Research copilot conversations"} about my research.` : ""}${s.interactions.blocked ? ` ${count(s.interactions.blocked, "request was", "requests were")} declined by the institution's policy and produced no text.` : ""} The assistant did not write ${w.text}; it could only outline, critique, correct, explain and cite.`
   );
   paragraphs.push(
     s.words.ai === 0
       ? `AI-assisted text. No passage of the Final submission carries an AI mark.`
       : `AI-assisted text. ${count(s.words.ai, "word", "words")} (${pct(s.pct.ai)}% of ${n(s.words.total)}; institutional limit ${s.aiLimitPct}%) ${s.words.ai === 1 ? "is" : "are"} marked as AI-assisted in the Final submission${chapters.length ? `, in the ${chapters.length === 1 ? "section" : "sections"} ${listJoin(chapters.map((c) => `"${c}"`), lang)}` : ""}. They are insertions from the assistant (${count(s.aiInserts.events, "insertion", "insertions")}) or pastes recognised by fingerprint as answers from the assistant or the Research copilot.`
   );
+  if (artifacts) paragraphs.push(artifacts);
   paragraphs.push(
     s.pastes.events === 0 && s.words.paste === 0
       ? `Quoted or pasted text. No pastes were recorded.`
@@ -149,8 +243,8 @@ export function renderDeclaration(s: LedgerSummary, opts: DeclarationOpts): stri
       ? `Monitoring I consented to. I allowed the recording of: ${listJoin(scopes, lang)}${s.consent ? ` (consent v${s.consent.version}, ${fmtDate(s.consent.grantedAt, lang)})` : ""}. ${count(s.sessions.count, "writing session", "writing sessions")} (${count(s.sessions.minutes, "minute", "minutes")}) and ${count(s.snapshots.count, "document snapshot was", "document snapshots were")} recorded, hash-chained${s.snapshots.chainOk ? " and verified" : "; the chain verification failed"}.`
       : `Monitoring I consented to. No monitoring consent is on record; the document keeps only its provenance marks.`
   );
-  paragraphs.push(`What this record does not prove. The record reflects what happened inside the Thesisfic editor. It cannot detect text produced by an external AI and transcribed by hand, and it does not attest the authorship of ideas. It is process evidence that accompanies the thesis, not a probability score.`);
-  paragraphs.push(`Generated on ${date} from the integrity ledger. My advisor sees exactly the same data.`);
+  paragraphs.push(`What this record does not prove. The record reflects what happened inside the Thesisfic editor. It cannot detect text produced by an external AI and transcribed by hand, and it does not attest the authorship of ideas. It is process evidence that ${w.accompanies}, not a probability score.`);
+  paragraphs.push(`Generated on ${date} from the integrity ledger. ${w.sees}`);
   paragraphs.push(`Signature: ______________________    ${opts.studentName}    Date: ______________`);
   return paragraphs.join("\n\n");
 }

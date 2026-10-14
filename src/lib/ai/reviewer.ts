@@ -1,4 +1,5 @@
-import { Policy, RubricCriterion, Thesis } from "../db";
+import type { Policy, RubricCriterion, Thesis } from "../db";
+import { paperKind } from "../papers/kinds";
 import { BASE_SYSTEM } from "./prompts";
 import { normalizeForMatch, sentenceSpans, paragraphSpans } from "./anchor";
 
@@ -97,12 +98,12 @@ export interface AnchoredReviewComment extends Omit<ReviewerComment, "context"> 
   confidence: number;
 }
 
-const REVIEWER_RULES = `Reviewer mode: you review a passage of the student's thesis and return anchored comments, not prose.
+const REVIEWER_RULES = `Reviewer mode: you review a passage of the student's paper (thesis, essay, report or any other assessed work) and return anchored comments, not prose.
 
 Hard rules for this mode:
 - Never write replacement text. No rewritten sentences, no "try: ...", no model sentences, no example phrasings longer than a few words, no scaffolds or templates. Point at the problem and ask; the student writes.
 - Each comment must quote verbatim a short span (at most ${MAX_QUOTE_CHARS} characters, ideally one clause or sentence) copied exactly from the passage, so it can be anchored in the editor. Do not paraphrase the quote.
-- rationale: at most two sentences, concrete, about this passage. Say what is missing or weak and why it matters for a thesis reader.
+- rationale: at most two sentences, concrete, about this passage. Say what is missing or weak and why it matters for a reader of this kind of paper.
 - question: optional, one Socratic question that helps the student decide what to do (e.g. "Which result in table 3 supports this?"). Omit it when it would be generic.
 - Only comment on categories in the rubric below, respecting their weights (weight 3: look hard; weight 1: only clear problems; weight 0: never).
 - At most ${MAX_COMMENTS_PER_SECTION} comments. Prefer the few that matter most; order by severity.
@@ -113,12 +114,12 @@ Output: a single JSON object, no Markdown fences, no text before or after:
 {"comments":[{"quote":"...","category":"argument|evidence|structure|clarity|citations|method","severity":"low|medium|high","rationale":"...","question":"..."}]}
 Return {"comments":[]} when the passage needs no comment.`;
 
-export function buildReviewerPrompt(opts: { rubric: RubricCriterion[]; scope: ReviewScope; sectionLabel?: string; thesis?: Pick<Thesis, "title" | "citationStyle"> | null; ledgerSummary?: string }) {
+export function buildReviewerPrompt(opts: { rubric: RubricCriterion[]; scope: ReviewScope; sectionLabel?: string; thesis?: (Pick<Thesis, "title" | "citationStyle"> & Partial<Pick<Thesis, "kind">>) | null; ledgerSummary?: string }) {
   const active = opts.rubric.filter((r) => r.weight > 0);
   const rubricLines = active.map((r) => `- ${r.id} (weight ${r.weight}): ${r.label}. ${r.description}`).join("\n");
   const parts = [BASE_SYSTEM, REVIEWER_RULES, `Rubric set by the institution:\n${rubricLines || "- (no active criteria)"}`];
   const where = opts.scope === "selection" ? "a selected passage" : opts.scope === "section" ? `the section "${opts.sectionLabel || "untitled"}"` : "the whole submission";
-  parts.push(`Scope: ${where}${opts.thesis ? ` of the thesis "${opts.thesis.title}" (citation style ${opts.thesis.citationStyle})` : ""}.`);
+  parts.push(`Scope: ${where}${opts.thesis ? ` of the paper "${opts.thesis.title}" (paper kind: ${paperKind(opts.thesis).replace(/_/g, " ")}; citation style ${opts.thesis.citationStyle})` : ""}.`);
   if (opts.ledgerSummary) parts.push(`Process context from the integrity ledger (for your judgement only, never to be mentioned as an accusation): ${opts.ledgerSummary}`);
   return parts.join("\n\n");
 }

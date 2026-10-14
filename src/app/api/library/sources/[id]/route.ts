@@ -3,7 +3,7 @@ import { db, ThesisSource } from "@/lib/db";
 import { json, requireUser } from "@/lib/api";
 import { getT } from "@/lib/i18n/server";
 import { librarySourceView } from "@/lib/sources/retrieve";
-import { checkLinkable, fail, isFail, isLocked, lockedFail, resolveOwnTheses } from "@/lib/sources/library";
+import { checkLinkable, fail, isFail, isLocked, lockedFail, resolveOwnTheses, roleOf } from "@/lib/sources/library";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ async function load(request: NextRequest, id: string) {
 
 /**
  * PATCH { thesisIds?, title?, authors?, year?, venue? } → `thesisIds` sets the theses that use the source exactly
- * (each the caller's; locked theses cannot gain or lose it; at most 40 sources per thesis). Metadata fields are trimmed;
+ * (each the caller's; locked theses cannot gain or lose it; at most 40 secondary or 20 primary sources per thesis,
+ * by the source's role). Metadata fields are trimmed;
  * an empty title is refused, other empty fields are cleared. Response { source: LibrarySourceView }.
  */
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
@@ -45,7 +46,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const wanted = resolveOwnTheses(user, body.thesisIds, t);
     if (isFail(wanted)) return wanted.fail;
     const current = source.thesisIds;
-    const refused = checkLinkable(wanted, t, current);
+    const refused = checkLinkable(wanted, t, current, roleOf(source));
     if (refused) return refused.fail;
     for (const id of current) {
       if (wanted.some((x) => x.id === id)) continue;

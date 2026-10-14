@@ -46,6 +46,26 @@ const en = {
   "library.source.doiNotFound": "DOI not found in OpenAlex or Crossref.",
   "library.source.urlFailed": "The page could not be fetched (private address, blocked, or not found).",
   "library.source.extractionFailed": "The text could not be extracted.",
+
+  // ---------- Uploaded files and primary data (data-backend, docs/papers.md §3.3) ----------
+  "library.error.attachFile": "Attach a file in the file field.",
+  "library.error.tooLarge": "Files can be up to {max} MB. Split the file or remove what you do not need, then upload it again.",
+  "library.error.expandsTooLarge": "This file holds more data than Thesisfic can read. Split it into smaller files and upload them separately.",
+  "library.error.legacyFormat": "This file uses an older format that Thesisfic does not read. Save it as .xlsx, .docx or .csv, then upload it again.",
+  "library.error.unsupportedType": "Thesisfic reads PDF, Word (.docx), Excel (.xlsx), CSV, TSV, plain text (.txt) and Markdown (.md) files. Check that the file name ends with the right extension.",
+  "library.error.encrypted": "This file is protected with a password. Save a copy without the password, then upload it.",
+  "library.error.empty": "This file is empty.",
+  "library.error.noRows": "Thesisfic found no rows of data in this file.",
+  "library.error.noText": "Thesisfic found no text in this file.",
+  "library.error.unreadable": "This file could not be read. Check that it opens on your computer, save it again, then upload it.",
+  "library.error.roleInvalid": "The role must be primary or secondary.",
+  "library.error.primaryThesisCap": "A paper can use up to {max} primary sources. Remove one from “{title}” before adding another.",
+  "library.error.primaryLibraryCap": "Your library holds up to {max} primary sources. Delete one before adding another.",
+  "library.error.dataCap": "Your library holds up to {max} cells of data. Delete a data file you no longer use before adding another.",
+  "library.error.noData": "This source has no data table.",
+  "library.error.sheetNotFound": "This sheet is not in the file.",
+  "library.source.uploadedFile": "Uploaded file",
+  // ---------- end of uploaded files and primary data ----------
 };
 
 export const library: Messages<typeof en> = {
@@ -85,6 +105,26 @@ export const library: Messages<typeof en> = {
     "library.source.doiNotFound": "El DOI no aparece en OpenAlex ni en Crossref.",
     "library.source.urlFailed": "No se pudo obtener la página (dirección privada, bloqueada o inexistente).",
     "library.source.extractionFailed": "No se pudo extraer el texto.",
+
+    // ---------- Uploaded files and primary data (data-backend) ----------
+    "library.error.attachFile": "Adjunta un archivo en el campo de archivo.",
+    "library.error.tooLarge": "Los archivos pueden ocupar hasta {max} MB. Divide el archivo o quita lo que no necesites y vuelve a subirlo.",
+    "library.error.expandsTooLarge": "Este archivo contiene más datos de los que Thesisfic puede leer. Divídelo en archivos más pequeños y súbelos por separado.",
+    "library.error.legacyFormat": "Este archivo usa un formato antiguo que Thesisfic no lee. Guárdalo como .xlsx, .docx o .csv y vuelve a subirlo.",
+    "library.error.unsupportedType": "Thesisfic lee archivos PDF, Word (.docx), Excel (.xlsx), CSV, TSV, texto plano (.txt) y Markdown (.md). Comprueba que el nombre del archivo termine en la extensión correcta.",
+    "library.error.encrypted": "Este archivo está protegido con contraseña. Guarda una copia sin contraseña y súbela.",
+    "library.error.empty": "Este archivo está vacío.",
+    "library.error.noRows": "Thesisfic no encontró filas de datos en este archivo.",
+    "library.error.noText": "Thesisfic no encontró texto en este archivo.",
+    "library.error.unreadable": "No se pudo leer este archivo. Comprueba que se abre en tu ordenador, vuelve a guardarlo y súbelo de nuevo.",
+    "library.error.roleInvalid": "El rol debe ser primary o secondary.",
+    "library.error.primaryThesisCap": "Un trabajo puede usar hasta {max} fuentes primarias. Quita una de «{title}» antes de añadir otra.",
+    "library.error.primaryLibraryCap": "Tu biblioteca admite hasta {max} fuentes primarias. Elimina una antes de añadir otra.",
+    "library.error.dataCap": "Tu biblioteca admite hasta {max} celdas de datos. Elimina un archivo de datos que ya no uses antes de añadir otro.",
+    "library.error.noData": "Esta fuente no tiene tabla de datos.",
+    "library.error.sheetNotFound": "Esta hoja no está en el archivo.",
+    "library.source.uploadedFile": "Archivo subido",
+    // ---------- end of uploaded files and primary data ----------
   },
   fr: {
     "library.error.thesisNotFound": "Thèse introuvable.",
@@ -121,6 +161,26 @@ export const library: Messages<typeof en> = {
     "library.source.doiNotFound": "DOI introuvable dans OpenAlex et Crossref.",
     "library.source.urlFailed": "La page n'a pas pu être récupérée (adresse privée, bloquée ou introuvable).",
     "library.source.extractionFailed": "Le texte n'a pas pu être extrait.",
+
+    // ---------- Uploaded files and primary data (data-backend) ----------
+    "library.error.attachFile": "Joignez un fichier dans le champ fichier.",
+    "library.error.tooLarge": "Les fichiers peuvent peser jusqu'à {max} Mo. Divisez le fichier ou retirez ce dont vous n'avez pas besoin, puis importez-le à nouveau.",
+    "library.error.expandsTooLarge": "Ce fichier contient plus de données que Thesisfic ne peut en lire. Divisez-le en fichiers plus petits et importez-les séparément.",
+    "library.error.legacyFormat": "Ce fichier utilise un ancien format que Thesisfic ne lit pas. Enregistrez-le au format .xlsx, .docx ou .csv, puis importez-le à nouveau.",
+    "library.error.unsupportedType": "Thesisfic lit les fichiers PDF, Word (.docx), Excel (.xlsx), CSV, TSV, texte brut (.txt) et Markdown (.md). Vérifiez que le nom du fichier se termine par la bonne extension.",
+    "library.error.encrypted": "Ce fichier est protégé par un mot de passe. Enregistrez une copie sans mot de passe, puis importez-la.",
+    "library.error.empty": "Ce fichier est vide.",
+    "library.error.noRows": "Thesisfic n'a trouvé aucune ligne de données dans ce fichier.",
+    "library.error.noText": "Thesisfic n'a trouvé aucun texte dans ce fichier.",
+    "library.error.unreadable": "Ce fichier n'a pas pu être lu. Vérifiez qu'il s'ouvre sur votre ordinateur, enregistrez-le à nouveau, puis importez-le.",
+    "library.error.roleInvalid": "Le rôle doit être primary ou secondary.",
+    "library.error.primaryThesisCap": "Un travail peut utiliser jusqu'à {max} sources primaires. Retirez-en une de « {title} » avant d'en ajouter une autre.",
+    "library.error.primaryLibraryCap": "Votre bibliothèque contient au plus {max} sources primaires. Supprimez-en une avant d'en ajouter une autre.",
+    "library.error.dataCap": "Votre bibliothèque contient au plus {max} cellules de données. Supprimez un fichier de données que vous n'utilisez plus avant d'en ajouter un autre.",
+    "library.error.noData": "Cette source n'a pas de tableau de données.",
+    "library.error.sheetNotFound": "Cette feuille ne figure pas dans le fichier.",
+    "library.source.uploadedFile": "Fichier importé",
+    // ---------- end of uploaded files and primary data ----------
   },
   de: {
     "library.error.thesisNotFound": "Abschlussarbeit nicht gefunden.",
@@ -157,5 +217,25 @@ export const library: Messages<typeof en> = {
     "library.source.doiNotFound": "DOI weder in OpenAlex noch in Crossref gefunden.",
     "library.source.urlFailed": "Die Seite konnte nicht abgerufen werden (private Adresse, gesperrt oder nicht gefunden).",
     "library.source.extractionFailed": "Der Text konnte nicht extrahiert werden.",
+
+    // ---------- Uploaded files and primary data (data-backend) ----------
+    "library.error.attachFile": "Hängen Sie eine Datei im Dateifeld an.",
+    "library.error.tooLarge": "Dateien dürfen bis zu {max} MB groß sein. Teilen Sie die Datei auf oder entfernen Sie, was Sie nicht brauchen, und laden Sie sie erneut hoch.",
+    "library.error.expandsTooLarge": "Diese Datei enthält mehr Daten, als Thesisfic lesen kann. Teilen Sie sie in kleinere Dateien auf und laden Sie diese einzeln hoch.",
+    "library.error.legacyFormat": "Diese Datei hat ein älteres Format, das Thesisfic nicht liest. Speichern Sie sie als .xlsx, .docx oder .csv und laden Sie sie erneut hoch.",
+    "library.error.unsupportedType": "Thesisfic liest PDF-, Word- (.docx), Excel- (.xlsx), CSV-, TSV-, Text- (.txt) und Markdown-Dateien (.md). Prüfen Sie, ob der Dateiname die richtige Endung hat.",
+    "library.error.encrypted": "Diese Datei ist mit einem Passwort geschützt. Speichern Sie eine Kopie ohne Passwort und laden Sie diese hoch.",
+    "library.error.empty": "Diese Datei ist leer.",
+    "library.error.noRows": "Thesisfic hat in dieser Datei keine Datenzeilen gefunden.",
+    "library.error.noText": "Thesisfic hat in dieser Datei keinen Text gefunden.",
+    "library.error.unreadable": "Diese Datei konnte nicht gelesen werden. Prüfen Sie, ob sie sich auf Ihrem Computer öffnen lässt, speichern Sie sie erneut und laden Sie sie dann hoch.",
+    "library.error.roleInvalid": "Die Rolle muss primary oder secondary sein.",
+    "library.error.primaryThesisCap": "Eine Arbeit kann bis zu {max} Primärquellen verwenden. Entfernen Sie eine aus „{title}“, bevor Sie eine weitere hinzufügen.",
+    "library.error.primaryLibraryCap": "Ihre Bibliothek fasst bis zu {max} Primärquellen. Löschen Sie eine, bevor Sie eine weitere hinzufügen.",
+    "library.error.dataCap": "Ihre Bibliothek fasst bis zu {max} Datenzellen. Löschen Sie eine Datendatei, die Sie nicht mehr verwenden, bevor Sie eine weitere hinzufügen.",
+    "library.error.noData": "Diese Quelle hat keine Datentabelle.",
+    "library.error.sheetNotFound": "Dieses Tabellenblatt ist nicht in der Datei.",
+    "library.source.uploadedFile": "Hochgeladene Datei",
+    // ---------- end of uploaded files and primary data ----------
   },
 };
