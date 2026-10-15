@@ -2,6 +2,10 @@ import type { Messages } from "../index";
 
 /** Editor area: DocsEditor, menus, toolbar, dialogs, side panels, session bar and provenance gutter. */
 const en = {
+    "editor.dialog.submitBody": "Only the {finalSubmission} tab is submitted. Your advisor {advisor} will be notified and will see it with your provenance report and writing sessions. Working tabs stay as your notes. You can keep editing until they approve it.",
+    "editor.menu.shareAdvisor": "Share with advisor…",
+    "editor.session.advisor": "Advisor: {name}",
+    "editor.share.advisorRole": "Advisor · can comment and review",
   "editor.backToDashboard": "Back to dashboard",
   "editor.loadingDocument": "Loading document…",
   "editor.preparing": "Preparing editor…",
@@ -682,6 +686,10 @@ const en = {
 export const editor: Messages<typeof en> = {
   en,
   es: {
+    "editor.dialog.submitBody": "Solo se entrega la pestaña {finalSubmission}. Tu tutor {advisor} recibirá un aviso y la verá junto con tu informe de procedencia y tus sesiones de escritura. Las pestañas de trabajo siguen siendo tus notas. Puedes seguir editando hasta que la apruebe.",
+    "editor.menu.shareAdvisor": "Compartir con el tutor…",
+    "editor.session.advisor": "Tutor: {name}",
+    "editor.share.advisorRole": "Tutor · puede comentar y revisar",
     "editor.backToDashboard": "Volver al panel",
     "editor.loadingDocument": "Cargando documento…",
     "editor.preparing": "Preparando el editor…",
@@ -1359,6 +1367,10 @@ export const editor: Messages<typeof en> = {
     "editor.cite.fromSourceNote": "Rellenado a partir de tu fuente: revisa los campos antes de insertar.",
   },
   fr: {
+    "editor.dialog.submitBody": "Seul l'onglet {finalSubmission} est déposé. Votre directeur de thèse {advisor} sera prévenu et le verra avec votre rapport de provenance et vos sessions d'écriture. Les onglets de travail restent vos notes. Vous pouvez continuer à modifier jusqu'à son approbation.",
+    "editor.menu.shareAdvisor": "Partager avec le directeur de thèse…",
+    "editor.session.advisor": "Directeur de thèse : {name}",
+    "editor.share.advisorRole": "Directeur de thèse · peut commenter et relire",
     "editor.backToDashboard": "Retour au tableau de bord",
     "editor.loadingDocument": "Chargement du document…",
     "editor.preparing": "Préparation de l'éditeur…",
@@ -2036,6 +2048,10 @@ export const editor: Messages<typeof en> = {
     "editor.cite.fromSourceNote": "Rempli à partir de votre source : vérifiez les champs avant d'insérer.",
   },
   de: {
+    "editor.dialog.submitBody": "Nur die Registerkarte {finalSubmission} wird abgegeben. Ihre Betreuung {advisor} wird benachrichtigt und sieht sie zusammen mit Ihrem Herkunftsbericht und Ihren Schreibsitzungen. Arbeitsregisterkarten bleiben Ihre Notizen. Sie können weiter bearbeiten, bis sie genehmigt wird.",
+    "editor.menu.shareAdvisor": "Mit der Betreuung teilen…",
+    "editor.session.advisor": "Betreuung: {name}",
+    "editor.share.advisorRole": "Betreuung · kann kommentieren und begutachten",
     "editor.backToDashboard": "Zurück zum Dashboard",
     "editor.loadingDocument": "Dokument wird geladen…",
     "editor.preparing": "Editor wird vorbereitet…",
