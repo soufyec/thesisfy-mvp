@@ -504,12 +504,18 @@ function createUploadedSource(ownerId: string, thesisIds: string[], input: FileS
   };
   if (parsed.kind === "sheet") {
     const created = db.sources.create({ ...base, kind: "sheet" });
-    const dataset = db.datasets.create({ sourceId: created.id, ownerId, sha256: upload.sha256, sheets: parsed.sheets });
+    const dataset = db.datasets.create({
+      sourceId: created.id,
+      ownerId,
+      sha256: upload.sha256,
+      sheets: parsed.sheets,
+      ...(parsed.sheetsCut > 0 ? { sheetsCut: parsed.sheetsCut } : {}),
+    });
     db.sources.update(created.id, { datasetId: dataset.id });
-    // The indexed text of a sheet is its data card (D11): names, types and statistics, never rows.
-    // Sheets past the sheet cap are named in the card (D10). Pending: `Dataset.sheetsCut` in db.ts, so the chat's
-    // data cards (built from the dataset) and the source views carry it too.
-    const card = dataCard({ sheets: dataset.sheets, sheetsCut: parsed.sheetsCut }, upload.name);
+    // The indexed text of a sheet is its data card (D11): names, types and statistics, never rows. Sheets past the
+    // sheet cap (D10) are kept on the dataset (`sheetsCut`), so the chat's data cards, the source views
+    // (`datasetSummary`) and this indexed card all name them.
+    const card = dataCard(dataset, upload.name);
     return indexSource(db.sources.findById(created.id)!, { text: card, pages: [card], pageCount: 0, status: "parsed" }, tr);
   }
   const created = db.sources.create({ ...base, kind: UPLOAD_KIND[upload.type] });

@@ -26,16 +26,31 @@ export function artifactCaption(a: Pick<Artifact, "title" | "n" | "fileName" | "
   return tr("data.caption", { title: a.title, n: formatNumber(a.n, a.lang, 0), file: a.fileName });
 }
 
+/** Decimals of cell (row i, column j): the cell's own (`cellPrecision`, when a column mixes variables) or its column's. */
+export function artifactCellPrecision(t: Pick<Artifact["table"], "precision" | "cellPrecision">, i: number, j: number): number {
+  const own = t.cellPrecision && t.cellPrecision[i] ? t.cellPrecision[i][j] : null;
+  return own !== null && own !== undefined ? own : t.precision[j] ?? 0;
+}
+
+/** The text after "Note.": a test's statistic line first (it is part of the result), then the table's notes. */
+export function artifactNoteText(a: Pick<Artifact, "table"> & { test?: Pick<NonNullable<Artifact["test"]>, "line"> }): string {
+  const parts: string[] = [];
+  if (a.test && a.test.line) parts.push(/[.!?]$/.test(a.test.line) ? a.test.line : `${a.test.line}.`);
+  if (a.table.notes && a.table.notes.length) parts.push(a.table.notes.join(" "));
+  return parts.join(" ");
+}
+
 /**
- * HTML inserted for a table artifact:
+ * HTML inserted for a table artifact (and for a test: its results table):
  * `<p data-caption="table" style="text-align:center">{caption}</p>` (the editor numbers it "Table n."), then a
  * `<table>` whose first row holds `<th>` headers and whose cells hold one paragraph each, then
- * `<p><em>Note.</em> …</p>` when the artifact has notes.
+ * `<p><em>Note.</em> …</p>` when the artifact has a statistic line or notes. A test's APA line opens the note
+ * ("Note. Welch's t(37.2) = 2.31, p = .026, d = 0.71. …"): its words count as AI-assisted like the cells (D27).
  */
-export function artifactTableHtml(a: Pick<Artifact, "title" | "n" | "fileName" | "lang" | "table">, tr: Translate): string {
-  const t = a.table;
+export function artifactTableHtml(a: Pick<Artifact, "title" | "n" | "fileName" | "lang" | "table"> & { test?: Pick<NonNullable<Artifact["test"]>, "line"> }, tr: Translate): string {
   let html = `<p data-caption="table" style="text-align:center">${escapeHtml(artifactCaption(a, tr))}</p>${artifactGridHtml(a)}`;
-  if (t.notes && t.notes.length) html += `<p><em>${escapeHtml(tr("data.notePrefix"))}</em> ${escapeHtml(t.notes.join(" "))}</p>`;
+  const note = artifactNoteText(a);
+  if (note) html += `<p><em>${escapeHtml(tr("data.notePrefix"))}</em> ${escapeHtml(note)}</p>`;
   return html;
 }
 
@@ -47,7 +62,7 @@ export function artifactGridHtml(a: Pick<Artifact, "lang" | "table">): string {
   const t = a.table;
   const cell = (tag: "th" | "td", text: string) => `<${tag}><p>${escapeHtml(text)}</p></${tag}>`;
   const head = `<tr>${t.columns.map((c) => cell("th", c)).join("")}</tr>`;
-  const body = t.rows.map((r) => `<tr>${t.columns.map((_, j) => cell("td", artifactCellText(r[j], a.lang, t.precision[j] ?? 0))).join("")}</tr>`).join("");
+  const body = t.rows.map((r, i) => `<tr>${t.columns.map((_, j) => cell("td", artifactCellText(r[j], a.lang, artifactCellPrecision(t, i, j)))).join("")}</tr>`).join("");
   return `<table><tbody>${head}${body}</tbody></table>`;
 }
 

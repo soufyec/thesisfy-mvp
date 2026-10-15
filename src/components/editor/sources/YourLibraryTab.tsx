@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookMarked, FileText, Loader2, Plus, Search } from "lucide-react";
+import { BookMarked, FileSpreadsheet, FileText, Loader2, Plus, Search } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { Spinner } from "@/components/ui";
 import { libraryCall, LibraryRequestError } from "@/components/library/libraryApi";
+import { PrimaryBadges } from "@/components/library/LibraryItemRow";
+import { isPrimary } from "@/components/library/primary";
 import { LibraryReferenceView, LibraryResponse, LibrarySourceView, Reference, referenceHtml, ThesisDoc } from "../types";
 import type { LibrarySource } from "./SourcesPanel";
 
@@ -179,10 +181,15 @@ export default function YourLibraryTab({ thesisId, style, references, sources, o
             {shownSources.map((s) => (
               <li key={s.id} className="p-2.5 rounded-xl border border-gray-100 hover:border-gray-200 text-xs">
                 <div className="flex items-start gap-2">
-                  <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                  {s.kind === "sheet" ? <FileSpreadsheet className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" aria-hidden="true" /> : <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" aria-hidden="true" />}
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-gray-800 text-[13px] leading-snug line-clamp-2">{s.title}</div>
-                    <div className="text-gray-500 truncate">{[s.authors, s.year, s.venue].filter(Boolean).join(" · ")}</div>
+                    <div className="text-gray-500 truncate">{[s.authors, s.year, s.venue].filter(Boolean).join(" · ") || s.file?.name}</div>
+                    {isPrimary(s) && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <PrimaryBadges source={s} />
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-2">

@@ -1,29 +1,30 @@
 /**
  * Visual constants and text helpers for the diagram SVGs (docs/papers.md §3.4, D17).
- * The colours repeat `src/lib/charts/palette.ts` on purpose: this module must stay importable on its own until
- * integration consolidates both (see the diagrams report). Text is always 12 px in neutral ink, never in a series colour.
+ * Colours come from `src/lib/charts/palette.ts`, the single home of chart and diagram hex values (D17), so a diagram
+ * and a chart on the same page always share one palette. Text is always 12 px in neutral ink, never in a series colour.
  */
+import { CHART_AXIS, CHART_FONT, CHART_GRID, CHART_MUTED, CHART_OTHER, CHART_PANEL, CHART_SERIES, CHART_SURFACE, CHART_TEXT } from "../charts/palette";
 
 /** Series colours in their fixed order (D17). Groups beyond the fourth use `DIAGRAM_COLORS.other`. */
-export const DIAGRAM_SERIES: readonly string[] = ["#037947", "#e87ba4", "#2a78d6", "#eb6834"];
+export const DIAGRAM_SERIES: readonly string[] = CHART_SERIES;
 
 /** Neutrals (D17) plus the two surfaces the diagrams need. */
 export const DIAGRAM_COLORS = {
   /** "Other" groups and box outlines. */
-  other: "#9ca3af",
-  grid: "#e5e7eb",
-  axis: "#d1d5db",
-  text: "#4b5563",
-  muted: "#6b7280",
-  surface: "#ffffff",
+  other: CHART_OTHER,
+  grid: CHART_GRID,
+  axis: CHART_AXIS,
+  text: CHART_TEXT,
+  muted: CHART_MUTED,
+  surface: CHART_SURFACE,
   /** Header bands and PRISMA phase labels (gray-100). */
-  panel: "#f3f4f6",
+  panel: CHART_PANEL,
   /** Box outlines and arrows. */
-  stroke: "#9ca3af",
-  arrow: "#6b7280",
+  stroke: CHART_OTHER,
+  arrow: CHART_MUTED,
 } as const;
 
-export const FONT_FAMILY = "Inter, Helvetica, Arial, sans-serif";
+export const FONT_FAMILY = CHART_FONT;
 export const FONT_SIZE = 12;
 /** Line box for 12 px text; the baseline sits `BASELINE` px below the top of each line. */
 export const LINE_HEIGHT = 16;

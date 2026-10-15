@@ -3,6 +3,7 @@ import { db, Reference } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
 import { applyCheck, checkReference, ReferenceCheck } from "@/lib/ai/citeVerified";
+import { isLockedStatus } from "@/lib/paperSections";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +50,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   // Re-read the thesis: the editor may have saved while the checks ran.
   const fresh = db.theses.findById(thesis.id);
   if (!fresh) return error("Thesis not found", 404);
+  // An approved or submitted paper is frozen (409 locked on PUT): the results are returned, not saved.
+  if (isLockedStatus(fresh.status)) return json({ references: fresh.references || [], checked: Object.keys(results).length, results });
   const references: Reference[] = (fresh.references || []).map((ref) => (results[ref.id] ? applyCheck(ref, results[ref.id]) : ref));
   db.theses.update(thesis.id, { references });
 

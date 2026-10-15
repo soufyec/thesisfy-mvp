@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { FileSpreadsheet, FileText, Loader2, ShieldCheck, Upload } from "lucide-react";
 import { Modal } from "@/components/ui";
 import type { LibraryReferenceView, LibrarySourceView, LibraryThesisOption, Reference } from "@/components/editor/types";
 import { useFormat, useT } from "@/lib/i18n/client";
 import { libraryCall, LibraryRequestError } from "./libraryApi";
 import { LockedHints, lockedHintId, ThesisToggleChip } from "./LibraryControls";
+import { checkUpload, isSheetName, MAX_UPLOAD_MB, privacyLines, UPLOAD_ACCEPT } from "./primary";
 
 export type AddKind = "source" | "reference";
-type SourceTab = "doi" | "url" | "pdf" | "text";
+type SourceTab = "doi" | "url" | "file" | "text";
 type RefMode = "doi" | "manual";
 
-const SOURCE_TABS: SourceTab[] = ["doi", "url", "pdf", "text"];
+const SOURCE_TABS: SourceTab[] = ["doi", "url", "file", "text"];
 const REF_TYPES: Reference["type"][] = ["article", "book", "chapter", "web", "thesis"];
-const MAX_PDF_BYTES = 15 * 1024 * 1024;
 const EMPTY_REF = { type: "article" as Reference["type"], authors: "", title: "", year: "", source: "", doi: "", url: "" };
 
 /**
@@ -30,6 +30,8 @@ export default function AddLibraryItemDialog({ open, onClose, initialKind, these
   const [value, setValue] = useState("");
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  /** "This is my own material (primary source)": forced for spreadsheets, which are always primary data. */
+  const [primary, setPrimary] = useState(false);
   const [mode, setMode] = useState<RefMode>("doi");
   const [doi, setDoi] = useState("");
   const [ref, setRef] = useState(EMPTY_REF);
@@ -51,6 +53,7 @@ export default function AddLibraryItemDialog({ open, onClose, initialKind, these
     setValue("");
     setTitle("");
     setFile(null);
+    setPrimary(false);
     setMode("doi");
     setDoi("");
     setRef(EMPTY_REF);
@@ -61,24 +64,34 @@ export default function AddLibraryItemDialog({ open, onClose, initialKind, these
     setUseIn(preset ? [preset.id] : []);
   }, [open, initialKind, defaultThesisId, theses]);
 
-  const ready = kind === "source" ? (tab === "pdf" ? !!file : !!value.trim()) : mode === "doi" ? !!doi.trim() : !!ref.title.trim();
+  const ready = kind === "source" ? (tab === "file" ? !!file : !!value.trim()) : mode === "doi" ? !!doi.trim() : !!ref.title.trim();
+  const sheet = !!file && isSheetName(file.name);
+  const asPrimary = sheet || primary;
+  const pickFile = (f: File | null) => {
+    setFile(f);
+    setError(f ? checkUpload(f, t) || "" : "");
+  };
 
   const submit = async () => {
     if (!ready || busy) return;
     setError("");
-    if (kind === "source" && tab === "pdf" && file && file.size > MAX_PDF_BYTES) return setError(t("library.error.pdfTooLarge"));
+    if (kind === "source" && tab === "file" && file) {
+      const refused = checkUpload(file, t);
+      if (refused) return setError(refused);
+    }
     setBusy(true);
     try {
       if (kind === "source") {
         let r: { source: LibrarySourceView; existing?: boolean };
-        if (tab === "pdf" && file) {
+        if (tab === "file" && file) {
           const form = new FormData();
           form.append("file", file);
           if (title.trim()) form.append("title", title.trim());
+          if (asPrimary) form.append("role", "primary");
           for (const id of useIn) form.append("thesisIds", id);
           r = await libraryCall(`/api/library/sources`, { method: "POST", body: form });
         } else {
-          r = await libraryCall(`/api/library/sources`, { method: "POST", json: { kind: tab, value: value.trim(), title: title.trim() || undefined, thesisIds: useIn } });
+          r = await libraryCall(`/api/library/sources`, { method: "POST", json: { kind: tab, value: value.trim(), title: title.trim() || undefined, thesisIds: useIn, ...(tab === "text" && primary ? { role: "primary" } : {}) } });
         }
         onSourceAdded(r.source, !!r.existing, useIn.length);
       } else {
@@ -88,8 +101,10 @@ export default function AddLibraryItemDialog({ open, onClose, initialKind, these
       }
       onClose();
     } catch (e) {
-      // Server errors arrive translated; anything else (no answer, an empty body) gets the generic sentence.
-      setError((e instanceof LibraryRequestError && e.message) || t("dashboard.sources.error.generic"));
+      // Server errors arrive translated; a 413 without a body (the host cut the upload) is the 4 MB cap; anything
+      // else (no answer, an empty body) gets the generic sentence.
+      if (e instanceof LibraryRequestError && e.status === 413 && !e.message) setError(t("library.error.tooLarge", { max: MAX_UPLOAD_MB }));
+      else setError((e instanceof LibraryRequestError && e.message) || t("dashboard.sources.error.generic"));
     } finally {
       setBusy(false);
     }
@@ -136,11 +151,11 @@ export default function AddLibraryItemDialog({ open, onClose, initialKind, these
             </div>
             {tab === "doi" && <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="10.1038/s41586-019-0912-1" aria-label={t("dashboard.sources.form.doiLabel")} className={field} />}
             {tab === "url" && <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="https://…" type="url" aria-label={t("dashboard.sources.form.urlLabel")} className={field} />}
-            {tab === "pdf" && (
+            {tab === "file" && (
               <label className="flex items-center gap-2 text-xs text-gray-600 border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/40">
-                <Upload className="w-4 h-4 text-gray-500 flex-shrink-0" aria-hidden="true" />
-                <span className="flex-1 min-w-0 truncate">{file ? t("dashboard.sources.form.pdfPicked", { name: file.name, size: fmt.number(file.size / 1048576, { maximumFractionDigits: 1 }) }) : t("dashboard.sources.form.pdfChoose")}</span>
-                <input ref={fileInput} type="file" accept="application/pdf,.pdf" className="sr-only" aria-label={t("dashboard.sources.form.pdfLabel")} onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                {file ? sheet ? <FileSpreadsheet className="w-4 h-4 text-gray-500 flex-shrink-0" aria-hidden="true" /> : <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" aria-hidden="true" /> : <Upload className="w-4 h-4 text-gray-500 flex-shrink-0" aria-hidden="true" />}
+                <span className="flex-1 min-w-0 truncate">{file ? t("dashboard.sources.form.pdfPicked", { name: file.name, size: fmt.number(Math.max(0.1, file.size / 1048576), { maximumFractionDigits: 1 }) }) : t("library.ui.file.choose", { max: MAX_UPLOAD_MB })}</span>
+                <input ref={fileInput} type="file" accept={UPLOAD_ACCEPT} className="sr-only" aria-label={t("library.ui.file.label")} onChange={(e) => pickFile(e.target.files?.[0] || null)} />
               </label>
             )}
             {tab === "text" && <textarea autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder={t("dashboard.sources.form.textPlaceholder")} aria-label={t("dashboard.sources.form.textLabel")} rows={5} className={`${field} resize-y`} />}
@@ -148,7 +163,22 @@ export default function AddLibraryItemDialog({ open, onClose, initialKind, these
               {t("dashboard.sources.form.titleLabel")}
               <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${field} mt-1`} />
             </label>
-            <p className="text-[11px] text-gray-500">{t(`dashboard.sources.form.hint.${tab}`)}</p>
+            <p className="text-[11px] leading-snug text-gray-500">{tab === "file" ? t("library.ui.file.hint") : t(`dashboard.sources.form.hint.${tab}`)}</p>
+            {(tab === "file" || tab === "text") && (
+              <label className={`flex items-start gap-2 text-xs ${sheet ? "text-gray-500" : "text-gray-700"}`}>
+                <input type="checkbox" className="mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500" checked={asPrimary} disabled={sheet} onChange={(e) => setPrimary(e.target.checked)} aria-describedby="library-add-primary-hint" />
+                <span>
+                  <span className="font-medium">{t("library.ui.primaryCheckbox")}</span>
+                  <span id="library-add-primary-hint" className="block text-[11px] leading-snug text-gray-500">{sheet ? t("library.ui.primaryForced") : t("library.ui.primaryHint")}</span>
+                </span>
+              </label>
+            )}
+            {tab === "file" && file && (
+              <div className="flex gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 text-[11px] leading-snug text-gray-600">
+                <ShieldCheck className="w-4 h-4 text-gray-500 flex-shrink-0 mt-px" aria-hidden="true" />
+                <p>{privacyLines(sheet, t).join(" ")}</p>
+              </div>
+            )}
           </section>
         ) : (
           <section className="space-y-2" aria-label={t("dashboard.sources.addKind.reference")}>

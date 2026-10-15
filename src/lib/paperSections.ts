@@ -6,7 +6,8 @@
  * No `next/*` import and only relative imports, so it runs standalone under `node -r sucrase/register`. Messages are
  * not built here: routes translate the codes these helpers return with `getT()`.
  */
-import { countWords, htmlToWordText, type Assignment, type PaperFigures, type Thesis, type User } from "./db";
+import type { Assignment, PaperFigures, Thesis, User } from "./db";
+import { closedTagsOnly, computeFigures, countableHtml, countWords, htmlToWordText } from "./countable";
 import { templateFor } from "./papers/templates";
 import type { CitationStyle, PaperSection, PaperStatus, RosterCounts, RosterRow } from "./papers/views";
 
@@ -25,53 +26,11 @@ const CONTAINERS = new Set(["table", "thead", "tbody", "tfoot", "tr", "td", "th"
 const TAG_RE = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b[^>]*?(\/?)>/g;
 const H2_CLOSE_RE = /<\/h2\s*>/gi;
 
-const COUNTED_OUT_OPEN_RE = /<(figure|figcaption|style)\b/gi;
-const CLOSE_RE: Record<string, RegExp> = { figure: /<\/figure\s*>/gi, figcaption: /<\/figcaption\s*>/gi, style: /<\/style\s*>/gi };
-
 /**
- * `html` with the parts no counter counts taken out in one forward pass: chart figures (`<figure … data-chart …>` up
- * to `</figure>`), `<figcaption>` and `<style>` elements. An element that is never closed cuts the rest of the text
- * (like an unclosed tag), and the scan never goes back to retry from the next opening tag. A `<` that no `>` closes
- * (after the last `>`) is dropped too. The result keeps the db.ts counters' lazy regexes linear on student-controlled
- * HTML (no rescans to the end of the text from every unclosed opening tag).
+ * `countableHtml` (chart figures, captions, styles, equations and the AI-use declaration left out, in one linear
+ * forward pass) moved to src/lib/countable.ts, the scan every server counter shares; re-exported here for callers.
  */
-export function countableHtml(html: string): string {
-  let out = "";
-  let pos = 0;
-  const open = new RegExp(COUNTED_OUT_OPEN_RE.source, "gi");
-  let m: RegExpExecArray | null;
-  while ((m = open.exec(html))) {
-    const name = m[1].toLowerCase();
-    const tagEnd = html.indexOf(">", open.lastIndex);
-    if (tagEnd === -1) {
-      out += html.slice(pos, m.index);
-      pos = html.length;
-      break;
-    }
-    if (name === "figure" && !/\bdata-chart\b/i.test(html.slice(m.index, tagEnd))) {
-      open.lastIndex = tagEnd + 1;
-      continue;
-    }
-    out += html.slice(pos, m.index) + " ";
-    const close = new RegExp(CLOSE_RE[name].source, "gi");
-    close.lastIndex = tagEnd + 1;
-    const c = close.exec(html);
-    if (!c) {
-      pos = html.length;
-      break;
-    }
-    pos = close.lastIndex;
-    open.lastIndex = pos;
-  }
-  out += html.slice(pos);
-  return closedTagsOnly(out);
-}
-
-/** `<` after the last `>` cannot open a tag: dropped, so `<[^>]*>`-style patterns never scan to the end from each one. */
-function closedTagsOnly(html: string): string {
-  const last = html.lastIndexOf(">");
-  return html.indexOf("<", last + 1) === -1 ? html : html.slice(0, last + 1) + html.slice(last + 1).replace(/</g, " ");
-}
+export { countableHtml };
 
 /**
  * Top-level sections of a paper's Final submission (`thesis.content`): one per top-level `<h2>`, in document order,
@@ -132,21 +91,11 @@ export function paperOverview(t: Pick<Thesis, "id" | "updatedAt" | "content" | "
 }
 
 /**
- * Chart figures of stored content without `figures` (papers saved before figures were stored): the same count as
- * `computeFigures` in db.ts (opening `<figure>` tags with `data-chart`), in one forward pass.
+ * Chart figures of stored content without `figures` (papers saved before figures were stored): `computeFigures`
+ * (src/lib/countable.ts, by `data-origin`, absent = AI), in one forward pass.
  */
 export function countChartFigures(html: string): PaperFigures {
-  if (!html || html.indexOf("data-chart") === -1) return { total: 0, ai: 0 };
-  const open = /<figure\b/gi;
-  let total = 0;
-  let m: RegExpExecArray | null;
-  while ((m = open.exec(html))) {
-    const end = html.indexOf(">", open.lastIndex);
-    if (end === -1) break;
-    if (/\bdata-chart\b/i.test(html.slice(m.index, end))) total++;
-    open.lastIndex = end + 1;
-  }
-  return { total, ai: total };
+  return computeFigures(html);
 }
 
 const time = (iso?: string) => {

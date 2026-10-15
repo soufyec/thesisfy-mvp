@@ -125,7 +125,7 @@ const en = {
   "dashboard.sources.tabs": "Sections of your library",
   "dashboard.sources.tab.sources": "Sources",
   "dashboard.sources.tab.references": "References",
-  "dashboard.sources.help.sources": "Full texts the assistant can quote when you ask your sources.",
+  "dashboard.sources.help.sources": "Full texts the assistant can quote when you ask your sources, and your primary data: files of your own the Research copilot computes tables and figures from.",
   "dashboard.sources.help.references": "Entries you cite in the text and list in the bibliography.",
   "dashboard.sources.loadFailed": "Your library could not be loaded.",
   "dashboard.sources.usedIn": "Used in:",
@@ -155,7 +155,7 @@ const en = {
   "dashboard.sources.refType.chapter": "Chapter",
   "dashboard.sources.refType.web": "Web page",
   "dashboard.sources.refType.thesis": "Thesis",
-  "dashboard.sources.empty.sources": "Your library has no sources yet. Add a PDF, a DOI, a web page or pasted text so the assistant can quote it.",
+  "dashboard.sources.empty.sources": "Your library has no sources yet. Add a file (PDF, Word, Excel, CSV), a DOI, a web page or pasted text so the assistant can quote it.",
   "dashboard.sources.empty.references": "Your library has no references yet. Add one by DOI or by hand.",
   "dashboard.sources.empty.addSource": "Add a source",
   "dashboard.sources.empty.addReference": "Add a reference",
@@ -185,7 +185,7 @@ const en = {
   "dashboard.sources.addKind": "What to add",
   "dashboard.sources.addKind.source": "Source (full text)",
   "dashboard.sources.addKind.reference": "Reference",
-  "dashboard.sources.addKind.sourceHelp": "A text the assistant can quote: a PDF, a DOI with open full text, a web page or pasted text.",
+  "dashboard.sources.addKind.sourceHelp": "A text the assistant can quote (a file, a DOI with open full text, a web page or pasted text), or your own data for the Research copilot.",
   "dashboard.sources.addKind.referenceHelp": "A bibliographic entry to cite in the text and list in the bibliography.",
   "dashboard.sources.form.sourceType": "Type of source",
   "dashboard.sources.form.doiLabel": "DOI",
@@ -392,6 +392,13 @@ const en = {
   "dashboard.settings.choicesSaved": "Monitoring choices saved",
   "dashboard.thesis.template.abstract": "Abstract",
   "dashboard.thesis.template.introduction": "1. Introduction",
+  // ---------- Sources page: primary data (copilot-ui) ----------
+  "dashboard.sources.kind.docx": "Word document",
+  "dashboard.sources.kind.sheet": "Spreadsheet",
+  "dashboard.sources.kind.file": "File",
+  "dashboard.sources.empty.primary": "No primary data yet. Add a spreadsheet, a transcript or field notes of your own, or attach one in the Research copilot.",
+  "dashboard.sources.empty.literature": "No literature yet. Add a PDF, a DOI, a web page or pasted text.",
+  // ---------- end of Sources page: primary data (copilot-ui) ----------
 };
 
 export const dashboard: Messages<typeof en> = {
@@ -520,7 +527,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.tabs": "Secciones de tu biblioteca",
     "dashboard.sources.tab.sources": "Fuentes",
     "dashboard.sources.tab.references": "Referencias",
-    "dashboard.sources.help.sources": "Textos completos que el asistente puede citar cuando preguntas a tus fuentes.",
+    "dashboard.sources.help.sources": "Textos completos que el asistente puede citar cuando preguntas a tus fuentes, y tus datos primarios: archivos propios a partir de los cuales el Research copilot calcula tablas y figuras.",
     "dashboard.sources.help.references": "Entradas que citas en el texto y que aparecen en la bibliografía.",
     "dashboard.sources.loadFailed": "No se pudo cargar tu biblioteca.",
     "dashboard.sources.usedIn": "Se usa en:",
@@ -550,7 +557,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.refType.chapter": "Capítulo",
     "dashboard.sources.refType.web": "Página web",
     "dashboard.sources.refType.thesis": "Tesis",
-    "dashboard.sources.empty.sources": "Tu biblioteca aún no tiene fuentes. Añade un PDF, un DOI, una página web o un texto pegado para que el asistente pueda citarlo.",
+    "dashboard.sources.empty.sources": "Tu biblioteca aún no tiene fuentes. Añade un archivo (PDF, Word, Excel, CSV), un DOI, una página web o un texto pegado para que el asistente pueda citarlo.",
     "dashboard.sources.empty.references": "Tu biblioteca aún no tiene referencias. Añade una por DOI o a mano.",
     "dashboard.sources.empty.addSource": "Añadir una fuente",
     "dashboard.sources.empty.addReference": "Añadir una referencia",
@@ -580,7 +587,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.addKind": "Qué añadir",
     "dashboard.sources.addKind.source": "Fuente (texto completo)",
     "dashboard.sources.addKind.reference": "Referencia",
-    "dashboard.sources.addKind.sourceHelp": "Un texto que el asistente puede citar: un PDF, un DOI con texto completo en abierto, una página web o un texto pegado.",
+    "dashboard.sources.addKind.sourceHelp": "Un texto que el asistente puede citar (un archivo, un DOI con texto completo en abierto, una página web o un texto pegado) o tus propios datos para el Research copilot.",
     "dashboard.sources.addKind.referenceHelp": "Una entrada bibliográfica para citar en el texto y que aparezca en la bibliografía.",
     "dashboard.sources.form.sourceType": "Tipo de fuente",
     "dashboard.sources.form.doiLabel": "DOI",
@@ -787,6 +794,13 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.settings.choicesSaved": "Opciones de monitorización guardadas",
     "dashboard.thesis.template.abstract": "Resumen",
     "dashboard.thesis.template.introduction": "1. Introducción",
+    // ---------- Sources page: primary data (copilot-ui) ----------
+    "dashboard.sources.kind.docx": "Documento de Word",
+    "dashboard.sources.kind.sheet": "Hoja de cálculo",
+    "dashboard.sources.kind.file": "Archivo",
+    "dashboard.sources.empty.primary": "Aún no tienes datos primarios. Añade una hoja de cálculo, una transcripción o notas de campo propias, o adjunta una en el Research copilot.",
+    "dashboard.sources.empty.literature": "Aún no tienes bibliografía. Añade un PDF, un DOI, una página web o un texto pegado.",
+    // ---------- end of Sources page: primary data (copilot-ui) ----------
   },
   fr: {
     // Navigation
@@ -912,7 +926,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.tabs": "Sections de votre bibliothèque",
     "dashboard.sources.tab.sources": "Sources",
     "dashboard.sources.tab.references": "Références",
-    "dashboard.sources.help.sources": "Des textes intégraux que l'assistant peut citer lorsque vous interrogez vos sources.",
+    "dashboard.sources.help.sources": "Des textes intégraux que l'assistant peut citer lorsque vous interrogez vos sources, et vos données primaires : vos propres fichiers, à partir desquels le Research copilot calcule des tableaux et des figures.",
     "dashboard.sources.help.references": "Des entrées que vous citez dans le texte et qui figurent dans la bibliographie.",
     "dashboard.sources.loadFailed": "Votre bibliothèque n'a pas pu être chargée.",
     "dashboard.sources.usedIn": "Utilisé dans :",
@@ -942,7 +956,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.refType.chapter": "Chapitre",
     "dashboard.sources.refType.web": "Page web",
     "dashboard.sources.refType.thesis": "Thèse",
-    "dashboard.sources.empty.sources": "Votre bibliothèque ne contient encore aucune source. Ajoutez un PDF, un DOI, une page web ou un texte collé pour que l'assistant puisse le citer.",
+    "dashboard.sources.empty.sources": "Votre bibliothèque ne contient encore aucune source. Ajoutez un fichier (PDF, Word, Excel, CSV), un DOI, une page web ou un texte collé pour que l'assistant puisse le citer.",
     "dashboard.sources.empty.references": "Votre bibliothèque ne contient encore aucune référence. Ajoutez-en une par DOI ou à la main.",
     "dashboard.sources.empty.addSource": "Ajouter une source",
     "dashboard.sources.empty.addReference": "Ajouter une référence",
@@ -972,7 +986,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.addKind": "Quoi ajouter",
     "dashboard.sources.addKind.source": "Source (texte intégral)",
     "dashboard.sources.addKind.reference": "Référence",
-    "dashboard.sources.addKind.sourceHelp": "Un texte que l'assistant peut citer : un PDF, un DOI avec texte intégral en accès libre, une page web ou un texte collé.",
+    "dashboard.sources.addKind.sourceHelp": "Un texte que l'assistant peut citer (un fichier, un DOI avec texte intégral en accès libre, une page web ou un texte collé) ou vos propres données pour le Research copilot.",
     "dashboard.sources.addKind.referenceHelp": "Une entrée bibliographique à citer dans le texte et à faire figurer dans la bibliographie.",
     "dashboard.sources.form.sourceType": "Type de source",
     "dashboard.sources.form.doiLabel": "DOI",
@@ -1179,6 +1193,13 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.settings.choicesSaved": "Choix de suivi enregistrés",
     "dashboard.thesis.template.abstract": "Résumé",
     "dashboard.thesis.template.introduction": "1. Introduction",
+    // ---------- Sources page: primary data (copilot-ui) ----------
+    "dashboard.sources.kind.docx": "Document Word",
+    "dashboard.sources.kind.sheet": "Tableur",
+    "dashboard.sources.kind.file": "Fichier",
+    "dashboard.sources.empty.primary": "Aucune donnée primaire pour l'instant. Ajoutez un tableur, une transcription ou vos notes de terrain, ou joignez-en un dans le Research copilot.",
+    "dashboard.sources.empty.literature": "Aucune bibliographie pour l'instant. Ajoutez un PDF, un DOI, une page web ou un texte collé.",
+    // ---------- end of Sources page: primary data (copilot-ui) ----------
   },
   de: {
     // Navigation
@@ -1304,7 +1325,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.tabs": "Bereiche Ihrer Bibliothek",
     "dashboard.sources.tab.sources": "Quellen",
     "dashboard.sources.tab.references": "Literaturangaben",
-    "dashboard.sources.help.sources": "Volltexte, die der Assistent zitieren kann, wenn Sie Ihre Quellen befragen.",
+    "dashboard.sources.help.sources": "Volltexte, die der Assistent zitieren kann, wenn Sie Ihre Quellen befragen, und Ihre Primärdaten: eigene Dateien, aus denen der Research copilot Tabellen und Abbildungen berechnet.",
     "dashboard.sources.help.references": "Einträge, die Sie im Text zitieren und im Literaturverzeichnis aufführen.",
     "dashboard.sources.loadFailed": "Ihre Bibliothek konnte nicht geladen werden.",
     "dashboard.sources.usedIn": "Verwendet in:",
@@ -1334,7 +1355,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.refType.chapter": "Kapitel",
     "dashboard.sources.refType.web": "Webseite",
     "dashboard.sources.refType.thesis": "Abschlussarbeit",
-    "dashboard.sources.empty.sources": "Ihre Bibliothek enthält noch keine Quellen. Fügen Sie ein PDF, eine DOI, eine Webseite oder eingefügten Text hinzu, damit der Assistent daraus zitieren kann.",
+    "dashboard.sources.empty.sources": "Ihre Bibliothek enthält noch keine Quellen. Fügen Sie eine Datei (PDF, Word, Excel, CSV), eine DOI, eine Webseite oder eingefügten Text hinzu, damit der Assistent daraus zitieren kann.",
     "dashboard.sources.empty.references": "Ihre Bibliothek enthält noch keine Literaturangaben. Fügen Sie eine per DOI oder von Hand hinzu.",
     "dashboard.sources.empty.addSource": "Quelle hinzufügen",
     "dashboard.sources.empty.addReference": "Literaturangabe hinzufügen",
@@ -1364,7 +1385,7 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.sources.addKind": "Was hinzufügen",
     "dashboard.sources.addKind.source": "Quelle (Volltext)",
     "dashboard.sources.addKind.reference": "Literaturangabe",
-    "dashboard.sources.addKind.sourceHelp": "Ein Text, den der Assistent zitieren kann: ein PDF, eine DOI mit frei zugänglichem Volltext, eine Webseite oder eingefügter Text.",
+    "dashboard.sources.addKind.sourceHelp": "Ein Text, den der Assistent zitieren kann (eine Datei, eine DOI mit frei zugänglichem Volltext, eine Webseite oder eingefügter Text), oder Ihre eigenen Daten für den Research copilot.",
     "dashboard.sources.addKind.referenceHelp": "Ein bibliografischer Eintrag, den Sie im Text zitieren und im Literaturverzeichnis aufführen.",
     "dashboard.sources.form.sourceType": "Art der Quelle",
     "dashboard.sources.form.doiLabel": "DOI",
@@ -1571,5 +1592,12 @@ export const dashboard: Messages<typeof en> = {
     "dashboard.settings.choicesSaved": "Aufzeichnungsoptionen gespeichert",
     "dashboard.thesis.template.abstract": "Zusammenfassung",
     "dashboard.thesis.template.introduction": "1. Einleitung",
+    // ---------- Sources page: primary data (copilot-ui) ----------
+    "dashboard.sources.kind.docx": "Word-Dokument",
+    "dashboard.sources.kind.sheet": "Tabelle",
+    "dashboard.sources.kind.file": "Datei",
+    "dashboard.sources.empty.primary": "Noch keine Primärdaten. Fügen Sie eine eigene Tabelle, ein Transkript oder Feldnotizen hinzu, oder hängen Sie eine Datei im Research copilot an.",
+    "dashboard.sources.empty.literature": "Noch keine Literatur. Fügen Sie ein PDF, eine DOI, eine Webseite oder eingefügten Text hinzu.",
+    // ---------- end of Sources page: primary data (copilot-ui) ----------
   },
 };

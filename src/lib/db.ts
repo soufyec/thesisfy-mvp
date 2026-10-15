@@ -12,6 +12,7 @@ import type { PaperKind, WritingLanguage } from "./papers/kinds";
 import { templateFor } from "./papers/templates";
 import type { AssignmentView, StudentAssignmentView } from "./papers/views";
 import { DEMO_PAPERS_MIGRATION, ensureDemoPapers } from "./demo/papers";
+import { computeFigures, computeProvenance, countWords, measureContent } from "./countable";
 
 export type { PaperKind, WritingLanguage } from "./papers/kinds";
 
@@ -1716,87 +1717,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const INVITATION_TTL_MS = 14 * DAY_MS;
 export const PASSWORD_RESET_TTL_MS = 2 * DAY_MS;
 
-export function stripHtml(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Block boundaries separate words; inline tags (marks, comment and provenance spans) never do, so a word that a
- *  mark splits in two ("Cl<strong>imate</strong>") still counts once, exactly as the editor counts it. */
-const BLOCK_TAG_RE = /<\/?(?:p|div|h[1-6]|li|ul|ol|br|hr|tr|td|th|thead|tbody|table|blockquote|pre|figure|figcaption|section|header|footer|details|summary)\b[^>]*>/gi;
-
-export function htmlToWordText(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(BLOCK_TAG_RE, " ")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** A chart figure inserted from the Research copilot (`chart` node): `<figure data-chart …>…</figure>`. */
-const CHART_FIGURE_RE = /<figure\b[^>]*\bdata-chart\b[\s\S]*?<\/figure>/gi;
-/** The opening tag of a chart figure, for counting. */
-const CHART_FIGURE_OPEN_RE = /<figure\b[^>]*\bdata-chart\b[^>]*>/gi;
-
-/**
- * Removes chart figures (caption, alt text and data attributes included) before any word or provenance count:
- * a chart counts as one figure and 0 words. Every server counter (`countWords`, `computeProvenance`,
- * `countUnattributedPaste`, `scanHtml`, `htmlToParagraphs`) calls this first.
- */
-export function stripChartFigures(html: string): string {
-  return html.indexOf("data-chart") === -1 ? html : html.replace(CHART_FIGURE_RE, " ");
-}
-
-/**
- * Figures of a document: one per chart figure (`figure[data-chart]`). Every chart is inserted from the Research
- * copilot in v1, so all of them are AI-assisted (`ai === total`). Same count as the editor's `figureStats`.
- */
-export function computeFigures(html: string): PaperFigures {
-  if (!html || html.indexOf("data-chart") === -1) return { total: 0, ai: 0 };
-  const total = (html.match(CHART_FIGURE_OPEN_RE) || []).length;
-  return { total, ai: total };
-}
-
-export function countWords(html: string): number {
-  // Image captions live in <figcaption>; they are not thesis words, like the editor's own counter (it only sees text nodes).
-  // Chart figures count as figures, not words.
-  const text = htmlToWordText(stripChartFigures(html).replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " "));
-  return text ? text.split(/\s+/).filter(Boolean).length : 0;
-}
-
-/** Counts words inside provenance spans. Unmarked text is attributed to the student. */
-/** The AI-use declaration appendix (`data-declaration="true"`, see ProcessPanel) is a record, not thesis text: it is left out of every count. */
-const DECLARATION_RE = /<span[^>]*data-declaration="true"[^>]*>[\s\S]*?<\/span>/gi;
-
-export function computeProvenance(rawHtml: string): ProvenanceStats {
-  // Same exclusions as countWords (chart figures, image captions), so marked words never exceed the total.
-  const html = stripChartFigures(rawHtml).replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " ").replace(DECLARATION_RE, "");
-  const total = countWords(html);
-  let ai = 0;
-  let paste = 0;
-  const re = /<span[^>]*data-provenance="(ai|paste)"[^>]*>([\s\S]*?)<\/span>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html))) {
-    const w = countWords(m[2]);
-    if (m[1] === "ai") ai += w;
-    else paste += w;
-  }
-  return { human: Math.max(0, total - ai - paste), paste, ai };
-}
+// Word, provenance, figure and equation counters live in ./countable (pure, one linear scan shared by every server
+// counter: chart figures, captions, styles, equations and the AI-use declaration are left out before counting).
+// `stripChartFigures` is kept as a name for older callers: it now leaves out everything no counter counts.
+export { countableHtml as stripChartFigures, computeEquations, computeFigures, computeProvenance, countableHtml, countWords, figureBreakdown, htmlToWordText, measureContent, stripHtml } from "./countable";
 
 export function publicUser(u: User) {
   const { password: _pw, ...rest } = u;
@@ -1824,6 +1748,8 @@ export function paperVisibleTo(user: Pick<User, "id" | "role" | "university">, t
 
 /** Assignment fields written into every paper started from the assignment (decision D7: one source of truth, the paper). */
 const ASSIGNMENT_PAPER_FIELDS = ["deadline", "targetWords", "citationStyle"] as const;
+/** Statuses in which a paper with `submittedAt` counts as handed in (`isHandedIn` in src/lib/paperSections.ts). */
+const HANDED_IN_STATUSES: ThesisStatus[] = ["under_review", "approved", "submitted", "revision_requested"];
 
 /** The view of an assignment shared by its students and its staff (identical for both, principle 2). */
 function assignmentView(a: Assignment): AssignmentView {
@@ -1936,6 +1862,7 @@ export const db = {
       const h = data.headings || { abstract: "Abstract", introduction: "1. Introduction" };
       const notesTitle = data.notesTitle || "Notes";
       const content = data.content || `<h1>${escapeHtml(data.title)}</h1><h2>${escapeHtml(h.abstract)}</h2><p></p><h2>${escapeHtml(h.introduction)}</h2><p></p>`;
+      const measured = measureContent(content);
       const thesis: Thesis = {
         id: uid("thesis"),
         title: data.title,
@@ -1944,21 +1871,22 @@ export const db = {
         professorId: data.professorId,
         status: "draft",
         content,
-        wordCount: countWords(content),
+        wordCount: measured.wordCount,
         aiUsagePercent: 0,
         integrityScore: 100,
         deadline: data.deadline,
         // Default word target of the kind's template (thesis: 20000, as before kinds existed).
         targetWords: data.targetWords || templateFor(data.kind ?? "thesis").targetWords,
         citationStyle: data.citationStyle || "APA",
-        provenance: computeProvenance(content),
+        provenance: measured.provenance,
         createdAt: now(),
         updatedAt: now(),
         sessions: [],
         references: data.references ? cloneJson(data.references) : [],
         tabs: [{ id: uid("tab"), title: notesTitle, content: `<h2>${escapeHtml(notesTitle)}</h2><p></p>`, updatedAt: now() }],
         pageSetup: { orientation: "portrait", size: "A4", margin: 2.54, lineSpacing: 1.5, ...(data.pageSetup || {}) },
-        figures: computeFigures(content),
+        figures: measured.figures,
+        equations: measured.equations,
       };
       if (data.kind !== undefined) thesis.kind = data.kind;
       if (data.templateId !== undefined) thesis.templateId = data.templateId;
@@ -1981,10 +1909,13 @@ export const db = {
       const previousRefs = patch.references !== undefined ? referenceFingerprints(t.references) : null;
       Object.assign(t, patch, { updatedAt: now() });
       if (patch.content !== undefined) {
-        t.wordCount = countWords(patch.content);
-        t.provenance = computeProvenance(patch.content);
+        // One linear pass over the saved HTML: words, provenance, figures and equations (src/lib/countable.ts).
+        const measured = measureContent(patch.content);
+        t.wordCount = measured.wordCount;
+        t.provenance = measured.provenance;
         t.aiUsagePercent = t.wordCount ? Math.round((t.provenance.ai / t.wordCount) * 100) : 0;
-        t.figures = computeFigures(patch.content);
+        t.figures = measured.figures;
+        t.equations = measured.equations;
       }
       if (previousRefs) syncLibraryFromThesis(t, previousRefs);
       persist();
@@ -2047,7 +1978,8 @@ export const db = {
      * Patches an assignment; `id`, `university`, `createdBy` and `createdAt` never change. A changed `brief` sets
      * `briefUpdatedAt`. A changed `deadline`, `targetWords` or `citationStyle` is written into every paper started from
      * the assignment (D7); a cleared deadline clears the papers' deadline, a cleared target or style leaves the
-     * papers' value (both are required on a paper). The papers' `updatedAt` is not touched: it is the student's activity.
+     * papers' value (both are required on a paper). Papers already handed in keep their deadline, and approved or
+     * submitted papers keep all three. The papers' `updatedAt` is not touched: it is the student's activity.
      */
     update: (id: string, patch: Partial<Assignment>) => {
       const st = load();
@@ -2067,8 +1999,14 @@ export const db = {
       if (changed.length) {
         for (const t of st.theses) {
           if (t.assignmentId !== a.id) continue;
+          // A paper already handed in keeps the due date it was handed in against, so "Submitted late" never changes
+          // after the fact; an approved or submitted paper is frozen (same rule as PUT /api/theses/[id]).
+          const handedIn = !!t.submittedAt && HANDED_IN_STATUSES.indexOf(t.status) !== -1;
+          const frozen = t.status === "approved" || t.status === "submitted";
           for (const k of changed) {
-            if (k === "deadline") t.deadline = a.deadline;
+            if (k === "deadline") {
+              if (!handedIn && !frozen) t.deadline = a.deadline;
+            } else if (frozen) continue;
             else if (k === "targetWords" && typeof a.targetWords === "number") t.targetWords = a.targetWords;
             else if (k === "citationStyle" && a.citationStyle) t.citationStyle = a.citationStyle;
           }

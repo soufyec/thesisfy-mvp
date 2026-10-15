@@ -13,8 +13,10 @@
 // Server-only module (uses node:crypto and the data layer). Client code imports types only.
 
 import { createHash } from "crypto";
-import { computeFigures, db, stripChartFigures } from "./db";
+import { db } from "./db";
 import type { AIInteraction, AIMode, Consent, PaperFigures, Policy, Snapshot, Thesis, ThesisVersion, WritingSession } from "./db";
+import { collapseSpaces, computeEquations, countableHtml, decodeEntities, figureBreakdown, scanCountable } from "./countable";
+import type { FigureKind } from "./countable";
 import { paperKind, teacherLabel } from "./papers/kinds";
 import type { PaperKind, TeacherLabel } from "./papers/kinds";
 
@@ -66,31 +68,22 @@ export function verifyChain(snapshots: Snapshot[]): { ok: boolean; brokenAt?: st
 
 const BLOCK_END = /<\/(?:p|h[1-6]|li|tr|blockquote|pre|div|figcaption)>|<br\s*\/?>/gi;
 
-function decodeEntities(s: string) {
-  return s
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
-}
-
 export function countWords(text: string) {
   const t = text.trim();
   return t ? t.split(/\s+/).length : 0;
 }
 
-/** Plain-text paragraphs of a TipTap document, one per block, whitespace collapsed, empty blocks dropped. */
+/**
+ * Plain-text paragraphs of a TipTap document, one per block, whitespace collapsed, empty blocks dropped. Read from the
+ * scan every server counter shares (src/lib/countable.ts): chart figures and diagrams, captions and equations are
+ * figures and equations, not text. The AI-use declaration stays: the replay shows the document as it was.
+ */
 export function htmlToParagraphs(html: string): string[] {
-  return stripChartFigures(html) // chart figures (caption and data attributes included) are figures, not text
-    .replace(/<figcaption[\s\S]*?<\/figcaption>/gi, "") // image captions are not thesis text
+  return countableHtml(html || "", { keepDeclarations: true })
     .replace(BLOCK_END, "\n")
     .replace(/<[^>]*>/g, "")
     .split("\n")
-    .map((l) => decodeEntities(l).replace(/\s+/g, " ").trim())
+    .map((l) => collapseSpaces(decodeEntities(l)).trim())
     .filter(Boolean);
 }
 
@@ -118,67 +111,22 @@ export interface HtmlScan {
 }
 
 /**
- * Walks the document HTML once and counts words per provenance mark, per H1/H2 section.
- * Provenance comes only from `<span data-provenance="…">` marks the editor wrote.
+ * Counts the document's words once, per provenance mark and per H1/H2 section, with the scan every server counter
+ * shares (src/lib/countable.ts), so `words`, `ai`, `paste` and `human` are exactly `countWords` and
+ * `computeProvenance` of db.ts. Provenance comes only from `<span data-provenance="…">` marks the editor wrote; chart
+ * figures and diagrams, captions, equations and the AI-use declaration are left out.
  */
 export function scanHtml(html: string): HtmlScan {
-  const scan: HtmlScan = { chapters: [], words: 0, ai: 0, paste: 0, human: 0, pasteAttributed: 0, aiByInteraction: {} };
-  // Chart figures and image captions are not thesis words, as in countWords (db.ts) and the editor's own counter.
-  const counted = stripChartFigures(html).replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " ");
-  const tokens = counted.match(/<[^>]*>|[^<]+/g) || [];
-  // One entry per open <span>: the provenance it carries, or null for an unrelated span.
-  const spans: ({ kind: ProvenanceKind; attributed: boolean; interactionId?: string } | null)[] = [];
-  let current: ChapterStats | null = null;
-  let headingLevel = 0;
-  let headingText = "";
-
-  const section = () => {
-    if (!current) {
-      current = { heading: "Before the first heading", level: 0, words: 0, ai: 0, paste: 0, human: 0 };
-      scan.chapters.push(current);
-    }
-    return current as ChapterStats;
-  };
-
-  for (const tok of tokens) {
-    if (tok[0] === "<") {
-      const tag = tok.toLowerCase();
-      if (tag.startsWith("<span")) {
-        const prov = /data-provenance="([^"]*)"/i.exec(tok)?.[1] as ProvenanceKind | undefined;
-        if (prov === "ai" || prov === "paste" || prov === "human") {
-          spans.push({ kind: prov, attributed: /data-source="[^"]+"/i.test(tok), interactionId: /data-interaction="([^"]+)"/i.exec(tok)?.[1] });
-        } else spans.push(null);
-      } else if (tag.startsWith("</span")) {
-        spans.pop();
-      } else if (/^<h[12][\s>]/.test(tag)) {
-        headingLevel = Number(tag[2]);
-        headingText = "";
-        current = { heading: "", level: headingLevel, words: 0, ai: 0, paste: 0, human: 0 };
-        scan.chapters.push(current);
-      } else if (/^<\/h[12]>/.test(tag)) {
-        if (current) current.heading = headingText.replace(/\s+/g, " ").trim() || "Untitled section";
-        headingLevel = 0;
-      }
-      continue;
-    }
-    const text = decodeEntities(tok);
-    const n = countWords(text);
-    if (headingLevel) headingText += text;
-    if (!n) continue;
-    let mark: { kind: ProvenanceKind; attributed: boolean; interactionId?: string } | null = null;
-    for (let i = spans.length - 1; i >= 0; i--) if (spans[i]) { mark = spans[i]; break; }
-    const kind: ProvenanceKind = mark?.kind || "human";
-    const sec = section();
-    sec.words += n;
-    sec[kind] += n;
-    scan.words += n;
-    scan[kind] += n;
-    if (kind === "paste" && mark?.attributed) scan.pasteAttributed += n;
-    if (kind === "ai" && mark?.interactionId) scan.aiByInteraction[mark.interactionId] = (scan.aiByInteraction[mark.interactionId] || 0) + n;
-  }
-  // A heading without any body text still appears as a chapter; one that never closed keeps its text.
-  if (current && headingLevel && !(current as ChapterStats).heading) (current as ChapterStats).heading = headingText.trim() || "Untitled section";
-  return scan;
+  const s = scanCountable(html || "");
+  const chapters: ChapterStats[] = s.chapters.map((c) => ({
+    heading: c.heading || (c.level === 0 ? "Before the first heading" : "Untitled section"),
+    level: c.level,
+    words: c.words,
+    ai: c.ai,
+    paste: c.paste,
+    human: Math.max(0, c.words - c.ai - c.paste),
+  }));
+  return { chapters, words: s.words, ai: s.ai, paste: s.paste, human: Math.max(0, s.words - s.ai - s.paste), pasteAttributed: s.pasteAttributed, aiByInteraction: s.aiByInteraction };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -408,11 +356,20 @@ export interface TimelineEvent {
   label?: string;
   tabId?: string;
   /** ai_insert of a copilot artifact: what was inserted (`data.kind` of the event, sent by the editor). */
-  artifactKind?: "table" | "chart";
+  artifactKind?: ArtifactInsertKind;
   artifactId?: string;
-  /** AI-assisted figures the insertion added (a chart, or the charts inside pasted notes). */
+  /** AI-assisted figures the insertion added (a chart or a diagram, or the figures inside pasted notes). */
   figures?: number;
+  /** AI-assisted equations the insertion added (an equation, or the equations inside pasted notes). */
+  equations?: number;
 }
+
+/** What an `ai_insert` of a copilot artifact can insert (`data.kind`): the kinds of `Artifact`. */
+export type ArtifactInsertKind = "table" | "chart" | "test" | "diagram" | "equation";
+const ARTIFACT_INSERT_KINDS: ArtifactInsertKind[] = ["table", "chart", "test", "diagram", "equation"];
+
+/** Figures (or equations) of the Final submission by class of figure: all of them and the AI-assisted ones. */
+export type FiguresByKind = Record<FigureKind, PaperFigures>;
 
 export interface TimelineTotals {
   words: number;
@@ -436,17 +393,27 @@ export interface ProcessTimeline {
   totals: TimelineTotals;
   /** Figures of the Final submission (`computeFigures`, the same count as the editor and the ledger). */
   figures: PaperFigures;
+  /** The same figures by class (chart, Gantt, PRISMA, concept map); written = total − ai. */
+  figuresByKind?: FiguresByKind;
+  /** Equations of the Final submission (`computeEquations`); written = total − ai. */
+  equations?: PaperFigures;
 }
 
 /** The kind of copilot artifact an `ai_insert` event inserted, from the event's `data.kind`. */
-function artifactKindOf(data: Record<string, unknown>): "table" | "chart" | undefined {
-  return data.kind === "table" || data.kind === "chart" ? data.kind : undefined;
+function artifactKindOf(data: Record<string, unknown>): ArtifactInsertKind | undefined {
+  return (ARTIFACT_INSERT_KINDS as unknown[]).indexOf(data.kind) !== -1 ? (data.kind as ArtifactInsertKind) : undefined;
 }
 
-/** Figures an `ai_insert` event added: its `data.figures`, else 1 for a chart. */
+const wholeCount = (v: unknown) => Math.max(0, Math.floor(Number(v) || 0));
+
+/** Figures an `ai_insert` event added: its `data.figures`, else 1 for a chart or a diagram. */
 function figuresOf(data: Record<string, unknown>): number {
-  const n = Math.max(0, Math.floor(Number(data.figures) || 0));
-  return n || (data.kind === "chart" ? 1 : 0);
+  return wholeCount(data.figures) || (data.kind === "chart" || data.kind === "diagram" ? 1 : 0);
+}
+
+/** Equations an `ai_insert` event added: its `data.equations`, else 1 for an equation. */
+function equationsOf(data: Record<string, unknown>): number {
+  return wholeCount(data.equations) || (data.kind === "equation" ? 1 : 0);
 }
 
 const minutesBetween = (a: string, b: string) => Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000));
@@ -488,6 +455,7 @@ export function processTimeline(thesis: Thesis, sessions: WritingSession[], inte
         const mode = (it?.mode || ev.data.mode) as string | undefined;
         const artifactKind = artifactKindOf(ev.data);
         const figures = figuresOf(ev.data);
+        const equations = equationsOf(ev.data);
         events.push({
           id: ev.id,
           at: ev.timestamp,
@@ -503,6 +471,7 @@ export function processTimeline(thesis: Thesis, sessions: WritingSession[], inte
           ...(artifactKind ? { artifactKind } : {}),
           ...(typeof ev.data.artifactId === "string" ? { artifactId: ev.data.artifactId } : {}),
           ...(figures ? { figures } : {}),
+          ...(equations ? { equations } : {}),
         });
       } else if (ev.type === "ai_prompt") {
         aiPrompts++;
@@ -538,7 +507,8 @@ export function processTimeline(thesis: Thesis, sessions: WritingSession[], inte
     firstActivity: times[0],
     lastActivity: [...segments.map((g) => g.end), ...events.map((e) => e.at)].sort().pop(),
   };
-  return { segments, events, chapters: scan.chapters, totals, figures: computeFigures(thesis.content || "") };
+  const breakdown = figureBreakdown(thesis.content || "");
+  return { segments, events, chapters: scan.chapters, totals, figures: { total: breakdown.total, ai: breakdown.ai }, figuresByKind: breakdown.byKind, equations: computeEquations(thesis.content || "") };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -554,7 +524,11 @@ export interface LedgerSummary {
   pct: { ai: number; paste: number; human: number };
   aiLimitPct: number;
   interactions: { total: number; blocked: number; copilot: number; byMode: { mode: string; count: number }[]; providers: string[] };
-  aiInserts: { events: number; words: number; interactionsWithText: number; tables: number; figures: number };
+  /**
+   * `ai_insert` events: all of them and their words; `tables` and `figures` (charts and diagrams) inserted from the
+   * copilot; `tests` (test results, inserted as tables) and `equations` since §9 (absent in older summaries).
+   */
+  aiInserts: { events: number; words: number; interactionsWithText: number; tables: number; figures: number; tests?: number; equations?: number };
   aiChapters: string[];
   pastes: { events: number; words: number; attributedToSource: number; recognisedFromAssistant: number; declaredAiTool: number; ownText: number; unattributed: number; attributedWords: number };
   budget: { currency: string; institutionUsd: number; institutionLocal: number; requests: number; studentPaidRequests: number } | null;
@@ -567,10 +541,17 @@ export interface LedgerSummary {
   /** What the student writes (D1); the declaration names the work and its reviewer with it. */
   paperKind: PaperKind;
   teacher: TeacherLabel;
-  /** Figures of the Final submission; every copilot chart is AI-assisted in v1. */
+  /** Figures of the Final submission: all of them and the AI-assisted ones (`data-origin`, absent = AI). */
   figures: PaperFigures;
-  /** Tables and charts Thesisfic computed for the copilot's answers (from `AIInteraction.artifacts`). */
-  artifacts: { tables: number; charts: number };
+  /** The same figures by class (chart, Gantt, PRISMA, concept map). Absent in summaries made before §9. */
+  figuresByKind?: FiguresByKind;
+  /** Equations of the Final submission: all of them and the AI-assisted ones. Absent in summaries made before §9. */
+  equations?: PaperFigures;
+  /**
+   * Artifacts Thesisfic produced for the copilot's answers (from `AIInteraction.artifacts`): tables and charts
+   * computed from data; since §9 also test results, diagrams and equations (absent in older summaries).
+   */
+  artifacts: { tables: number; charts: number; tests?: number; diagrams?: number; equations?: number };
 }
 
 export function ledgerSummary(
@@ -596,6 +577,7 @@ export function ledgerSummary(
   const providers = Array.from(new Set(interactions.map((i) => i.provider))).sort();
 
   const inserts = timeline.events.filter((e) => e.kind === "ai_insert");
+  const artifactsOfKind = (kind: ArtifactInsertKind) => interactions.reduce((a, i) => a + (i.artifacts || []).filter((x) => x.kind === kind).length, 0);
   const pastes = timeline.events.filter((e) => e.kind === "paste");
   const institution = interactions.filter((i) => i.billedTo === "institution");
   const institutionUsd = institution.reduce((a, i) => a + (i.costUsd || 0), 0);
@@ -615,6 +597,8 @@ export function ledgerSummary(
       interactionsWithText: Object.keys(scan.aiByInteraction).length,
       tables: inserts.filter((e) => e.artifactKind === "table").length,
       figures: inserts.reduce((a, e) => a + (e.figures || 0), 0),
+      tests: inserts.filter((e) => e.artifactKind === "test").length,
+      equations: inserts.reduce((a, e) => a + (e.equations || 0), 0),
     },
     aiChapters: scan.chapters.filter((c) => c.ai > 0).map((c) => c.heading),
     pastes: {
@@ -637,9 +621,14 @@ export function ledgerSummary(
     paperKind: paperKind(thesis),
     teacher: teacherLabel(thesis),
     figures: timeline.figures,
+    figuresByKind: timeline.figuresByKind,
+    equations: timeline.equations,
     artifacts: {
-      tables: interactions.reduce((a, i) => a + (i.artifacts || []).filter((x) => x.kind === "table").length, 0),
-      charts: interactions.reduce((a, i) => a + (i.artifacts || []).filter((x) => x.kind === "chart").length, 0),
+      tables: artifactsOfKind("table"),
+      charts: artifactsOfKind("chart"),
+      tests: artifactsOfKind("test"),
+      diagrams: artifactsOfKind("diagram"),
+      equations: artifactsOfKind("equation"),
     },
   };
 }

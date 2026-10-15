@@ -13,9 +13,16 @@
  *
  * Bar charts whose category labels do not fit under the bars are drawn horizontally; their height grows (never
  * shrinks) so that every category keeps a readable row. The returned SVG's width/height attributes are the truth.
+ *
+ * Pie (D25): one series per slice (`values[0]`), drawn from 12 o'clock clockwise, largest first and "Other" (grey)
+ * last, 2px white separators, no 3D and no hole; every slice is labelled directly (name and share) in two columns
+ * beside the pie with thin leader lines, so there is no legend; when the labels cannot fit beside it (narrow panels)
+ * they become a list with swatches next to the pie. Box plot (D25): `boxes` (Tukey five numbers, ≤ 12), vertical
+ * boxes in one hue (a 14 % wash with a 1.5px outline), the median as a 2.5px line, whiskers with caps, outliers as
+ * small hollow circles, the group label and "n = …" under each box, the median value beside the box when it fits.
  */
 import type { ChartData, WritingLanguage } from "@/lib/db";
-import { CHART_AXIS, CHART_FIT, CHART_FONT, CHART_GRID, CHART_MUTED, CHART_SURFACE, CHART_TEXT, seriesColor } from "./palette";
+import { CHART_AXIS, CHART_FIT, CHART_FONT, CHART_GRID, CHART_MUTED, CHART_OTHER, CHART_SERIES, CHART_SURFACE, CHART_TEXT, seriesColor } from "./palette";
 import { formatCompact, formatNumber } from "../data/labels";
 import { innerTicks, niceTicks, stepDecimals } from "../data/stats";
 
@@ -90,9 +97,9 @@ function fit(s: string, max: number): string {
 // ---------- Input limits ----------
 
 /** What `renderChartSvg` accepts of a `ChartData`, whoever built it (the engine, or a spec parsed from saved HTML). */
-export const CHART_LIMITS = { labelChars: 200, categories: 500, series: 5, points: 500 } as const;
+export const CHART_LIMITS = { labelChars: 200, categories: 500, series: 5, points: 500, boxes: 12, outliers: 200 } as const;
 
-const CHART_KINDS: ChartData["type"][] = ["bar", "groupedBar", "line", "scatter", "histogram"];
+const CHART_KINDS: ChartData["type"][] = ["bar", "groupedBar", "line", "scatter", "histogram", "pie", "box"];
 
 const label200 = (v: unknown) => String(v ?? "").slice(0, CHART_LIMITS.labelChars);
 const finiteNum = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
@@ -127,6 +134,21 @@ export function normalizeChart(chart: ChartData): ChartData {
   const f = c.fit;
   if (f && [f.slope, f.intercept, f.r, f.n].every((v) => typeof v === "number" && Number.isFinite(v))) out.fit = { slope: f.slope, intercept: f.intercept, r: f.r, n: f.n };
   if (c.percent) out.percent = true;
+  if (Array.isArray(c.boxes)) {
+    type Box = NonNullable<ChartData["boxes"]>[number];
+    const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+    out.boxes = c.boxes
+      .slice(0, CHART_LIMITS.boxes)
+      .filter((b): b is Box => !!b && typeof b === "object")
+      .map((b) => {
+        const f = [b.min, b.q1, b.median, b.q3, b.max, b.whiskerLow, b.whiskerHigh].map(num);
+        if (f.some((v) => v === null)) return null;
+        const [min, q1, median, q3, max, whiskerLow, whiskerHigh] = f as number[];
+        const outliers = (Array.isArray(b.outliers) ? b.outliers : []).slice(0, CHART_LIMITS.outliers).filter((v): v is number => num(v) !== null);
+        return { label: label200(b.label), n: Math.max(0, Math.round(num(b.n) ?? 0)), min, q1, median, q3, max, whiskerLow, whiskerHigh, outliers };
+      })
+      .filter((b): b is Box => b !== null);
+  }
   return out;
 }
 
@@ -648,6 +670,207 @@ function drawScatter(chart: ChartData, series: Series[], o: RenderOptions, W: nu
   return { svg: parts.join(""), height: H };
 }
 
+// ---------- Pie (D25) ----------
+
+/** A share as printed on a slice label: one decimal, "%" glued in English, after a no-break space in es/fr/de. */
+function shareText(pct: number, lang: WritingLanguage): string {
+  const s = formatNumber(pct, lang, 1);
+  return lang === "en" ? `${s}%` : `${s} %`;
+}
+
+/** SVG path of a slice from angle a0 to a1 (radians, 0 = 12 o'clock, clockwise) of the circle (cx, cy, r). */
+function slicePath(cx: number, cy: number, r: number, a0: number, a1: number): string {
+  const pt = (a: number) => `${r2(cx + r * Math.sin(a))} ${r2(cy - r * Math.cos(a))}`;
+  if (a1 - a0 >= 2 * Math.PI - 1e-9) {
+    // A full circle: two half arcs (an arc cannot start and end at the same point).
+    return `M${r2(cx)} ${r2(cy - r)}A${r2(r)} ${r2(r)} 0 1 1 ${r2(cx)} ${r2(cy + r)}A${r2(r)} ${r2(r)} 0 1 1 ${r2(cx)} ${r2(cy - r)}Z`;
+  }
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${r2(cx)} ${r2(cy)}L${pt(a0)}A${r2(r)} ${r2(r)} 0 ${large} 1 ${pt(a1)}Z`;
+}
+
+/** `s` in at most two lines of `max` pixels: words wrap, a word that does not fit is cut, the second line ends with "…" if needed. */
+function wrap2(s: string, max: number): string[] {
+  if (textWidth(s) <= max) return [s];
+  const words = s.split(/\s+/).filter(Boolean);
+  let first = "";
+  let k = 0;
+  while (k < words.length && textWidth(first ? `${first} ${words[k]}` : words[k]) <= max) {
+    first = first ? `${first} ${words[k]}` : words[k];
+    k++;
+  }
+  if (!first) return [fit(s, max)];
+  const rest = words.slice(k).join(" ");
+  return rest ? [first, fit(rest, max)] : [first];
+}
+
+interface Slice {
+  name: string;
+  value: number;
+  other: boolean;
+  color: string;
+  a0: number;
+  a1: number;
+  pct: number;
+}
+
+/** Vertical positions for labels wanted at `ys` (sorted), at least `gap` apart and within [lo, hi]. */
+function spread(ys: number[], gap: number, lo: number, hi: number): number[] {
+  const out = ys.map((y) => Math.max(lo, Math.min(hi, y)));
+  for (let i = 1; i < out.length; i++) out[i] = Math.max(out[i], out[i - 1] + gap);
+  const over = out.length ? out[out.length - 1] - hi : 0;
+  if (over > 0) {
+    out[out.length - 1] = hi;
+    for (let i = out.length - 2; i >= 0; i--) out[i] = Math.min(out[i], out[i + 1] - gap);
+  }
+  return out;
+}
+
+function drawPie(chart: ChartData, series: Series[], o: RenderOptions, W: number, H: number): Drawn {
+  // Largest first, "Other" last, whatever order the spec came in; the four series colours by position, grey after them.
+  const raw = series
+    .map((s) => ({ name: s.name, value: Math.max(0, s.values[0] ?? 0), other: s.other }))
+    .filter((s) => s.value > 0);
+  const ordered = raw.filter((s) => !s.other).sort((a, b) => b.value - a.value).concat(raw.filter((s) => s.other));
+  const total = ordered.reduce((sum, s) => sum + s.value, 0);
+  let angle = 0;
+  const slices: Slice[] = ordered.map((s, i) => {
+    const a0 = angle;
+    angle += (s.value / total) * 2 * Math.PI;
+    return { ...s, color: s.other || i >= CHART_SERIES.length ? CHART_OTHER : CHART_SERIES[i], a0, a1: angle, pct: (s.value / total) * 100 };
+  });
+  const tr = titleRow(chart.xLabel, null, W, PAD);
+  const top = PAD + tr.height;
+  const bottom = H - PAD;
+  const fmtV = valueFormat(slices.map((s) => s.value), false, o.lang);
+  const parts: string[] = [tr.svg];
+  const LINE = 15;
+  const labelW = Math.min(W * 0.26, slices.reduce((m, s) => Math.max(m, textWidth(s.name), textWidth(shareText(s.pct, o.lang))), 0));
+  const names = slices.map((s) => wrap2(s.name, labelW + 2));
+  const lines = names.reduce((m, n) => Math.max(m, n.length), 1);
+  const besideR = Math.min((bottom - top) / 2 - 6, (W - 2 * PAD - 2 * (labelW + 22)) / 2);
+  const list = besideR < 64;
+  let cx: number;
+  let cy: number;
+  let r: number;
+  if (!list) {
+    r = besideR;
+    cx = W / 2;
+    cy = top + (bottom - top) / 2;
+  } else {
+    // Narrow: the pie on the left, a list of swatches with names and shares on the right.
+    const listW = Math.min(W * 0.5, 10 + 6 + Math.max(labelW, 40));
+    r = Math.max(24, Math.min((bottom - top) / 2 - 6, (W - 2 * PAD - listW - 20) / 2));
+    cx = PAD + r + 2;
+    cy = top + (bottom - top) / 2;
+  }
+  for (const s of slices) {
+    const tip = o.interactive ? `<title>${escapeXml(`${s.name}: ${fmtV(s.value)} (${shareText(s.pct, o.lang)})`)}</title>` : "";
+    parts.push(`<path d="${slicePath(cx, cy, r, s.a0, s.a1)}" fill="${s.color}" stroke="${CHART_SURFACE}" stroke-width="2" stroke-linejoin="round">${tip}</path>`);
+  }
+  if (!list) {
+    // Two label columns beside the pie; each label is pulled towards its slice's middle and kept 2 lines apart.
+    const gap = (lines + 1) * LINE + 4;
+    for (const side of [1, -1]) {
+      const items = slices
+        .map((s) => {
+          const mid = (s.a0 + s.a1) / 2;
+          return { s, mid, y: cy - r * Math.cos(mid) };
+        })
+        .filter((it) => (side === 1 ? Math.sin(it.mid) >= -1e-9 : Math.sin(it.mid) < -1e-9))
+        .sort((a, b) => a.y - b.y);
+      const ys = spread(
+        items.map((it) => it.y),
+        gap,
+        top + LINE,
+        bottom - LINE,
+      );
+      items.forEach((it, i) => {
+        const lx = cx + side * (r + 18);
+        const ly = ys[i];
+        // The leader starts just outside the rim at the slice's middle and ends at the label column.
+        const sx = cx + (r + 3) * Math.sin(it.mid);
+        const sy = cy - (r + 3) * Math.cos(it.mid);
+        parts.push(`<path d="M${r2(sx)} ${r2(sy)}L${r2(cx + side * (r + 10))} ${r2(ly)}L${r2(lx - side * 3)} ${r2(ly)}" fill="none" stroke="${CHART_AXIS}" stroke-width="1"/>`);
+        const anchor = side === 1 ? "start" : "end";
+        const nameLines = names[slices.indexOf(it.s)];
+        nameLines.forEach((line, j) => parts.push(text(lx, ly - 2 + j * LINE, line, { anchor, full: it.s.name, weight: 500 })));
+        parts.push(text(lx, ly - 2 + nameLines.length * LINE, shareText(it.s.pct, o.lang), { anchor, fill: CHART_MUTED }));
+      });
+    }
+  } else {
+    const x0 = cx + r + 20;
+    const maxW = W - PAD - x0 - 16;
+    const rows = slices.map((s) => wrap2(s.name, maxW));
+    const h = rows.reduce((sum, n) => sum + (n.length + 1) * LINE + 4, 0);
+    let y = Math.max(top, cy - h / 2);
+    slices.forEach((s, i) => {
+      parts.push(`<rect x="${r2(x0)}" y="${r2(y + 3)}" width="10" height="10" rx="2" fill="${s.color}"/>`);
+      rows[i].forEach((line, j) => parts.push(text(x0 + 16, y + 12 + j * LINE, line, { full: s.name, weight: 500 })));
+      parts.push(text(x0 + 16, y + 12 + rows[i].length * LINE, shareText(s.pct, o.lang), { fill: CHART_MUTED }));
+      y += (rows[i].length + 1) * LINE + 4;
+    });
+  }
+  return { svg: parts.join(""), height: H };
+}
+
+// ---------- Box plot (D25) ----------
+
+function drawBox(chart: ChartData, o: RenderOptions, W: number, H: number): Drawn {
+  const boxes = chart.boxes || [];
+  const k = boxes.length;
+  const color = CHART_SERIES[0];
+  const values = boxes.flatMap((b) => [b.whiskerLow, b.whiskerHigh, b.q1, b.q3, b.median, ...b.outliers]);
+  const yAxis = axis(Math.min(...values), Math.max(...values), o.lang, 1000, "data");
+  const tr = titleRow(chart.yLabel, null, W, PAD);
+  const top = PAD + tr.height;
+  // Under the plot: the group label, then "n = …". A short chart drops the axis title (the caption names the groups).
+  let xTitle = chart.xLabel;
+  let frame = verticalFrame(W, H, top, yAxis, xTitle, 0, 6, ROW);
+  if (xTitle && frame.bottom - frame.top < 140) {
+    xTitle = "";
+    frame = verticalFrame(W, H, top, yAxis, xTitle, 0, 6, ROW);
+  }
+  const band = (frame.right - frame.left) / Math.max(1, k);
+  const boxW = Math.max(8, Math.min(36, band * 0.46));
+  const yOf = (v: number) => frame.bottom - ((v - yAxis.lo) / (yAxis.hi - yAxis.lo)) * (frame.bottom - frame.top);
+  const d = Math.min(3, stepDecimals(yAxis.ticks.length > 1 ? yAxis.ticks[1] - yAxis.ticks[0] : 1) + 1);
+  const fmt = (v: number) => minus(formatNumber(v, o.lang, d));
+  const parts: string[] = [tr.svg, yGrid(frame, yAxis, yOf)];
+  // The median value beside each box when every one fits in its band.
+  const medianLabels = boxes.every((b) => boxW / 2 + 6 + textWidth(fmt(b.median)) <= band / 2 - 2);
+  boxes.forEach((b, i) => {
+    const cx = frame.left + band * (i + 0.5);
+    const x = cx - boxW / 2;
+    const yq1 = yOf(b.q1);
+    const yq3 = yOf(b.q3);
+    const ym = yOf(b.median);
+    const tip = o.interactive ? `<title>${escapeXml(`${b.label}: ${[b.min, b.q1, b.median, b.q3, b.max].map(fmt).join(" – ")} (n = ${formatNumber(b.n, o.lang, 0)})`)}</title>` : "";
+    const cap = boxW * 0.5;
+    // Whiskers and caps.
+    parts.push(`<g stroke="${color}" stroke-width="1.5" stroke-linecap="round">`);
+    parts.push(`<line x1="${r2(cx)}" x2="${r2(cx)}" y1="${r2(yq3)}" y2="${r2(yOf(b.whiskerHigh))}"/>`);
+    parts.push(`<line x1="${r2(cx)}" x2="${r2(cx)}" y1="${r2(yq1)}" y2="${r2(yOf(b.whiskerLow))}"/>`);
+    parts.push(`<line x1="${r2(cx - cap / 2)}" x2="${r2(cx + cap / 2)}" y1="${r2(yOf(b.whiskerHigh))}" y2="${r2(yOf(b.whiskerHigh))}"/>`);
+    parts.push(`<line x1="${r2(cx - cap / 2)}" x2="${r2(cx + cap / 2)}" y1="${r2(yOf(b.whiskerLow))}" y2="${r2(yOf(b.whiskerLow))}"/>`);
+    parts.push(`</g>`);
+    // Box (a wash of the series hue with its outline), then the median line.
+    parts.push(`<rect x="${r2(x)}" y="${r2(Math.min(yq1, yq3))}" width="${r2(boxW)}" height="${r2(Math.max(1, Math.abs(yq1 - yq3)))}" rx="2" fill="${color}" fill-opacity="0.14" stroke="${color}" stroke-width="1.5">${tip}</rect>`);
+    parts.push(`<line x1="${r2(x)}" x2="${r2(x + boxW)}" y1="${r2(ym)}" y2="${r2(ym)}" stroke="${color}" stroke-width="2.5"/>`);
+    for (const v of b.outliers) {
+      const otip = o.interactive ? `<title>${escapeXml(`${b.label}: ${fmt(v)}`)}</title>` : "";
+      parts.push(`<circle cx="${r2(cx)}" cy="${r2(yOf(v))}" r="3" fill="${CHART_SURFACE}" stroke="${color}" stroke-width="1.5">${otip}</circle>`);
+    }
+    if (medianLabels) parts.push(text(x + boxW + 6, mid(ym), fmt(b.median)));
+    const name = fit(b.label, band - 6);
+    parts.push(text(clampX(cx, name, W), frame.bottom + 6 + 12, name, { anchor: "middle", full: b.label }));
+    const nText = fit(`n = ${formatNumber(b.n, o.lang, 0)}`, band - 6);
+    parts.push(text(clampX(cx, nText, W), frame.bottom + 6 + 12 + ROW, nText, { anchor: "middle", fill: CHART_MUTED }));
+  });
+  if (xTitle) parts.push(text((frame.left + frame.right) / 2, H - PAD - 2, fit(xTitle, W - 2 * PAD), { anchor: "middle", full: xTitle }));
+  return { svg: parts.join(""), height: H };
+}
+
 /**
  * The chart as a self-contained SVG string (see the module comment for the rules). Width is at least 280 and height
  * at least 200; horizontal bar charts may come back taller than `opts.height`.
@@ -658,9 +881,20 @@ export function renderChartSvg(input: ChartData, opts: RenderOptions): string {
   const H = Math.max(200, Math.round(opts.height || 400));
   const series = prepSeries(chart);
   let drawn: Drawn = { svg: "", height: H };
-  const hasData = series.length > 0 && (chart.type === "scatter" ? series.some((s) => s.points.length) : (chart.categories || []).length > 0 || chart.type === "histogram");
+  const hasData =
+    chart.type === "box"
+      ? (chart.boxes || []).length > 0
+      : chart.type === "pie"
+        ? series.some((s) => (s.values[0] ?? 0) > 0)
+        : series.length > 0 && (chart.type === "scatter" ? series.some((s) => s.points.length) : (chart.categories || []).length > 0 || chart.type === "histogram");
   if (hasData) {
     switch (chart.type) {
+      case "pie":
+        drawn = drawPie(chart, series, opts, W, H);
+        break;
+      case "box":
+        drawn = drawBox(chart, opts, W, H);
+        break;
       case "bar":
       case "groupedBar":
         drawn = drawBarsVertical(chart, series, opts, W, H) || drawBarsHorizontal(chart, series, opts, W, H);

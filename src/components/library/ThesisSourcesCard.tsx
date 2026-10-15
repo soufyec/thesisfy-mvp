@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookMarked } from "lucide-react";
+import { BookMarked, Table2 } from "lucide-react";
 import type { Reference } from "@/components/editor/types";
 import { useT } from "@/lib/i18n/client";
 import { api } from "@/lib/client";
 import { thesisCitationCounts } from "@/lib/sources/cited";
-import { CHIP, ItemLink, LibraryItemRow, ReferenceTypeBadge, referenceMeta, SourceBadges, sourceMeta, type SourceLike } from "./LibraryItemRow";
+import { CHIP, CutNotes, ItemLink, LibraryItemRow, ReferenceTypeBadge, referenceMeta, SourceBadges, sourceMeta, type SourceLike } from "./LibraryItemRow";
+import DataPreviewModal from "./DataPreviewModal";
+import { isPrimary } from "./primary";
 
 /** A source as `GET /api/theses/[id]/sources` returns it (thesis view: no text, no owner, no other theses). */
 type ThesisSourceItem = SourceLike & { id: string };
@@ -20,6 +22,7 @@ export default function ThesisSourcesCard({ thesis }: { thesis: { id: string; re
   const t = useT();
   const [sources, setSources] = useState<ThesisSourceItem[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [preview, setPreview] = useState<ThesisSourceItem | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -67,10 +70,30 @@ export default function ThesisSourcesCard({ thesis }: { thesis: { id: string; re
             <div className={empty}>{t("admin.detail.sources.noSources")}</div>
           ) : (
             <ul className="divide-y divide-gray-50 max-h-[520px] overflow-y-auto">
-              {sources.map((s) => {
+              {[...sources.filter(isPrimary), ...sources.filter((s) => !isPrimary(s))].map((s) => {
                 const inRefs = referencedSources.ids.has(s.id) || (!!s.doi && referencedSources.dois.has(s.doi.toLowerCase()));
+                const canPreview = s.kind === "sheet" && !!s.dataset && s.dataset.sheets.length > 0;
                 return (
-                  <LibraryItemRow key={s.id} kind={s.kind} title={s.title} meta={sourceMeta(s)} badges={<><SourceBadges source={s} />{inRefs && <span className={`${CHIP} bg-brand-50 text-brand-700`}>{t("admin.detail.sources.inReferences")}</span>}<ItemLink doi={s.doi} url={s.url} /></>} />
+                  <LibraryItemRow
+                    key={s.id}
+                    kind={s.kind}
+                    title={s.title}
+                    meta={sourceMeta(s) || (s.file && s.file.name !== s.title ? s.file.name : undefined)}
+                    extra={s.kind === "sheet" ? <CutNotes source={s} /> : undefined}
+                    badges={
+                      <>
+                        <SourceBadges source={s} />
+                        {inRefs && <span className={`${CHIP} bg-brand-50 text-brand-700`}>{t("admin.detail.sources.inReferences")}</span>}
+                        <ItemLink doi={s.doi} url={s.url} />
+                        {canPreview && (
+                          <button type="button" onClick={() => setPreview(s)} className="inline-flex items-center gap-1 text-[12px] text-brand-600 font-medium hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 rounded" aria-label={t("library.ui.preview.buttonAria", { title: s.title })}>
+                            <Table2 className="w-[15px] h-[15px]" aria-hidden="true" />
+                            {t("library.ui.preview.button")}
+                          </button>
+                        )}
+                      </>
+                    }
+                  />
                 );
               })}
             </ul>
@@ -90,6 +113,7 @@ export default function ThesisSourcesCard({ thesis }: { thesis: { id: string; re
           )}
         </section>
       </div>
+      <DataPreviewModal open={!!preview} onClose={() => setPreview(null)} source={preview} thesisId={thesis.id} />
     </div>
   );
 }

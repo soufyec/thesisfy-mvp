@@ -1,9 +1,10 @@
 "use client";
 
 import { BookOpen, ExternalLink, FileSpreadsheet, FileText, Link2, Quote, Type as TypeIcon } from "lucide-react";
-import type { Reference, SourceKind } from "@/components/editor/types";
+import type { DatasetSummary, Reference, SourceFile, SourceKind, SourceRole } from "@/components/editor/types";
 import type { Translate } from "@/lib/i18n/dictionary";
 import { useFormat, useT } from "@/lib/i18n/client";
+import { cutNotes, fileTypeLabel, isPrimary, readAsSummary } from "./primary";
 
 /**
  * Shared, presentational pieces of a library item (source or reference). Used by the student's library page
@@ -23,6 +24,13 @@ export interface SourceLike {
   wordCount: number;
   parseStatus?: "pending" | "parsed" | "no_text" | "failed";
   coverage: "full_text" | "abstract" | "none";
+  pages?: number;
+  /** Primary data or literature; absent = literature. Sheets are always primary. */
+  role?: SourceRole;
+  /** Uploaded file metadata. */
+  file?: SourceFile;
+  /** Spreadsheets: sheets and columns, never rows. */
+  dataset?: DatasetSummary;
 }
 
 /** 10px-radius chip, the shape CLAUDE.md §4 gives chips. */
@@ -62,18 +70,45 @@ export function SourceKindIcon({ kind }: { kind: SourceLike["kind"] }) {
   return <Icon className="w-4 h-4" aria-hidden="true" />;
 }
 
-/** Kind, coverage and length of a source. */
+/** Kind, coverage and length of a source. Primary data shows its badge, its file type and what Thesisfic read instead. */
 export function SourceBadges({ source }: { source: SourceLike }) {
   const t = useT();
   const fmt = useFormat();
+  if (isPrimary(source)) return <PrimaryBadges source={source} />;
   const chip = coverageChip(source, t);
+  const type = fileTypeLabel(source, t);
   return (
     <>
-      <span className={`${CHIP} bg-gray-100 text-gray-600`}>{t(`dashboard.sources.kind.${source.kind}`)}</span>
+      <span className={`${CHIP} bg-gray-100 text-gray-600`}>{type || t(`dashboard.sources.kind.${source.kind}`)}</span>
       <span className={`${CHIP} ${chip.className}`}>{chip.label}</span>
       {source.wordCount > 0 && <span className="text-[11px] text-gray-500">{source.wordCount === 1 ? t("common.word_one") : t("common.words", { n: fmt.number(source.wordCount) })}</span>}
     </>
   );
+}
+
+/** "Primary" badge, file type and the "Read as: …" line of a primary source (library page, tutor card, editor panel). */
+export function PrimaryBadges({ source }: { source: SourceLike }) {
+  const t = useT();
+  const fmt = useFormat();
+  const type = fileTypeLabel(source, t);
+  const readAs = readAsSummary(source, t, (n) => fmt.number(n));
+  const failed = source.parseStatus === "failed" || source.parseStatus === "no_text";
+  return (
+    <>
+      <span className={`${CHIP} bg-brand-50 text-brand-700`}>{t("library.ui.primaryBadge")}</span>
+      {type && <span className={`${CHIP} bg-gray-100 text-gray-600`}>{type}</span>}
+      {readAs && <span className={`text-[11px] ${failed ? "text-amber-700" : "text-gray-500"}`}>{readAs}</span>}
+    </>
+  );
+}
+
+/** Amber notes when only part of a spreadsheet was kept (rows cut at the caps, sheets left out). */
+export function CutNotes({ source, className = "" }: { source: Pick<SourceLike, "dataset">; className?: string }) {
+  const t = useT();
+  const fmt = useFormat();
+  const notes = cutNotes(source, t, (n) => fmt.number(n));
+  if (!notes.length) return null;
+  return <p className={`text-[11px] text-amber-700 ${className}`}>{notes.join(" ")}</p>;
 }
 
 /** Kind of a reference (article, book…). */
