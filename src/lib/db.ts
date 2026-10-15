@@ -647,6 +647,8 @@ export interface AIInteraction {
 }
 
 export interface ConversationMessage {
+  files?: import("./ai/files").ResearchFile[];
+  research?: import("./ai/research").ResearchSearch;
   sourceSelections?: Record<string, import("./data/workspace").DataSelection>;
   id: string;
   role: "user" | "assistant";

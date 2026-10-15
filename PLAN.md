@@ -137,3 +137,15 @@ Mobile nativo (Capacitor), migración a Postgres, SSO/LMS. De la fase 11: OCR, c
 - [x] Edición de datos y presentación de gráficos, recalcular rango y conservar datos originales.
 
 Los datos y artefactos siguen calculándose en servidor. Las tablas, ecuaciones y diagramas mantienen sus editores nativos. No se publica en producción en esta sesión; los cambios se preparan en la PR de revisión.
+
+
+### Research copilot y chat — 16 octubre 2026
+
+Archivos: `AssistantPanel`, `ResearchFileCard`, `ArtifactCard`, `ai/{prompts,policy,files,research}`, rutas de chat, proveedores y descarga de archivos, contrato SSE, mensajes i18n y esquema de conversaciones.
+
+- [x] Logo de Thesisfic; sin subtítulo, tarjeta verde ni introducciones redundantes.
+- [x] Cinco modos compactos y dos sugerencias breves, sin sugerencias repetidas sobre el compositor.
+- [x] Copilot crea informes y archivos ligados al objetivo; los modos antiguos siguen disponibles en conversaciones guardadas.
+- [x] Archivos descargables, vista previa, Word para informes e inserción con coste y procedencia; CSV se puede adjuntar como datos.
+- [x] Búsqueda académica con Crossref, metadatos y resúmenes disponibles, enlaces DOI y estados de error explícitos.
+- [x] Verificación integrada: TypeScript, build, regresiones, Chrome en escritorio y móvil, descargas y revisión de archivos. Propuesta de revisión actualizada.

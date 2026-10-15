@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BubbleMenu, EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { closeHistory } from "@tiptap/pm/history";
 import { EditorState, NodeSelection } from "@tiptap/pm/state";
 import { DOMSerializer } from "@tiptap/pm/model";
 import { CellSelection } from "@tiptap/pm/tables";
@@ -26,7 +27,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Typography from "@tiptap/extension-typography";
-import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, ListTree, MessageSquare, MessageSquarePlus, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, BookMarked, ChevronDown, CloudOff, ListTree, MessageSquare, MessageSquarePlus, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
 import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, ProvenanceStats, Search } from "./extensions";
 import { Pagination } from "./pagination";
 import { TableExtras } from "./tableExtras";
@@ -55,6 +56,7 @@ import { ARTIFACT_DRAG_TYPE, draggedArtifact, endArtifactDrag } from "../ai/arti
 import { artifactInsertWords } from "../ai/artifactText";
 import { AiPasteDialog, ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, SubmitDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, type AiPasteCost, type PasteMatchInfo, type TeacherRole } from "./Dialogs";
 import { CommentItem, FlagItem, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
+import { LogoMark } from "../Logo";
 import AssistantPanel, { type InsertArtifactHandler, type InsertMeta } from "../ai/AssistantPanel";
 import { LanguageReview } from "./language/languageReview";
 import { LanguageReviewPanel } from "./language/LanguageReviewPanel";
@@ -263,6 +265,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent" | "specialChars" | "bookmark" | "deadline">(null);
   const [anchors, setAnchors] = useState<AnchorItem[]>([]);
+  const [assistantConversationId, setAssistantConversationId] = useState<string | undefined>();
   const [tableMenuAt, setTableMenuAt] = useState<{ x: number; y: number } | null>(null);
   const artifactDropRef = useRef<(data: DataTransfer, x: number, y: number) => boolean>(() => false);
   const goToAnchorRef = useRef<(href: string) => void>(() => {});
@@ -1167,17 +1170,20 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   }, [isOwner]);
 
   // ---------- helpers ----------
-  const insertWithProvenance = (html: string, meta: InsertMeta, replace: boolean, opts: { atEnd?: boolean; message?: string } = {}) => {
+  const insertWithProvenance = (html: string, meta: InsertMeta, replace: boolean, opts: { atEnd?: boolean; message?: string; position?: number } = {}) => {
     if (!editor || !canEdit) return notify(t("editor.toast.readOnly"), "error");
     if (opts.atEnd) editor.commands.focus("end");
+    editor.view.dispatch(closeHistory(editor.state.tr));
     programmatic(() => {
       const chain = editor.chain().focus();
       if (replace) chain.deleteSelection();
-      const from = replace ? editor.state.selection.from : editor.state.selection.to;
-      chain.insertContent(html).run();
+      const from = opts.position ?? (replace ? editor.state.selection.from : editor.state.selection.to);
+      if (opts.position !== undefined) chain.insertContentAt(opts.position, html).run();
+      else chain.insertContent(html).run();
       const to = editor.state.selection.to;
       editor.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: meta.provider, label: meta.model, interactionId: meta.interactionId }).setTextSelection(to).setMeta("ai-insert", true).run();
     });
+    editor.view.dispatch(closeHistory(editor.state.tr));
     monitorRef.current?.recordAiInsert(meta.words, meta.provider, meta.mode, meta.interactionId);
     notify(opts.message || t("editor.toast.aiInserted", { words: meta.words, aiAssisted, provider: meta.provider }), "success");
     // Save right away so the score, the AI share and the AI log reflect the insertion without waiting for the autosave.
@@ -1249,7 +1255,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     const record = draggedArtifact(data, thesisId);
     const ed = editorRef.current;
     if (!record || !ed || !canEdit || !ed.isEditable) return false;
-    const words = artifactInsertWords(record.artifact);
+    const words = "artifact" in record ? artifactInsertWords(record.artifact) : record.words;
     const html = activeTabRef.current === SUBMISSION ? ed.getHTML() : contentsRef.current[SUBMISSION];
     const total = countWords(html);
     const ai = computeProvenance(html).ai;
@@ -1266,7 +1272,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         position = rect && y < rect.top + rect.height / 2 ? before : after;
       } else position = at.pos;
     }
-    insertArtifact(record.artifact, record.meta, { position });
+    if ("artifact" in record) insertArtifact(record.artifact, record.meta, { position });
+    else insertWithProvenance(record.html, record.meta, false, { position });
     endArtifactDrag();
     return true;
   };
@@ -1902,6 +1909,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       );
       case "ai": return (
         <AssistantPanel
+          initialConversationId={assistantConversationId}
+          onConversationChange={setAssistantConversationId}
           thesisId={thesisId}
           sessionId={sessionId || undefined}
           selection={selectionText}
@@ -1946,7 +1955,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         )}
         <span data-tour="integrity" className="hidden md:inline-flex flex-shrink-0"><IntegrityPill aiPct={aiPct} pastePct={pastePct} limitPct={policy.maxAiUsagePercent} score={integrityScore} onClick={() => setSidebar((x) => (x === "integrity" ? "none" : "integrity"))} /></span>
         {/* The assistant thinks with the author: a reviewer reads the thesis, so the panel is not offered in review. */}
-        {isOwner && <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />{t("glossary.aiAssistant")}</button>}
+        {isOwner && <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><LogoMark size={16} />{t("glossary.aiAssistant")}</button>}
         <button onClick={() => setDialog("share")} className="hidden md:inline-flex items-center px-3.5 py-[7px] rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 flex-shrink-0">{t("editor.share")}</button>
         {!isMobile && <MenuOverflow editor={editor} onAction={onAction} state={{ showProvenance, sidebar, spellcheck, zoom, focus, canEdit, numberHeadings: !!ws.numberHeadings, brief: !!thesis.assignment, settingsLock, teacherRole }} />}
         <button onClick={() => setMobileMenu(true)} className="md:hidden p-2 text-gray-600" aria-label={t("common.more")}><MoreVertical className="w-5 h-5" /></button>
@@ -1988,7 +1997,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
                   <button onMouseDown={(e) => e.preventDefault()} onClick={startComment} className="bm-btn !px-[9px]"><MessageSquarePlus className="w-[13px] h-[13px]" />{t("editor.comment")}</button>
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("cite")} className="bm-btn !px-[9px]" title={t("editor.bubble.supportTitle")}><SearchIcon className="w-[13px] h-[13px]" />{t("editor.support")}</button>
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("evidence")} className="bm-btn !px-[9px]" title={t("editor.bubble.evidenceTitle")}><Scale className="w-[13px] h-[13px]" />{t("editor.evidence")}</button>
-                  {isOwner && <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />{t("editor.askAi")}</button>}
+                  {isOwner && <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><LogoMark size={14} />{t("editor.askAi")}</button>}
                   </div>
                   {canEdit && bubbleTypo && <TypographyRow editor={editor} />}
                 </div>
@@ -2055,7 +2064,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       {/* Mobile bottom action bar */}
       {isMobile && (
         <nav className="relative z-[70] flex justify-around border-t border-gray-200 bg-white flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} aria-label={t("editor.mobile.navLabel")}>
-          {([...(isOwner ? [["ai", <Bot key="a" className="w-5 h-5" />, t("editor.mobile.ai")]] : []), ["comments", <MessageSquare key="c" className="w-5 h-5" />, t("editor.panel.comments")], ["outline", <ListTree key="o" className="w-5 h-5" />, t("editor.panel.outline")], ["integrity", <ShieldCheck key="i" className="w-5 h-5" />, t("glossary.integrity")]] as [SidebarKind, React.ReactNode, string][]).map(([k, icon, label]) => (
+          {([...(isOwner ? [["ai", <LogoMark key="a" size={20} />, t("editor.mobile.ai")]] : []), ["comments", <MessageSquare key="c" className="w-5 h-5" />, t("editor.panel.comments")], ["outline", <ListTree key="o" className="w-5 h-5" />, t("editor.panel.outline")], ["integrity", <ShieldCheck key="i" className="w-5 h-5" />, t("glossary.integrity")]] as [SidebarKind, React.ReactNode, string][]).map(([k, icon, label]) => (
             <button key={k} onClick={() => setSidebar((s) => (s === k ? "none" : k))} aria-pressed={sidebar === k} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] ${sidebar === k ? "text-brand-600" : "text-gray-500"}`}>{icon}{label}</button>
           ))}
           <button onClick={() => setMobileMenu(true)} className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-gray-500"><ChevronDown className="w-5 h-5" />{t("common.more")}</button>

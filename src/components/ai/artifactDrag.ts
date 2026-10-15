@@ -1,17 +1,18 @@
 import type { Artifact } from "@/lib/db";
-import type { ArtifactInsertMeta } from "./AssistantPanel";
+import type { ArtifactInsertMeta, InsertMeta } from "./AssistantPanel";
 
 export const ARTIFACT_DRAG_TYPE = "application/x-thesisfic-artifact";
-interface DragRecord { thesisId: string; artifact: Artifact; meta: ArtifactInsertMeta; expires: number }
+type DragPayload = { thesisId: string } & ({ artifact: Artifact; meta: ArtifactInsertMeta } | { html: string; words: number; title: string; meta: InsertMeta });
+type DragRecord = DragPayload & { expires: number };
 const active = new Map<string, DragRecord>();
 
 /** The clipboard carries only an opaque token; data, provenance and interaction stay in this page's memory. */
-export function beginArtifactDrag(data: DataTransfer, record: Omit<DragRecord, "expires">): string {
+export function beginArtifactDrag(data: DataTransfer, record: DragPayload): string {
   active.clear();
   const token = crypto.randomUUID();
   active.set(token, { ...record, expires: Date.now() + 120_000 });
   data.setData(ARTIFACT_DRAG_TYPE, token);
-  data.setData("text/plain", record.artifact.title);
+  data.setData("text/plain", "artifact" in record ? record.artifact.title : record.title);
   data.effectAllowed = "copy";
   return token;
 }

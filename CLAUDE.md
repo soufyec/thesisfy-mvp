@@ -12,7 +12,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 
 1. **Atribución en el momento, nunca inferencia después.** Toda marca de procedencia nace de un evento real: inserción desde el asistente, pegado, o pegado que coincide con las huellas por frase de una respuesta del asistente o del Research copilot (`responseFingerprints`). No añadir heurísticas que "adivinen" IA. No existe extensión de navegador ni vigilancia de sitios externos: se eliminó a propósito.
 2. **El estudiante ve lo mismo que el tutor.** Ninguna métrica, aviso o registro es visible para el tutor y oculto para el estudiante.
-3. **La IA piensa contigo, no escribe por ti.** El asistente puede esquematizar, criticar, corregir texto del estudiante, explicar, citar y, en modo **Research copilot**, conversar libremente sobre cualquier tema de la investigación. Nunca redacta texto del trabajo (tesis, ensayo, informe…). Las **tablas y figuras** que el Research copilot propone sobre los datos primarios adjuntos los calcula siempre el servidor (`src/lib/data/`), nunca el modelo, y solo se insertan como AI-assisted con su coste. `src/lib/ai/policy.ts` y `prompts.ts` son la fuente de verdad; no relajar `GENERATION_PATTERNS` ni `BASE_SYSTEM`.
+3. **Asistencia vinculada al objetivo del trabajo.** Por petición explícita del usuario (16 octubre 2026), **Research copilot** puede crear y revisar informes, materiales, plantillas, código y archivos relacionados con el objetivo de la tesis o tarea. La conversación libre sustituye a Ask, Brainstorm, Outline, Summarize y Explain en la navegación; Critique, Grammar, Citations y Find gaps conservan sus funciones enfocadas. Los modos antiguos permanecen compatibles con el historial. No inventar resultados, fuentes ni búsquedas; los cálculos de los datos adjuntos siguen en `src/lib/data/`. Toda inserción conserva procedencia y coste. Las restricciones de redacción de `BASE_SYSTEM` y `GENERATION_PATTERNS` permanecen para los modos enfocados; el copilot usa `COPILOT_SYSTEM`, sin saltarse consentimiento, propiedad ni límites de inserción.
 4. **Consentimiento primero, aplicado en servidor.** Los scopes de monitorización (interacciones con IA, ritmo de tecleo, pegados, actividad de pestañas) se eligen en cliente y se filtran en servidor (`/api/monitor/consent`, `/api/sessions/*`). No registrar texto tecleado, solo recuentos y huellas.
 5. **Cada inserción de IA muestra su coste antes de ocurrir.** Palabras añadidas y nuevo % de IA respecto al límite. Sin excepciones. No se muestra quién paga el modelo (ni en la landing ni en el producto); la facturación vive solo en `Admin → AI access & billing`.
 6. **La universidad paga la IA.** Los modelos se ofrecen y presupuestan desde `Admin → AI access & billing` (`src/lib/ai/funding.ts`, `providers.ts`); el estudiante puede añadir su propia cuenta, nunca es obligatorio.
@@ -24,7 +24,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 |---|---|---|
 | Asistente de IA | **Thesisfic AI** / **AI assistant** | `AssistantPanel` |
 | Modo libre pagado por la universidad | **Research copilot** | `AIMode = "copilot"`, `Policy.researchCopilot` |
-| Modos del asistente | **Research copilot · Ask · Brainstorm · Outline · Critique · Grammar · Summarize · Explain · Citations · Find gaps · Paraphrase** | `AIMode` (11), rejilla visible sin scroll horizontal; el copilot va destacado en primera posición |
+| Modos del asistente | **Research copilot · Critique · Grammar · Citations · Find gaps** | `AIMode` mantiene identificadores antiguos; cinco accesos compactos, copilot primero |
 | Marcas de procedencia en el margen | **Provenance gutter** | `ProvenanceGutter`, decoraciones en `extensions.ts` |
 | Texto escrito por el estudiante | **Written** | `provenance: "human"` (no cambiar el valor almacenado) |
 | Texto insertado desde IA | **AI-assisted** | `provenance: "ai"` |
@@ -45,7 +45,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 | Ecuación | **Equation** («Eq · AI» si viene del copilot) | nodos `math` / `mathBlock`, `src/lib/math/`, línea `ai_equations` |
 | Cronograma, PRISMA, mapa conceptual | **Diagram** (Timeline · PRISMA flow · Concept map) | nodo `chart` con `spec.figure`, `src/lib/diagrams/` |
 
-Cada modo lleva icono `lucide` (campo `icon` de `MODES` es el nombre del icono), una línea de ayuda y 2–4 sugerencias rápidas propias. No introducir agrupaciones intermedias.
+Cada modo lleva icono `lucide` (campo `icon` de `MODES` es el nombre del icono), dos sugerencias breves al iniciar; ayuda en el título del control. No introducir agrupaciones intermedias.
 
 ## 4. Sistema visual
 

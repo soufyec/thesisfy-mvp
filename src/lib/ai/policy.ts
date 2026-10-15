@@ -92,7 +92,7 @@ export function checkPolicy(policy: Policy, mode: AIMode, prompt: string, lang: 
   if (mode === "copilot" ? !policy.researchCopilot : !policy.allowedModes.includes(mode)) {
     return { allowed: false, reason: "mode_not_allowed", message: t(lang, "mode") };
   }
-  if (policy.blockGeneration && isGenerationRequest(prompt)) {
+  if (mode !== "copilot" && policy.blockGeneration && isGenerationRequest(prompt)) {
     return { allowed: false, reason: "generation_blocked", message: t(lang, "generation") };
   }
   return { allowed: true };
