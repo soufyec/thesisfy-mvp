@@ -6,7 +6,7 @@ import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import { Accessibility, AlignCenter, AlignLeft, AlignRight, Captions, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
-import { drawChartSpec, patchChart, readChartSpec, updateDiagram, type ChartAlign, type ChartAttrs } from "./chart";
+import { CHART_EDIT_EVENT, drawChartSpec, patchChart, readChartSpec, updateDiagram, type ChartAlign, type ChartAttrs } from "./chart";
 import DiagramDialog from "./forms/DiagramDialog";
 
 function Btn({ label, onClick, active, children }: { label: string; onClick: () => void; active?: boolean; children: ReactNode }) {
@@ -158,6 +158,14 @@ export default function ChartView({ node, editor, getPos, deleteNode }: NodeView
   const openEdit = () => {
     if (canEditDiagram) setEditing(true);
   };
+  // Enter on the selected diagram (chart.ts keyboard shortcut) opens the same form as a double-click.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || !canEditDiagram) return;
+    const open = () => setEditing(true);
+    el.addEventListener(CHART_EDIT_EVENT, open);
+    return () => el.removeEventListener(CHART_EDIT_EVENT, open);
+  }, [canEditDiagram]);
   const closeEdit = () => {
     setEditing(false);
     editor.commands.focus();

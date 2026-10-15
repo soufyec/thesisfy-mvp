@@ -172,6 +172,11 @@
 .ProseMirror ul[data-type="taskList"] li > label { flex: 0 0 auto; margin-top: 0.25em; }
 .ProseMirror ul[data-type="taskList"] li > div { flex: 1; }
 .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #9aa0a6; float: left; pointer-events: none; height: 0; }
+/* Template hints (templateHints.ts): the section guidance under each heading, drawn only while editable. Absolute,
+   not the float/height:0 pattern above, which Chromium clips to nothing combined with overflow:hidden. */
+.ProseMirror p.is-empty[data-hint] { position: relative; }
+.ProseMirror p.is-empty[data-hint]::before { content: attr(data-placeholder); position: absolute; left: 0; right: 0; top: 0; float: none; height: auto; color: theme("colors.gray.500"); font-style: italic; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media print { .ProseMirror p.is-empty[data-hint]::before { content: none; } }
 .ProseMirror .page-break { position: relative; height: 0; border-top: 2px dashed #c4c7c5; margin: 1.5em 0; user-select: none; }
 .ProseMirror .page-break-label { position: absolute; top: -0.7em; left: 50%; transform: translateX(-50%); background: #fff; color: #9aa0a6; font-size: 9pt; font-family: Inter, sans-serif; padding: 0 0.5em; }
 .ProseMirror .page-break.ProseMirror-selectednode { border-color: #1a73e8; }

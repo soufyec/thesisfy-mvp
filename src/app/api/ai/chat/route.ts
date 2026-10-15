@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
   const writingLang: WritingLanguage = thesis?.writingLanguage ?? (isWritingLanguage(user.preferences.language) ? user.preferences.language : "en");
   // Diagram and equation blocks (§9.3) only in the Research copilot; PRISMA numbers are checked against
   // `studentTexts`, filled in once the conversation is known.
-  const runOpts = { lang: writingLang, tr: translator(writingLang), newId: () => uid("art"), allowDiagrams: mode === "copilot", studentTexts: [] as string[] };
+  const runOpts = { lang: writingLang, tr: translator(writingLang), newId: () => uid("art"), allowDiagrams: mode === "copilot", studentTexts: [] as string[], priorArtifacts: [] as Artifact[] };
 
   // Attachments: Research copilot with a paper in context only.
   // Only the paper's student attaches its files: staff chats about a paper never send the student's data.
@@ -106,6 +106,8 @@ export async function POST(request: NextRequest) {
     ...conversation.messages.filter((m) => m.role === "user" && typeof m.content === "string").map((m) => m.content),
     ...messages.filter((m) => m.role === "user").map((m) => m.content),
   ];
+  // Results Thesisfic computed earlier in this conversation: a proposed equation may reuse their numbers (D11).
+  runOpts.priorArtifacts = conversation.messages.flatMap((m) => (m.role === "assistant" && Array.isArray(m.artifacts) ? m.artifacts : []));
 
   const cfg = resolveProvider(user, policy, typeof body.provider === "string" ? body.provider : null);
   // "Use my sources" searches the paper's literature: spreadsheets, primary sources and this message's attachments are left out.

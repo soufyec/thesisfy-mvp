@@ -145,12 +145,16 @@ function removeUncounted(html: string, opts: CountableOptions & { only?: string[
     }
     const tag = html.slice(m.index, tagEnd + 1);
     let drop = false;
+    // An inline equation is an atom the editor's text leaves out entirely ("mean (" + eq + ") was" → "mean () was"):
+    // it is removed without a space, so words on both sides count as the editor counts them. Blocks leave a space.
+    let inline = false;
     if (name === "figure") {
       if (hasAttr(tag, "data-chart")) {
         drop = true;
         const kindAttr = attrValue(tag, "data-figure-kind");
         const kind: FigureKind = kindAttr && (FIGURE_KINDS as string[]).indexOf(kindAttr) !== -1 ? (kindAttr as FigureKind) : "chart";
-        const ai = (attrValue(tag, "data-origin") ?? FIGURE_DEFAULT_ORIGIN) !== "human";
+        // A data chart is only ever computed by the copilot (D22, §4.6): AI-assisted whatever its data-origin says.
+        const ai = kind === "chart" || (attrValue(tag, "data-origin") ?? FIGURE_DEFAULT_ORIGIN) !== "human";
         figures.total++;
         figures.byKind[kind].total++;
         if (ai) {
@@ -160,8 +164,10 @@ function removeUncounted(html: string, opts: CountableOptions & { only?: string[
       }
     } else if (name === "figcaption" || name === "style" || name === "math") {
       drop = true;
+      inline = name === "math";
     } else if (hasAttr(tag, "data-math") || hasAttr(tag, "data-math-block")) {
       drop = true;
+      inline = !hasAttr(tag, "data-math-block") && name === "span";
       equations.total++;
       if ((attrValue(tag, "data-origin") ?? EQUATION_DEFAULT_ORIGIN) === "ai") equations.ai++;
     } else if (name === "span" && !opts.keepDeclarations && attrValue(tag, "data-declaration") === "true") {
@@ -171,7 +177,7 @@ function removeUncounted(html: string, opts: CountableOptions & { only?: string[
       re.lastIndex = tagEnd + 1;
       continue;
     }
-    out += html.slice(pos, m.index) + " ";
+    out += html.slice(pos, m.index) + (inline ? "" : " ");
     if (html.charCodeAt(tagEnd - 1) === 47 /* "/>": nothing inside */) {
       pos = re.lastIndex = tagEnd + 1;
       continue;

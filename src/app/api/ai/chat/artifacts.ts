@@ -6,7 +6,7 @@
  */
 import type { Artifact, ArtifactRef, ConversationMessage, Dataset, WritingLanguage } from "@/lib/db";
 import { extractArtifactBlocks } from "@/lib/data/blocks";
-import { artifactDigest, MAX_ARTIFACTS, planFromRequest, runAnalysis, SPEC_ERROR_CODES, validateSpec } from "@/lib/data/analysis";
+import { artifactDigest, MAX_ARTIFACTS, planFromRequest, SPEC_ERROR_CODES, tryRunAnalysis, validateSpec } from "@/lib/data/analysis";
 import type { SpecErrorCode, ValidateResult } from "@/lib/data/analysis";
 import type { Translate } from "@/lib/data/labels";
 import { dataCard, sanitizeForPrompt } from "@/lib/data/summarize";
@@ -28,9 +28,11 @@ export interface SheetAttachment {
  * - `diagram_invalid`: a diagram block `sanitizeDiagram` refused (`detail` = its code, UI key `data.diagram.error.<detail>`);
  * - `prisma_numbers`: a PRISMA block with numbers the student never wrote in the conversation (`missing`);
  * - `latex_invalid`: an equation block outside the LaTeX subset (`command` = the culprit, `reason` = the parser's code);
+ * - `equation_numbers`: an equation block with numbers that are neither in the student's messages nor in a result
+ *   Thesisfic computed in this conversation (`missing`, D11: the copilot never invents a coefficient);
  * - inference codes from the tests (`too_few`, `constant`, `collinear`…), passed through from the analysis engine.
  */
-export type ArtifactErrorCode = SpecErrorCode | "no_sheet" | "diagram_invalid" | "prisma_numbers" | "latex_invalid" | InferenceErrorCode;
+export type ArtifactErrorCode = SpecErrorCode | "no_sheet" | "diagram_invalid" | "prisma_numbers" | "latex_invalid" | "equation_numbers" | InferenceErrorCode;
 
 /** Errors the inferential tests may raise (src/lib/data/inference: `InferenceError.code`). */
 type InferenceErrorCode = "too_few" | "too_few_groups" | "length_mismatch" | "constant" | "invalid_table" | "too_many_predictors" | "too_many_levels" | "collinear" | "perfect_fit";
@@ -46,7 +48,7 @@ export interface ArtifactError {
   /** diagram_invalid: the validation code (`data.diagram.error.<detail>`) and the field it concerns. */
   detail?: string;
   field?: string;
-  /** prisma_numbers: the counts (digits) that appear in none of the student's messages. */
+  /** prisma_numbers / equation_numbers: the numbers that appear in none of the student's messages (nor, for an equation, in a computed result). */
   missing?: string[];
   /** latex_invalid: the command or character Thesisfic does not draw ("\\href", "%", "&"…), and the parser's code. */
   command?: string;
@@ -73,6 +75,11 @@ export interface ArtifactRunOptions {
    * PRISMA block must appear in it (D26), else `prisma_numbers`.
    */
   studentTexts?: string[];
+  /**
+   * Artifacts computed earlier in this conversation: an equation block may use their numbers (a regression's
+   * coefficients, a test statistic), besides the student's (D11). Equations the model proposed never count.
+   */
+  priorArtifacts?: Artifact[];
 }
 
 export interface ArtifactRun {
@@ -247,22 +254,101 @@ export function computeArtifacts(specs: unknown[], sheets: SheetAttachment[], op
       errors.push(e);
       return;
     }
-    try {
-      artifacts.push(
-        runAnalysis(result.spec, sheet.dataset, { sourceId: sheet.sourceId, fileName: sheet.fileName, interactionId: opts.interactionId ?? "", lang: opts.lang, index, id: opts.newId(), now: opts.now }, opts.tr)
-      );
-    } catch (err) {
-      // The engine throws `Error(code)`; the inferential tests may throw an `InferenceError` with a `code`.
-      const e = err as { code?: unknown; message?: unknown } | null;
-      const code = typeof e?.code === "string" ? e.code : typeof e?.message === "string" ? e.message : "";
-      errors.push({ code: KNOWN_CODES.has(code) ? (code as ArtifactErrorCode) : "invalid_spec", file: sheet.fileName });
+    // The engine's own errors keep their column (the group with too few values, the unknown level…), so the card
+    // can name it; anything unexpected becomes `invalid_spec`.
+    const ran = tryRunAnalysis(result.spec, sheet.dataset, { sourceId: sheet.sourceId, fileName: sheet.fileName, interactionId: opts.interactionId ?? "", lang: opts.lang, index, id: opts.newId(), now: opts.now }, opts.tr);
+    if (ran.ok) artifacts.push(ran.artifact);
+    else {
+      const e: ArtifactError = { code: KNOWN_CODES.has(ran.code) ? (ran.code as ArtifactErrorCode) : "invalid_spec", available: ran.available, file: sheet.fileName };
+      if (ran.column !== undefined) e.column = ran.column;
+      errors.push(e);
     }
   });
+  checkEquationNumbers(artifacts, errors, opts);
   return { artifacts, errors };
 }
 
-/** Codes passed through to the error card: the engine's (`SPEC_ERROR_CODES`) and the inferential tests'. */
-const KNOWN_CODES = new Set<string>([...SPEC_ERROR_CODES, "too_few", "too_few_groups", "length_mismatch", "constant", "invalid_table", "too_many_predictors", "too_many_levels", "collinear", "perfect_fit"]);
+// ---------- Numbers of proposed equations (D11) ----------
+
+/**
+ * Numbers of an equation that need a source: decimals, and integers of 3 digits or more. Indices, exponents and
+ * small constants (x², i = 1, ½, 2π) do not. LaTeX's decimal comma `{,}` reads as a decimal point.
+ */
+export function equationNumbers(latex: string): string[] {
+  const out: string[] = [];
+  const re = /\d+(?:(?:\.|\{,\})\d+)?/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(latex))) {
+    const s = m[0].replace("{,}", ".");
+    if (s.indexOf(".") === -1 && s.replace(/^0+/, "").length < 3) continue;
+    if (out.indexOf(s) === -1) out.push(s);
+  }
+  return out;
+}
+
+/** Every number written in `text`, read with a decimal point, a decimal comma and as thousands groups. */
+function readNumbers(text: string, into: number[]) {
+  const re = /\d+(?:(?:\.|,|\{,\})\d+)*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const parts = m[0].replace(/\{,\}/g, ",").split(/[.,]/);
+    if (parts.length === 1) into.push(Number(parts[0]));
+    else {
+      into.push(Number(parts.slice(0, -1).join("") + "." + parts[parts.length - 1]));
+      into.push(Number(parts.join("")));
+    }
+  }
+}
+
+/** The numbers of an artifact Thesisfic computed: table cells, the test's statistics and line, a fitted equation. */
+function artifactNumbers(a: Artifact, into: number[]) {
+  into.push(a.n);
+  for (const row of a.table?.rows || []) {
+    for (const c of row) {
+      if (typeof c === "number") into.push(c);
+      else if (typeof c === "string") readNumbers(c, into);
+    }
+  }
+  if (a.test) {
+    into.push(a.test.statistic.value, a.test.p);
+    const df = a.test.statistic.df;
+    if (Array.isArray(df)) into.push(df[0], df[1]);
+    else if (typeof df === "number") into.push(df);
+    if (a.test.effect) into.push(a.test.effect.value);
+    if (a.test.ci) into.push(a.test.ci[0], a.test.ci[1]);
+    readNumbers(a.test.line || "", into);
+  }
+  if (a.equation && a.spec.op !== "equation") readNumbers(a.equation.latex, into);
+}
+
+/** A written number matches a known one when it is that number to the precision it is written with. */
+function sourced(written: string, known: number[]): boolean {
+  const e = Number(written);
+  const decimals = (written.split(".")[1] || "").length;
+  const unit = Math.pow(10, -decimals);
+  return known.some((v) => typeof v === "number" && isFinite(v) && Math.abs(Math.abs(v) - e) < unit - 1e-12);
+}
+
+/**
+ * Proposed equations whose numbers are neither the student's nor computed (in this answer or earlier in the
+ * conversation) are refused with `equation_numbers`: the copilot may write a model's form, never its coefficients.
+ */
+function checkEquationNumbers(artifacts: Artifact[], errors: ArtifactError[], opts: ArtifactRunOptions) {
+  const proposed = artifacts.filter((a) => a.kind === "equation" && a.spec.op === "equation" && a.equation && equationNumbers(a.equation.latex).length);
+  if (!proposed.length) return;
+  const known: number[] = [];
+  for (const t of opts.studentTexts || []) if (typeof t === "string") readNumbers(t, known);
+  for (const a of (opts.priorArtifacts || []).concat(artifacts)) if (a.spec?.op !== "equation") artifactNumbers(a, known);
+  for (const a of proposed) {
+    const missing = equationNumbers((a.equation as { latex: string }).latex).filter((x) => !sourced(x, known));
+    if (!missing.length) continue;
+    artifacts.splice(artifacts.indexOf(a), 1);
+    errors.push({ code: "equation_numbers", kind: "equation", missing: missing.slice(0, 30) });
+  }
+}
+
+/** Codes passed through to the error card: the engine's (`SPEC_ERROR_CODES`, the inferential tests' included). */
+const KNOWN_CODES = new Set<string>(SPEC_ERROR_CODES);
 
 /**
  * A finished model answer: its ```thesisfic-artifact blocks taken out (≤ 4 of ≤ 4 KB), validated and computed.

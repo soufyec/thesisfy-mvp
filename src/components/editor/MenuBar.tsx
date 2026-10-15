@@ -16,6 +16,7 @@ export type MenuAction =
   | "spellcheck" | "references" | "integrity" | "privacy" | "shortcuts" | "about" | "copilot" | "tour"
   | "reviewer" | "language" | "cite" | "process" | "sources" | "evidence"
   | "specialChars" | "bookmark" | "caseUpper" | "caseLower" | "caseTitle" | "caseCycle" | "indentFirst" | "indentHanging" | "indentNone" | "numberHeadings"
+  | "equation" | "diagram-gantt" | "diagram-prisma" | "diagram-conceptMap" | "brief"
   | `table:${string}`;
 
 export interface Item {
@@ -28,12 +29,28 @@ export interface Item {
   sep?: boolean;
   /** Colour chip drawn before the label (cell background menu). */
   swatch?: string;
+  /** One line under the label saying why the item is disabled ("Set by your teacher in the brief."). */
+  note?: string;
 }
 
 interface Props {
   editor: Editor;
   onAction: (a: MenuAction) => void;
-  state: { showProvenance: boolean; sidebar: string; spellcheck: boolean; zoom: number; focus: boolean; canEdit: boolean; numberHeadings?: boolean };
+  state: {
+    showProvenance: boolean;
+    sidebar: string;
+    spellcheck: boolean;
+    zoom: number;
+    focus: boolean;
+    canEdit: boolean;
+    numberHeadings?: boolean;
+    /** The paper has an assignment: "Assignment brief" opens its Brief panel. */
+    brief?: boolean;
+    /** Why the paper's due date (and word target, citation style) cannot be changed here, when it cannot. */
+    settingsLock?: string | null;
+    /** Who reviews the paper (`papers.teacher.<role>`), for "Share with advisor / teacher…". */
+    teacherRole?: "advisor" | "advisorDoctoral" | "teacher" | "none";
+  };
 }
 
 function ItemLabel({ item }: { item: Item }) {
@@ -41,7 +58,14 @@ function ItemLabel({ item }: { item: Item }) {
     <span className="flex items-center gap-2">
       {item.checked !== undefined && <Check className={`w-3.5 h-3.5 ${item.checked ? "" : "invisible"}`} />}
       {item.swatch !== undefined && <span className="inline-block w-3.5 h-3.5 rounded border border-gray-300 flex-shrink-0" style={item.swatch ? { background: item.swatch } : undefined} aria-hidden="true" />}
-      {item.label}
+      {item.note ? (
+        <span className="flex flex-col items-start min-w-0">
+          <span>{item.label}</span>
+          <span className="text-[11px] text-gray-500 whitespace-normal">{item.note}</span>
+        </span>
+      ) : (
+        item.label
+      )}
     </span>
   );
 }
@@ -113,7 +137,7 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
         { label: t("editor.menu.saveVersion"), action: "saveVersion", disabled: ro },
         { label: t("editor.menu.versionHistory"), action: "versions", shortcut: `${mod}⌥⇧H` },
         { sep: true, label: "" },
-        ...(ro ? [] : [{ label: t("editor.menu.shareAdvisor"), action: "share" as const }]),
+        ...(ro ? [] : [{ label: t(`editor.menu.share.${state.teacherRole || "advisor"}`), action: "share" as const }]),
         { label: t("editor.menu.submit"), action: "submit", disabled: ro },
         { sep: true, label: "" },
         {
@@ -131,7 +155,7 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
         { sep: true, label: "" },
         { label: t("editor.menu.pageSetup"), action: "pageSetup" },
         { label: t("editor.menu.documentDetails"), action: "wordCount" },
-        ...(ro ? [] : [{ label: t("editor.menu.deadline"), action: "deadline" as const }]),
+        ...(ro ? [] : [{ label: t("editor.menu.deadline"), action: "deadline" as const, disabled: !!state.settingsLock, note: state.settingsLock || undefined }]),
       ],
     },
     {
@@ -174,6 +198,17 @@ export function buildMenus(editor: Editor, state: Props["state"], t: Translate):
         { label: t("editor.menu.image"), action: "image", disabled: ro },
         { label: t("editor.menu.table"), action: "table", disabled: ro },
         { label: t("editor.menu.tableCaption"), action: "tableCaption", disabled: ro || !editor.isActive("table") },
+        { label: t("editor.menu.equation"), action: "equation", disabled: ro },
+        {
+          label: t("editor.menu.diagram"),
+          disabled: ro,
+          children: [
+            { label: t("editor.menu.diagramGantt"), action: "diagram-gantt", disabled: ro },
+            { label: t("editor.menu.diagramPrisma"), action: "diagram-prisma", disabled: ro },
+            { label: t("editor.menu.diagramConceptMap"), action: "diagram-conceptMap", disabled: ro },
+          ],
+        },
+        { sep: true, label: "" },
         { label: t("editor.menu.link"), action: "link", shortcut: `${mod}K`, disabled: ro },
         { label: t("editor.comment"), action: "comment", shortcut: `${mod}⌥M` },
         { sep: true, label: "" },
@@ -344,6 +379,16 @@ function OverflowRows({ items, onAction, depth = 0 }: { items: Item[]; onAction:
           );
         }
         const act = it.action;
+        // A disabled item with a reason stays readable: the label is dimmed, the reason is not.
+        if (it.disabled && it.note)
+          return (
+            <div key={i} role="menuitem" aria-disabled="true" tabIndex={-1} style={pad} className="ovf-row !cursor-default hover:!bg-transparent">
+              <span className="flex flex-col items-start min-w-0">
+                <span className="text-gray-400">{it.label}</span>
+                <span className="text-[11px] text-gray-500 whitespace-normal">{it.note}</span>
+              </span>
+            </div>
+          );
         return (
           <button key={i} type="button" role={it.checked !== undefined ? "menuitemcheckbox" : "menuitem"} aria-checked={it.checked !== undefined ? it.checked : undefined} disabled={it.disabled} tabIndex={-1} style={pad} className="ovf-row" onMouseDown={(e) => e.preventDefault()} onClick={() => act && onAction(act)}>
             <ItemLabel item={it} />
@@ -382,7 +427,11 @@ export function MenuOverflow({ editor, onAction, state }: Props) {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
-  const groups: Item[] = buildMenus(editor, state, t).map((m) => ({ label: m.title, children: m.items }));
+  // "⋯ › Assignment brief": first row when the paper has an assignment, then the File / Edit / … groups.
+  const groups: Item[] = [
+    ...(state.brief ? [{ label: t("editor.menu.assignmentBrief"), action: "brief" as const, checked: state.sidebar === "brief" }, { sep: true, label: "" }] : []),
+    ...buildMenus(editor, state, t).map((m) => ({ label: m.title, children: m.items })),
+  ];
   const act = (a: MenuAction) => {
     onAction(a);
     setOpen(false);

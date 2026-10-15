@@ -100,8 +100,14 @@ function relativeTime(iso: string, tag: string, t: Translate, fmt: Fmt) {
 
 function describe(e: TimelineEvent, t: Translate, fmt: Fmt) {
   const parts: string[] = [t(EVENT_LABELS[e.kind])];
-  if (e.words !== undefined && e.kind !== "ai_prompt") parts.push(wordsLabel(t, fmt, e.words));
+  // A figure or an equation adds no words: "0 words" would only be noise there.
+  const wordless = e.kind === "ai_insert" && !e.words && (e.artifactKind === "chart" || e.artifactKind === "diagram" || e.artifactKind === "equation");
+  if (e.words !== undefined && e.kind !== "ai_prompt" && !wordless) parts.push(wordsLabel(t, fmt, e.words));
   if (e.kind === "paste" && e.attribution) parts.push(t(ATTRIBUTION_LABELS[e.attribution]));
+  // A Research copilot result: what it was, and the figures or equations it added (they count no words).
+  if (e.kind === "ai_insert" && e.artifactKind) parts.push(t(`panelsReview.process.insertKind.${e.artifactKind}`));
+  if (e.kind === "ai_insert" && e.figures) parts.push(e.figures === 1 ? t("panelsReview.process.figures_one") : t("panelsReview.process.figures", { n: fmt.number(e.figures) }));
+  if (e.kind === "ai_insert" && e.equations) parts.push(e.equations === 1 ? t("panelsReview.process.equations_one") : t("panelsReview.process.equations", { n: fmt.number(e.equations) }));
   if ((e.kind === "ai_insert" || e.kind === "ai_prompt") && e.mode) parts.push(modeLabel(t, e.mode));
   if ((e.kind === "ai_insert" || e.kind === "ai_prompt") && (e.provider || e.model)) parts.push([e.provider ? providerLabel(t, e.provider) : null, e.model].filter(Boolean).join(" "));
   if (e.costUsd) parts.push(`${fmt.number(e.costUsd, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD`);
@@ -361,6 +367,30 @@ export default function ProcessPanel({ thesisId, isOwner, onClose, onOpenConsent
             <div key={String(l)} className="bg-gray-50 rounded-lg py-2"><div className="text-base font-semibold tabular-nums">{typeof v === "number" ? fmt.number(v) : v}</div><div className="text-[10px] text-gray-500">{l}</div></div>
           ))}
         </div>
+      )}
+      {/* Figures (by class) and equations of the Final submission: what the student made and what is AI-assisted. */}
+      {timeline && ((timeline.figures?.total || 0) > 0 || (timeline.equations?.total || 0) > 0) && (
+        <ul className="text-[12px] text-gray-600 space-y-0.5" aria-label={t("panelsReview.process.figuresTitle")}>
+          {(timeline.figures?.total || 0) > 0 && (
+            <li>
+              <span className="font-medium text-gray-700">{t("editor.details.figures")}</span>: {t("editor.details.ofWhichAi", { n: fmt.number(timeline.figures!.total), ai: fmt.number(timeline.figures!.ai) })}
+              {timeline.figuresByKind && (
+                <span className="text-gray-500">
+                  {" · "}
+                  {(Object.keys(timeline.figuresByKind) as (keyof NonNullable<typeof timeline.figuresByKind>)[])
+                    .filter((k) => timeline.figuresByKind![k].total > 0)
+                    .map((k) => `${t(`figures.kind.${k}`)} ${fmt.number(timeline.figuresByKind![k].total)}`)
+                    .join(" · ")}
+                </span>
+              )}
+            </li>
+          )}
+          {(timeline.equations?.total || 0) > 0 && (
+            <li>
+              <span className="font-medium text-gray-700">{t("editor.details.equations")}</span>: {t("editor.details.ofWhichAi", { n: fmt.number(timeline.equations!.total), ai: fmt.number(timeline.equations!.ai) })}
+            </li>
+          )}
+        </ul>
       )}
 
       {/* Timeline */}

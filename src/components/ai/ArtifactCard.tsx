@@ -101,7 +101,7 @@ export function EquationView({ latex, display, showSource }: { latex: string; di
       ) : (
         <p className="text-xs text-red-700">{t("assistant.artifactError.latex_invalid", { command: r.error.command || "…" })}</p>
       )}
-      {showSource && <pre className="mt-1 rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2 text-[11px] text-gray-700 whitespace-pre-wrap break-all font-mono">{latex}</pre>}
+      {showSource && <pre className="mt-1 rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2 text-xs text-gray-700 whitespace-pre-wrap break-all font-mono">{latex}</pre>}
     </div>
   );
 }
@@ -134,26 +134,28 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
   const wTr = useMemo(() => writingTr(a.lang), [a.lang]);
   const computed = isComputed(a);
   // At most the inserted size (640): on the full-page assistant a wider chart would only grow taller.
-  const figureWidth = Math.max(MIN_FIGURE_WIDTH, Math.min(width, MAX_FIGURE_WIDTH));
+  const measured = width > 0;
+  // In 40 px steps, so resizing the panel redraws the figure a few times rather than on every pixel.
+  const figureWidth = Math.max(MIN_FIGURE_WIDTH, Math.min(Math.floor(width / 40) * 40, MAX_FIGURE_WIDTH));
   const desc = computed ? artifactCaption(a, wTr) : a.title;
 
   const chartSvg = useMemo(() => {
-    if (a.kind !== "chart" || !a.chart || !width) return "";
+    if (a.kind !== "chart" || !a.chart || !measured) return "";
     try {
       return renderChartSvg(a.chart, { width: figureWidth, height: Math.round(figureWidth * 0.62), interactive: true, title: a.title, desc, lang: a.lang });
     } catch {
       return "";
     }
-  }, [a, width, figureWidth, desc]);
+  }, [a, measured, figureWidth, desc]);
 
   const diagramSvg = useMemo(() => {
-    if (a.kind !== "diagram" || !a.diagram || !width) return "";
+    if (a.kind !== "diagram" || !a.diagram || !measured) return "";
     try {
       return renderDiagramSvg(a.diagram, { width: figureWidth, lang: a.lang, tr: wTr, title: a.title, desc, formatNumber: (n) => formatNumber(n, a.lang, 0) }).svg;
     } catch {
       return "";
     }
-  }, [a, width, figureWidth, wTr, desc]);
+  }, [a, measured, figureWidth, wTr, desc]);
 
   const hasData = a.table && a.table.columns.length > 0 && a.table.rows.length > 0;
   const Icon = a.kind === "chart" && a.chart?.type === "pie" ? PieChart : KIND_ICON[a.kind] || Table2;
@@ -173,7 +175,7 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
           <Icon className="w-3.5 h-3.5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-medium uppercase tracking-[.05em] text-gray-500">{t(`assistant.artifact.kind.${a.kind}`)}</span>
+          <span className="block text-xs font-medium uppercase tracking-[.05em] text-gray-500">{t(`assistant.artifact.kind.${a.kind}`)}</span>
           <span className="block text-[13px] font-semibold leading-snug text-gray-900 break-words">{a.title}</span>
         </span>
       </figcaption>
@@ -191,13 +193,13 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
           )}
           {(a.kind === "equation" || (a.kind === "test" && a.equation)) && a.equation && (
             <div className={a.kind === "test" ? "mt-2 border-t border-gray-100 pt-1" : ""}>
-              {a.kind === "test" && <div className="text-[11px] font-medium text-gray-500">{t("assistant.artifact.fittedEquation")}</div>}
+              {a.kind === "test" && <div className="text-xs font-medium text-gray-500">{t("assistant.artifact.fittedEquation")}</div>}
               <EquationView latex={a.equation.latex} display={a.equation.display !== false} showSource={showSource} />
             </div>
           )}
         </div>
         {(notes.length > 0 || warnings.length > 0) && (
-          <ul className="mt-2 space-y-0.5 text-[11px] leading-snug">
+          <ul className="mt-2 space-y-0.5 text-xs leading-snug">
             {warnings.map((w, i) => (
               <li key={`w${i}`} className="flex gap-1.5 text-amber-700">
                 <CircleAlert className="w-3 h-3 mt-px flex-shrink-0" aria-hidden="true" />
@@ -209,7 +211,7 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
             ))}
           </ul>
         )}
-        <p className="mt-2 text-[11px] text-gray-500 break-words">
+        <p className="mt-2 text-xs text-gray-500 break-words">
           {computed
             ? sheet
               ? t("assistant.artifact.computedFrom", { file: a.fileName, sheet, n: fmt.number(a.n) })
@@ -251,11 +253,11 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
         )}
       </div>
       {insertable && wide && (
-        <p id={`wide-${a.id}`} className="px-3 pb-2.5 -mt-1 text-[11px] text-gray-500">
+        <p id={`wide-${a.id}`} className="px-3 pb-2.5 -mt-1 text-xs text-gray-500">
           {t("assistant.artifact.tooWide", { n: a.table.columns.length })}
         </p>
       )}
-      {insertHint && <p className="px-3 pb-2.5 -mt-1 text-[11px] text-gray-500">{insertHint}</p>}
+      {insertHint && <p className="px-3 pb-2.5 -mt-1 text-xs text-gray-500">{insertHint}</p>}
       {costCard && <div className="px-3 pb-3">{costCard}</div>}
     </figure>
   );
@@ -283,14 +285,14 @@ export function ArtifactErrorCard({ error }: { error: ArtifactErrorInfo }) {
   const t = useT();
   const available = artifactErrorAvailable(error, t);
   return (
-    <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900" role="note">
+    <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-900" role="note">
       <div className="flex gap-2">
         <CircleAlert className="w-4 h-4 mt-px flex-shrink-0 text-amber-600" aria-hidden="true" />
         <div className="min-w-0">
           <p className="font-medium">{t("assistant.artifactError.title")}</p>
           <p className="mt-0.5 break-words">{artifactErrorReason(error, t)}</p>
-          {available && <p className="mt-1 text-[11.5px] text-amber-800 break-words">{available}</p>}
-          {error.file && <p className="mt-1 text-[11px] text-amber-700 break-words">{t("assistant.artifactError.file", { file: error.file })}</p>}
+          {available && <p className="mt-1 text-xs text-amber-800 break-words">{available}</p>}
+          {error.file && <p className="mt-1 text-xs text-amber-700 break-words">{t("assistant.artifactError.file", { file: error.file })}</p>}
         </div>
       </div>
     </div>

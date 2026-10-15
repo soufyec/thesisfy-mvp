@@ -13,7 +13,8 @@ import { useT, useFormat } from "@/lib/i18n/client";
 import { modeLabel, noticeTypeLabel, plural, statusLabel, timeAgoLabel } from "@/lib/i18n/messages/admin";
 import ProcessPanel from "@/components/editor/process/ProcessPanel";
 import ThesisSourcesCard from "@/components/library/ThesisSourcesCard";
-import type { Reference } from "@/components/editor/types";
+import ArtifactRefChips from "@/components/ai/ArtifactRefChips";
+import type { ArtifactRef, Reference, SourceKind } from "@/components/editor/types";
 import type { PaperKind } from "@/lib/papers/kinds";
 import { teacherRoleKey } from "@/lib/papers/templates";
 import type { AssignmentView, PaperStatus } from "@/lib/papers/views";
@@ -24,7 +25,7 @@ interface Detail {
   flags: { id: string; type: string; severity: string; description: string; timestamp: string; resolved: boolean; resolvedBy?: string; resolutionNote?: string }[];
   versionCount: number;
   policy: { maxAiUsagePercent: number };
-  interactions: { id: string; provider: string; model: string; mode: string; source: string; promptPreview: string; responsePreview: string; insertedWords: number; blockedByPolicy: boolean; timestamp: string }[];
+  interactions: { id: string; provider: string; model: string; mode: string; source: string; promptPreview: string; responsePreview: string; insertedWords: number; blockedByPolicy: boolean; timestamp: string; artifacts?: ArtifactRef[]; attachmentIds?: string[] }[];
 }
 interface Session { id: string; startedAt: string; endedAt?: string; lastHeartbeatAt: string; wordsWritten: number; aiAssists: number; keystrokes: number; pasteEvents: number; tabSwitches: number; device: string; consentId?: string; events: { id: string; type: string; timestamp: string; data: Record<string, unknown> }[]; integrityFlags: { id: string }[] }
 
@@ -42,10 +43,15 @@ export default function AdminThesisDetail() {
   const [toast, setToast] = useState<{ message: string; kind?: "info" | "success" | "error" } | null>(null);
   const [missing, setMissing] = useState(false);
   const [fullBrief, setFullBrief] = useState(false);
+  /** Names of the files attached to copilot requests (attachment ids are the paper's source ids), as the student's analytics shows them. */
+  const [files, setFiles] = useState<Record<string, { name: string; kind: SourceKind }>>({});
 
   const load = useCallback(() => {
     api<Detail>(`/api/theses/${params.id}`).then(setD).catch(() => setMissing(true));
     api<{ sessions: Session[] }>(`/api/theses/${params.id}/sessions`).then((r) => setSessions(r.sessions)).catch(() => {});
+    api<{ sources: { id: string; title: string; kind: SourceKind; file?: { name?: string } }[] }>(`/api/theses/${params.id}/sources`)
+      .then((r) => setFiles(Object.fromEntries((r.sources || []).map((s) => [s.id, { name: s.file?.name || s.title, kind: s.kind }]))))
+      .catch(() => {});
   }, [params.id]);
   useEffect(() => {
     load();
@@ -147,6 +153,7 @@ export default function AdminThesisDetail() {
                 <div key={i.id} className="p-4 text-sm">
                   <div className="flex items-center gap-2 flex-wrap"><span className="font-medium">{modeLabel(t, i.mode)}</span><span className="text-xs text-gray-400">{i.provider} · {i.model}</span>{i.mode === "copilot" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px]">{t("admin.dashboard.copilotBadge")}</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">{t("admin.dashboard.blocked")}</span>}{i.insertedWords > 0 && <span className="badge bg-purple-50 text-purple-700 !text-[10px]">{t("admin.detail.wordsInserted", { n: i.insertedWords })}</span>}<span className="ml-auto text-[11px] text-gray-400">{ago(i.timestamp)}</span></div>
                   <div className="text-gray-700 mt-1"><span className="text-gray-400">{t("admin.detail.prompt")}</span> {i.promptPreview}</div>
+                  <ArtifactRefChips artifacts={i.artifacts} attachments={(i.attachmentIds || []).filter((id) => files[id]).map((id) => ({ id, name: files[id].name, kind: files[id].kind }))} />
                   {i.responsePreview && <div className="text-gray-500 text-xs mt-0.5 truncate"><span className="text-gray-400">{t("admin.detail.reply")}</span> {i.responsePreview}</div>}
                 </div>
               ))}

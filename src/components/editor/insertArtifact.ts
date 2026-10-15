@@ -119,8 +119,8 @@ export function insertArtifactCommand(editor: Editor, artifact: Artifact, meta: 
   const nodes: PMNode[] = [];
 
   if (plan.html) {
-    const holder = document.createElement("div");
-    holder.innerHTML = plan.html;
+    // Parsed in an inert document (never the live one), then read through the schema.
+    const holder = new DOMParser().parseFromString(plan.html, "text/html").body;
     PMDOMParser.fromSchema(schema).parse(holder).content.forEach((n) => nodes.push(n));
   }
   if (plan.figures) {

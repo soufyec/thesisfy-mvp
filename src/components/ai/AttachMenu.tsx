@@ -53,7 +53,7 @@ export default function AttachMenu({ disabledReason, canUpload, loading, paperIt
     );
   };
 
-  const heading = "px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-[.06em] text-gray-400";
+  const heading = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-[.06em] text-gray-500";
   const empty = !loading && !paperItems.length && !libraryItems.length;
 
   return (

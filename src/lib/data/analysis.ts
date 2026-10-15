@@ -35,6 +35,7 @@ import {
   pairedTTest,
   pearsonTest,
   spearmanTest,
+  stripLeadingZero,
   toTestResult,
   welchTTest,
   MAX_LEVELS as MAX_PREDICTOR_LEVELS,
@@ -1320,7 +1321,8 @@ function runScatter(ctx: Ctx, xi: number, yi: number, gi: number, withChart: boo
   else
     ctx.notes.unshift(
       tr("data.note.fit", {
-        r: formatNumber(reg.r, ctx.lang, 2),
+        // APA style, as in the test lines: r has no leading zero (r = .63).
+        r: stripLeadingZero(formatNumber(reg.r, ctx.lang, 2)),
         n,
         y: label(ctx, yi),
         x: label(ctx, xi),
@@ -1869,8 +1871,12 @@ const KW = {
   anova: /\b(anova|analysis of variance|analisis de (la )?varianza|analyse de (la )?variance|varianzanalyse\w*)\b/,
   kruskal: /\b(kruskal\w*|wallis)\b/,
   mannWhitney: /\b(mann ?whitney|wilcoxon rank sum|u test|test u|prueba u|u de mann|rangsumm\w*|non ?parametric\w*|no parametric\w*|non parametrique\w*|nicht ?parametrisch\w*|parameterfrei\w*)\b/,
+  /** The Mann–Whitney test by name (not "non-parametric"): two groups even when the column has more. */
+  mannWhitneyName: /\b(mann ?whitney|wilcoxon rank sum|u test|test u|prueba u|u de mann|rangsumm\w*)\b/,
   ttest: /\b(t ?tests?|t de student|student s t|welch\w*|prueba t|test t|zweistichproben\w*)\b/,
-  compare: /\b(compare|compares|comparing|comparison|comparar|compara|comparacion\w*|comparer|comparez|comparaison\w*|vergleich\w*|difference\w*|diferencias?|unterschied\w*|differ|differs)\b/,
+  compare: /\b(compare|compares|comparing|comparison|comparar|compara|comparacion\w*|comparer|comparez|comparaison\w*|vergleich\w*|difference\w*|diferencias?|unterschied\w*|differ|differs|different\w*|diferentes?|distint[oa]s?)\b/,
+  /** "between A and B": with two named groups, a comparison of those two. */
+  between: /\b(between|entre|zwischen)\b/,
   chisquare: /\b(chi ?2|chi ?squared?|chi cuadrad[oa]|khi ?2|khi deux|chi quadrat\w*|independence|independencia|independance|unabhangigkeit\w*)\b/,
   significance: /\b(signific\w*|signifikan\w*|p ?values?|valor(es)? p|valeurs? p|p ?wert\w*|tests?|tested|testing|pruebas?|contraste\w*|tester|testen)\b/,
   spearman: /\b(spearman\w*|rank correlation|correlacion de rangos|correlation de rangs|rangkorrelation\w*)\b/,
@@ -2032,6 +2038,50 @@ export function planFromRequest(text: string, dataset: Pick<Dataset, "sheets">, 
     const two = cols[g].distinct <= 2;
     return { ...base, op: two ? (rank ? "mannWhitney" : "ttest") : rank ? "kruskal" : "anova", value: name(m), by: name(g) };
   };
+  /**
+   * The groups the request names ("between North and South"): the first group column (named ones first) whose values
+   * appear in the text — matched on the value ignoring case and accents, as validateSpec matches `levels` — with
+   * exactly two of them named. Yes/No columns, dates and short numbers are never matched (too ambiguous in prose).
+   */
+  const namedPair = ((): { g: number; levels: [string, string] } | null => {
+    const ctx = bareCtx(sheet);
+    const pool = uniq(cat.concat(time, cls.categories.map((c) => cols.indexOf(c)), cls.time.map((c) => cols.indexOf(c)))).filter((ci) => ci !== -1);
+    for (const gi of pool) {
+      const c = cols[gi];
+      if (c.type === "boolean" || c.type === "date" || c.distinct > MAX_TEST_GROUPS * 4) continue;
+      const keys = Array.from(new Set(keysOf(ctx, gi).filter((k): k is string => k !== null)));
+      const forms = keys
+        .map((k) => ({ k, p: normKey(k) }))
+        .filter(({ p }) => p.length >= (c.type === "number" ? 3 : 2))
+        .sort((a, b) => b.p.length - a.p.length);
+      const claimed: [number, number][] = [];
+      const hits: { k: string; pos: number }[] = [];
+      for (const { k, p } of forms) {
+        let from = 0;
+        while (from < full.length) {
+          const pos = full.indexOf(" " + p + " ", from);
+          if (pos === -1) break;
+          const a = pos + 1;
+          const b = a + p.length;
+          if (claimed.every(([x, y]) => b <= x || a >= y)) {
+            claimed.push([a, b]);
+            if (!hits.some((h) => h.k === k)) hits.push({ k, pos });
+            break;
+          }
+          from = pos + 1;
+        }
+      }
+      if (hits.length === 2) {
+        hits.sort((x, y) => x.pos - y.pos);
+        return { g: gi, levels: [hits[0].k, hits[1].k] };
+      }
+      if (hits.length > 2) return null;
+    }
+    return null;
+  })();
+  /** A two-group test of the named pair (Welch's t, or Mann–Whitney when ranks are asked for). */
+  const pairSpec = (m: number, rank: boolean): AnalysisSpec | null =>
+    namedPair && m !== -1 && m !== namedPair.g ? { ...base, op: rank ? "mannWhitney" : "ttest", value: name(m), by: name(namedPair.g), levels: namedPair.levels } : null;
 
   const plan = (): boolean => {
     // Timelines: a sheet with task start and end dates.
@@ -2054,12 +2104,17 @@ export function planFromRequest(text: string, dataset: Pick<Dataset, "sheets">, 
     const rank = KW.mannWhitney.test(t) || KW.kruskal.test(t);
     if (rank || KW.anova.test(t) || KW.ttest.test(t)) {
       const m = bestMeasure();
+      // Two groups named in the request ("t-test … between North and South"): those two, whatever the column holds.
+      const pair = KW.anova.test(t) || KW.kruskal.test(t) ? null : pairSpec(m, KW.mannWhitney.test(t));
+      if (pair && push(pair)) return true;
       const g = groupCol();
       if (m !== -1 && g !== -1) {
         const spec = compareSpec(m, g, rank);
-        // An explicit test name wins over the number of groups when it can run (a t-test of the two largest groups).
+        // An explicit test name wins over the number of groups when it can run (a t-test or Mann–Whitney test of the
+        // two largest groups).
         if (KW.kruskal.test(t)) spec.op = "kruskal";
         else if (KW.anova.test(t)) spec.op = "anova";
+        else if (KW.mannWhitneyName.test(t)) spec.op = "mannWhitney";
         else if (KW.ttest.test(t) && !rank) spec.op = "ttest";
         if (push(spec)) return true;
       }
@@ -2080,6 +2135,13 @@ export function planFromRequest(text: string, dataset: Pick<Dataset, "sheets">, 
     if ((KW.correlation.test(t) || KW.spearman.test(t) || KW.pearson.test(t)) && (KW.significance.test(t) || KW.spearman.test(t) || KW.pearson.test(t))) {
       const pair = twoNums();
       if (pair.length === 2 && push({ ...base, op: "correlationTest", x: name(pair[0]), y: name(pair[1]), method: KW.spearman.test(t) ? "spearman" : "pearson" })) return true;
+    }
+    // "Compare rainfall between North and South", "rainfall in North vs South": the two groups named.
+    // Two years named in a trend request ("trend between 2010 and 2020") are a range, not two groups.
+    const pairIsRange = !!namedPair && cols[namedPair.g].role === "time" && KW.trend.test(t) && !KW.compare.test(t);
+    if (namedPair && !pairIsRange && (KW.compare.test(t) || KW.between.test(t) || KW.versus.test(t) || KW.significance.test(t))) {
+      const pair = pairSpec(bestMeasure(), false);
+      if (pair && push(pair)) return true;
     }
     // "Compare a and b" with two number columns and no group: the same rows measured twice (paired).
     if (KW.compare.test(t) && num.length >= 2 && !cat.length && !time.length) {
@@ -2105,7 +2167,13 @@ export function planFromRequest(text: string, dataset: Pick<Dataset, "sheets">, 
         if (pool.length >= 2) {
           const by = cat[0];
           const yFirst = KW.versus.test(t);
-          if (push({ ...base, op: "scatter", x: name(yFirst ? pool[1] : pool[0]), y: name(yFirst ? pool[0] : pool[1]), ...(by !== undefined ? { by: name(by) } : {}) })) return true;
+          const x = name(yFirst ? pool[1] : pool[0]);
+          const y = name(yFirst ? pool[0] : pool[1]);
+          if (push({ ...base, op: "scatter", x, y, ...(by !== undefined ? { by: name(by) } : {}) })) {
+            // "Correlation between a and b" names two number columns: the scatter, then the test of r (D24).
+            if (KW.correlation.test(t) && nums.length === 2) push({ ...base, op: "correlationTest", x, y, method: "pearson" });
+            return true;
+          }
         }
       }
       const corr = nums.length >= 2 ? nums : pool;

@@ -174,7 +174,7 @@ export interface AssistantPanelProps {
    * `onFinalSubmission: false` when the active tab is another one: artifacts inserted there get the notes wording.
    * `payer` is accepted for compatibility and never shown.
    */
-  insertContext?: { wordCount: number; aiWords: number; limitPct: number; payer?: string; onFinalSubmission?: boolean };
+  insertContext?: { wordCount: number; aiWords: number; limitPct: number; payer?: string; onFinalSubmission?: boolean; notesTitle?: string };
   /** Inserts a copilot artifact (table, chart, test, diagram, equation) after its cost card. Omitted = not insertable here. */
   onInsertArtifact?: InsertArtifactHandler;
   /**
@@ -789,7 +789,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
 
   const renderArtifacts = (m: ChatMsg) => {
     const insertable = artifactsInsertableFor(m);
-    const ctx = insertContext ? { wordCount: insertContext.wordCount, aiWords: insertContext.aiWords, limitPct: insertContext.limitPct, onFinalSubmission: insertContext.onFinalSubmission } : undefined;
+    const ctx = insertContext ? { wordCount: insertContext.wordCount, aiWords: insertContext.aiWords, limitPct: insertContext.limitPct, onFinalSubmission: insertContext.onFinalSubmission, notesTitle: insertContext.notesTitle } : undefined;
     const hint = !onInsertArtifact && isPage && thesisId ? t("assistant.artifact.insertInEditor") : undefined;
     let skeletons = 0;
     if (m.streaming) {
@@ -841,13 +841,13 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     // Notes live in the Research notes tab, which does not count toward the Final submission's AI share.
     const over = !!ctx && pending.action !== "notes" && nextExact > ctx.limitPct;
     return (
-      <div className="mt-2 border border-prov-ai-line bg-prov-ai-soft rounded-xl p-3" role="dialog" aria-label={t("assistant.cost.title")}>
+      <div className="mt-2 border border-prov-ai-line bg-prov-ai-soft rounded-xl p-3" role="group" aria-label={t("assistant.cost.title")}>
         <div className="flex items-center gap-2 mb-2">
           <span className="w-2 h-2 rounded-full bg-prov-ai" />
           <span className="text-xs font-semibold text-prov-ai-deep">{t("assistant.cost.title")}</span>
         </div>
         <div className="text-[12.5px] leading-normal text-gray-700">
-          {pending.action === "notes" ? rich(t("assistant.cost.notes", { noun, words })) : ctx ? rich(t("assistant.cost.withLimit", { noun, words, cur, next, limit: ctx.limitPct })) : rich(t("assistant.cost.noLimit", { noun, words }))}
+          {pending.action === "notes" ? rich(t("assistant.cost.notes", { noun, words, notes: ctx?.notesTitle || t("editor.notesTab") })) : ctx ? rich(t("assistant.cost.withLimit", { noun, words, cur, next, limit: ctx.limitPct })) : rich(t("assistant.cost.noLimit", { noun, words }))}
           {over && ctx && <div className="mt-1.5 text-prov-ai-deep font-medium">{t("assistant.cost.over", { next, limit: ctx.limitPct })}</div>}
         </div>
         <div className="flex gap-1.5 mt-2.5 text-xs">
@@ -936,7 +936,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       <div key={m.id} className="min-w-0">
         <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-400 flex-wrap">
           <span>
-            {m.label || t("glossary.assistant")} · {modeLabel(m.mode)}
+            {/* The server's label is an English literal for the demo assistant: shown in the interface language. */}
+            {m.demo || m.provider === "demo" ? t("assistant.chip.demo") : m.label || t("glossary.assistant")} · {modeLabel(m.mode)}
           </span>
           {!m.error && <span className="px-[7px] py-px rounded-full bg-brand-50 text-brand-700 font-semibold">{t("assistant.msg.logged")}</span>}
           {m.blocked && <span className="badge-danger !text-[10px] !py-0">{t("assistant.msg.blocked")}</span>}

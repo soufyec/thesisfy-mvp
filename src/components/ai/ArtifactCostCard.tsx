@@ -11,6 +11,8 @@ export interface ArtifactCostContext {
   limitPct: number;
   /** The active tab is the Final submission (default). Other tabs get the notes wording: they do not count toward the share. */
   onFinalSubmission?: boolean;
+  /** Title of the paper's existing Research notes tab, when there is one (else the tab is created as `editor.notesTab`). */
+  notesTitle?: string;
 }
 
 /** Renders `**bold**` segments of a translated string. */
@@ -31,7 +33,7 @@ export default function ArtifactCostCard({ artifact, action, ctx, onConfirm, onC
   const words = cls === "table" ? artifactInsertWords(artifact) : 0;
   const cells = cls === "table" ? artifactInsertCells(artifact) : 0;
   const wordsText = words === 1 ? t("assistant.cost.aiWords_one") : t("assistant.cost.aiWords", { n: fmt.number(words) });
-  const vars = { words: wordsText, cells: fmt.number(cells) };
+  const vars = { words: wordsText, cells: fmt.number(cells), notes: ctx?.notesTitle || t("editor.notesTab") };
   const notes = action === "notes";
   const otherTab = !notes && ctx?.onFinalSubmission === false;
   const cur = ctx && ctx.wordCount > 0 ? Math.round((ctx.aiWords / ctx.wordCount) * 100) : 0;
@@ -47,12 +49,12 @@ export default function ArtifactCostCard({ artifact, action, ctx, onConfirm, onC
 
   const confirm = notes ? t("assistant.action.notes") : action === "equation" ? t("assistant.artifact.insertEquation") : t("assistant.action.insert");
   return (
-    <div className="border border-prov-ai-line bg-prov-ai-soft rounded-xl p-3" role="dialog" aria-label={t(`assistant.artifact.cost.title.${cls}`)}>
+    <div className="border border-prov-ai-line bg-prov-ai-soft rounded-xl p-3" role="group" aria-labelledby={`cost-title-${artifact.id}-${action}`}>
       <div className="flex items-center gap-2 mb-2">
         <span className="w-2 h-2 rounded-full bg-prov-ai" aria-hidden="true" />
-        <span className="text-xs font-semibold text-prov-ai-deep">{t(`assistant.artifact.cost.title.${cls}`)}</span>
+        <span id={`cost-title-${artifact.id}-${action}`} className="text-xs font-semibold text-prov-ai-deep">{t(`assistant.artifact.cost.title.${cls}`)}</span>
       </div>
-      <div className="text-[12.5px] leading-normal text-gray-700">
+      <div className="text-[13px] leading-normal text-gray-700">
         {rich(body)}
         {over && ctx && <div className="mt-1.5 text-prov-ai-deep font-medium">{t("assistant.cost.over", { next, limit: ctx.limitPct })}</div>}
       </div>

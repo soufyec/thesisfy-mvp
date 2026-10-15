@@ -36,6 +36,7 @@ const commandList = () => supportedCommands().filter((c) => /^[A-Za-z]+$/.test(c
 export default function EquationDialog({ open, onClose, initial, onSubmit }: EquationDialogProps) {
   const t = useT();
   const editing = !!initial;
+  const aiSource = initial?.origin === "ai";
   const [latex, setLatex] = useState(initial?.latex ?? "");
   const [display, setDisplay] = useState(initial?.display ?? true);
   const [numbered, setNumbered] = useState(!!initial?.numbered);
@@ -121,6 +122,11 @@ export default function EquationDialog({ open, onClose, initial, onSubmit }: Equ
             maxLength={MAX_LATEX_LENGTH}
             value={latex}
             onChange={(e) => setLatex(e.target.value)}
+            // An AI-assisted equation can be edited (it stays AI-assisted), but its LaTeX cannot be copied out to come
+            // back as Written through Insert › Equation (D22), as on the copilot card.
+            onCopy={aiSource ? (e) => e.preventDefault() : undefined}
+            onCut={aiSource ? (e) => e.preventDefault() : undefined}
+            onDragStart={aiSource ? (e) => e.preventDefault() : undefined}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { Modal } from "@/components/ui";
 import { useFormat, useT } from "@/lib/i18n/client";
@@ -193,14 +193,18 @@ export default function DiagramDialog({ open, onClose, kind, lang, initial, onSu
     ro.observe(el);
     return () => ro.disconnect();
   }, [open]);
+  // The preview redraws from a deferred copy of the form (a large concept map takes tens of ms to lay out), so typing
+  // never waits for it; the caption is not part of the drawing (it is shown under the figure, not in the preview).
+  const deferredCheck = useDeferredValue(check);
   const preview = useMemo(() => {
-    if (!check.ok) return null;
+    if (!deferredCheck.ok) return null;
     try {
-      return renderDiagramSvg(check.spec, { width: previewWidth, lang, tr: wTr, title: translate(lang, `figures.kind.${kind}`), desc: caption.trim() || translate(lang, `figures.kind.${kind}`) });
+      const name = translate(lang, `figures.kind.${kind}`);
+      return renderDiagramSvg(deferredCheck.spec, { width: previewWidth, lang, tr: wTr, title: name, desc: name });
     } catch {
       return null;
     }
-  }, [check, lang, wTr, kind, caption, previewWidth]);
+  }, [deferredCheck, lang, wTr, kind, previewWidth]);
 
   // Where the error is: "tasks[2].start" → the form row and field.
   const errorAt = useMemo(() => {

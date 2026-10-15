@@ -439,7 +439,7 @@ function SourcesInner() {
                 return (
                   <button key={f} type="button" aria-pressed={on} onClick={() => setSourceFilter(f)} className={chipClass(on)}>
                     {f === "all" ? t("library.ui.filter.all") : f === "primary" ? t("glossary.primaryData") : t("library.ui.filter.literature")}
-                    <span className={`tabular-nums ${on ? "text-white/80" : "text-gray-400"}`}>{n}</span>
+                    <span className={`tabular-nums ${on ? "text-white/80" : "text-gray-500"}`}>{n}</span>
                   </button>
                 );
               })}

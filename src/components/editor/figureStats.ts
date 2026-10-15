@@ -32,7 +32,8 @@ export function docFigureStats(doc: PMNode): DocFigureStats {
     const name = node.type.name;
     if (name === "chart") {
       const kind: FigureKind = KINDS.indexOf(node.attrs.figure) !== -1 ? node.attrs.figure : "chart";
-      const ai = node.attrs.origin !== "human";
+      // A data chart is always AI-assisted (countable.ts): only diagrams can be Written.
+      const ai = kind === "chart" || node.attrs.origin !== "human";
       out.figures.total++;
       out.figures.byKind[kind].total++;
       if (ai) {

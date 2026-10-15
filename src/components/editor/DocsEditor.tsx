@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BubbleMenu, EditorContent, useEditor, type Editor } from "@tiptap/react";
-import { EditorState } from "@tiptap/pm/state";
+import { EditorState, NodeSelection } from "@tiptap/pm/state";
+import { DOMSerializer } from "@tiptap/pm/model";
 import { CellSelection } from "@tiptap/pm/tables";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -19,20 +20,26 @@ import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
-import Placeholder from "@tiptap/extension-placeholder";
 import CharacterCount from "@tiptap/extension-character-count";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Typography from "@tiptap/extension-typography";
-import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, FileText, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
 import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, ProvenanceStats, Search } from "./extensions";
 import { Pagination } from "./pagination";
 import { TableExtras } from "./tableExtras";
 import { TextTools } from "./textTools";
 import { anchorHref, Bookmark, findAnchorPos, HeadingAnchors, listAnchors, type AnchorItem } from "./anchors";
 import { Captions, Footnote, FootnoteRef, Footnotes, Toc } from "./thesisBlocks";
+import { ChartNode, insertDiagram } from "./chart";
+import { cleanLatex, equationKey, insertEquation, MathBlock, MathInline, type EquationValue } from "./math";
+import { insertArtifactCommand } from "./insertArtifact";
+import { htmlFigureStats } from "./figureStats";
+import { hintPlaceholder, TemplateHints } from "./templateHints";
+import EquationDialog from "./forms/EquationDialog";
+import DiagramDialog from "./forms/DiagramDialog";
 import { TableBubble, TableContextMenu, runTableAction } from "./TableMenu";
 import { SpecialCharsDialog } from "./SpecialCharsDialog";
 import { FirstPageHeader, PrintHeaderFooter } from "./PageHeaderFooter";
@@ -42,11 +49,11 @@ import { MenuAction, MenuOverflow } from "./MenuBar";
 import { TypographyRow, TypographyToggle } from "./BubbleTypography";
 import SessionBar from "./SessionBar";
 import ProvenanceGutter from "./ProvenanceGutter";
-import { CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
+import { BriefPanel, CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
 import { TabOutline } from "./TabOutline";
-import { ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, PasteMatchInfo } from "./Dialogs";
-import { CommentItem, FlagItem, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, richText, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
-import AssistantPanel, { InsertMeta } from "../ai/AssistantPanel";
+import { AiPasteDialog, ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, SubmitDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, type AiPasteCost, type PasteMatchInfo, type TeacherRole } from "./Dialogs";
+import { CommentItem, FlagItem, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
+import AssistantPanel, { type InsertArtifactHandler, type InsertMeta } from "../ai/AssistantPanel";
 import { LanguageReview } from "./language/languageReview";
 import { LanguageReviewPanel } from "./language/LanguageReviewPanel";
 import ReviewerPanel from "./reviewer/ReviewerPanel";
@@ -59,16 +66,20 @@ import { newReferenceId, normDoi, referenceForSource } from "./sources/match";
 import { citationCounts } from "@/lib/sources/cited";
 import EvidencePanel from "./evidence/EvidencePanel";
 import ConsentModal from "../ConsentModal";
-import { DeadlineDialog, IntegrityPill, Modal, Toast } from "../ui";
+import { DeadlineDialog, IntegrityPill, KindIcon, Modal, Toast } from "../ui";
 import StudentOnboarding, { type OnboardingPhase } from "../onboarding/StudentOnboarding";
 import { readOnboardingDone } from "@/lib/onboarding";
 import { useUser, type Consent } from "../useUser";
 import { api, ApiError, countWordsInText } from "@/lib/client";
-import { useFormat, useT } from "@/lib/i18n/client";
+import { useFormat, useLocale, useT } from "@/lib/i18n/client";
 import { LOCALES } from "@/lib/i18n";
 import { translate, type Translate } from "@/lib/i18n/dictionary";
 import { acquireSessionMonitor, releaseSessionMonitor, SessionMonitor, type MonitorFlag, type MonitorHandlers, type MonitorMetrics } from "@/lib/monitor";
 import { downloadBlob, htmlToDocx, htmlToMarkdown, htmlToText, safeFileName, standaloneHtml } from "@/lib/export";
+import { computeProvenance, countWords, measureContent } from "@/lib/countable";
+import { isHandedIn, isLockedStatus } from "@/lib/paperSections";
+import { paperKind } from "@/lib/papers/kinds";
+import { teacherRoleKey } from "@/lib/papers/templates";
 
 interface LoadResponse {
   thesis: ThesisDoc;
@@ -85,6 +96,8 @@ const GUTTER_KEY = "provenance_gutter";
 const isNotesTitle = (title: string) => LOCALES.some((l) => translate(l, "editor.notesTab").toLowerCase() === title.trim().toLowerCase());
 
 const PASTE_DIALOG_MIN_WORDS = 30;
+/** Selected nodes that bring their own toolbar: the text bubble menu stays closed on them. */
+const NODE_TOOLBARS = ["image", "chart", "math", "mathBlock"];
 const SUBMISSION = "submission";
 /** The three SidebarKinds of the Sources & references panel (one per tab). */
 const isLibraryKind = (k: SidebarKind) => k === "references" || k === "sources" || k === "library";
@@ -100,8 +113,25 @@ const PANEL_TITLES: Partial<Record<SidebarKind, string>> = {
   reviewer: "panelsReview.reviewer.title",
   language: "panelsReview.language.title",
   process: "panelsResearch.process.title",
+  brief: "glossary.brief",
 };
 const norm = (t: string) => t.replace(/\s+/g, " ").trim();
+/** Clipboard HTML that holds a figure of the editor (chart or diagram): it wins over image files on the clipboard. */
+const FIGURE_HTML_RE = /<figure\b[^>]*\bdata-chart\b/i;
+/** Cheap test before parsing: HTML that may carry AI-assisted text, figures or equations of Thesisfic. */
+const MAY_CARRY_AI_RE = /data-provenance|data-chart|data-math/i;
+/** A drop's or paste's HTML read as the server reads saved HTML: AI words, all words, AI figures and AI equations. */
+function aiPasteCostOf(html: string): (AiPasteCost & { provider?: string; interactionId?: string }) | null {
+  if (!html || !MAY_CARRY_AI_RE.test(html)) return null;
+  const stats = htmlFigureStats(html);
+  const cost = { aiWords: computeProvenance(html).ai, totalWords: countWords(html), figures: stats.figures.ai, equations: stats.equations.ai };
+  if (!cost.aiWords && !cost.figures && !cost.equations) return null;
+  // The first AI mark or figure names the provider and the AI log entry of the ai_insert event.
+  const attr = (name: string) => html.match(new RegExp(`\\b${name}="([^"<>]{1,120})"`))?.[1];
+  return { ...cost, provider: attr("data-provider"), interactionId: attr("data-interaction") };
+}
+/** What a cut or a paste adds in AI content, as a comparable key ("" = nothing AI). */
+const aiCostKey = (c: AiPasteCost | null) => (c ? `${c.aiWords}/${c.totalWords}/${c.figures}/${c.equations}` : "");
 
 export default function DocsEditor({ thesisId, reviewMode = false }: { thesisId: string; reviewMode?: boolean }) {
   const [data, setData] = useState<LoadResponse | null>(null);
@@ -124,7 +154,7 @@ export default function DocsEditor({ thesisId, reviewMode = false }: { thesisId:
         </div>
       </div>
     );
-  if (!data || loading || !user) return <div className="min-h-screen bg-[#f1f3f4] flex items-center justify-center text-gray-400 text-sm">{t("editor.loadingDocument")}</div>;
+  if (!data || loading || !user) return <div className="min-h-screen bg-workspace flex items-center justify-center text-gray-400 text-sm">{t("editor.loadingDocument")}</div>;
   return <DocsEditorInner initial={data} thesisId={thesisId} userId={user.id} userRole={user.role} reviewMode={reviewMode} onboarded={!!user.onboardedAt} />;
 }
 
@@ -136,6 +166,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   tRef.current = tLive;
   const t = useCallback<Translate>((key, vars) => tRef.current(key, vars), []);
   const fmt = useFormat();
+  const { locale } = useLocale();
   const finalSubmission = t("glossary.finalSubmission");
   const aiAssisted = t("glossary.aiAssisted");
   const { me, refresh: refreshMe } = useUser();
@@ -144,7 +175,18 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   const [flags, setFlags] = useState<FlagItem[]>(initial.flags);
   const [versions, setVersions] = useState<VersionItem[]>([]);
   const isOwner = thesis.studentId === userId;
-  const canEdit = isOwner && !["approved", "submitted"].includes(thesis.status);
+  /** Set when a save was refused because the paper became approved or submitted meanwhile (409 locked). */
+  const [lockedLocal, setLockedLocal] = useState(false);
+  const canEdit = isOwner && !isLockedStatus(thesis.status) && !lockedLocal;
+  const paper = { kind: paperKind(thesis), professorId: thesis.professorId };
+  /** Advisor (thesis kinds, with the fr/es doctoral variant) / Teacher / none: `papers.teacher.<role>`. */
+  const teacherRole = teacherRoleKey(paper).split(".").pop() as TeacherRole;
+  /**
+   * Why the due date, word target and citation style cannot change here: a paper of an assignment takes them from
+   * the brief, and a handed-in or locked paper keeps them (the server ignores new values then).
+   */
+  const handedIn = isHandedIn({ status: thesis.status, submittedAt: thesis.submittedAt } as Parameters<typeof isHandedIn>[0]);
+  const settingsLock = !isOwner ? null : thesis.assignmentId ? t("editor.settings.setByTeacher") : handedIn || isLockedStatus(thesis.status) ? t("editor.settings.fixedHandedIn") : null;
 
   const [saveState, setSaveState] = useState<"saved" | "saving" | "unsaved" | "error">("saved");
   const [lastSaved, setLastSaved] = useState<string>(thesis.updatedAt);
@@ -168,7 +210,6 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   }, [reviewMode]);
   const [breakdown, setBreakdown] = useState<IntegrityBreakdown | null>(initial.integrityBreakdown ?? null);
   const [interactions, setInteractions] = useState<InteractionLite[]>(initial.interactions ?? []);
-  const [payer, setPayer] = useState<string | undefined>(undefined);
   const sheetRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(100);
   /** Pages measured by the pagination plugin (desktop); the word estimate is the fallback on phones. */
@@ -226,7 +267,19 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   /** Position of the image being replaced while the image dialog is open (null = inserting a new one). */
   const [imageReplacePos, setImageReplacePos] = useState<number | null>(null);
   const [linkInitial, setLinkInitial] = useState("");
-  const [paste, setPaste] = useState<{ words: number; text: string; html: string; matched: PasteMatchInfo | null; fingerprint: string | null } | null>(null);
+  /**
+   * A long paste waiting for the student's declaration. With `range`, the text is already in the page (the unmarked
+   * rest of a confirmed AI paste): the declaration marks that range instead of inserting.
+   */
+  const [paste, setPaste] = useState<{ words: number; text: string; html: string; matched: PasteMatchInfo | null; fingerprint: string | null; range?: { from: number; to: number } } | null>(null);
+  /** A paste or drop into the Final submission that carries AI content: its cost card is open, nothing is pasted yet. */
+  const [aiPaste, setAiPaste] = useState<{ html: string; text: string; cost: NonNullable<ReturnType<typeof aiPasteCostOf>>; pos: number | null } | null>(null);
+  /** True while the confirmed AI paste runs through ProseMirror's own paste path (our handler lets it through). */
+  const pasteBypass = useRef(false);
+  /** Insert › Equation / Insert › Diagram › … forms (D22: what the student makes is Written). */
+  const [insertForm, setInsertForm] = useState<null | { kind: "equation" } | { kind: "diagram"; figure: "gantt" | "prisma" | "conceptMap" }>(null);
+  /** The paper became approved or submitted while open (409 locked): said once, then the editor is read-only. */
+  const lockedNotified = useRef(false);
   const [preview, setPreview] = useState<{ id: string; html: string; label: string } | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStats, setSessionStats] = useState<Record<string, number> | null>(null);
@@ -253,6 +306,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   const dirtyKeys = useRef<Set<string>>(new Set());
   const tabsMetaDirty = useRef(false);
   const internalCopy = useRef<string>("");
+  /**
+   * Where the last copy or cut inside the editor came from: a cut and paste inside the Final submission is a move, once
+   * (`cut` is cleared by that paste), and only for a paste carrying the same AI content as the cut (`cost`).
+   */
+  const internalCopyFrom = useRef<{ tab: string; cut: boolean; cost: string }>({ tab: "", cut: false, cost: "" });
 
   // ---------- citations ----------
   const [citeMode, setCiteMode] = useState<null | "selection" | "cursor" | "library">(null);
@@ -397,14 +455,6 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     return () => clearTimeout(id);
   }, [reviewMode, isOwner, userRole, onboarded]);
 
-  // Who pays for institution-provided models, for the cost card shown before any AI insertion.
-  useEffect(() => {
-    if (!isOwner) return;
-    api<{ allowance?: { institutionPays?: boolean } | null }>("/api/ai/providers")
-      .then((d) => setPayer(d.allowance?.institutionPays ? "institution" : undefined))
-      .catch(() => {});
-  }, [isOwner]);
-
   // The pill and the ledger always read the same numbers: every server answer that carries metrics goes through here.
   const applyMetrics = useCallback((m: Partial<MonitorMetrics> | null | undefined) => {
     if (!m) return;
@@ -456,7 +506,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       TableRow,
       TableHeader,
       TableCell,
-      Placeholder.configure({ placeholder: t("editor.placeholder") }),
+      // Template hints and the empty-document placeholder, in the interface language (read from tRef when drawn).
+      TemplateHints,
+      hintPlaceholder(() => tRef.current),
       CharacterCount,
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -482,6 +534,10 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       Footnotes,
       Captions,
       Toc.configure({ labels: { title: t("editor.doc.toc"), empty: t("editor.doc.noHeadings") } }),
+      // Figures (copilot charts and diagrams, the student's own diagrams) and equations (docs/papers.md §9).
+      ChartNode.configure({ onLimit: (max: number) => notify(t("figures.chart.limit", { max }), "info") }),
+      MathInline,
+      MathBlock,
     ],
     content: initial.thesis.content,
     editorProps: {
@@ -515,36 +571,79 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         copy: (view) => {
           const { from, to } = view.state.selection;
           internalCopy.current = norm(view.state.doc.textBetween(from, to, " "));
+          internalCopyFrom.current = { tab: activeTabRef.current, cut: false, cost: "" };
           return false;
         },
         cut: (view) => {
           const { from, to } = view.state.selection;
           internalCopy.current = norm(view.state.doc.textBetween(from, to, " "));
+          // The AI content of what is cut, counted as the paste will count the clipboard's HTML.
+          let cost = "";
+          try {
+            const holder = document.createElement("div");
+            holder.appendChild(DOMSerializer.fromSchema(view.state.schema).serializeFragment(view.state.selection.content().content));
+            cost = aiCostKey(aiPasteCostOf(holder.innerHTML));
+          } catch {
+            cost = "?";
+          }
+          internalCopyFrom.current = { tab: activeTabRef.current, cut: true, cost };
           return false;
         },
       },
-      handleDrop: (view, event) => {
-        // Image files dropped from the desktop: inserted where they land. Moving a node inside the page has no files and is left to ProseMirror.
-        const files = imageFilesOf((event as DragEvent).dataTransfer?.files);
+      handleDrop: (view, event, _slice, moved) => {
+        // Moving something inside the page is left to ProseMirror (marks and figure origins travel with it).
+        if (moved) return false;
+        const dt = (event as DragEvent).dataTransfer;
+        const html = dt?.getData("text/html") || "";
+        const at = view.posAtCoords({ left: (event as DragEvent).clientX, top: (event as DragEvent).clientY });
+        // AI content dropped into the Final submission (from another window of this paper): its cost card first.
+        const cost = canEdit && activeTabRef.current === SUBMISSION ? aiPasteCostOf(html) : null;
+        if (cost) {
+          event.preventDefault();
+          setAiPaste({ html, text: dt?.getData("text/plain") || "", cost, pos: at?.pos ?? null });
+          return true;
+        }
+        // A figure of the editor (chart or diagram) comes with a picture of itself: the figure wins, never the picture.
+        if (FIGURE_HTML_RE.test(html)) return false;
+        // Image files dropped from the desktop: inserted where they land.
+        const files = imageFilesOf(dt?.files);
         if (!files.length) return false;
         event.preventDefault();
         if (!canEdit) return true;
-        const at = view.posAtCoords({ left: (event as DragEvent).clientX, top: (event as DragEvent).clientY });
         if (editorRef.current) insertImageFiles(editorRef.current, files, { pos: at?.pos, onError: imageFileError });
         return true;
       },
       handlePaste: (view, event) => {
+        // The confirmed paste of AI content (after its cost card) goes through ProseMirror's own paste path.
+        if (pasteBypass.current) return false;
         if (!canEdit) return false;
+        const text = event.clipboardData?.getData("text/plain") || "";
+        const html = event.clipboardData?.getData("text/html") || "";
+        // AI-assisted text, figures or equations pasted into the Final submission (e.g. from Research notes): the
+        // cost card comes first, with the same numbers as the assistant's, and nothing is pasted until it is confirmed
+        // (principle 5). A cut and paste inside the Final submission is a move and needs no card.
+        if (activeTabRef.current === SUBMISSION) {
+          const pasteCost = aiPasteCostOf(html);
+          const cut = internalCopyFrom.current;
+          const move = cut.cut && cut.tab === SUBMISSION && norm(text) === internalCopy.current && aiCostKey(pasteCost) === cut.cost;
+          // A cut moves once: pasting it a second time adds the content again, so it gets its card like any copy.
+          if (move) cut.cut = false;
+          const cost = move ? null : pasteCost;
+          if (cost) {
+            event.preventDefault();
+            setAiPaste({ html, text, cost, pos: null });
+            return true;
+          }
+        }
         // Pasted pictures (screenshots, copied images): no provenance dialog and no words, the image is simply inserted.
-        // Word and Excel also put a picture of the selection next to the text: with text on the clipboard, the text path wins.
-        const pastedImages = event.clipboardData?.getData("text/plain").trim() ? [] : imageFilesOf(event.clipboardData?.files);
+        // Word and Excel also put a picture of the selection next to the text: with text on the clipboard, the text path
+        // wins, and a figure of the editor (its HTML holds `figure[data-chart]`) always wins over its own picture.
+        const pastedImages = text.trim() || FIGURE_HTML_RE.test(html) ? [] : imageFilesOf(event.clipboardData?.files);
         if (pastedImages.length) {
           event.preventDefault();
           if (editorRef.current) insertImageFiles(editorRef.current, pastedImages, { onError: imageFileError });
           return true;
         }
-        const text = event.clipboardData?.getData("text/plain") || "";
-        const html = event.clipboardData?.getData("text/html") || "";
         const words = countWordsInText(text);
         if (!words) return false;
         // Moving your own text between tabs keeps its marks (AI, pasted, citations) and needs no attribution.
@@ -628,25 +727,23 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     editor?.setEditable(canEdit, false);
   }, [editor, canEdit]);
 
+  // Template hints and the empty-page placeholder are drawn in the interface language: redraw them when it changes.
+  useEffect(() => {
+    const ed = editorRef.current;
+    if (ed && !ed.isDestroyed) ed.view.dispatch(ed.state.tr.setMeta("addToHistory", false));
+  }, [locale]);
+
   // ---------- provenance (live, client-side) ----------
   const provTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleProvenance = (ed: Editor) => {
     if (provTimer.current) clearTimeout(provTimer.current);
     provTimer.current = setTimeout(() => {
-      let ai = 0, paste = 0, declaration = 0;
-      ed.state.doc.descendants((node) => {
-        if (!node.isText || !node.text) return;
-        const m = node.marks.find((x) => x.type.name === "provenance");
-        if (!m) return;
-        const w = countWordsInText(node.text);
-        // The AI-use declaration appendix is a record, not thesis text: excluded from every total (as on the server).
-        if (m.attrs.declaration) declaration += w;
-        else if (m.attrs.source === "ai") ai += w;
-        else paste += w;
-      });
-      // Same tokenisation as the server (whitespace-separated runs of text, blocks separated), so the bar never flickers between two counts.
-      const total = Math.max(0, countWordsInText(ed.getText({ blockSeparator: " " })) - declaration);
-      setThesis((t) => ({ ...t, wordCount: total, provenance: { human: Math.max(0, total - ai - paste), ai, paste } }));
+      if (ed.isDestroyed) return;
+      // The HTML the server stores, counted with the server's own functions (countable.ts): the live words, AI and
+      // pasted shares, figures and equations equal the saved ones by construction (a word split by bold inside an AI
+      // mark counts once, inline equations add no word, the AI-use declaration is left out), so the bar never flickers.
+      const m = measureContent(ed.getHTML());
+      setThesis((t) => ({ ...t, wordCount: m.wordCount, provenance: m.provenance, figures: { total: m.figures.total, ai: m.figures.ai }, equations: m.equations }));
     }, 400);
   };
 
@@ -693,16 +790,19 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         const tabId = activeTabRef.current;
         recordSnapshot(thesisId, { tabId, html: contentsRef.current[tabId] || "", wordCount: countWordsInText(ed.getText()), sessionId: sessionId || undefined });
       } catch (e) {
+        // Approved or submitted meanwhile (by the teacher, in another window): the paper is frozen, read-only from now on.
+        if (e instanceof ApiError && e.code === "locked") return onLockedRef.current();
         dirty.forEach((k) => dirtyKeys.current.add(k));
         if (metaDirty) tabsMetaDirty.current = true;
         setSaveState("error");
-        notify(t("editor.toast.saveFailed", { message: (e as Error).message }), "error");
+        notify(e instanceof ApiError && e.status === 413 ? t("editor.toast.tooLarge") : t("editor.toast.saveFailed", { message: (e as Error).message }), "error");
       }
     },
     [canEdit, thesisId, sessionId, notify, applyMetrics, noticeLabel, t]
   );
   const saveNowRef = useRef(saveNow);
   saveNowRef.current = saveNow;
+  const onLockedRef = useRef<() => void>(() => {});
 
   // ---------- tab operations ----------
   const loadIntoEditor = useCallback((html: string) => {
@@ -716,6 +816,40 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     setTabWords(lastCounts.current.words);
     setSelectionText("");
   }, []);
+
+  /**
+   * 409 locked: the paper was approved or submitted while open. The editor turns read-only, reloads what the server
+   * holds (changes since the last save cannot be kept) and says so once.
+   */
+  const handleLocked = useCallback(async () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    dirtyRef.current = false;
+    dirtyKeys.current.clear();
+    tabsMetaDirty.current = false;
+    setLockedLocal(true);
+    setSaveState("saved");
+    if (!lockedNotified.current) {
+      lockedNotified.current = true;
+      notify(t("editor.toast.locked"), "error");
+    }
+    try {
+      const d = await api<LoadResponse>(`/api/theses/${thesisId}`);
+      const serverTabs = d.thesis.tabs || [];
+      contentsRef.current = { [SUBMISSION]: d.thesis.content, ...Object.fromEntries(serverTabs.map((tb) => [tb.id, tb.content])) };
+      tabsRef.current = serverTabs;
+      setTabs(serverTabs);
+      const active = activeTabRef.current in contentsRef.current ? activeTabRef.current : SUBMISSION;
+      activeTabRef.current = active;
+      setActiveTab(active);
+      loadIntoEditor(contentsRef.current[active] || "<p></p>");
+      setThesis((x) => ({ ...x, ...d.thesis, references: d.thesis.references || x.references }));
+      referencesRef.current = d.thesis.references || referencesRef.current;
+      applyMetrics({ integrityScore: d.thesis.integrityScore, aiUsagePercent: d.thesis.aiUsagePercent, integrityBreakdown: d.integrityBreakdown });
+    } catch {
+      /* stays read-only with the text on screen */
+    }
+  }, [thesisId, notify, t, loadIntoEditor, applyMetrics]);
+  onLockedRef.current = handleLocked;
 
   const switchTab = useCallback(
     (id: string) => {
@@ -1064,6 +1198,172 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     setTimeout(() => insertWithProvenance(html, meta, false, { atEnd: true, message }), 30);
   };
 
+  /**
+   * A Research copilot result (table, chart, test, diagram, equation) after its cost card (docs/papers.md §4.6, D27):
+   * inserted after the block that holds the cursor, marked AI-assisted, as one undo step. "Keep as notes" sends it to
+   * the Research notes tab instead. Refused without an AI log entry (interactionId, D12).
+   */
+  const insertArtifact: InsertArtifactHandler = (artifact, meta, opts) => {
+    if (!meta.interactionId) return notify(t("figures.insert.noInteraction"), "error");
+    if (!canEdit) return notify(t("editor.toast.readOnly"), "error");
+    const toNotes = !!opts.asNotes;
+    const run = () => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      // In the notes tab the result goes at the end, after what is already there.
+      if (toNotes) ed.commands.focus("end");
+      const r = insertArtifactCommand(ed, artifact, { provider: meta.provider, model: meta.model, mode: meta.mode, interactionId: meta.interactionId }, { programmatic });
+      if (!r.ok) {
+        // "limit": the figure node has already said that the tab is full.
+        if (r.reason !== "limit") notify(t(r.reason === "no_interaction" ? "figures.insert.noInteraction" : r.reason === "read_only" ? "editor.toast.readOnly" : "figures.insert.invalid"), "error");
+        return;
+      }
+      monitorRef.current?.recordAiInsert(r.words, meta.provider, meta.mode, meta.interactionId, { kind: r.kind, figures: r.figures, equations: r.equations, artifactId: meta.artifact.id });
+      const notes = t("editor.notesTab");
+      const message = toNotes
+        ? t("editor.toast.keptAsNotes", { notes, aiAssisted, finalSubmission })
+        : r.figures
+          ? t("editor.toast.figureInserted", { aiAssisted })
+          : r.kind === "equation"
+            ? t("editor.toast.equationInserted", { aiAssisted })
+            : t("editor.toast.aiInserted", { words: fmt.number(r.words), aiAssisted, provider: meta.provider });
+      notify(message, "success");
+      // Save right away so the score, the AI share, the ledger lines and the AI log reflect the insertion.
+      saveNowRef.current().then(refreshLedger);
+    };
+    if (!toNotes) return run();
+    const existing = tabsRef.current.find((tb) => isNotesTitle(tb.title));
+    if (existing) {
+      if (activeTabRef.current !== existing.id) switchTab(existing.id);
+      setTimeout(run, 0);
+      return;
+    }
+    if (tabsRef.current.length >= 20) return notify(t("editor.toast.tabLimit", { notes: t("editor.notesTab") }), "error");
+    addTab(t("editor.notesTab"));
+    setTimeout(run, 30);
+  };
+
+  /** Adds a provenance mark to the text of `from…to` that carries none (the AI-marked text keeps its own mark). */
+  const markUnmarked = (ed: Editor, from: number, to: number, attrs: { source: "ai" | "paste"; label?: string; provider?: string; interactionId?: string }) => {
+    const type = ed.schema.marks.provenance;
+    if (!type) return;
+    const max = ed.state.doc.content.size;
+    const a = Math.max(0, Math.min(from, max));
+    const b = Math.max(a, Math.min(to, max));
+    const tr = ed.state.tr;
+    ed.state.doc.nodesBetween(a, b, (node, pos) => {
+      if (!node.isText) return true;
+      if (!node.marks.some((m) => m.type === type)) tr.addMark(Math.max(a, pos), Math.min(b, pos + node.nodeSize), type.create(attrs));
+      return false;
+    });
+    if (tr.docChanged) programmatic(() => ed.view.dispatch(tr));
+  };
+
+  /**
+   * The part of a confirmed AI paste that carries no AI mark is a paste like any other (unless it is the student's own
+   * copy from another tab): long, it opens the attribution dialog for that range; short, it is fingerprinted and
+   * marked when it matches an assistant answer or a library source.
+   */
+  const attributePasteRest = (p: NonNullable<typeof aiPaste>, from: number, to: number) => {
+    const rest = Math.max(0, p.cost.totalWords - p.cost.aiWords);
+    const text = p.text;
+    if (!rest || !text.trim() || (internalCopy.current && norm(text) === internalCopy.current)) return;
+    if (rest >= PASTE_DIALOG_MIN_WORDS) {
+      (async () => {
+        const r = await monitorRef.current?.recordPaste(text, "pending");
+        setPaste({ words: rest, text, html: "", matched: r?.match || null, fingerprint: r?.fingerprint || null, range: { from, to } });
+      })();
+      return;
+    }
+    monitorRef.current?.recordPaste(text).then(({ match }) => {
+      const ed = editorRef.current;
+      if (!match || !ed) return;
+      if (match.kind === "source") {
+        const label = `${match.authors || match.title || t("editor.source")}${match.year ? ` (${match.year})` : ""}${match.page ? `, p. ${match.page}` : ""}`;
+        markUnmarked(ed, from, to, { source: "paste", label });
+        notify(t("editor.toast.pasteMatchesSource", { source: match.title || t("editor.aSource") }), "info");
+        return;
+      }
+      const label = match.mode === "copilot" ? t("editor.label.copilot") : t("editor.label.assistant");
+      markUnmarked(ed, from, to, { source: "ai", provider: match.provider, label, interactionId: match.interactionId });
+      monitorRef.current?.recordAiInsert(rest, match.provider || "assistant", match.mode || "paste", match.interactionId);
+      notify(t("editor.toast.pastedFromAssistant", { label, aiAssisted }), "info");
+    });
+  };
+
+  /** Pastes the AI content whose cost card was just confirmed, through ProseMirror's paste path (marks and figures kept). */
+  const confirmAiPaste = () => {
+    const p = aiPaste;
+    setAiPaste(null);
+    const ed = editorRef.current;
+    if (!p || !ed || !canEdit) return;
+    ed.commands.focus();
+    if (p.pos !== null) ed.commands.setTextSelection(Math.min(p.pos, ed.state.doc.content.size));
+    // A selected figure or equation is never replaced (the card's numbers would be wrong): the paste goes after it.
+    const sel = ed.state.selection;
+    if (sel instanceof NodeSelection) {
+      const after = sel.to;
+      if (sel.node.isInline) ed.commands.setTextSelection(after);
+      else if (ed.state.doc.resolve(after).nodeAfter?.isTextblock) ed.commands.setTextSelection(after + 1);
+      else programmatic(() => ed.chain().insertContentAt(after, { type: "paragraph" }).setTextSelection(after + 1).run());
+    }
+    const from = ed.state.selection.from;
+    pasteBypass.current = true;
+    try {
+      ed.view.pasteHTML(p.html);
+    } finally {
+      pasteBypass.current = false;
+    }
+    const to = ed.state.selection.to;
+    // A figure or block equation that now ends the document gets an empty paragraph after it, to keep writing below.
+    const last = ed.state.doc.lastChild;
+    if (last && (last.type.name === "chart" || last.type.name === "mathBlock")) programmatic(() => ed.chain().insertContentAt(ed.state.doc.content.size, { type: "paragraph" }).run());
+    monitorRef.current?.recordAiInsert(p.cost.aiWords, p.cost.provider || "assistant", "paste", p.cost.interactionId, { figures: p.cost.figures, equations: p.cost.equations });
+    attributePasteRest(p, from, to);
+    saveNowRef.current().then(refreshLedger);
+  };
+
+  /** An AI-assisted equation of this paper (any tab) with the same LaTeX: its AI log entry, or null. */
+  const aiEquationTwin = (latex: string): NonNullable<EquationValue["ai"]> | null => {
+    const key = equationKey(latex);
+    if (!key || !editor) return null;
+    const hit: NonNullable<EquationValue["ai"]>[] = [];
+    editor.state.doc.descendants((n) => {
+      if (hit.length) return false;
+      if ((n.type.name === "math" || n.type.name === "mathBlock") && n.attrs.origin === "ai" && equationKey(n.attrs.latex) === key) hit.push({ provider: n.attrs.provider ?? null, model: n.attrs.model ?? null, interaction: n.attrs.interaction ?? null });
+      return true;
+    });
+    if (hit.length) return hit[0];
+    const parser = new DOMParser();
+    for (const [id, html] of Object.entries(contentsRef.current)) {
+      if (id === activeTabRef.current || !html || !/data-origin="ai"/.test(html) || !/data-math/.test(html)) continue;
+      const els = parser.parseFromString(html, "text/html").querySelectorAll('[data-math][data-origin="ai"], [data-math-block][data-origin="ai"]');
+      for (const el of Array.from(els)) {
+        if (equationKey(el.getAttribute("data-latex")) === key) return { provider: el.getAttribute("data-provider"), model: el.getAttribute("data-model"), interaction: el.getAttribute("data-interaction") };
+      }
+    }
+    return null;
+  };
+
+  /**
+   * Insert › Equation. What the student writes is Written (D22), unless it is the LaTeX of an AI-assisted equation of
+   * this paper: that copy stays AI-assisted, and in the Final submission its cost card comes first (principle 5).
+   */
+  const submitEquation = (v: { latex: string; display: boolean; numbered: boolean }) => {
+    if (!editor) return;
+    const twin = aiEquationTwin(v.latex);
+    if (twin && activeTabRef.current === SUBMISSION) {
+      const type = v.display ? editor.schema.nodes.mathBlock : editor.schema.nodes.math;
+      if (!type) return;
+      const node = type.create({ latex: cleanLatex(v.latex).trim(), origin: "ai", provider: twin.provider, model: twin.model, interaction: twin.interaction, ...(v.display ? { numbered: !!v.numbered } : {}) });
+      const holder = document.createElement("div");
+      holder.appendChild(DOMSerializer.fromSchema(editor.schema).serializeNode(node));
+      setAiPaste({ html: holder.innerHTML, text: "", cost: { aiWords: 0, totalWords: 0, figures: 0, equations: 1, provider: twin.provider || undefined, interactionId: twin.interaction || undefined }, pos: null });
+      return;
+    }
+    if (!programmatic(() => insertEquation(editor, twin ? { ...v, ai: twin } : v))) notify(t("figures.insert.invalid"), "error");
+  };
+
   /** "Add as comment": the answer becomes a comment anchored to the current selection. */
   const addCommentFromAssistant = async (text: string) => {
     if (!editor) return;
@@ -1139,14 +1439,19 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const html = decision === "own" && p.html ? p.html : paragraphs.map((s) => `<p>${esc(s)}</p>`).join("");
     const m = p.matched;
-    programmatic(() => {
-      const from = editor.state.selection.from;
-      editor.chain().focus().insertContent(html).run();
-      const to = editor.state.selection.to;
-      if (decision !== "own") {
-        editor.chain().setTextSelection({ from, to }).setProvenance({ source: decision === "ai" ? "ai" : "paste", label: label || undefined, provider: decision === "ai" ? m?.provider || label?.toLowerCase() : undefined, interactionId: decision === "ai" ? m?.interactionId : undefined }).setTextSelection(to).run();
-      }
-    });
+    const attrs = { source: (decision === "ai" ? "ai" : "paste") as "ai" | "paste", label: label || undefined, provider: decision === "ai" ? m?.provider || label?.toLowerCase() : undefined, interactionId: decision === "ai" ? m?.interactionId : undefined };
+    if (p.range) {
+      // The unmarked rest of a confirmed AI paste is already in the page: only its declaration is applied.
+      if (decision !== "own") markUnmarked(editor, p.range.from, p.range.to, attrs);
+    } else
+      programmatic(() => {
+        const from = editor.state.selection.from;
+        editor.chain().focus().insertContent(html).run();
+        const to = editor.state.selection.to;
+        if (decision !== "own") {
+          editor.chain().setTextSelection({ from, to }).setProvenance(attrs).setTextSelection(to).run();
+        }
+      });
     if (decision === "ai") monitorRef.current?.recordAiInsert(p.words, m?.provider || label || "external", m?.mode || "paste", m?.interactionId);
     const declared = monitorRef.current?.declarePaste(p.fingerprint, decision, label) || Promise.resolve(null);
     // Save right away: the pill, the ledger and any notice come from the saved document, not from the autosave delay.
@@ -1318,14 +1623,21 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     programmatic(() => editor.chain().focus().insertFootnote().run());
   };
 
-  const updateThesis = async (patch: Record<string, unknown>, successMsg?: string) => {
+  const updateThesis = async (patch: Record<string, unknown>, successMsg?: string): Promise<boolean> => {
     try {
       const res = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}`, { method: "PUT", json: patch });
       // Reference lists are written by saveReferences only: the answer to another change never replaces the local one.
       setThesis((t) => ({ ...t, ...res.thesis, content: t.content, references: t.references }));
       if (successMsg) notify(successMsg, "success");
+      return true;
     } catch (e) {
-      notify((e as Error).message, "error");
+      if (e instanceof ApiError && e.code === "locked") handleLocked();
+      // No teacher (the paper lost its teacher meanwhile): the submit dialog says why, with the button disabled.
+      else if (e instanceof ApiError && e.code === "no_teacher") {
+        setThesis((x) => ({ ...x, professorId: undefined, teacherLabel: "none" }));
+        setDialog("submit");
+      } else notify(e instanceof ApiError && e.status === 413 ? t("editor.toast.tooLarge") : (e as Error).message, "error");
+      return false;
     }
   };
 
@@ -1360,8 +1672,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     }
     const c = () => editor.chain().focus();
     const map: Partial<Record<MenuAction, () => void>> = {
-      new: () => router.push("/dashboard/theses?new=1"),
-      open: () => router.push("/dashboard/theses"),
+      new: () => router.push("/dashboard/papers?new=1"),
+      open: () => router.push("/dashboard/papers"),
       rename: () => setDialog("rename"),
       save: () => saveNow(),
       saveVersion: () => setDialog("saveVersion"),
@@ -1376,7 +1688,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       print: () => window.print(),
       pageSetup: () => setDialog("pageSetup"),
       wordCount: () => setDialog("wordCount"),
-      deadline: () => setDialog(canEdit ? "deadline" : "wordCount"),
+      deadline: () => (settingsLock ? notify(settingsLock, "info") : setDialog(canEdit ? "deadline" : "wordCount")),
       undo: () => c().undo().run(),
       redo: () => c().redo().run(),
       cut: () => document.execCommand("cut"),
@@ -1399,6 +1711,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       image: () => setDialog("image"),
       table: () => setDialog("table"),
       tableCaption: () => { programmatic(() => c().setTableCaption().run()); },
+      equation: () => (canEdit ? setInsertForm({ kind: "equation" }) : notify(t("editor.toast.readOnly"), "error")),
+      "diagram-gantt": () => (canEdit ? setInsertForm({ kind: "diagram", figure: "gantt" }) : notify(t("editor.toast.readOnly"), "error")),
+      "diagram-prisma": () => (canEdit ? setInsertForm({ kind: "diagram", figure: "prisma" }) : notify(t("editor.toast.readOnly"), "error")),
+      "diagram-conceptMap": () => (canEdit ? setInsertForm({ kind: "diagram", figure: "conceptMap" }) : notify(t("editor.toast.readOnly"), "error")),
+      brief: () => thesis.assignment && setSidebar((s) => (s === "brief" ? "none" : "brief")),
       link: openLink,
       comment: startComment,
       pageBreak: () => c().setPageBreak().run(),
@@ -1476,13 +1793,14 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     if (ed && !ed.isDestroyed) ed.view.dispatch(ed.state.tr.setMeta("addToHistory", false));
   }, [ws.headerText, ws.footerText, ws.pageNumbers]);
 
-  if (!editor) return <div className="min-h-screen bg-[#f1f3f4] flex items-center justify-center text-gray-400 text-sm">{t("editor.preparing")}</div>;
+  if (!editor) return <div className="min-h-screen bg-workspace flex items-center justify-center text-gray-400 text-sm">{t("editor.preparing")}</div>;
 
   const sidebarPanel = () => {
     switch (sidebar) {
       case "outline": return <OutlinePanel editor={editor} onClose={() => setSidebar("none")} />;
+      case "brief": return thesis.assignment ? <BriefPanel view={thesis.assignment} onClose={() => setSidebar("none")} /> : null;
       case "comments": return (
-        <CommentsPanel comments={comments} activeId={activeCommentId} canResolve={userRole !== "student" || isOwner} userId={userId} onJump={jumpToComment} onClose={() => setSidebar("none")} pendingQuote={pendingComment ? pendingComment.quote : null} onCreate={createComment}
+        <CommentsPanel staffTag={t(teacherRole === "none" ? "glossary.teacher" : `papers.teacher.${teacherRole}`)} comments={comments} activeId={activeCommentId} canResolve={userRole !== "student" || isOwner} userId={userId} onJump={jumpToComment} onClose={() => setSidebar("none")} pendingQuote={pendingComment ? pendingComment.quote : null} onCreate={createComment}
           onCancelCreate={() => { if (pendingComment && canEdit) editor.commands.unsetComment(pendingComment.anchorId); setPendingComment(null); }}
           onReply={async (id, text) => { const r = await api<{ comment: CommentItem }>(`/api/theses/${thesisId}/comments/${id}`, { method: "POST", json: { text } }).catch(() => null); if (r) setComments((cs) => cs.map((x) => (x.id === id ? { ...x, replies: r.comment.replies } : x))); }}
           onResolve={async (id, resolved) => { await api(`/api/theses/${thesisId}/comments/${id}`, { method: "PATCH", json: { resolved } }).catch(() => {}); setComments((cs) => cs.map((x) => (x.id === id ? { ...x, resolved } : x))); const cm = comments.find((x) => x.id === id); if (resolved && cm && canEdit) { editor.commands.unsetComment(cm.anchorId); saveNow(); } }}
@@ -1492,7 +1810,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       case "versions": return (
         <VersionsPanel versions={versions} canRestore={canEdit} onClose={() => setSidebar("none")} onCreate={() => setDialog("saveVersion")}
           onPreview={async (id) => { const d = await api<{ version: { content: string; label?: string; kind: string; createdAt: string } }>(`/api/theses/${thesisId}/versions/${id}`).catch(() => null); if (d) setPreview({ id, html: d.version.content, label: d.version.label || `${versionKind(d.version.kind)} · ${fmt.dateTime(d.version.createdAt)}` }); }}
-          onRestore={async (id) => { const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${id}`, { method: "POST" }).catch((e) => { notify((e as Error).message, "error"); return null; }); if (d) { restoreSubmission(d.thesis); notify(t("editor.toast.versionRestored", { finalSubmission }), "success"); loadVersions(); } }}
+          onRestore={async (id) => { const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${id}`, { method: "POST" }).catch((e) => { if (e instanceof ApiError && e.code === "locked") handleLocked(); else notify((e as Error).message, "error"); return null; }); if (d) { restoreSubmission(d.thesis); notify(t("editor.toast.versionRestored", { finalSubmission }), "success"); loadVersions(); } }}
         />
       );
       case "references":
@@ -1501,7 +1819,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         <LibraryPanel tab={sidebar} onTab={(tab) => setSidebar(tab)} onClose={() => setSidebar("none")} editor={editor} thesisId={thesisId} canEdit={canEdit && !reviewMode} isOwner={isOwner}
           references={thesis.references} style={thesis.citationStyle} sources={sources || []} sourcesLoading={sources === null && !sourcesFailed} sourcesError={sourcesFailed ? t("panelsResearch.sources.errLoad") : ""} onRetrySources={retrySources} onSourcesChange={updateSources} countCitations={countCitations}
           selectionText={selectionText} sessionId={sessionId || undefined} onConsentRequired={() => setDialog("consent")} notify={notify}
-          onChangeStyle={(s) => { updateThesis({ citationStyle: s }); restyleCitations(s); }}
+          styleLock={settingsLock}
+          onChangeStyle={(s) => { if (settingsLock) return notify(settingsLock, "info"); updateThesis({ citationStyle: s }); restyleCitations(s); }}
           onAddReference={(r) => saveReferences([...referencesRef.current, r], t("editor.toast.referenceAddedShort"))}
           onRemoveReference={(id) => saveReferences(referencesRef.current.filter((r) => r.id !== id), t("editor.toast.referenceRemoved"))}
           onInsertReference={insertReferenceAtCursor}
@@ -1562,10 +1881,11 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
           onReplaceSelection={canEdit ? (h, m) => insertWithProvenance(h, m, true) : undefined}
           onConsentRequired={() => setDialog("consent")}
           onRejectSuggestion={(m) => monitorRef.current?.recordAiRejected(m.provider, m.mode)}
-          insertContext={{ wordCount: thesis.wordCount, aiWords: thesis.provenance.ai, limitPct: policy.maxAiUsagePercent, payer }}
+          insertContext={{ wordCount: thesis.wordCount, aiWords: thesis.provenance.ai, limitPct: policy.maxAiUsagePercent, onFinalSubmission: activeTab === SUBMISSION, notesTitle: tabs.find((tb) => isNotesTitle(tb.title))?.title }}
           onClearSelection={clearSelectionContext}
           onAddComment={addCommentFromAssistant}
           onKeepAsNotes={canEdit ? keepAsNotes : undefined}
+          onInsertArtifact={canEdit ? insertArtifact : undefined}
         />
       );
       default: return null;
@@ -1585,7 +1905,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       {/* Header (52px) */}
       <header className="h-[52px] flex items-center gap-2 md:gap-3 pl-2 pr-3 bg-white border-b border-gray-200 flex-shrink-0" style={{ paddingTop: "env(safe-area-inset-top, 0px)", height: "calc(52px + env(safe-area-inset-top, 0px))" }}>
         <Link href={userRole === "student" ? "/dashboard" : "/admin/theses"} className="w-8 h-8 inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg flex-shrink-0" aria-label={t("common.back")}><ArrowLeft className="w-[18px] h-[18px]" /></Link>
-        <div className="hidden md:flex w-[30px] h-[30px] bg-brand-600 rounded-lg items-center justify-center flex-shrink-0"><FileText className="w-4 h-4 text-white" /></div>
+        <div className="hidden md:flex w-[30px] h-[30px] bg-brand-600 rounded-lg items-center justify-center flex-shrink-0 text-white" title={t(`papers.kind.${paper.kind}`)}><KindIcon kind={paper.kind} size={16} /></div>
         <div className="min-w-0 flex-1 flex items-center gap-2 md:min-w-[200px]">
           <button onClick={() => canEdit && setDialog("rename")} className={`text-[16px] font-semibold truncate text-gray-900 ${canEdit ? "hover:bg-gray-100 rounded px-1 -mx-1" : "cursor-default"}`} title={canEdit ? t("editor.header.renameHint", { title: thesis.title }) : thesis.title}>{thesis.title}</button>
           {!canEdit && <span className="hidden sm:inline badge bg-gray-100 text-gray-500 !text-[10px] flex-shrink-0">{t("editor.readOnlyBadge")}</span>}
@@ -1600,7 +1920,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         {/* The assistant thinks with the author: a reviewer reads the thesis, so the panel is not offered in review. */}
         {isOwner && <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />{t("glossary.aiAssistant")}</button>}
         <button onClick={() => setDialog("share")} className="hidden md:inline-flex items-center px-3.5 py-[7px] rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 flex-shrink-0">{t("editor.share")}</button>
-        {!isMobile && <MenuOverflow editor={editor} onAction={onAction} state={{ showProvenance, sidebar, spellcheck, zoom, focus, canEdit, numberHeadings: !!ws.numberHeadings }} />}
+        {!isMobile && <MenuOverflow editor={editor} onAction={onAction} state={{ showProvenance, sidebar, spellcheck, zoom, focus, canEdit, numberHeadings: !!ws.numberHeadings, brief: !!thesis.assignment, settingsLock, teacherRole }} />}
         <button onClick={() => setMobileMenu(true)} className="md:hidden p-2 text-gray-600" aria-label={t("common.more")}><MoreVertical className="w-5 h-5" /></button>
       </header>
 
@@ -1611,7 +1931,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
 
       {/* Document tabs */}
       {!focus && (
-        <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-[#f1f3f4] border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label={t("editor.tabs.label")} data-tour="tabs">
+        <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-workspace border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label={t("editor.tabs.label")} data-tour="tabs">
           <div className="relative flex-shrink-0" data-tab-anchor={SUBMISSION}>
             <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => { if (activeTab === SUBMISSION) setOutlineTab(outlineTab === SUBMISSION ? null : SUBMISSION); else { setOutlineTab(null); switchTab(SUBMISSION); } }} className={`doc-tab submission !pr-7${activeTab === SUBMISSION ? "active" : ""}`} title={t("editor.tabs.submissionHint")}>
               <FileCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
@@ -1677,7 +1997,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
                   viewport below 768px). They hide themselves through shouldShow instead. */}
               <div className="contents"><TableBubble editor={editor} canEdit={canEdit} enabled={!isMobile} /></div>
               <div className="contents">
-              <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom", maxWidth: "none", popperOptions: { modifiers: [{ name: "keepOnSheet", enabled: true, phase: "main", requiresIfExists: ["preventOverflow"], fn: ({ state }) => { const sheet = sheetRef.current; const o = state.modifiersData.popperOffsets; if (!sheet || !o) return; const s = sheet.getBoundingClientRect(); const base = (state.elements.popper.offsetParent as HTMLElement | null)?.getBoundingClientRect().left || 0; const w = state.rects.popper.width; if (w < s.width) o.x = Math.max(s.left + 4, Math.min(o.x + base, s.right - w - 4)) - base; } }] } }} shouldShow={({ state }) => !state.selection.empty && !isMobile && (state.selection as { node?: { type: { name: string } } }).node?.type.name !== "image" && !(state.selection instanceof CellSelection)}>
+              <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: "bottom", maxWidth: "none", popperOptions: { modifiers: [{ name: "keepOnSheet", enabled: true, phase: "main", requiresIfExists: ["preventOverflow"], fn: ({ state }) => { const sheet = sheetRef.current; const o = state.modifiersData.popperOffsets; if (!sheet || !o) return; const s = sheet.getBoundingClientRect(); const base = (state.elements.popper.offsetParent as HTMLElement | null)?.getBoundingClientRect().left || 0; const w = state.rects.popper.width; if (w < s.width) o.x = Math.max(s.left + 4, Math.min(o.x + base, s.right - w - 4)) - base; } }] } }} shouldShow={({ state }) => !state.selection.empty && !isMobile && !NODE_TOOLBARS.includes((state.selection as { node?: { type: { name: string } } }).node?.type.name || "") && !(state.selection instanceof CellSelection)}>
                 <div className="bubble-menu !flex-col !items-stretch !gap-0" role="toolbar" aria-label={t("editor.bubble.label")}>
                   <div className="bm-row">
                   {canEdit && (
@@ -1742,7 +2062,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         isOwner={isOwner}
         reviewMode={reviewMode}
         status={statusLabel(t, thesis.status)}
-        advisorName={thesis.professorName && thesis.professorName !== "Unassigned" ? thesis.professorName : undefined}
+        teacher={{ role: teacherRole, name: thesis.professorId && thesis.professorName !== "Unassigned" ? thesis.professorName : undefined }}
+        brief={thesis.assignment ? { open: sidebar === "brief", onToggle: () => setSidebar((k) => (k === "brief" ? "none" : "brief")) } : undefined}
         words={activeTab === SUBMISSION ? thesis.wordCount : tabWords}
         targetWords={thesis.targetWords}
         pages={!isMobile && pageCount > 0 ? pageCount : Math.max(1, Math.ceil((activeTab === SUBMISSION ? thesis.wordCount : tabWords) / 350))}
@@ -1751,7 +2072,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         zoom={zoom}
         onWordCount={() => setDialog("wordCount")}
         deadline={thesis.deadline}
-        onDeadline={canEdit ? () => setDialog("deadline") : undefined}
+        onDeadline={canEdit && !settingsLock ? () => setDialog("deadline") : undefined}
         workingTab={activeTab !== SUBMISSION ? { title: tabs.find((tb) => tb.id === activeTab)?.title || t("editor.untitledTab"), onGoToSubmission: () => switchTab(SUBMISSION) } : null}
       />
 
@@ -1779,7 +2100,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       )}
       <Modal open={mobileMenu} onClose={() => setMobileMenu(false)} title={thesis.title} size="sm">
         <div className="grid grid-cols-2 gap-2 text-sm">
-          {([["save", t("editor.menu.saveNow")], ["saveVersion", t("editor.menu.saveVersion")], ["versions", t("editor.menu.versionHistory")], ["find", t("editor.mobile.find")], ["references", t("glossary.sourcesReferences")], ["dl-docx", t("editor.mobile.dlDocx")], ["dl-md", t("editor.mobile.dlMd")], ["print", t("editor.mobile.print")], ["pageSetup", t("editor.menu.pageSetup")], ["wordCount", t("editor.menu.documentDetails")], ["provenance", showProvenance ? t("editor.mobile.hideProvenance") : t("editor.mobile.showProvenance")], ["share", t("editor.share")], ["submit", t("editor.menu.submit")], ["privacy", t("editor.mobile.privacy")], ["rename", t("editor.rename")], ["shortcuts", t("editor.mobile.shortcuts")]] as [MenuAction, string][]).map(([a, l]) => (
+          {([...(thesis.assignment ? [["brief", t("editor.menu.assignmentBrief")]] : []), ["save", t("editor.menu.saveNow")], ["saveVersion", t("editor.menu.saveVersion")], ["versions", t("editor.menu.versionHistory")], ["find", t("editor.mobile.find")], ["references", t("glossary.sourcesReferences")], ["dl-docx", t("editor.mobile.dlDocx")], ["dl-md", t("editor.mobile.dlMd")], ["print", t("editor.mobile.print")], ["pageSetup", t("editor.menu.pageSetup")], ["wordCount", t("editor.menu.documentDetails")], ["provenance", showProvenance ? t("editor.mobile.hideProvenance") : t("editor.mobile.showProvenance")], ["share", t("editor.share")], ["submit", t("editor.menu.submit")], ["privacy", t("editor.mobile.privacy")], ["rename", t("editor.rename")], ["shortcuts", t("editor.mobile.shortcuts")]] as [MenuAction, string][]).map(([a, l]) => (
             <button key={a} onClick={() => { setMobileMenu(false); onAction(a); }} className="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-left">{l}</button>
           ))}
         </div>
@@ -1804,10 +2125,17 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
           setThesis((th) => ({ ...th, deadline: iso }));
         }}
       />
-      <ShareDialog open={dialog === "share"} onClose={() => setDialog(null)} thesis={thesis} />
+      <ShareDialog open={dialog === "share"} onClose={() => setDialog(null)} thesis={thesis} role={teacherRole} />
       <TextPromptDialog open={dialog === "rename"} onClose={() => setDialog(null)} title={t("editor.dialog.renameTitle")} initial={thesis.title} onSubmit={(title) => updateThesis({ title }, t("editor.toast.renamed"))} submitLabel={t("editor.rename")} />
       <TextPromptDialog open={dialog === "saveVersion"} onClose={closeDialogToEditor} title={t("editor.dialog.versionTitle")} label={t("editor.dialog.versionPlaceholder")} onSubmit={async (label) => { await saveNow(); await api(`/api/theses/${thesisId}/versions`, { method: "POST", json: { label } }).catch(() => {}); notify(t("editor.toast.versionSaved"), "success"); loadVersions(); }} submitLabel={t("editor.dialog.versionSubmit")} />
-      <ConfirmDialog open={dialog === "submit"} onClose={() => setDialog(null)} title={t("editor.dialog.submitTitle")} body={richText(t("editor.dialog.submitBody"), { finalSubmission: <strong>{finalSubmission}</strong>, advisor: <strong>{thesis.professorName}</strong> })} confirmLabel={t("editor.dialog.submitConfirm")} onConfirm={async () => { await saveNow(); updateThesis({ status: "under_review" }, t("editor.toast.submitted")); }} />
+      <SubmitDialog
+        open={dialog === "submit"}
+        onClose={() => setDialog(null)}
+        role={teacherRole}
+        teacherName={thesis.professorName}
+        lateDate={thesis.deadline && !handedIn && Date.now() > Date.parse(thesis.deadline) ? fmt.date(thesis.deadline) : undefined}
+        onConfirm={async () => { await saveNow(); updateThesis({ status: "under_review" }, t("editor.toast.submitted")); }}
+      />
       <ShortcutsDialog open={dialog === "shortcuts"} onClose={() => setDialog(null)} />
       <ConfirmDialog open={!!confirmPromote} onClose={() => setConfirmPromote(null)} title={t("editor.dialog.promoteTitle", { finalSubmission })} confirmLabel={t("editor.tabs.useAsSubmission", { finalSubmission })} body={t("editor.dialog.promoteBody", { title: tabs.find((tb) => tb.id === confirmPromote)?.title || "", finalSubmission })} onConfirm={() => confirmPromote && promoteTab(confirmPromote)} />
       <ConfirmDialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title={t("editor.dialog.deleteTitle")} danger confirmLabel={t("editor.tabs.delete")} body={t("editor.dialog.deleteBody", { title: tabs.find((tb) => tb.id === confirmDelete)?.title || "", finalSubmission })} onConfirm={() => confirmDelete && deleteTab(confirmDelete)} />
@@ -1815,8 +2143,30 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       <Modal open={dialog === "about"} onClose={() => setDialog(null)} title={t("editor.dialog.aboutTitle")} size="sm" footer={<button onClick={() => setDialog(null)} className="btn-primary !py-2 !px-4 text-sm">{t("common.close")}</button>}>
         <p className="text-sm text-gray-600">{t("editor.dialog.aboutBody")}</p>
       </Modal>
-      <VersionPreviewDialog open={!!preview} onClose={() => setPreview(null)} html={preview?.html || ""} label={preview?.label || ""} canRestore={canEdit} onRestore={async () => { if (!preview) return; const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${preview.id}`, { method: "POST" }).catch(() => null); if (d) { restoreSubmission(d.thesis); loadVersions(); } }} />
+      <VersionPreviewDialog open={!!preview} onClose={() => setPreview(null)} html={preview?.html || ""} label={preview?.label || ""} schema={editor.schema} canRestore={canEdit} onRestore={async () => { if (!preview) return; const d = await api<{ thesis: ThesisDoc }>(`/api/theses/${thesisId}/versions/${preview.id}`, { method: "POST" }).catch((e) => { if (e instanceof ApiError && e.code === "locked") handleLocked(); else notify((e as Error).message, "error"); return null; }); if (d) { restoreSubmission(d.thesis); notify(t("editor.toast.versionRestored", { finalSubmission }), "success"); loadVersions(); } }} />
       <PasteAttributionDialog open={!!paste} words={paste?.words || 0} matched={paste?.matched || null} onDecide={decidePaste} onDismiss={() => decidePaste("none")} />
+      <AiPasteDialog open={!!aiPaste} cost={aiPaste?.cost || null} ctx={{ wordCount: thesis.wordCount, aiWords: thesis.provenance.ai, limitPct: policy.maxAiUsagePercent }} role={teacherRole} onConfirm={confirmAiPaste} onCancel={() => { setAiPaste(null); editor.commands.focus(); }} />
+      {/* Insert › Equation and Insert › Diagram: what the student makes here is Written (origin "human", D22). */}
+      <EquationDialog
+        open={insertForm?.kind === "equation"}
+        onClose={() => setInsertForm(null)}
+        onSubmit={(v) => {
+          setInsertForm(null);
+          submitEquation(v);
+        }}
+      />
+      {insertForm?.kind === "diagram" && (
+        <DiagramDialog
+          open
+          kind={insertForm.figure}
+          lang={thesis.writingLanguage || "en"}
+          onClose={() => setInsertForm(null)}
+          onSubmit={(v) => {
+            setInsertForm(null);
+            programmatic(() => insertDiagram(editor, { spec: v.spec, caption: v.caption, lang: thesis.writingLanguage || "en" }));
+          }}
+        />
+      )}
       {me?.policy && (
         <ConsentModal open={dialog === "consent"} onClose={() => setDialog(null)} policy={me.policy} existing={me.consent} thesisId={thesisId} onGranted={async () => { await refreshMe(); if (!monitorRef.current) startSession(); else notify(t("editor.toast.monitoringUpdated"), "success"); }} />
       )}

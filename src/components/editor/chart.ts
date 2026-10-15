@@ -39,6 +39,8 @@ export type ChartAlign = "left" | "center" | "right";
 
 /** Figures a single tab can hold (§4.6). */
 export const MAX_CHARTS_PER_TAB = 30;
+/** Event a selected diagram's DOM receives when the student presses Enter: its NodeView opens the edit form. */
+export const CHART_EDIT_EVENT = "thesisfic:edit-diagram";
 /** Titles and captions are cut to this length before they are drawn or saved. */
 export const CHART_TEXT_MAX = 200;
 /** A `data-spec` longer than this is dropped (the engine's largest spec, 500 scatter points, is far below). */
@@ -320,8 +322,17 @@ export const ChartNode = Node.create<ChartOptions>({
       },
       width: { default: null, rendered: false, parseHTML: (el) => normWidth(el.getAttribute("data-width")) || normWidth(el.style?.width) },
       align: { default: "center", rendered: false, parseHTML: (el) => oneOf(el.getAttribute("data-align"), ALIGNS, "center") },
-      // Absent or anything but "human" reads as AI-assisted, as on the server (FIGURE_DEFAULT_ORIGIN).
-      origin: { default: "ai", rendered: false, parseHTML: (el) => (el.getAttribute("data-origin") === "human" ? "human" : "ai") },
+      // Absent or anything but "human" reads as AI-assisted, as on the server (FIGURE_DEFAULT_ORIGIN). A data chart is
+      // only ever computed by the copilot (D22, §4.6): it is AI-assisted whatever its data-origin says (countable.ts).
+      origin: {
+        default: "ai",
+        rendered: false,
+        parseHTML: (el) => {
+          if (el.getAttribute("data-origin") !== "human") return "ai";
+          const kind = readChartSpec(canonicalSpec(el.getAttribute("data-spec")).spec)?.figure || oneOf(el.getAttribute("data-figure-kind"), FIGURE_KINDS, "chart");
+          return kind === "chart" ? "ai" : "human";
+        },
+      },
       provider: { default: null, rendered: false, parseHTML: (el) => attrText(el.getAttribute("data-provider"), 80) || null },
       model: { default: null, rendered: false, parseHTML: (el) => attrText(el.getAttribute("data-model"), 120) || null },
       interaction: { default: null, rendered: false, parseHTML: (el) => attrText(el.getAttribute("data-interaction"), 80) || null },
@@ -364,6 +375,17 @@ export const ChartNode = Node.create<ChartOptions>({
 
   addKeyboardShortcuts() {
     return {
+      // Enter on a selected diagram opens its form (keyboard users have no double-click); data charts have no form.
+      Enter: ({ editor }) => {
+        const sel = editor.state.selection;
+        if (!(sel instanceof NodeSelection) || sel.node.type.name !== this.name || !editor.isEditable) return false;
+        const figure = readChartSpec((sel.node.attrs as ChartAttrs).spec, (sel.node.attrs as ChartAttrs).figure)?.figure ?? (sel.node.attrs as ChartAttrs).figure;
+        if (figure === "chart") return false;
+        const dom = editor.view.nodeDOM(sel.from) as HTMLElement | null;
+        const target = (dom?.querySelector?.("[data-node-view-wrapper]") as HTMLElement | null) || dom;
+        target?.dispatchEvent(new CustomEvent(CHART_EDIT_EVENT));
+        return true;
+      },
       // Escape deselects the figure and puts the cursor next to it.
       Escape: ({ editor }) => {
         const sel = editor.state.selection;

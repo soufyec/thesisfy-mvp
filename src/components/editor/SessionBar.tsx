@@ -1,9 +1,10 @@
 "use client";
 
-import { BookMarked, CalendarClock, ShieldCheck, StickyNote } from "lucide-react";
+import { BookMarked, CalendarClock, ClipboardList, ShieldCheck, StickyNote } from "lucide-react";
 import type { ConsentScopes } from "../useUser";
 import { useFormat, useT } from "@/lib/i18n/client";
 import { richText } from "./types";
+import type { TeacherRole } from "./Dialogs";
 import { deadlineState } from "@/lib/deadline";
 import { DEADLINE_TEXT, useDeadlineLabel } from "../ui";
 
@@ -18,7 +19,10 @@ interface Props {
   isOwner: boolean;
   reviewMode?: boolean;
   status: string;
-  advisorName?: string;
+  /** Who reviews the paper: the role of its kind (`papers.teacher.<role>`) and the name, or "none" (No teacher). */
+  teacher?: { role: TeacherRole; name?: string };
+  /** The paper was started from an assignment: "Assignment · Brief" next to the teacher opens the Brief panel. */
+  brief?: { open: boolean; onToggle: () => void };
   words: number;
   targetWords: number;
   /** Estimated page count of the open tab (about 350 words a page). */
@@ -54,7 +58,7 @@ function joinList(items: string[], and: string) {
  * Session bar (30px, bottom of the editor): what the current session records, in the student's own consent
  * terms, and the document facts an advisor glances at (status, words, page, citation style).
  */
-export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, advisorName, words, targetWords, pages, citationStyle, library, zoom, onWordCount, deadline, onDeadline, workingTab }: Props) {
+export default function SessionBar({ sessionActive, scopes, onChange, isOwner, reviewMode, status, teacher, brief, words, targetWords, pages, citationStyle, library, zoom, onWordCount, deadline, onDeadline, workingTab }: Props) {
   const t = useT();
   const fmt = useFormat();
   const deadlineLabel = useDeadlineLabel();
@@ -112,8 +116,14 @@ export default function SessionBar({ sessionActive, scopes, onChange, isOwner, r
       <div className="min-w-0 flex-1 flex">{left}</div>
       <span className="flex-shrink-0">
         {status}
-        {advisorName ? ` · ${t("editor.session.advisor", { name: advisorName })}` : ""}
+        {teacher ? ` · ${teacher.role === "none" || !teacher.name ? t("papers.teacher.none") : t("editor.session.teacher", { role: t(`papers.teacher.${teacher.role}`), name: teacher.name })}` : ""}
       </span>
+      {brief && (
+        <button onClick={brief.onToggle} aria-pressed={brief.open} aria-label={t("editor.session.briefAria")} title={t("editor.session.briefAria")} className={`flex items-center gap-1 flex-shrink-0 rounded px-1 -mx-1 hover:text-gray-900 hover:bg-gray-100 ${brief.open ? "text-brand-700" : ""}`} data-testid="session-brief">
+          <ClipboardList className="w-3.5 h-3.5" aria-hidden="true" />
+          {t("editor.session.briefButton")}
+        </button>
+      )}
       <button onClick={onWordCount} className="hover:text-gray-900 flex-shrink-0" title={t("editor.details.title")}>
         {t("editor.session.wordsOf", { words: fmt.number(words), target: fmt.number(targetWords) })}
       </button>

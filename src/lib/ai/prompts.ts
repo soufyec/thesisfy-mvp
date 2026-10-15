@@ -73,17 +73,17 @@ export const DATA_RULE =
 /** The operations a block may ask for, with their JSON fields (validated by `validateSpec`). */
 export const DATA_OPERATIONS = `Operations (one JSON object per block; column names exactly as in the data card):
 - {"op":"describe","columns":["a","b"]}: descriptive statistics of number columns (all measures when "columns" is left out).
-- {"op":"frequencies","column":"a","asShare":false}: counts of a category; "asShare": true gives percentages; "chart": "pie" draws them as a pie chart (at most 6 slices: with more categories Thesisfic draws bars).
+- {"op":"frequencies","column":"a","asShare":false}: counts of a category; "asShare": true gives percentages; "chart": "pie" draws them as a pie chart (2 to 12 unordered categories: the 4 largest are drawn as slices and the rest as Other; ordered columns or more than 12 categories are drawn as bars of shares).
 - {"op":"crosstab","row":"a","col":"b"}: counts of one category by another.
 - {"op":"groupSummary","value":"a","by":"b","stat":"mean"}: a number column summarised by group; "stat" is mean, median, sum or count.
 - {"op":"correlation","columns":["a","b"]}: Pearson correlations between number columns (two columns also draw a scatter plot).
-- {"op":"distribution","column":"a"}: histogram of a number column ("bins" optional); with "by":"b" (a category) it is a box plot of the number column by group (at most 12 groups), and "chart": "box" without "by" draws one box.
+- {"op":"distribution","column":"a"}: histogram of a number column ("bins" optional); with "by":"b" (a category) it is a box plot of the number column by group (with more than 12 groups, the 11 largest are drawn and the rest fold into Other), and "chart": "box" without "by" draws one box.
 - {"op":"trend","y":"a","x":"year","by":"b"}: a number column over a time column ("by" and "stat" optional).
 - {"op":"scatter","x":"a","y":"b","by":"c"}: one number column against another ("by" optional).
 Tests (Thesisfic computes the statistic, the degrees of freedom, the p-value and the effect size; at least 3 values per group):
 - {"op":"ttest","value":"a","by":"b","levels":["x","y"]}: Welch's t-test of a number column between two groups of a category ("levels" optional: by default the two largest groups).
 - {"op":"mannWhitney","value":"a","by":"b","levels":["x","y"]}: Mann–Whitney U test, same fields.
-- {"op":"pairedTtest","x":"a","y":"b"}: paired t-test of two number columns measured on the same rows.
+- {"op":"pairedTtest","columns":["a","b"]}: paired t-test of two number columns measured on the same rows (a − b; "x" and "y" are accepted too).
 - {"op":"anova","value":"a","by":"b"}: one-way ANOVA of a number column across the groups of a category.
 - {"op":"kruskal","value":"a","by":"b"}: Kruskal–Wallis test, same fields.
 - {"op":"chisquare","row":"a","col":"b"}: chi-square test of independence of two categories.

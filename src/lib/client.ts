@@ -38,13 +38,25 @@ export async function api<T = unknown>(url: string, init?: RequestInit & { json?
 
 /** A block the copilot asked for that Thesisfic could not compute (`event: artifact_error`). */
 export interface ArtifactErrorEvent {
-  /** `data.error.<code>` in the UI: invalid_spec, unsupported_op, unknown_sheet, unknown_column, missing_column, not_numeric, not_categorical, no_numeric, no_data, no_sheet. */
+  /** `data.error.<code>` in the UI: the engine's codes (SPEC_ERROR_CODES), no_sheet, diagram_invalid, prisma_numbers, latex_invalid, equation_numbers. */
   code: string;
   column?: string;
   /** Columns (or sheets) that would fit, for "Columns you can use: …". */
   available?: string[];
   /** File the block was computed against, when known. */
   file?: string;
+  /** Diagram and equation blocks (Research copilot): which kind failed. */
+  kind?: "diagram" | "equation";
+  /** `diagram_invalid`: the validation code (`data.diagram.error.<detail>`). */
+  detail?: string;
+  /** `diagram_invalid`: the field at fault, when known. */
+  field?: string;
+  /** `prisma_numbers` / `equation_numbers`: the numbers that are not in the student's messages (nor computed). */
+  missing?: string[];
+  /** `latex_invalid`: the command at fault. */
+  command?: string;
+  /** `latex_invalid`: the parser's error code. */
+  reason?: string;
 }
 
 export interface StreamHandlers {

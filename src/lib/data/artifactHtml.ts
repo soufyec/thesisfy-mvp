@@ -67,8 +67,8 @@ export function artifactGridHtml(a: Pick<Artifact, "lang" | "table">): string {
 }
 
 // ---------- Word count ----------
-// KEEP IN SYNC with `htmlToWordText` and `countWords` in src/lib/db.ts (the server's counters): same block tags,
-// same entity decoding, same split. This copy exists because db.ts is server-only; if the server rule changes,
+// KEEP IN SYNC with `htmlToWordText` and `countWords` in src/lib/countable.ts (the server's counters, re-exported by
+// db.ts): same block tags, same entity decoding, same split. This copy exists because db.ts is server-only; if the server rule changes,
 // change this one in the same commit, or the cost card and the provenance after the save will disagree.
 
 const BLOCK_TAG_RE = /<\/?(?:p|div|h[1-6]|li|ul|ol|br|hr|tr|td|th|thead|tbody|table|blockquote|pre|figure|figcaption|section|header|footer|details|summary)\b[^>]*>/gi;

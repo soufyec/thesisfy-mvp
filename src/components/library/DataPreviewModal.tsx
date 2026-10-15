@@ -26,7 +26,7 @@ type PreviewSource = PrimaryLike & { id: string; title: string; dataset?: Datase
  * "Preview data" of a spreadsheet source (docs/papers.md §4.7): its columns with their readable label, type and role,
  * then its rows, 100 per page. The student, the paper's teacher and the institution's administration see the same
  * table (principle 2): the rows come from `GET /api/theses/[id]/sources/[sourceId]/data`, which applies that access.
- * A source not used in any paper has no such route yet: the columns are shown from the summary, without rows.
+ * Without a paper (the owner's library page), they come from the owner-only `GET /api/library/sources/[id]/data`.
  */
 export default function DataPreviewModal({ open, onClose, source, thesisId }: { open: boolean; onClose: () => void; source: PreviewSource | null; thesisId?: string }) {
   const t = useT();
@@ -48,11 +48,12 @@ export default function DataPreviewModal({ open, onClose, source, thesisId }: { 
 
   useEffect(() => {
     const id = source?.id;
-    if (!open || !id || !thesisId) return;
+    if (!open || !id) return;
     let alive = true;
     setLoading(true);
     setFailed("");
-    api<DataPage>(`/api/theses/${encodeURIComponent(thesisId)}/sources/${encodeURIComponent(id)}/data?sheet=${sheet}&offset=${offset}&limit=${PAGE}`)
+    const base = thesisId ? `/api/theses/${encodeURIComponent(thesisId)}/sources/${encodeURIComponent(id)}/data` : `/api/library/sources/${encodeURIComponent(id)}/data`;
+    api<DataPage>(`${base}?sheet=${sheet}&offset=${offset}&limit=${PAGE}`)
       .then((d) => alive && setPage(d))
       .catch((e) => alive && setFailed((e as Error).message || t("library.ui.preview.failed")))
       .finally(() => alive && setLoading(false));
@@ -126,7 +127,7 @@ export default function DataPreviewModal({ open, onClose, source, thesisId }: { 
         <section aria-labelledby="preview-rows" className="min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <h3 id="preview-rows" className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("library.ui.preview.rowsTitle")}</h3>
-            {thesisId && total > 0 && (
+            {total > 0 && (
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <span className="tabular-nums">{t("library.ui.preview.range", { from: num(offset + 1), to: num(Math.min(total, offset + PAGE)), total: num(total) })}</span>
                 <button type="button" onClick={() => setOffset((o) => Math.max(0, o - PAGE))} disabled={offset === 0 || loading} className="p-1 rounded-lg hover:bg-gray-100 disabled:opacity-30" aria-label={t("library.ui.preview.prev")}>
@@ -138,9 +139,7 @@ export default function DataPreviewModal({ open, onClose, source, thesisId }: { 
               </div>
             )}
           </div>
-          {!thesisId ? (
-            <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">{t("library.ui.preview.linkToSee")}</p>
-          ) : failed ? (
+          {failed ? (
             <p role="alert" className="text-xs text-red-700 bg-red-50 rounded-lg px-3 py-2">{failed}</p>
           ) : !page ? (
             <div className="flex items-center gap-2 text-xs text-gray-500 py-6 justify-center"><Spinner /> {t("common.loading")}…</div>
@@ -149,7 +148,7 @@ export default function DataPreviewModal({ open, onClose, source, thesisId }: { 
               <table className="min-w-full text-[12px] tabular-nums">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th scope="col" className="px-2 py-1.5 text-right font-medium text-gray-400 w-10">#</th>
+                    <th scope="col" className="px-2 py-1.5 text-right font-medium text-gray-500 w-10">#</th>
                     {columns.map((c) => (
                       <th key={c.name} scope="col" className={`px-2.5 py-1.5 font-semibold text-gray-700 whitespace-nowrap ${c.type === "number" ? "text-right" : "text-left"}`}>{c.label || c.name}</th>
                     ))}
@@ -158,7 +157,7 @@ export default function DataPreviewModal({ open, onClose, source, thesisId }: { 
                 <tbody className="divide-y divide-gray-50">
                   {page.rows.map((r, i) => (
                     <tr key={page.offset + i}>
-                      <td className="px-2 py-1 text-right text-gray-400">{num(page.offset + i + 1)}</td>
+                      <td className="px-2 py-1 text-right text-gray-500">{num(page.offset + i + 1)}</td>
                       {columns.map((c, j) => (
                         <td key={c.name} className={`px-2.5 py-1 whitespace-nowrap max-w-[16rem] truncate ${typeof r[j] === "number" ? "text-right" : "text-left"} text-gray-800`}>{cell(r[j], c)}</td>
                       ))}

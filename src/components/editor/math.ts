@@ -175,14 +175,23 @@ export interface EquationValue {
   /** true: `mathBlock` (own line); false: inline `math`. */
   display: boolean;
   numbered?: boolean;
+  /**
+   * The same LaTeX as an AI-assisted equation of this paper (see `equationKey`): the copy keeps that equation's
+   * origin and AI log entry instead of becoming Written (D22).
+   */
+  ai?: { provider: string | null; model: string | null; interaction: string | null };
 }
+
+/** LaTeX compared for sameness: stored form without any whitespace ("\\hat{y} = 1" ≡ "\\hat{y}=1"). */
+export const equationKey = (latex: string | null | undefined) => cleanLatex(latex).replace(/\s+/g, "");
 
 /** Inserts an equation the student wrote (Insert › Equation): origin "human", Written. Not counted as typing. */
 export function insertEquation(editor: Editor, value: EquationValue): boolean {
   if (!editor.isEditable) return false;
   const latex = cleanLatex(value.latex).trim();
   if (!parseLatex(latex).ok) return false;
-  const content = value.display ? { type: "mathBlock", attrs: { latex, origin: "human", numbered: !!value.numbered } } : { type: "math", attrs: { latex, origin: "human" } };
+  const origin = value.ai ? { origin: "ai", provider: value.ai.provider, model: value.ai.model, interaction: value.ai.interaction } : { origin: "human" };
+  const content = value.display ? { type: "mathBlock", attrs: { latex, ...origin, numbered: !!value.numbered } } : { type: "math", attrs: { latex, ...origin } };
   const sel = editor.state.selection;
   // A block equation goes next to the paragraph when the cursor is at its start or end; any equation goes after a
   // selected figure or equation instead of replacing it.

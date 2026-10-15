@@ -58,23 +58,14 @@ export function tooWide(a: Artifact): boolean {
 
 /**
  * An `artifact_error` event as the server sends it: the codes of `data.error.*`, plus the §9 fields
- * (src/app/api/ai/chat/artifacts.ts `ArtifactError`). src/lib/client.ts types only the first four; the rest arrive as sent.
+ * (src/app/api/ai/chat/artifacts.ts `ArtifactError`), all typed by src/lib/client.ts `ArtifactErrorEvent`.
  */
-export type ArtifactErrorInfo = ArtifactErrorEvent & {
-  kind?: "diagram" | "equation";
-  /** diagram_invalid: the sanitizeDiagram code (→ `data.diagram.error.<detail>`). */
-  detail?: string;
-  field?: string;
-  /** prisma_numbers: the counts that are not in the student's messages. */
-  missing?: string[];
-  /** latex_invalid: the command Thesisfic does not draw. */
-  command?: string;
-  reason?: string;
-};
+export type ArtifactErrorInfo = ArtifactErrorEvent;
 
 /** "Thesisfic could not compute this: …" — the reason, in the interface language. */
 export function artifactErrorReason(e: ArtifactErrorInfo, t: Translate): string {
   if (e.code === "prisma_numbers") return t("assistant.artifactError.prisma_numbers", { list: (e.missing || []).join(", ") || "…" });
+  if (e.code === "equation_numbers") return t("assistant.artifactError.equation_numbers", { list: (e.missing || []).join(", ") || "…" });
   if (e.code === "latex_invalid") return e.command ? t("assistant.artifactError.latex_invalid", { command: e.command }) : t("assistant.artifactError.latex_invalidGeneric");
   if (e.code === "diagram_invalid") {
     const key = e.detail ? `data.diagram.error.${e.detail}` : "";
