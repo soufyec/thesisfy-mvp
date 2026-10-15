@@ -1,3 +1,4 @@
+import { fullRange } from "@/lib/data/workspace";
 /**
  * The artifact pipeline of the Research copilot (docs/papers.md §3.5, D11, D12): blocks the model wrote (or specs
  * the demo planner chose) → validated against the attached datasets → computed by Thesisfic. Pure: no data-layer
@@ -257,7 +258,11 @@ export function computeArtifacts(specs: unknown[], sheets: SheetAttachment[], op
     // The engine's own errors keep their column (the group with too few values, the unknown level…), so the card
     // can name it; anything unexpected becomes `invalid_spec`.
     const ran = tryRunAnalysis(result.spec, sheet.dataset, { sourceId: sheet.sourceId, fileName: sheet.fileName, interactionId: opts.interactionId ?? "", lang: opts.lang, index, id: opts.newId(), now: opts.now }, opts.tr);
-    if (ran.ok) artifacts.push(ran.artifact);
+    if (ran.ok) {
+      const sh = sheet.dataset.sheets.find(s => s.name === ran.artifact.sheet) || sheet.dataset.sheets[0];
+      ran.artifact.dataSelection = { sheet: sheet.dataset.selection?.sheet ?? sheet.dataset.sheets.indexOf(sh), range: sheet.dataset.selection?.range || fullRange(sh), output: "analysis", title: ran.artifact.title, chartType: ran.artifact.chart?.type || "bar", x: result.spec.x || result.spec.by || result.spec.column || "", ys: result.spec.columns || [result.spec.value || result.spec.y || result.spec.column || ""].filter(Boolean), analysis: result.spec };
+      artifacts.push(ran.artifact);
+    }
     else {
       const e: ArtifactError = { code: KNOWN_CODES.has(ran.code) ? (ran.code as ArtifactErrorCode) : "invalid_spec", available: ran.available, file: sheet.fileName };
       if (ran.column !== undefined) e.column = ran.column;

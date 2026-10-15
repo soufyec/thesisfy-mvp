@@ -11,7 +11,8 @@ function intParam(v: string | null, fallback: number): number {
 }
 
 export interface DataPageBody {
-  sheet: { name: string; columns: Dataset["sheets"][number]["columns"]; rowCount: number; headerRow: Dataset["sheets"][number]["headerRow"]; truncated: Dataset["sheets"][number]["truncated"] };
+  rowNumbers?: number[];
+  sheet: { name: string; columns: Dataset["sheets"][number]["columns"]; rowCount: number; lastRow?: number; headerRow: Dataset["sheets"][number]["headerRow"]; truncated: Dataset["sheets"][number]["truncated"] };
   rows: (string | number | boolean | null)[][];
   offset: number;
   limit: number;
@@ -46,7 +47,8 @@ export function datasetPage(dataset: Dataset, q: URLSearchParams): DataPageBody 
     rows.push(row);
   }
   return {
-    sheet: { name: sheet.name, columns: sheet.columns, rowCount: sheet.rowCount, headerRow: sheet.headerRow, truncated: sheet.truncated },
+    rowNumbers: Array.from({ length: end - offset }, (_, i) => sheet.rowNumbers?.[offset + i] ?? sheet.headerRow + offset + i + 1),
+    sheet: { lastRow: sheet.rowNumbers?.[sheet.rowNumbers.length - 1] ?? sheet.headerRow + sheet.rowCount, name: sheet.name, columns: sheet.columns, rowCount: sheet.rowCount, headerRow: sheet.headerRow, truncated: sheet.truncated },
     rows,
     offset,
     limit,

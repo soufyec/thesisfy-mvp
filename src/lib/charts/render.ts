@@ -97,7 +97,7 @@ function fit(s: string, max: number): string {
 // ---------- Input limits ----------
 
 /** What `renderChartSvg` accepts of a `ChartData`, whoever built it (the engine, or a spec parsed from saved HTML). */
-export const CHART_LIMITS = { labelChars: 200, categories: 500, series: 5, points: 500, boxes: 12, outliers: 200 } as const;
+export const CHART_LIMITS = { labelChars: 200, categories: 10000, series: 128, points: 10000, boxes: 1000, outliers: 200 } as const;
 
 const CHART_KINDS: ChartData["type"][] = ["bar", "groupedBar", "line", "scatter", "histogram", "pie", "box"];
 
@@ -105,9 +105,9 @@ const label200 = (v: unknown) => String(v ?? "").slice(0, CHART_LIMITS.labelChar
 const finiteNum = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
 
 /**
- * A `ChartData` within the engine's own limits: labels and series names cut to 200 characters, at most 500
- * categories and values per series, 5 series and 500 points per series, numbers kept only when finite (others read
- * as gaps), the fitted line kept only when all its numbers are finite. The engine never produces more; a chart spec
+ * A `ChartData` within the engine's own limits: labels and series names bounded by CHART_LIMITS,
+ * numbers kept only when finite (others read as gaps), the fitted line kept only when all its numbers are finite.
+ * A chart spec
  * decoded from a paper's HTML (student-controlled) is held to the same limits before it is drawn.
  */
 export function normalizeChart(chart: ChartData): ChartData {
@@ -126,10 +126,13 @@ export function normalizeChart(chart: ChartData): ChartData {
           .filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
           .map((p) => [p[0], p[1]] as [number, number]);
       }
+      if (typeof sr.color === "string" && /^#[0-9a-f]{6}$/i.test(sr.color)) s.color = sr.color;
       if (sr.other) s.other = true;
       return s;
     }),
   };
+  if (c.style && typeof c.style === "object") out.style = { showGrid: c.style.showGrid !== false, fontSize: typeof c.style.fontSize === "number" && Number.isFinite(c.style.fontSize) ? Math.max(9, Math.min(20, c.style.fontSize)) : 12 };
+  if (out.style && typeof c.style?.color === "string" && /^#[0-9a-f]{6}$/i.test(c.style.color)) out.style.color = c.style.color;
   if (Array.isArray(c.categories)) out.categories = c.categories.slice(0, CHART_LIMITS.categories).map(label200);
   const f = c.fit;
   if (f && [f.slope, f.intercept, f.r, f.n].every((v) => typeof v === "number" && Number.isFinite(v))) out.fit = { slope: f.slope, intercept: f.intercept, r: f.r, n: f.n };
@@ -273,7 +276,7 @@ function prepSeries(chart: ChartData): Series[] {
   return (chart.series || [])
     .map((s, i) => ({
       name: String(s.name ?? ""),
-      color: seriesColor(i, !!s.other),
+      color: s.color || seriesColor(i, !!s.other),
       values: (s.values || []).map(finiteOr),
       points: (s.points || []).filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])) as [number, number][],
       other: !!s.other,
@@ -729,7 +732,7 @@ function spread(ys: number[], gap: number, lo: number, hi: number): number[] {
 function drawPie(chart: ChartData, series: Series[], o: RenderOptions, W: number, H: number): Drawn {
   // Largest first, "Other" last, whatever order the spec came in; the four series colours by position, grey after them.
   const raw = series
-    .map((s) => ({ name: s.name, value: Math.max(0, s.values[0] ?? 0), other: s.other }))
+    .map((s) => ({ name: s.name, value: Math.max(0, s.values[0] ?? 0), other: s.other, color: s.color }))
     .filter((s) => s.value > 0);
   const ordered = raw.filter((s) => !s.other).sort((a, b) => b.value - a.value).concat(raw.filter((s) => s.other));
   const total = ordered.reduce((sum, s) => sum + s.value, 0);
@@ -737,7 +740,7 @@ function drawPie(chart: ChartData, series: Series[], o: RenderOptions, W: number
   const slices: Slice[] = ordered.map((s, i) => {
     const a0 = angle;
     angle += (s.value / total) * 2 * Math.PI;
-    return { ...s, color: s.other || i >= CHART_SERIES.length ? CHART_OTHER : CHART_SERIES[i], a0, a1: angle, pct: (s.value / total) * 100 };
+    return { ...s, color: s.color, a0, a1: angle, pct: (s.value / total) * 100 };
   });
   const tr = titleRow(chart.xLabel, null, W, PAD);
   const top = PAD + tr.height;
@@ -819,7 +822,7 @@ function drawPie(chart: ChartData, series: Series[], o: RenderOptions, W: number
 function drawBox(chart: ChartData, o: RenderOptions, W: number, H: number): Drawn {
   const boxes = chart.boxes || [];
   const k = boxes.length;
-  const color = CHART_SERIES[0];
+  const color = chart.style?.color || CHART_SERIES[0];
   const values = boxes.flatMap((b) => [b.whiskerLow, b.whiskerHigh, b.q1, b.q3, b.median, ...b.outliers]);
   const yAxis = axis(Math.min(...values), Math.max(...values), o.lang, 1000, "data");
   const tr = titleRow(chart.yLabel, null, W, PAD);
@@ -911,11 +914,13 @@ export function renderChartSvg(input: ChartData, opts: RenderOptions): string {
     }
   }
   const h = Math.round(drawn.height);
+  let content = drawn.svg;
+  if (chart.style?.showGrid === false) content = content.split(`stroke="${CHART_GRID}"`).join('stroke="none"');
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${h}" viewBox="0 0 ${W} ${h}" role="img" font-family="${CHART_FONT}" font-size="${FS}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${h}" viewBox="0 0 ${W} ${h}" role="img" font-family="${CHART_FONT}" font-size="${chart.style?.fontSize || FS}">` +
     `<title>${escapeXml(opts.title)}</title><desc>${escapeXml(opts.desc)}</desc>` +
     `<rect width="${W}" height="${h}" fill="${CHART_SURFACE}"/>` +
-    drawn.svg +
+    content +
     `</svg>`
   );
 }

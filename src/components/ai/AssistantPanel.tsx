@@ -1,6 +1,9 @@
 "use client";
 
 import AllowanceSummary from "./AllowanceSummary";
+import DataWorkbench from "./DataWorkbench";
+import { beginArtifactDrag, endArtifactDrag } from "./artifactDrag";
+import type { DataSelection } from "@/lib/data/workspace";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogoSpinner } from "@/components/Logo";
@@ -106,6 +109,7 @@ interface AllowanceInfo {
 }
 
 export interface ChatMsg {
+  sourceSelections?: Record<string, DataSelection>;
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -157,7 +161,7 @@ export type ArtifactInsertMeta = InsertMeta & { artifact: { id: string; kind: Ar
  * `asNotes` sends it to the Research notes tab. Called only after the cost card was confirmed, and always with
  * `meta.interactionId`: the editor must refuse a call without it.
  */
-export type InsertArtifactHandler = (artifact: Artifact, meta: ArtifactInsertMeta, opts: { asNotes?: boolean }) => void;
+export type InsertArtifactHandler = (artifact: Artifact, meta: ArtifactInsertMeta, opts: { asNotes?: boolean; position?: number }) => void;
 
 export interface AssistantPanelProps {
   thesisId?: string;
@@ -363,6 +367,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   // ----- Attachments (Research copilot, docs/papers.md §4.5) -----
   /** Primary sources attached to this conversation; each send carries their ids. */
   const [attached, setAttached] = useState<AttachedSource[]>([]);
+  const [workbench, setWorkbench] = useState<AttachedSource | null>(null);
+  const [sourceSelections, setSourceSelections] = useState<Record<string, DataSelection>>({});
   /** The paper's primary sources ("From this paper"); null until first needed. */
   const [paperSources, setPaperSources] = useState<AttachedSource[] | null>(null);
   /** The student's library: tells whether this is their own paper (staff get an empty one) and lists "From your library". */
@@ -538,6 +544,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   /** Re-attaches the files of the conversation's last attached message when a conversation is reopened. */
   const restoreAttachments = useCallback(
     async (msgs: ChatMsg[]) => {
+      setSourceSelections([...msgs].reverse().find(m => m.role === "user")?.sourceSelections || {});
       const last = [...msgs].reverse().find((m) => m.role === "user" && m.attachmentIds && m.attachmentIds.length);
       if (!last || !last.attachmentIds || !thesisId) return setAttached([]);
       const ids = last.attachmentIds;
@@ -633,7 +640,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     setArtifactPending(null);
     setReadAsLine(null);
     const sourceIds = copilotOn && thesisId && attached.length ? attached.map((a) => a.id) : undefined;
-    const userMsg: ChatMsg = { id: `u_${Date.now()}`, role: "user", content, mode, createdAt: new Date().toISOString(), ...(sourceIds ? { attachmentIds: sourceIds } : {}) };
+    const userMsg: ChatMsg = { id: `u_${Date.now()}`, role: "user", content, mode, createdAt: new Date().toISOString(), ...(sourceIds ? { attachmentIds: sourceIds, sourceSelections } : {}) };
     const asstId = `a_${Date.now()}`;
     const asst: ChatMsg = { id: asstId, role: "assistant", content: "", mode, streaming: true, createdAt: new Date().toISOString() };
     const history = messages.filter((m) => !m.error && m.content).map((m) => ({ role: m.role, content: m.content }));
@@ -654,6 +661,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           selection: workingOn ? selection : undefined,
           useSources: useSources && !!thesisId ? true : undefined,
           sourceIds,
+          sourceSelections,
         },
         {
           onMeta: (meta) => {
@@ -696,6 +704,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     setPending(null);
     setArtifactPending(null);
     setAttached([]);
+    setSourceSelections({});
     setReadAsLine(null);
     setAttachError("");
     setPrivacyFor(null);
@@ -806,6 +815,17 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           <ArtifactCard
             key={a.id}
             artifact={a}
+            drag={insertable && thesisId && ctx ? (() => {
+              const words = artifactInsertWords(a);
+              const next = (ctx.aiWords + words) / (ctx.wordCount + words || 1) * 100;
+              const over = ctx.onFinalSubmission !== false && words > 0 && next > ctx.limitPct;
+              const cls = a.kind === "chart" || a.kind === "diagram" ? "figure" : a.kind === "equation" ? "equation" : "table";
+              const hint = over ? t("assistant.cost.over", { next: Math.round(next), limit: ctx.limitPct }) : t(ctx.onFinalSubmission === false ? "workspace.dragCost.notes" : `workspace.dragCost.${cls}`, { words: fmt.number(words), next: Math.round(next), limit: ctx.limitPct });
+              return { disabled: over, hint, onEnd: endArtifactDrag, onStart: (event: React.DragEvent) => {
+                if (over) return event.preventDefault();
+                beginArtifactDrag(event.dataTransfer, { thesisId, artifact: a, meta: { ...metaFor(m), interactionId: a.interactionId || m.interactionId, words, artifact: { id: a.id, kind: a.kind } } });
+              } };
+            })() : undefined}
             insertable={insertable && !!(a.interactionId || m.interactionId) && !m.streaming}
             onAction={(action) => toggleArtifactAction(m.id, a.id, action)}
             done={artifactDone && artifactDone.artifactId === a.id ? artifactDone.action : null}
@@ -940,7 +960,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-400 flex-wrap">
           <span>
             {/* The server's label is an English literal for the demo assistant: shown in the interface language. */}
-            {m.demo || m.provider === "demo" ? t("assistant.chip.demo") : m.label || t("glossary.assistant")} · {modeLabel(m.mode)}
+            {m.model === "data-workspace" ? t("workspace.customResult") : m.demo || m.provider === "demo" ? t("assistant.chip.demo") : m.label || t("glossary.assistant")} · {modeLabel(m.mode)}
           </span>
           {!m.error && <span className="px-[7px] py-px rounded-full bg-brand-50 text-brand-700 font-semibold">{t("assistant.msg.logged")}</span>}
           {m.blocked && <span className="badge-danger !text-[10px] !py-0">{t("assistant.msg.blocked")}</span>}
@@ -978,6 +998,9 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
 
   return (
     <div className={`flex flex-col h-full min-h-0 bg-white ${className}`}>
+      {workbench && thesisId && <DataWorkbench thesisId={thesisId} source={workbench} conversationId={conversationId || undefined} initial={sourceSelections[workbench.id]} onClose={() => setWorkbench(null)} onSelect={value => setSourceSelections(s => ({ ...s, [workbench.id]: value }))} onCreated={(artifact, id) => {
+        setMode("copilot"); setConversationId(id); setMessages(messages => [...messages, { id: artifact.id, role: "assistant", content: "", mode: "copilot", provider: "demo", model: "data-workspace", label: t("workspace.customResult"), interactionId: artifact.interactionId, artifacts: [artifact], createdAt: new Date().toISOString() }]); loadConversations();
+      }} />}
       {/* Header */}
       <div className="px-3 py-2 border-b border-gray-100 flex items-center gap-2.5 flex-shrink-0">
         <div className="w-[30px] h-[30px] bg-gradient-to-br from-brand-500 to-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1180,7 +1203,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             </button>
           </div>
         )}
-        {copilotOn && <AttachmentChips attached={attached} uploading={uploading} readAs={readAsLine} onRemove={(id) => setAttached((list) => list.filter((x) => x.id !== id))} disabled={loading} />}
+        {copilotOn && <AttachmentChips onConfigure={ownPaper && !ownPaper.locked ? setWorkbench : undefined} selections={sourceSelections} attached={attached} uploading={uploading} readAs={readAsLine} onRemove={(id) => setAttached((list) => list.filter((x) => x.id !== id))} disabled={loading} />}
         {copilotOn && messages.length > 0 && laterChips.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1" aria-label={chipSheet ? t("assistant.attach.chipsFrom", { file: attachedName(chipSheet) }) : undefined} role="group">
             {laterChips.map((c) => (

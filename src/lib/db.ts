@@ -369,6 +369,8 @@ export interface DatasetColumn {
 }
 
 export interface DatasetSheet {
+  /** Original worksheet row for each retained data row (new imports preserve blank-row gaps). */
+  rowNumbers?: number[];
   name: string;
   columns: DatasetColumn[];
   /** Column-major: `data[c][r]` is row r of column c (same order as `columns`). */
@@ -383,6 +385,8 @@ export interface DatasetSheet {
 
 /** The table parsed from a `sheet` source. One per source; removed with it. */
 export interface Dataset {
+  /** Transient selection used for one analysis or assistant turn. */
+  selection?: import("./data/workspace").DataSelection;
   id: string;
   sourceId: string;
   ownerId: string;
@@ -399,7 +403,7 @@ export interface Dataset {
 export interface DatasetSummary {
   /** Sheets dropped because the workbook had more than MAX_SHEETS. */
   sheetsCut?: number;
-  sheets: { name: string; rowCount: number; truncated: boolean; headerRow: number; columns: { name: string; label: string; type: DatasetColumn["type"]; role: DatasetColumn["role"] }[] }[];
+  sheets: { name: string; rowCount: number; truncated: boolean; headerRow: number; lastRow?: number; columns: { name: string; label: string; type: DatasetColumn["type"]; role: DatasetColumn["role"] }[] }[];
 }
 
 /** Summary of a dataset for source views: sheet names, sizes and columns, never rows or statistics. */
@@ -411,6 +415,7 @@ export function datasetSummary(d: Dataset): DatasetSummary {
       rowCount: s.rowCount,
       truncated: s.truncated,
       headerRow: s.headerRow,
+      lastRow: s.rowNumbers?.[s.rowNumbers.length - 1] ?? s.headerRow + s.rowCount,
       columns: s.columns.map((c) => ({ name: c.name, label: c.label, type: c.type, role: c.role })),
     })),
   };
@@ -473,11 +478,12 @@ export interface ArtifactTable {
 }
 
 export interface ChartData {
+  style?: { showGrid?: boolean; fontSize?: number; color?: string };
   type: "bar" | "groupedBar" | "line" | "scatter" | "histogram" | "pie" | "box";
   xLabel: string;
   yLabel: string;
   categories?: string[];
-  series: { name: string; values?: number[]; points?: [number, number][]; other?: boolean }[];
+  series: { name: string; color?: string; values?: number[]; points?: [number, number][]; other?: boolean }[];
   fit?: { slope: number; intercept: number; r: number; n: number };
   percent?: boolean;
   /** box: Tukey five-number summaries per group (≤ 12). */
@@ -490,6 +496,8 @@ export interface ChartData {
  * no data source: their `sourceId`, `fileName`, `sheet` and `datasetSha256` are "" and `n` is 0 (spec op "diagram"/"equation").
  */
 export interface Artifact {
+  /** Explicit user selection retained for editing and reproducing the result. */
+  dataSelection?: import("./data/workspace").WorkspaceRequest;
   id: string;
   interactionId: string;
   kind: "table" | "chart" | "test" | "diagram" | "equation";
@@ -639,6 +647,7 @@ export interface AIInteraction {
 }
 
 export interface ConversationMessage {
+  sourceSelections?: Record<string, import("./data/workspace").DataSelection>;
   id: string;
   role: "user" | "assistant";
   content: string;

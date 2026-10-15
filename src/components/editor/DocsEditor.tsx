@@ -51,6 +51,8 @@ import SessionBar from "./SessionBar";
 import ProvenanceGutter from "./ProvenanceGutter";
 import { BriefPanel, CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
 import DocumentTabs from "./DocumentTabs";
+import { ARTIFACT_DRAG_TYPE, draggedArtifact, endArtifactDrag } from "../ai/artifactDrag";
+import { artifactInsertWords } from "../ai/artifactText";
 import { AiPasteDialog, ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, SubmitDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, type AiPasteCost, type PasteMatchInfo, type TeacherRole } from "./Dialogs";
 import { CommentItem, FlagItem, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { type InsertArtifactHandler, type InsertMeta } from "../ai/AssistantPanel";
@@ -262,6 +264,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent" | "specialChars" | "bookmark" | "deadline">(null);
   const [anchors, setAnchors] = useState<AnchorItem[]>([]);
   const [tableMenuAt, setTableMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const artifactDropRef = useRef<(data: DataTransfer, x: number, y: number) => boolean>(() => false);
   const goToAnchorRef = useRef<(href: string) => void>(() => {});
   const onActionRef = useRef<(a: MenuAction) => void>(() => {});
   /** Position of the image being replaced while the image dialog is open (null = inserting a new one). */
@@ -533,7 +536,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       Captions,
       Toc.configure({ labels: { title: t("editor.doc.toc"), empty: t("editor.doc.noHeadings") } }),
       // Figures (copilot charts and diagrams, the student's own diagrams) and equations (docs/papers.md §9).
-      ChartNode.configure({ onLimit: (max: number) => notify(t("figures.chart.limit", { max }), "info") }),
+      ChartNode.configure({ thesisId, onLimit: (max: number) => notify(t("figures.chart.limit", { max }), "info") }),
       MathInline,
       MathBlock,
     ],
@@ -589,6 +592,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         },
       },
       handleDrop: (view, event, _slice, moved) => {
+        const transfer = (event as DragEvent).dataTransfer;
+        if (transfer?.types.includes(ARTIFACT_DRAG_TYPE)) { event.preventDefault(); artifactDropRef.current(transfer, event.clientX, event.clientY); return true; }
         // Moving something inside the page is left to ProseMirror (marks and figure origins travel with it).
         if (moved) return false;
         const dt = (event as DragEvent).dataTransfer;
@@ -1209,7 +1214,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       if (!ed) return;
       // In the notes tab the result goes at the end, after what is already there.
       if (toNotes) ed.commands.focus("end");
-      const r = insertArtifactCommand(ed, artifact, { provider: meta.provider, model: meta.model, mode: meta.mode, interactionId: meta.interactionId }, { programmatic });
+      const r = insertArtifactCommand(ed, artifact, { provider: meta.provider, model: meta.model, mode: meta.mode, interactionId: meta.interactionId }, { programmatic, position: opts.position });
       if (!r.ok) {
         // "limit": the figure node has already said that the tab is full.
         if (r.reason !== "limit") notify(t(r.reason === "no_interaction" ? "figures.insert.noInteraction" : r.reason === "read_only" ? "editor.toast.readOnly" : "figures.insert.invalid"), "error");
@@ -1238,6 +1243,32 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     if (tabsRef.current.length >= 20) return notify(t("editor.toast.tabLimit", { notes: t("editor.notesTab") }), "error");
     addTab(t("editor.notesTab"));
     setTimeout(run, 30);
+  };
+
+  artifactDropRef.current = (data, x, y) => {
+    const record = draggedArtifact(data, thesisId);
+    const ed = editorRef.current;
+    if (!record || !ed || !canEdit || !ed.isEditable) return false;
+    const words = artifactInsertWords(record.artifact);
+    const html = activeTabRef.current === SUBMISSION ? ed.getHTML() : contentsRef.current[SUBMISSION];
+    const total = countWords(html);
+    const ai = computeProvenance(html).ai;
+    const next = (ai + words) / (total + words || 1) * 100;
+    if (activeTabRef.current === SUBMISSION && words && next > policy.maxAiUsagePercent) { notify(t("assistant.cost.over", { next: Math.round(next), limit: policy.maxAiUsagePercent }), "error"); return false; }
+    const at = ed.view.posAtCoords({ left: x, top: y });
+    let position = ed.state.doc.content.size;
+    if (at) {
+      const resolved = ed.state.doc.resolve(at.pos);
+      if (resolved.depth > 0) {
+        const before = resolved.before(1), after = resolved.after(1);
+        const dom = ed.view.nodeDOM(before) as HTMLElement | null;
+        const rect = dom?.getBoundingClientRect();
+        position = rect && y < rect.top + rect.height / 2 ? before : after;
+      } else position = at.pos;
+    }
+    insertArtifact(record.artifact, record.meta, { position });
+    endArtifactDrag();
+    return true;
   };
 
   /** Adds a provenance mark to the text of `from…to` that carries none (the AI-marked text keeps its own mark). */
@@ -1930,7 +1961,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
           )}
 
           {!focus && <DocumentTabs tabs={tabs} activeTab={activeTab} canEdit={canEdit} editor={editor} mobile={isMobile} getHtml={getTabHtml} onSwitch={switchTab} onAdd={() => addTab()} onRename={renameTab} onDuplicate={duplicateTab} onPromote={setConfirmPromote} onDelete={setConfirmDelete} />}
-        <main className={`flex-1 overflow-auto print:!overflow-visible ${workspaceClass}`} data-hf-header={ws.headerText || ""} data-hf-footer={ws.footerText || ""} data-hf-num={ws.pageNumbers || "none"} style={{ ["--cap-figure" as string]: `"${t("editor.doc.figure")} "`, ["--cap-table" as string]: `"${t("editor.doc.table")} "`, ["--fn-title" as string]: `"${t("editor.doc.footnotes")}"` }} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
+        <main className={`flex-1 overflow-auto print:!overflow-visible ${workspaceClass}`} onDragOver={event => { if (event.dataTransfer.types.includes(ARTIFACT_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = canEdit ? "copy" : "none"; } }} onDrop={event => { if (event.defaultPrevented || !event.dataTransfer.types.includes(ARTIFACT_DRAG_TYPE)) return; event.preventDefault(); artifactDropRef.current(event.dataTransfer, event.clientX, event.clientY); }} data-hf-header={ws.headerText || ""} data-hf-footer={ws.footerText || ""} data-hf-num={ws.pageNumbers || "none"} style={{ ["--cap-figure" as string]: `"${t("editor.doc.figure")} "`, ["--cap-table" as string]: `"${t("editor.doc.table")} "`, ["--fn-title" as string]: `"${t("editor.doc.footnotes")}"` }} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
           <div className="px-0 md:px-4 min-h-full">
             <div className={`docs-page ${ws.numberHeadings ? "num-headings" : ""}`} ref={sheetRef}>
               <FirstPageHeader setup={ws} pages={pageCount} />

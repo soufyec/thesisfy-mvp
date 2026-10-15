@@ -38,6 +38,7 @@ interface Body {
    * model ask Thesisfic for tables and figures; documents send their passages, labelled [P1]…
    */
   sourceIds?: string[];
+  sourceSelections?: Record<string, import("@/lib/data/workspace").DataSelection>;
 }
 
 type Usage = { inputTokens: number; outputTokens: number };
@@ -87,7 +88,9 @@ export async function POST(request: NextRequest) {
 
   // Attachments: Research copilot with a paper in context only.
   // Only the paper's student attaches its files: staff chats about a paper never send the student's data.
-  const attached = chatAttachments(mode === "copilot" && thesis && thesis.studentId === user.id ? thesis : null, body.sourceIds);
+  let attached: ReturnType<typeof chatAttachments>;
+  try { attached = chatAttachments(mode === "copilot" && thesis && thesis.studentId === user.id ? thesis : null, body.sourceIds, body.sourceSelections); }
+  catch { return error(uiTr("workspace.invalidRange"), 400); }
   const hasSheets = attached.sheets.length > 0;
 
   // Conversation persistence
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
   // Aggregates of the last artifacts of this conversation, so the model can talk about them without new numbers:
   // data artifacts of the sheets attached to this turn, and diagrams drawn earlier (their kind and counts only).
   const digests = mode === "copilot" ? lastArtifactDigests(conversation.messages, attached.sheets, 3, translator) : [];
-  db.conversations.append(conversation.id, { role: "user", content: lastUser, mode, ...(attached.ids.length ? { attachmentIds: attached.ids } : {}) });
+  db.conversations.append(conversation.id, { role: "user", content: lastUser, mode, ...(attached.ids.length ? { attachmentIds: attached.ids } : {}), sourceSelections: Object.fromEntries(attached.sheets.filter(s => s.dataset.selection).map(s => [s.sourceId, s.dataset.selection!])) });
   // What the student wrote in this conversation, this message (and any passage of their paper they selected)
   // included: a PRISMA diagram the copilot proposes may only use numbers that appear here (D26).
   runOpts.studentTexts = [

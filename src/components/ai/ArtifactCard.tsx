@@ -108,6 +108,7 @@ export function EquationView({ latex, display, showSource }: { latex: string; di
 
 export interface ArtifactCardProps {
   artifact: Artifact;
+  drag?: { onStart: (event: React.DragEvent) => void; onEnd: () => void; hint: string; disabled: boolean };
   /** Insert and "Keep as notes" are offered (mode artifactsInsertable, editable paper, a handler from the editor). */
   insertable: boolean;
   /** Pressed: opens the cost card. Never inserts by itself. */
@@ -125,7 +126,7 @@ export interface ArtifactCardProps {
  * from Thesisfic; the card shows them, says where they come from, and offers "Insert, marked as AI" only through the
  * cost card. No download, no drag, no selectable copy: a result enters the paper marked, or not at all.
  */
-export default function ArtifactCard({ artifact: a, insertable, onAction, costCard, done, insertHint }: ArtifactCardProps) {
+export default function ArtifactCard({ artifact: a, insertable, onAction, costCard, done, insertHint, drag }: ArtifactCardProps) {
   const t = useT();
   const fmt = useFormat();
   const { ref: bodyRef, width } = useWidth<HTMLDivElement>();
@@ -169,7 +170,7 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
   const btn = "text-xs px-2.5 py-[5px] rounded-lg border border-gray-200 bg-white font-medium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40";
 
   return (
-    <figure className="mt-2 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden" aria-label={a.title}>
+    <figure draggable={!!drag && !drag.disabled} onDragStart={event => { if (drag && !drag.disabled) drag.onStart(event); else event.preventDefault(); }} onDragEnd={() => drag?.onEnd()} className="mt-2 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden" aria-label={a.title}>
       <figcaption className="px-3 pt-2.5 pb-1.5 flex items-start gap-2">
         <span className="w-6 h-6 rounded-lg bg-prov-ai-soft text-prov-ai-deep flex items-center justify-center flex-shrink-0 mt-px" aria-hidden="true">
           <Icon className="w-3.5 h-3.5" />
@@ -220,6 +221,7 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
         </p>
       </div>
 
+      {drag && <div className="px-3 pb-2 text-xs text-gray-600"><p>{drag.hint}</p><button type="button" draggable={!drag.disabled} disabled={drag.disabled} onDragStart={event => { event.stopPropagation(); drag.onStart(event); }} onDragEnd={drag.onEnd} className="mt-1 inline-flex items-center border border-gray-200 rounded-lg px-2 py-1 cursor-grab active:cursor-grabbing disabled:opacity-40" aria-label={t("workspace.drag")}>{t("workspace.drag")}</button></div>}
       <div className="px-3 pb-2.5 flex flex-wrap items-center gap-1.5">
         {insertable && onAction && (a.kind !== "test" || hasData) && (
           <button type="button" onClick={() => onAction("insert")} disabled={wide} className={`${btn} text-prov-ai-deep border-prov-ai-line hover:bg-prov-ai-soft`} aria-describedby={wide ? `wide-${a.id}` : undefined}>

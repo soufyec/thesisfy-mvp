@@ -4,6 +4,7 @@
  * "Use my sources" searches. Only sources of the paper's owner that are linked to the paper count; other ids are
  * ignored. Server-only (data layer).
  */
+import { selectDataset, type DataSelection } from "@/lib/data/workspace";
 import { db } from "@/lib/db";
 import type { Thesis, ThesisSource } from "@/lib/db";
 import { retrieve } from "@/lib/sources/retrieve";
@@ -29,7 +30,7 @@ export interface ChatAttachments {
 export const fileNameOf = (s: Pick<ThesisSource, "file" | "title">): string => (s.file?.name || s.title || "file").slice(0, 200);
 
 /** The attached sources the server accepts: the paper owner's, linked to this paper, with a dataset for sheets. */
-export function chatAttachments(thesis: Thesis | null | undefined, sourceIds: unknown): ChatAttachments {
+export function chatAttachments(thesis: Thesis | null | undefined, sourceIds: unknown, selections?: Record<string, DataSelection>): ChatAttachments {
   const out: ChatAttachments = { ids: [], sheets: [], documents: [], view: [] };
   if (!thesis || !Array.isArray(sourceIds)) return out;
   const seen = new Set<string>();
@@ -44,7 +45,8 @@ export function chatAttachments(thesis: Thesis | null | undefined, sourceIds: un
     if (s.kind === "sheet") {
       const dataset = (s.datasetId && db.datasets.findById(s.datasetId)) || db.datasets.findBySource(s.id);
       if (!dataset || !dataset.sheets.length) continue;
-      out.sheets.push({ sourceId: s.id, fileName: file, dataset });
+      const selected = selections?.[s.id];
+      out.sheets.push({ sourceId: s.id, fileName: file, dataset: selected ? selectDataset(dataset, selected) : dataset });
       out.view.push({ sourceId: s.id, file, kind: "sheet" });
     } else {
       out.documents.push(s);

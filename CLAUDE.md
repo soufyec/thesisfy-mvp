@@ -78,7 +78,7 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 - La barra de herramientas conserva el conjunto completo (`Toolbar.tsx`); fondo blanco, sin forma de píldora, 40px de alto, y el interruptor **Provenance** al final a la derecha.
 - El bubble menu de selección ofrece: B, I, U, Cite, Comment, **Ask AI** (abre el asistente con la selección como contexto).
 - El provenance gutter es visible por defecto y se apaga con el interruptor de la barra; su estado se persiste en `localStorage` (`provenance_gutter`).
-- Panel del asistente: 400px, a la derecha, desmontable. En móvil, bottom sheet.
+- Panel del asistente: 400px, a la derecha, desmontable. En móvil, bottom sheet. Los adjuntos permiten configurar hoja, rango y resultado; sus tarjetas se arrastran al documento con coste visible y procedencia conservada. Los gráficos admiten edición de datos y formato, conservando la primera versión y el origen.
 - Los trabajos de una tarea abren el panel **Brief** (solo lectura, también en revisión) desde la session bar, el menú `⋯` y el menú móvil; sin tarea no aparece.
 - Las plantillas solo escriben encabezados; la guía de cada sección es un placeholder (`data-hint`) que no cuenta, no se exporta y no se ve en revisión.
 

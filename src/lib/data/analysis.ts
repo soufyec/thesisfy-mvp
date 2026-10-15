@@ -365,7 +365,7 @@ function normalizeSpec(raw: unknown, dataset: Pick<Dataset, "sheets">, sheetInde
           if (by !== -1) out.by = cols[by].name;
         } else {
           const bins = typeof r.bins === "number" && Number.isFinite(r.bins) ? Math.round(r.bins) : undefined;
-          if (bins !== undefined) out.bins = Math.max(2, Math.min(50, bins));
+          if (bins !== undefined) out.bins = Math.max(2, Math.min(1000, bins));
           out.chart = chart === "none" ? "none" : "histogram";
         }
       }

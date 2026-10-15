@@ -126,3 +126,14 @@ Mobile nativo (Capacitor), migración a Postgres, SSO/LMS. De la fase 11: OCR, c
 - [x] Selector compacto de pestañas sobre el documento; herramientas y selector dejan libre la columna del asistente desde la cabecera.
 - [x] Modos compactos, una línea de capacidades del Research copilot y retirada de su explicación redundante.
 - [x] Traducciones EN/ES/FR/DE; comprobación TypeScript, build y capturas antes/después.
+
+
+### Cambios solicitados — 15 octubre 2026
+
+- [x] Asistente compacto, selector de pestañas y consumo mostrado en tokens e interacciones estimadas.
+- [x] Modelos institucionales configurados; sin asignación monetaria en la vista del estudiante.
+- [x] Espacio de datos con hoja, rango A1, columnas, siete gráficos, tabla, análisis y vista previa.
+- [x] Arrastre de artefactos del asistente al documento con coste y procedencia.
+- [x] Edición de datos y presentación de gráficos, recalcular rango y conservar datos originales.
+
+Los datos y artefactos siguen calculándose en servidor. Las tablas, ecuaciones y diagramas mantienen sus editores nativos. No se publica en producción en esta sesión; los cambios se preparan en la PR de revisión.
