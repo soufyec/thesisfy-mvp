@@ -63,3 +63,21 @@ const manyData = {...data, sheets: buildSheets([{ name: 'Groups', cut:false, row
 const boxes = createWorkspaceArtifact(manyData, {...config, chartType:'box', range:'A2:B19', x:'Group', ys:['Value']}, meta, translator('en'));
 assert.equal(boxes.chart.boxes.length, 18);
 console.log('Explicit histogram bin count and all 18 box groups retained.');
+
+// Inserting an artifact must be a separate undo step from immediate typing.
+const {Schema}=require('@tiptap/pm/model');
+const {EditorState}=require('@tiptap/pm/state');
+const {history,undo,redo}=require('@tiptap/pm/history');
+const {insertArtifactCommand}=require('../src/components/editor/insertArtifact.ts');
+const schema=new Schema({nodes:{doc:{content:'block+'},paragraph:{content:'text*',group:'block'},text:{group:'inline'},mathBlock:{group:'block',atom:true,attrs:{latex:{},origin:{},provider:{default:null},model:{default:null},interaction:{default:null},numbered:{default:false}}}}});
+let state=EditorState.create({schema,doc:schema.node('doc',null,[schema.node('paragraph',null,[schema.text('Research')])]),plugins:[history()]});
+const dispatch=tr=>{state=state.apply(tr);};
+const editor={get state(){return state;},isEditable:true,view:{dispatch},chain(){let command;return {command(fn){command=fn;return this;},run(){const tr=state.tr;const ok=command({tr,state});if(ok)dispatch(tr);return ok;}};}};
+const result=insertArtifactCommand(editor,{id:'eq',kind:'equation',title:'Equation',lang:'en',equation:{latex:'x=2'}},{provider:'demo',model:'test',mode:'copilot',interactionId:'interaction'},{position:0});
+assert(result.ok);assert.equal(state.doc.child(0).attrs.origin,'ai');
+dispatch(state.tr.insertText(' revised',state.doc.content.size-1));
+assert(state.doc.textContent.includes('revised'));
+assert(undo(state,dispatch));assert.equal(state.doc.child(0).type.name,'mathBlock');assert(!state.doc.textContent.includes('revised'));
+assert(undo(state,dispatch));assert.equal(state.doc.childCount,1);assert.equal(state.doc.child(0).type.name,'paragraph');
+assert(redo(state,dispatch));assert.equal(state.doc.child(0).attrs.interaction,'interaction');
+console.log('Artifact command history passed: immediate typing undoes separately, insertion is one step and redo preserves AI origin/interaction.');

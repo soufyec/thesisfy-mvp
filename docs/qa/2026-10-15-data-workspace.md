@@ -5,7 +5,7 @@ Pruebas locales con Chrome/Playwright, Next 14, cuentas demo y datos sintéticos
 ## Verificado
 
 - `node scripts/test-data-workspace.cjs`: coordenadas A1 con filas vacías, rangos inválidos, datos originales sin mutación, valores exactos de gráfico y tabla, X=0 en dispersión, 12 series, escape de SVG, color y tipografía, siete intervalos de histograma y 18 grupos de cajas sin agrupar.
-- TypeScript y compilación de producción correctos.
+- TypeScript y compilación de producción correctos. El mismo script de regresión comprueba la inserción real de una ecuación y el historial: teclear inmediatamente después se deshace por separado, la inserción ocupa un paso y rehacer conserva origen e interacción.
 - API: vista previa, selección para chat, rechazo de rangos inválidos, datos pegados y rechazo de un archivo que pertenece a otro trabajo. Usuario sin sesión: 401; otros estudiantes, tutor y administración: 404 al crear un artefacto del estudiante; trabajo aprobado: 409.
 - Navegador: configurar rango, ver vista previa, crear gráfico, arrastrarlo desde su tarjeta al documento, cambiar valores negativos/decimales, tipo, color, tamaño de letra y cuadrícula. Guardar y recargar conserva el objeto, datos originales, cambios y origen AI-assisted. Recalcular usa los valores del nuevo rango.
 - Tabla: arrastre real, celdas nativas editables, marcas AI-assisted, deshacer/rehacer y rechazo de una referencia de arrastre falsificada.
