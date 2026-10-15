@@ -76,7 +76,12 @@ const en = {
   "assistant.mode.copilot.suggestion4": "What are the strongest objections to my method?",
 
   // Copilot tile and note
-  "assistant.copilot.tileSub": "Provided by your university · history kept",
+  "assistant.copilot.tileSub": "Explore ideas, methods and your data",
+  "assistant.allowance.activity": "{requests} interactions · {tokens} tokens used",
+  "assistant.allowance.tokensLeft": "About {n} tokens left at your current usage",
+  "assistant.allowance.used": "{percent}% used",
+  "assistant.allowance.paceUntil": "At this pace, lasts until about {date}",
+  "assistant.allowance.resetShort": "Renews on {date}",
   "assistant.copilot.noteRest": ", provided by your university. Ask anything about your research, or attach your own data to get tables and figures computed by Thesisfic. The history is kept and visible to your institution; it will not write your paper, and what you copy or insert from it into your paper is marked as AI-assisted.",
 
   // Empty state
@@ -335,7 +340,12 @@ export const assistant: Messages<typeof en> = {
     "assistant.mode.copilot.suggestion3": "Ayúdame a planificar las próximas 4 semanas de mi investigación",
     "assistant.mode.copilot.suggestion4": "¿Cuáles son las objeciones más fuertes a mi método?",
 
-    "assistant.copilot.tileSub": "Ofrecido por tu universidad · historial guardado",
+    "assistant.copilot.tileSub": "Explora ideas, métodos y tus datos",
+    "assistant.allowance.activity": "{requests} interacciones · {tokens} tokens usados",
+    "assistant.allowance.tokensLeft": "Unos {n} tokens restantes según tu consumo",
+    "assistant.allowance.used": "{percent}% usado",
+    "assistant.allowance.paceUntil": "A este ritmo, te queda hasta aproximadamente el {date}",
+    "assistant.allowance.resetShort": "Se renueva el {date}",
     "assistant.copilot.noteRest": ", ofrecido por tu universidad. Pregunta lo que quieras sobre tu investigación o adjunta tus propios datos para que Thesisfic calcule tablas y figuras. El historial se guarda y es visible para tu institución; no escribirá tu trabajo, y lo que copies o insertes de sus respuestas en tu trabajo se marca como «Con ayuda de IA».",
 
     "assistant.empty.copilot": "Profundiza todo lo que necesites; la redacción sigue siendo tuya.",
@@ -581,7 +591,12 @@ export const assistant: Messages<typeof en> = {
     "assistant.mode.copilot.suggestion3": "Aidez-moi à planifier les 4 prochaines semaines de ma recherche",
     "assistant.mode.copilot.suggestion4": "Quelles sont les objections les plus fortes à ma méthode ?",
 
-    "assistant.copilot.tileSub": "Fourni par votre université · historique conservé",
+    "assistant.copilot.tileSub": "Explorez des idées, des méthodes et vos données",
+    "assistant.allowance.activity": "{requests} interactions · {tokens} tokens utilisés",
+    "assistant.allowance.tokensLeft": "Environ {n} tokens restants selon votre usage",
+    "assistant.allowance.used": "{percent}% utilisé",
+    "assistant.allowance.paceUntil": "À ce rythme, le quota dure jusqu’au {date} environ",
+    "assistant.allowance.resetShort": "Renouvellement le {date}",
     "assistant.copilot.noteRest": ", fourni par votre université. Posez n'importe quelle question sur votre recherche, ou joignez vos propres données pour que Thesisfic calcule des tableaux et des figures. L'historique est conservé et visible par votre établissement ; il n'écrira pas votre travail, et ce que vous en copiez ou insérez dans votre travail est marqué « Assisté par IA ».",
 
     "assistant.empty.copilot": "Allez aussi loin que nécessaire ; la rédaction reste la vôtre.",
@@ -827,7 +842,12 @@ export const assistant: Messages<typeof en> = {
     "assistant.mode.copilot.suggestion3": "Helfen Sie mir, die nächsten 4 Wochen meiner Forschung zu planen",
     "assistant.mode.copilot.suggestion4": "Was sind die stärksten Einwände gegen meine Methode?",
 
-    "assistant.copilot.tileSub": "Von Ihrer Hochschule bereitgestellt · Verlauf gespeichert",
+    "assistant.copilot.tileSub": "Ideen, Methoden und eigene Daten erkunden",
+    "assistant.allowance.activity": "{requests} Interaktionen · {tokens} Tokens verbraucht",
+    "assistant.allowance.tokensLeft": "Etwa {n} Tokens übrig bei Ihrer Nutzung",
+    "assistant.allowance.used": "{percent}% verbraucht",
+    "assistant.allowance.paceUntil": "Bei diesem Tempo reicht es etwa bis {date}",
+    "assistant.allowance.resetShort": "Erneuert sich am {date}",
     "assistant.copilot.noteRest": ", von Ihrer Hochschule bereitgestellt. Fragen Sie alles zu Ihrer Forschung, oder hängen Sie eigene Daten an, damit Thesisfic Tabellen und Abbildungen berechnet. Der Verlauf wird gespeichert und ist für Ihre Hochschule sichtbar; er schreibt nicht Ihre Arbeit, und was Sie daraus in Ihre Arbeit kopieren oder einsetzen, wird als „KI-unterstützt“ markiert.",
 
     "assistant.empty.copilot": "Gehen Sie so tief, wie Sie müssen; das Schreiben bleibt Ihre Sache.",

@@ -117,3 +117,12 @@ Mobile nativo (Capacitor), migración a Postgres, SSO/LMS. De la fase 11: OCR, c
 - Rutas `/privacy` y `/contact` no existen: el pie de la landing enlaza a `#model` y `#pilot`.
 - `MenuBar` (barra horizontal antigua) sigue exportado aunque ya no se renderiza; eliminar cuando nada lo use.
 - ESLint no está instalado en el proyecto; `npm run lint` pide instalarlo.
+
+
+## Ajuste solicitado · 15 octubre 2026
+
+- [x] Conexiones de IA y selector del asistente: uso en interacciones y tokens, sin importes; restantes estimados según el consumo y el límite individual/compartido.
+- [x] Ocultar modelos institucionales sin configurar; conservar los modelos disponibles y las conexiones personales activas en el selector.
+- [x] Selector compacto de pestañas sobre el documento; herramientas y selector dejan libre la columna del asistente desde la cabecera.
+- [x] Modos compactos, una línea de capacidades del Research copilot y retirada de su explicación redundante.
+- [x] Traducciones EN/ES/FR/DE; comprobación TypeScript, build y capturas antes/después.

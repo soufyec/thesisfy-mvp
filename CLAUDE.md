@@ -74,7 +74,7 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 ## 5. Reglas de layout del editor
 
 - Máximo **tres filas de cromo** encima del documento: cabecera (52px), barra de herramientas (40px) y fila de pestañas del documento (34px, `.doc-tab`). El resto va al menú `⋯`, al bubble menu de selección o a la session bar inferior (30px).
-- Las pestañas del documento se mantienen como fila propia sobre la hoja, con "Final submission" bloqueada a la izquierda y `+` al final.
+- Las pestañas se eligen desde un selector compacto sobre la hoja: muestra la pestaña activa y abre un menú con Final submission y las pestañas de trabajo. El menú conserva crear, renombrar, duplicar, promover y borrar. Toolbar y selector pertenecen a la columna del documento; el asistente empieza justo debajo de la cabecera.
 - La barra de herramientas conserva el conjunto completo (`Toolbar.tsx`); fondo blanco, sin forma de píldora, 40px de alto, y el interruptor **Provenance** al final a la derecha.
 - El bubble menu de selección ofrece: B, I, U, Cite, Comment, **Ask AI** (abre el asistente con la selección como contexto).
 - El provenance gutter es visible por defecto y se apaga con el interruptor de la barra; su estado se persiste en `localStorage` (`provenance_gutter`).

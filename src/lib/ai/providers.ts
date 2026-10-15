@@ -104,6 +104,10 @@ export interface Allowance {
 }
 
 export interface AllowanceUsage {
+  /** Actual input and output tokens used this month. */
+  tokensUsed: number;
+  /** Estimate at the student's average usage, or the typical exchange before enough history exists. */
+  remainingTokens: number | null;
   /** Interactions billed to the institution this month, this student. */
   requests: number;
   /** Typical cost of one interaction for this student (own average when there is enough data), institution currency. */
@@ -158,6 +162,9 @@ export function allowanceFor(user: User): Allowance {
   if (f.monthlyBudget > 0) caps.push(Math.max(0, f.monthlyBudget - spentInstitution));
   const remaining = caps.length ? Math.min(...caps) : null;
   const remainingRequests = remaining === null ? null : costPerRequest > 0 ? Math.floor(remaining / costPerRequest) : null;
+  const tokensUsed = mine.reduce((sum, row) => sum + row.inputTokens + row.outputTokens, 0);
+  const tokensPerRequest = mine.length >= 3 && tokensUsed > 0 ? tokensUsed / mine.length : TYPICAL_INTERACTION.inputTokens + TYPICAL_INTERACTION.outputTokens;
+  const remainingTokens = remaining === null || costPerRequest <= 0 ? null : Math.floor((remaining / costPerRequest) * tokensPerRequest);
   const usedPercent = f.perStudentMonthly > 0 ? Math.min(100, Math.round((spentStudent / f.perStudentMonthly) * 100)) : null;
   const institutionPercent = f.monthlyBudget > 0 ? Math.min(100, Math.round((spentInstitution / f.monthlyBudget) * 100)) : null;
   const projectedSpend = (spentStudent / daysElapsed) * daysInMonth;
@@ -171,7 +178,7 @@ export function allowanceFor(user: User): Allowance {
 
   return {
     institutionPays: f.institutionPays, currency: f.currency, perStudentMonthly: f.perStudentMonthly, spentStudent, monthlyBudget: f.monthlyBudget, spentInstitution, atLimit: f.atLimit, exhausted,
-    usage: { requests: mine.length, costPerRequest, remaining, remainingRequests, usedPercent, institutionPercent, resetsAt: reset.toISOString(), daysLeft, projectedPercent, runsOutAt },
+    usage: { requests: mine.length, tokensUsed, remainingTokens, costPerRequest, remaining, remainingRequests, usedPercent, institutionPercent, resetsAt: reset.toISOString(), daysLeft, projectedPercent, runsOutAt },
   };
 }
 

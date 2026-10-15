@@ -26,7 +26,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Typography from "@tiptap/extension-typography";
-import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, ListTree, MessageSquare, MessageSquarePlus, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
 import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, ProvenanceStats, Search } from "./extensions";
 import { Pagination } from "./pagination";
 import { TableExtras } from "./tableExtras";
@@ -50,7 +50,7 @@ import { TypographyRow, TypographyToggle } from "./BubbleTypography";
 import SessionBar from "./SessionBar";
 import ProvenanceGutter from "./ProvenanceGutter";
 import { BriefPanel, CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
-import { TabOutline } from "./TabOutline";
+import DocumentTabs from "./DocumentTabs";
 import { AiPasteDialog, ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, SubmitDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, type AiPasteCost, type PasteMatchInfo, type TeacherRole } from "./Dialogs";
 import { CommentItem, FlagItem, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import AssistantPanel, { type InsertArtifactHandler, type InsertMeta } from "../ai/AssistantPanel";
@@ -295,8 +295,6 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   // "submission" is the Final submission tab (thesis.content): the only one submitted, reviewed and scored.
   const [tabs, setTabs] = useState<ThesisTab[]>(initial.thesis.tabs || []);
   const [activeTab, setActiveTab] = useState<string>(SUBMISSION);
-  const [tabMenu, setTabMenu] = useState<string | null>(null);
-  const [outlineTab, setOutlineTab] = useState<string | null>(null);
   const getTabHtml = useCallback((id: string) => contentsRef.current[id] ?? "", []);
   const [tabWords, setTabWords] = useState(0);
   const activeTabRef = useRef<string>(SUBMISSION);
@@ -858,7 +856,6 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       contentsRef.current[activeTabRef.current] = ed.getHTML();
       activeTabRef.current = id;
       setActiveTab(id);
-      setTabMenu(null);
       loadIntoEditor(contentsRef.current[id] ?? "<p></p>");
       if (id === SUBMISSION) scheduleProvenance(ed);
     },
@@ -1924,68 +1921,15 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         <button onClick={() => setMobileMenu(true)} className="md:hidden p-2 text-gray-600" aria-label={t("common.more")}><MoreVertical className="w-5 h-5" /></button>
       </header>
 
-      {/* Toolbar */}
-      {!focus && (
-        <Toolbar editor={editor} zoom={zoom} onZoom={setZoom} onLink={openLink} onImage={() => setDialog("image")} onTable={() => setDialog("table")} onComment={startComment} onCite={() => openCite()} onPrint={() => window.print()} spellcheck={spellcheck} onSpellcheck={setSpellcheck} compact={isMobile} provenance={{ on: showProvenance, onToggle: (v) => setShowProvenance(v), locked: reviewMode }} />
-      )}
-
-      {/* Document tabs */}
-      {!focus && (
-        <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-workspace border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label={t("editor.tabs.label")} data-tour="tabs">
-          <div className="relative flex-shrink-0" data-tab-anchor={SUBMISSION}>
-            <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => { if (activeTab === SUBMISSION) setOutlineTab(outlineTab === SUBMISSION ? null : SUBMISSION); else { setOutlineTab(null); switchTab(SUBMISSION); } }} className={`doc-tab submission !pr-7${activeTab === SUBMISSION ? "active" : ""}`} title={t("editor.tabs.submissionHint")}>
-              <FileCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
-              <span className="truncate">{finalSubmission}</span>
-              <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-            </button>
-            <TabOutline tabId={SUBMISSION} title={finalSubmission} active={activeTab === SUBMISSION} open={outlineTab === SUBMISSION} onOpenChange={(o) => setOutlineTab(o ? SUBMISSION : null)} editor={editor} getHtml={getTabHtml} switchTab={switchTab} mobile={isMobile} triggerClassName="absolute right-1 top-1/2 -translate-y-1/2" />
-          </div>
-          {tabs.map((tb) => (
-            <div key={tb.id} className="relative flex-shrink-0" data-tab-anchor={tb.id}>
-              <button role="tab" aria-selected={activeTab === tb.id} onClick={() => { if (activeTab === tb.id) setOutlineTab(outlineTab === tb.id ? null : tb.id); else { setOutlineTab(null); switchTab(tb.id); } }} onDoubleClick={() => canEdit && setTabMenu(`rename:${tb.id}`)} className={`doc-tab ${activeTab === tb.id && canEdit ? "!pr-12" : "!pr-7"} ${activeTab === tb.id ? "active" : ""}`}>
-                <File className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                {tabMenu === `rename:${tb.id}` ? (
-                  <input
-                    autoFocus
-                    defaultValue={tb.title}
-                    onClick={(e) => e.stopPropagation()}
-                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== tb.title) renameTab(tb.id, v.slice(0, 80)); setTabMenu(null); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setTabMenu(null); }}
-                    className="text-[13px] bg-white border border-brand-300 rounded px-1 w-36 focus:outline-none"
-                    aria-label={t("editor.tabs.name")}
-                  />
-                ) : (
-                  <span className="truncate">{tb.title}</span>
-                )}
-              </button>
-              {tabMenu !== `rename:${tb.id}` && (
-                <TabOutline tabId={tb.id} title={tb.title} active={activeTab === tb.id} open={outlineTab === tb.id} onOpenChange={(o) => setOutlineTab(o ? tb.id : null)} editor={editor} getHtml={getTabHtml} switchTab={switchTab} mobile={isMobile} triggerClassName={`absolute top-1/2 -translate-y-1/2 ${activeTab === tb.id && canEdit ? "right-6" : "right-1"}`} />
-              )}
-              {activeTab === tb.id && canEdit && tabMenu !== `rename:${tb.id}` && (
-                <button onClick={() => setTabMenu(tabMenu === tb.id ? null : tb.id)} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label={t("editor.tabs.options", { title: tb.title })}>
-                  <MoreHorizontal className="w-3.5 h-3.5" />
-                </button>
-              )}
-              {tabMenu === tb.id && (
-                <div className="docs-menu !top-full !left-auto right-0 !min-w-[230px]" onMouseLeave={() => setTabMenu(null)}>
-                  <button onClick={() => setTabMenu(`rename:${tb.id}`)}>{t("editor.rename")}</button>
-                  <button onClick={() => { setTabMenu(null); duplicateTab(tb.id); }}>{t("editor.tabs.duplicate")}</button>
-                  <button onClick={() => { setTabMenu(null); setConfirmPromote(tb.id); }}>{t("editor.tabs.useAsSubmission", { finalSubmission })}</button>
-                  <div className="sep" />
-                  <button onClick={() => { setTabMenu(null); setConfirmDelete(tb.id); }} className="!text-red-600">{t("editor.tabs.delete")}</button>
-                </div>
-              )}
-            </div>
-          ))}
-          {canEdit && tabs.length < 20 && (
-            <button onClick={() => addTab()} className="flex items-center px-2 py-1.5 mb-0.5 rounded-lg text-gray-500 hover:bg-white/70 flex-shrink-0" aria-label={t("editor.tabs.new")} title={t("editor.tabs.new")}>
-              <Plus className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      )}
-      {/* Body */}
+      {/* Document controls belong to the paper column; the assistant starts directly below the header. */}
       <div className="flex-1 flex min-h-0 print:!block print:!overflow-visible">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 print:!block">
+          {/* Toolbar */}
+          {!focus && (
+            <Toolbar editor={editor} zoom={zoom} onZoom={setZoom} onLink={openLink} onImage={() => setDialog("image")} onTable={() => setDialog("table")} onComment={startComment} onCite={() => openCite()} onPrint={() => window.print()} spellcheck={spellcheck} onSpellcheck={setSpellcheck} compact={isMobile} provenance={{ on: showProvenance, onToggle: (v) => setShowProvenance(v), locked: reviewMode }} />
+          )}
+
+          {!focus && <DocumentTabs tabs={tabs} activeTab={activeTab} canEdit={canEdit} editor={editor} mobile={isMobile} getHtml={getTabHtml} onSwitch={switchTab} onAdd={() => addTab()} onRename={renameTab} onDuplicate={duplicateTab} onPromote={setConfirmPromote} onDelete={setConfirmDelete} />}
         <main className={`flex-1 overflow-auto print:!overflow-visible ${workspaceClass}`} data-hf-header={ws.headerText || ""} data-hf-footer={ws.footerText || ""} data-hf-num={ws.pageNumbers || "none"} style={{ ["--cap-figure" as string]: `"${t("editor.doc.figure")} "`, ["--cap-table" as string]: `"${t("editor.doc.table")} "`, ["--fn-title" as string]: `"${t("editor.doc.footnotes")}"` }} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
           <div className="px-0 md:px-4 min-h-full">
             <div className={`docs-page ${ws.numberHeadings ? "num-headings" : ""}`} ref={sheetRef}>
@@ -2023,6 +1967,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
             </div>
           </div>
         </main>
+        </div>
         {sidebar !== "none" && !focus && !isMobile && (
           <aside className="relative border-l border-gray-200 bg-white flex flex-col flex-shrink-0 min-h-0" style={{ width: panelWidth }}>
             <div

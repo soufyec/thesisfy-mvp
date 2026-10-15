@@ -1,5 +1,7 @@
 "use client";
 
+import AllowanceSummary from "./AllowanceSummary";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogoSpinner } from "@/components/Logo";
 import {
@@ -89,6 +91,8 @@ interface AllowanceInfo {
   exhausted: "none" | "student" | "institution";
   usage?: {
     requests: number;
+    tokensUsed?: number;
+    remainingTokens?: number | null;
     costPerRequest: number;
     remaining: number | null;
     remainingRequests: number | null;
@@ -456,7 +460,6 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const activeInstitution = institutionModels.find((m) => m.id === providerChoice);
   const readyInstitution = institutionModels.filter((m) => m.ready);
   const defaultInstitution = readyInstitution.find((m) => m.isDefault) || readyInstitution[0];
-  const allowanceUsed = allowance && allowance.perStudentMonthly > 0 ? Math.min(100, Math.round((allowance.spentStudent / allowance.perStudentMonthly) * 100)) : null;
 
   // Provider chip: "Claude · your account" / "Claude Sonnet 5.5 · your university" / "Demo assistant".
   const shortLabel = (s: string) => s.split(" (")[0];
@@ -976,7 +979,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   return (
     <div className={`flex flex-col h-full min-h-0 bg-white ${className}`}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2.5 flex-shrink-0">
+      <div className="px-3 py-2 border-b border-gray-100 flex items-center gap-2.5 flex-shrink-0">
         <div className="w-[30px] h-[30px] bg-gradient-to-br from-brand-500 to-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-white" />
         </div>
@@ -998,20 +1001,11 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                   {t("assistant.provider.autoAccount")}
                 </button>
               )}
-              {allowance?.institutionPays && institutionModels.length > 0 && (
+              {allowance?.institutionPays && readyInstitution.length > 0 && (
                 <>
                   <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{t("glossary.providedByUniversity")}</div>
-                  {allowance.usage ? (
-                    <AllowanceSummary allowance={allowance} usage={allowance.usage} />
-                  ) : (
-                    allowanceUsed !== null && (
-                      <>
-                        <div className="px-3 pb-1 text-[11px] text-gray-500">{t("assistant.provider.used", { spent: fmt.number(allowance.spentStudent, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), limit: fmt.number(allowance.perStudentMonthly), currency: allowance.currency })}</div>
-                        <div className="mx-3 mb-1 h-1 rounded-full bg-gray-100 overflow-hidden"><div className={`h-full ${allowanceUsed >= 100 ? "bg-red-500" : allowanceUsed >= 80 ? "bg-amber-400" : "bg-brand-500"}`} style={{ width: `${allowanceUsed}%` }} /></div>
-                      </>
-                    )
-                  )}
-                  {institutionModels.map((m) => (
+                  <div className="px-3 pb-2 border-b border-gray-100"><AllowanceSummary allowance={allowance} /></div>
+                  {readyInstitution.map((m) => (
                     <button key={m.id} disabled={!m.ready || allowance.exhausted !== "none"} onClick={() => { setProviderChoice(m.id); setProviderOpen(false); }} title={`${m.backendName} · ${m.region}`} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === m.id ? "text-brand-600 font-medium" : ""}`}>
                       <span className="w-2 h-2 rounded-full" style={{ background: m.color }} />
                       <span className="flex-1 truncate">{m.label}</span>
@@ -1021,7 +1015,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                   <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{t("assistant.provider.ownAccounts")}</div>
                 </>
               )}
-              {providers.filter((p) => !institutionModels.some((m) => m.id === `platform:${p.id}`)).map((p) => (
+              {providers.filter((p) => p.allowedByPolicy && (p.connection?.status === "active" || p.platformKey) && !institutionModels.some((m) => m.id === `platform:${p.id}`)).map((p) => (
                 <button key={p.id} disabled={!p.allowedByPolicy || !(p.connection?.status === "active" || p.platformKey)} onClick={() => { setProviderChoice(p.id); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === p.id ? "text-brand-600 font-medium" : ""}`}>
                   <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
                   <span className="flex-1">{p.product}</span>
@@ -1087,21 +1081,21 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           );
         }
         return (
-      <div className={`px-4 pt-3 flex-shrink-0 ${column}`}>
+      <div className={`px-3 pt-2 flex-shrink-0 ${column}`}>
         {copilotMode && (
           <button
             onClick={() => { chooseMode("copilot"); if (messages.length) setModesOpen(false); }}
             aria-pressed={mode === "copilot"}
-            className={`w-full mb-1.5 flex items-center gap-2.5 px-3 py-2 rounded-[10px] border text-left transition-colors ${mode === "copilot" ? "bg-accent-600 border-accent-600 text-white" : "bg-accent-50 border-accent-200 text-accent-800 hover:border-accent-400"}`}
+            className={`w-full mb-1.5 flex items-center gap-2 px-2 py-1.5 rounded-lg border text-left transition-colors ${mode === "copilot" ? "bg-brand-50 border-brand-300 text-brand-800" : "bg-accent-50 border-accent-200 text-accent-800 hover:border-accent-400"}`}
           >
             <Compass className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1 min-w-0">
               <span className="block text-xs font-semibold leading-tight">{t("glossary.copilot")}</span>
-              <span className={`block text-[11px] leading-tight truncate ${mode === "copilot" ? "text-white/80" : "text-accent-700"}`}>{t("assistant.copilot.tileSub")}</span>
+              <span className={`block text-[11px] leading-tight truncate ${mode === "copilot" ? "text-brand-700" : "text-gray-600"}`}>{t("assistant.copilot.tileSub")}</span>
             </span>
           </button>
         )}
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-5 gap-1">
           {gridModes.map((m) => {
             const Icon = ICONS[m.icon] || MessageSquare;
             const active = mode === m.id;
@@ -1111,9 +1105,9 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                 onClick={() => { chooseMode(m.id); if (messages.length) setModesOpen(false); }}
                 title={t(`assistant.mode.${m.id}.description`)}
                 aria-pressed={active}
-                className={`flex flex-col items-center gap-1 px-0.5 pt-2 pb-1.5 rounded-[10px] border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-brand-300"}`}
+                className={`flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-md border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-brand-300"}`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3 h-3" />
                 <span>{t(`assistant.mode.${m.id}.short`)}</span>
               </button>
             );
@@ -1143,15 +1137,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       <div className={`flex-1 overflow-y-auto px-4 py-3.5 flex flex-col gap-3.5 min-h-0 ${column}`}>
         {messages.length === 0 && (
           <div className="text-sm text-gray-500 flex flex-col gap-3 pt-1">
-            {mode === "copilot" ? (
-              <p className="text-xs text-accent-800 bg-accent-50 rounded-lg px-2.5 py-1.5">
-                <strong>{t("glossary.copilot")}</strong>{t("assistant.copilot.noteRest")}
-              </p>
-            ) : (
-              <p>
-                <strong className="text-gray-700">{placeholderLabel}</strong>
-                {` — ${modeDescription.replace(/^([^A-Za-zÀ-ÿ]*)([A-ZÀ-Ý])/, (_m, p, c) => p + c.toLowerCase())}${/[.?!…]$/.test(modeDescription) ? "" : "."}`}
-              </p>
+            {mode !== "copilot" && (
+              <p><strong className="text-gray-700">{placeholderLabel}</strong>{` — ${modeDescription}`}</p>
             )}
             {dataChips.length > 0 && chipSheet ? (
               <div>
@@ -1258,54 +1245,6 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-/**
- * The student's allowance in words a student can act on: interactions left this month, share used, when it resets,
- * what the current pace means, and what one interaction costs. The tutor sees the same figures in Admin → AI access.
- */
-function AllowanceSummary({ allowance, usage }: { allowance: AllowanceInfo; usage: NonNullable<AllowanceInfo["usage"]> }) {
-  const t = useT();
-  const fmt = useFormat();
-  const money = (n: number) => fmt.number(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const resetDate = fmt.date(usage.resetsAt, { day: "numeric", month: "long" });
-  const exhausted = allowance.exhausted !== "none";
-  const pct = usage.usedPercent ?? usage.institutionPercent;
-  const barColor = exhausted || (pct ?? 0) >= 100 ? "bg-red-500" : (pct ?? 0) >= 80 ? "bg-amber-400" : "bg-brand-500";
-  const headline = exhausted
-    ? t("assistant.allowance.remainingNone")
-    : usage.remainingRequests === null
-      ? t("assistant.allowance.unlimited")
-      : t(usage.remainingRequests <= 20 ? "assistant.allowance.remainingFew" : "assistant.allowance.remaining", { n: fmt.number(usage.remainingRequests) });
-  const pace =
-    usage.requests === 0 || usage.usedPercent === null
-      ? null
-      : usage.runsOutAt && !exhausted
-        ? { text: t("assistant.allowance.paceRunsOut", { date: fmt.date(usage.runsOutAt, { day: "numeric", month: "long" }) }), warn: true }
-        : usage.projectedPercent !== null && !exhausted
-          ? { text: t("assistant.allowance.pace", { percent: fmt.number(Math.min(usage.projectedPercent, 999)) }), warn: usage.projectedPercent >= 80 }
-          : null;
-  return (
-    <div className="px-3 pb-2 border-b border-gray-100 mb-1" aria-live="polite">
-      <p className={`text-[13px] font-semibold leading-snug ${exhausted ? "text-red-600" : "text-gray-900"}`}>{headline}</p>
-      {pct !== null && (
-        <div className="mt-1.5 mb-1.5 h-1.5 rounded-full bg-gray-100 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, pct)}%` }} />
-        </div>
-      )}
-      <p className="text-[11px] text-gray-600 leading-snug">
-        {usage.usedPercent !== null
-          ? t("assistant.allowance.detail", { percent: fmt.number(usage.usedPercent), spent: money(allowance.spentStudent), limit: fmt.number(allowance.perStudentMonthly), currency: allowance.currency, requests: fmt.number(usage.requests) })
-          : t("assistant.allowance.detailNoCap", { requests: fmt.number(usage.requests), spent: money(allowance.spentStudent), currency: allowance.currency })}
-      </p>
-      {usage.usedPercent === null && usage.institutionPercent !== null && <p className="text-[11px] text-gray-600 leading-snug">{t("assistant.allowance.institution", { percent: fmt.number(usage.institutionPercent) })}</p>}
-      <p className="text-[11px] text-gray-600 leading-snug">{t("assistant.allowance.reset", { date: resetDate, days: fmt.number(usage.daysLeft) })}</p>
-      {pace && <p className={`mt-1 text-[11px] leading-snug ${pace.warn ? "text-amber-700" : "text-gray-500"}`}>{pace.text}</p>}
-      <p className="mt-1 text-[11px] text-gray-400 leading-snug">
-        {t("assistant.allowance.what", { cost: money(usage.costPerRequest), currency: allowance.currency })} {usage.remaining !== null && t(allowance.atLimit === "block" ? "assistant.allowance.thenBlock" : "assistant.allowance.thenOwn")}
-      </p>
     </div>
   );
 }
