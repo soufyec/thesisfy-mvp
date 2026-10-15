@@ -167,3 +167,9 @@ Archivos: `AssistantPanel`, `DocsEditor`, ruta de chat, `ai/{prompts,document-co
 - [x] Sin editor abierto, se usa el documento guardado autorizado en servidor; no depende de la biblioteca.
 - [x] Selección prioritaria, instantánea solo del propietario y contexto largo acotado con fragmentos señalados.
 - [x] Chrome sobre producción local: texto sin guardar → solicitud → proveedor, cambio de pestaña, lectura guardada alternativa, biblioteca vacía, permisos y build correctos.
+
+
+### Conexiones disponibles — 16 octubre 2026
+
+- [x] `dashboard/connections`: ocultar el acceso OAuth «próximamente» cuando el proveedor no ofrece OAuth. Mantener conexiones disponibles y acceso mediante clave.
+- [x] Compilación con comprobación de tipos y Chrome en francés: sin enlaces «bientôt», conexión por clave conservada. Captura posterior inspeccionada.

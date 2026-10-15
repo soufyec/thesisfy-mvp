@@ -162,7 +162,7 @@ function ConnectionsInner() {
                   {!c && p.allowedByPolicy && policy?.allowBYOK && (
                     <div className="flex items-center gap-2 mt-3 flex-wrap">
                       <button onClick={() => { setConnect(p); setForm({ apiKey: "", model: p.defaultModel, label: "" }); setError(""); }} className="btn-primary !py-2 !px-3 text-xs"><KeyRound className="w-3.5 h-3.5 mr-1" />{t("dashboard.connections.connectWithKey")}</button>
-                      <a href={`/api/ai/connections/oauth/${p.id}`} className={`btn-outline !py-2 !px-3 text-xs ${p.oauthAvailable ? "" : "opacity-70"}`} title={p.oauthAvailable ? "" : t("dashboard.connections.notOffered")}><LogIn className="w-3.5 h-3.5 mr-1" />{t(p.oauthAvailable ? "dashboard.connections.signInWith" : "dashboard.connections.signInWithSoon", { name: p.product.split(" ")[0] })}</a>
+                      {p.oauthAvailable && <a href={`/api/ai/connections/oauth/${p.id}`} className="btn-outline !py-2 !px-3 text-xs"><LogIn className="w-3.5 h-3.5 mr-1" />{t("dashboard.connections.signInWith", { name: p.product.split(" ")[0] })}</a>}
                     </div>
                   )}
                 </div>
