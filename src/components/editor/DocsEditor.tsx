@@ -1904,6 +1904,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
           thesisId={thesisId}
           sessionId={sessionId || undefined}
           selection={selectionText}
+          getDocumentContext={() => ({ tabId: activeTabRef.current, text: editor.getText({ blockSeparator: "\n\n" }) })}
           onInsert={canEdit ? (h, m) => insertWithProvenance(h, m, false) : undefined}
           onReplaceSelection={canEdit ? (h, m) => insertWithProvenance(h, m, true) : undefined}
           onConsentRequired={() => setDialog("consent")}

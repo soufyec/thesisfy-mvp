@@ -171,6 +171,8 @@ export interface AssistantPanelProps {
   thesisId?: string;
   sessionId?: string;
   selection?: string;
+  /** Read at send time, so the active tab and unsaved changes stay current. */
+  getDocumentContext?: () => import("@/lib/ai/document-context").EditorDocumentSnapshot;
   onInsert?: (html: string, meta: InsertMeta) => void;
   onReplaceSelection?: (html: string, meta: InsertMeta) => void;
   onConsentRequired?: () => void;
@@ -322,7 +324,7 @@ async function loadChipDataset(thesisId: string, source: AttachedSource): Promis
   return out.length ? { sheets: out } : null;
 }
 
-export default function AssistantPanel({ thesisId, sessionId, selection, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode, initialConversationId, onConversationChange, className = "", onConversationsChanged, insertContext, onClearSelection, onAddComment, onKeepAsNotes, onInsertArtifact, attachments: attachmentsAllowed = true }: AssistantPanelProps) {
+export default function AssistantPanel({ thesisId, sessionId, selection, getDocumentContext, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode, initialConversationId, onConversationChange, className = "", onConversationsChanged, insertContext, onClearSelection, onAddComment, onKeepAsNotes, onInsertArtifact, attachments: attachmentsAllowed = true }: AssistantPanelProps) {
   const t = useT();
   const fmt = useFormat();
   const [modes, setModes] = useState<ModeInfo[]>([]);
@@ -666,6 +668,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           conversationId,
           provider: providerChoice === "auto" ? null : providerChoice.startsWith("platform:") ? providerChoice.slice(9) : providerChoice,
           selection: workingOn ? selection : undefined,
+          document: getDocumentContext?.(),
           useSources: useSources && !!thesisId ? true : undefined,
           sourceIds,
           sourceSelections,

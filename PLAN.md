@@ -157,3 +157,13 @@ Archivos: `AssistantPanel`, `ResearchFileCard`, `ArtifactCard`, `ai/{prompts,pol
 - [x] «Lagunas» pasa a «Carencias» / «Detectar carencias» en español, con nombres equivalentes claros en los otros idiomas.
 - [x] Vista de arrastre formada solo por el SVG del gráfico o diagrama, tanto desde el asistente como dentro del documento.
 - [x] Inserción de IA sin aviso verde de éxito; permanecen el coste previo, las marcas moradas, el guardado y los errores.
+
+
+### Acceso del asistente al documento — 16 octubre 2026
+
+Archivos: `AssistantPanel`, `DocsEditor`, ruta de chat, `ai/{prompts,document-context}`, prueba de contexto y QA.
+
+- [x] Todos los modos reciben el texto de la pestaña abierta al enviar, incluidos cambios sin guardar.
+- [x] Sin editor abierto, se usa el documento guardado autorizado en servidor; no depende de la biblioteca.
+- [x] Selección prioritaria, instantánea solo del propietario y contexto largo acotado con fragmentos señalados.
+- [x] Chrome sobre producción local: texto sin guardar → solicitud → proveedor, cambio de pestaña, lectura guardada alternativa, biblioteca vacía, permisos y build correctos.

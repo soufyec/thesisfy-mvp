@@ -7,6 +7,7 @@ import { maybeAlertBudget } from "@/lib/ai/funding";
 import { artifactFingerprint, artifactGridFingerprint, passageFingerprints } from "@/lib/crypto";
 import { canAccessThesis } from "@/lib/auth";
 import { error, requireUser } from "@/lib/api";
+import { documentContext } from "@/lib/ai/document-context";
 import { buildSystemPrompt, MODES, sanitizeContextText } from "@/lib/ai/prompts";
 import { checkPolicy, detectLang } from "@/lib/ai/policy";
 import { demoAttachmentsResponse, demoDataResponse, demoGroundedResponse, demoNeedsModel, demoNotice, demoResponse, demoLang } from "@/lib/ai/demo";
@@ -31,6 +32,7 @@ interface Body {
   provider?: Provider | string | null; // provider id, or an institution model id ("im_…")
   conversationId?: string;
   selection?: string;
+  document?: import("@/lib/ai/document-context").EditorDocumentSnapshot;
   stream?: boolean;
   /** Ground the answer in the thesis's source library (F5): the top passages for the last user message are added to the system prompt. */
   useSources?: boolean;
@@ -76,7 +78,8 @@ export async function POST(request: NextRequest) {
   // What the student typed: the language, the conversation title and the saved message come from it, not from the
   // selected passage that is prepended as context for the model.
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-  if (body.selection && messages.length) {
+  const currentDocument = thesis ? documentContext(thesis, body.document, thesis.studentId === user.id, lastUser + "\n" + (typeof body.selection === "string" ? body.selection : "")) : null;
+  if (typeof body.selection === "string" && body.selection && messages.length) {
     const last = messages[messages.length - 1];
     last.content = `Selected passage from my paper:\n"""\n${body.selection.slice(0, 12000)}\n"""\n\n${last.content}`;
   }
@@ -109,6 +112,7 @@ export async function POST(request: NextRequest) {
   // What the student wrote in this conversation, this message (and any passage of their paper they selected)
   // included: a PRISMA diagram the copilot proposes may only use numbers that appear here (D26).
   runOpts.studentTexts = [
+    ...(currentDocument ? [currentDocument.text] : []),
     ...conversation.messages.filter((m) => m.role === "user" && typeof m.content === "string").map((m) => m.content),
     ...messages.filter((m) => m.role === "user").map((m) => m.content),
   ];
@@ -237,6 +241,7 @@ export async function POST(request: NextRequest) {
     studentName: user.name,
     provider: cfg.label,
     context: {
+      document: currentDocument,
       assignment: assignment ? { title: assignment.title, brief: assignment.brief } : null,
       data: hasSheets ? { cards: dataCards(attached.sheets), digests, multipleFiles: attached.sheets.length > 1 } : digests.length ? { cards: [], digests } : null,
       primary,
