@@ -277,7 +277,7 @@ function CandidateCard({ c, inLibrary, style, canEdit, onCite, onAddToLibrary }:
           <span>{t("panelsReview.cite.retractedWork")}</span>
         </div>
       )}
-      <blockquote className="mt-2 pl-2 border-l-2 border-prov-paste text-gray-800 leading-relaxed">
+      <blockquote className="mt-2 rounded-lg bg-white px-2.5 py-1.5 shadow-glow-amber text-gray-800 leading-relaxed">
         <mark className="bg-amber-50 text-gray-800 px-0.5 rounded">“{c.quote}”</mark>
         <div className="text-[11px] text-gray-400 mt-0.5 not-italic">{t("panelsReview.cite.verbatim", { section: c.section || t("panelsReview.cite.passage") })}</div>
       </blockquote>

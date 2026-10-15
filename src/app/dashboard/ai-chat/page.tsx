@@ -91,7 +91,7 @@ function AIChatInner() {
               <div key={m}>
               <div className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[.06em] border-b border-gray-100 ${m === "copilot" ? "text-accent-700 bg-accent-50/60" : "text-gray-400 bg-gray-50"}`}>{modeLabel(m)}</div>
               {conversations.filter((c) => (c.mode || "chat") === m).map((c) => (
-                <div key={c.id} className={`group flex items-start gap-1 px-3 py-2 border-b border-gray-100 hover:bg-white cursor-pointer ${c.id === conversationId ? "bg-white border-l-2 border-l-brand-500" : ""}`} onClick={() => open(c.id)}>
+                <div key={c.id} className={`group flex items-start gap-1 px-3 py-2 border-b border-gray-100 hover:bg-white cursor-pointer ${c.id === conversationId ? "relative z-[1] rounded-lg bg-white shadow-glow-brand" : ""}`} onClick={() => open(c.id)}>
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-medium truncate">{c.title}</div>
                     <div className="text-[10px] text-gray-400 flex items-center gap-1 flex-wrap">

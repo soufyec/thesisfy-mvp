@@ -131,7 +131,6 @@ const Para = ({ widths = ["100%", "100%", "64%"], indent = false, hang = false }
 );
 
 /** The provenance-style mark in the left margin; on the blank sheet it is the caret under the title. */
-const Mark = () => <span className="absolute left-[5%] top-[38%] h-[16%] w-[2px] rounded-full bg-brand-400" />;
 
 function Motif({ motif, kind }: { motif: TemplateMotif; kind?: PaperKind }) {
   switch (motif) {
@@ -307,9 +306,8 @@ export function TemplateThumbnail({ motif, kind }: { motif: TemplateMotif; kind?
           <span className={`${SHEET} -translate-x-[42%] -translate-y-[3.5%] bg-white`} />
         </>
       )}
-      <span className={`${SHEET} -translate-x-1/2 overflow-hidden bg-white p-[6%] motion-safe:transition-transform motion-safe:duration-200 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-focus-visible:-translate-y-0.5`}>
+      <span className={`${SHEET} -translate-x-1/2 overflow-hidden bg-white p-[6%] group-hover:shadow-glow-brand group-focus-visible:shadow-glow-brand motion-safe:transition-[transform,box-shadow] motion-safe:duration-200 motion-safe:group-hover:-translate-y-0.5 motion-safe:group-focus-visible:-translate-y-0.5`}>
         <Motif motif={motif} kind={kind} />
-        {motif !== "blank" && <Mark />}
       </span>
     </span>
   );

@@ -528,7 +528,7 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
                           {t("panelsResearch.sources.jump")}
                         </button>
                       </div>
-                      <blockquote className="mt-1 pl-2 border-l-2 border-accent-500 text-gray-600 italic">“{c.quote}”</blockquote>
+                      <blockquote className="mt-1 rounded-lg bg-white px-2.5 py-1.5 shadow-glow-accent text-gray-600 italic">“{c.quote}”</blockquote>
                       <div className="mt-0.5 text-[11px] text-accent-700">{t("panelsResearch.sources.quoteVerified")}</div>
                     </li>
                   ))}

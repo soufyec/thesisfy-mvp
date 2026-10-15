@@ -112,7 +112,7 @@ export function CommentsPanel({ comments, activeId, canResolve, userId, onJump, 
                 </button>
               )}
             </div>
-            {c.quote && <div className="text-[11px] text-gray-400 border-l-2 border-amber-300 pl-2 mb-1 line-clamp-2">{c.quote}</div>}
+            {c.quote && <div className="text-[11px] text-gray-500 rounded-md bg-white px-2 py-1 shadow-glow-amber mb-1.5 line-clamp-2">{c.quote}</div>}
             <div className="text-sm whitespace-pre-wrap">{c.text}</div>
             {c.replies.map((r) => (
               <div key={r.id} className="mt-2 pl-3 border-l border-gray-100">

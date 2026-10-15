@@ -579,7 +579,7 @@ export default function ReviewerPanel({ editor, thesisId, sessionId, userId, sel
                     <span className="flex-1" />
                     <span className="text-[10px] text-gray-400">{timeAgo(it.createdAt)}</span>
                   </div>
-                  <blockquote className="text-[11px] text-gray-500 border-l-2 border-gray-200 pl-2 mb-1.5 line-clamp-2">{it.quote}</blockquote>
+                  <blockquote className="text-[11px] text-gray-500 rounded-md bg-white px-2 py-1 shadow-glow-gray mb-1.5 line-clamp-2">{it.quote}</blockquote>
                   <p className="text-[13px] text-gray-800 leading-snug">{it.rationale}</p>
                   {it.question && <p className="text-[13px] text-brand-700 mt-1 leading-snug">{it.question}</p>}
                   {dismissing?.id === it.id ? (

@@ -17,6 +17,14 @@ const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
+      // A very light glow instead of coloured side bars (left borders) on cards, quotes and selected items.
+      boxShadow: {
+        "glow-brand": "0 0 0 1px rgb(3 121 71 / 0.10), 0 2px 14px -2px rgb(3 121 71 / 0.22)",
+        "glow-brand-strong": "0 0 0 1px rgb(3 121 71 / 0.16), 0 4px 20px -2px rgb(3 121 71 / 0.30)",
+        "glow-accent": "0 0 0 1px rgb(32 201 151 / 0.14), 0 2px 12px -2px rgb(32 201 151 / 0.24)",
+        "glow-amber": "0 0 0 1px rgb(245 158 11 / 0.14), 0 2px 12px -2px rgb(245 158 11 / 0.24)",
+        "glow-gray": "0 0 0 1px rgb(107 114 128 / 0.10), 0 2px 12px -2px rgb(107 114 128 / 0.16)",
+      },
       colors: {
         // Plum scale: 600 is the primary aubergine, 500 the smoky plum, 50 the tint.
         brand: {
