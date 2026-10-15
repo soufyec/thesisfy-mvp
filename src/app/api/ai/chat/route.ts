@@ -251,6 +251,7 @@ export async function POST(request: NextRequest) {
     if (cfg.notice && cfg.source === "demo" && cfg.label === "Allowance used up") text = cfg.notice;
     // Diagrams and equations are drafted from what the student writes: without a model there is nothing to draft
     // them with. A timeline from a sheet (and a regression's fitted equation) is computed by the planner below.
+    else if (mode === "paraphrase_check") text = uiTr("copilot.paraphraseNeedsModel");
     else if (mode === "copilot" && /\b(csv|report|informe|reporte|rapport|bericht|download|descarga|fichier|archivo)\b/i.test(lastUser) && !hasSheets && !research) text = uiTr("copilot.needsModel");
     else if (research) text = research.status === "ok" ? research.works.map((w, i) => `[W${i + 1}] **${w.title}** · ${w.authors} · ${w.year || ""} · https://doi.org/${w.doi}`).join("\n\n") : uiTr(`copilot.search.${research.status}`);
     else if (mode === "copilot" && demoNeedsModel(lastUser, hasSheets)) text = uiTr("api.copilot.demoNeedsModel");

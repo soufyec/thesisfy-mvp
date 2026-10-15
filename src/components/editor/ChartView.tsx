@@ -7,6 +7,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { Accessibility, AlignCenter, AlignLeft, AlignRight, Captions, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
 import { CHART_EDIT_EVENT, encodeChartSpec, drawChartSpec, patchChart, readChartSpec, updateDiagram, type ChartAlign, type ChartAttrs } from "./chart";
+import { setFigureDragImage } from "./figureDragImage";
 import ChartDialog from "./forms/ChartDialog";
 import DiagramDialog from "./forms/DiagramDialog";
 
@@ -60,6 +61,14 @@ export default function ChartView({ node, editor, getPos, deleteNode, extension 
 
   const spec = useMemo(() => readChartSpec(a.spec, a.figure), [a.spec, a.figure]);
   const drawn = useMemo(() => (spec ? drawChartSpec(spec, a.caption) : null), [spec, a.caption]);
+  // Window bubbling runs after TipTap's own drag handler, so its default node snapshot is replaced.
+  useEffect(() => {
+    const start = (event: DragEvent) => {
+      if (event.dataTransfer && drawn && wrapperRef.current?.contains(event.target as Node)) setFigureDragImage(event.dataTransfer, drawn.svg, wrapperRef.current.getBoundingClientRect().width);
+    };
+    window.addEventListener("dragstart", start);
+    return () => window.removeEventListener("dragstart", start);
+  }, [drawn]);
   const isDiagram = !!spec && spec.figure !== "chart";
   const canEditFigure = editable && !!spec;
 

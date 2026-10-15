@@ -1185,7 +1185,6 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     });
     editor.view.dispatch(closeHistory(editor.state.tr));
     monitorRef.current?.recordAiInsert(meta.words, meta.provider, meta.mode, meta.interactionId);
-    notify(opts.message || t("editor.toast.aiInserted", { words: meta.words, aiAssisted, provider: meta.provider }), "success");
     // Save right away so the score, the AI share and the AI log reflect the insertion without waiting for the autosave.
     saveNowRef.current().then(refreshLedger);
   };
@@ -1227,15 +1226,6 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         return;
       }
       monitorRef.current?.recordAiInsert(r.words, meta.provider, meta.mode, meta.interactionId, { kind: r.kind, figures: r.figures, equations: r.equations, artifactId: meta.artifact.id });
-      const notes = t("editor.notesTab");
-      const message = toNotes
-        ? t("editor.toast.keptAsNotes", { notes, aiAssisted, finalSubmission })
-        : r.figures
-          ? t("editor.toast.figureInserted", { aiAssisted })
-          : r.kind === "equation"
-            ? t("editor.toast.equationInserted", { aiAssisted })
-            : t("editor.toast.aiInserted", { words: fmt.number(r.words), aiAssisted, provider: meta.provider });
-      notify(message, "success");
       // Save right away so the score, the AI share, the ledger lines and the AI log reflect the insertion.
       saveNowRef.current().then(refreshLedger);
     };

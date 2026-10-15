@@ -149,3 +149,11 @@ Archivos: `AssistantPanel`, `ResearchFileCard`, `ArtifactCard`, `ai/{prompts,pol
 - [x] Archivos descargables, vista previa, Word para informes e inserción con coste y procedencia; CSV se puede adjuntar como datos.
 - [x] Búsqueda académica con Crossref, metadatos y resúmenes disponibles, enlaces DOI y estados de error explícitos.
 - [x] Verificación integrada: TypeScript, build, regresiones, Chrome en escritorio y móvil, descargas y revisión de archivos. Propuesta de revisión actualizada.
+
+
+### Paráfrasis y arrastre — 16 octubre 2026
+
+- [x] Paráfrasis como sexto acceso: reformular texto suministrado, conservar significado y citas, insertar o sustituir con procedencia. Se conserva el identificador `paraphrase_check` para historial y permisos existentes.
+- [x] «Lagunas» pasa a «Carencias» / «Detectar carencias» en español, con nombres equivalentes claros en los otros idiomas.
+- [x] Vista de arrastre formada solo por el SVG del gráfico o diagrama, tanto desde el asistente como dentro del documento.
+- [x] Inserción de IA sin aviso verde de éxito; permanecen el coste previo, las marcas moradas, el guardado y los errores.

@@ -26,7 +26,15 @@ const en = {
   "assistant.mode.citations.suggestion1": "Check these references",
   "assistant.mode.citations.suggestion2": "Format a citation",
   "assistant.mode.gaps.suggestion1": "Find unsupported claims",
-  "assistant.mode.gaps.suggestion2": "What evidence is missing?"
+  "assistant.mode.gaps.suggestion2": "What evidence is missing?",
+  "assistant.mode.paraphrase_check.label": "Paraphrase",
+  "assistant.mode.paraphrase_check.short": "Paraphrase",
+  "assistant.mode.paraphrase_check.description": "Rephrase the selected text without changing its meaning",
+  "assistant.mode.paraphrase_check.suggestion1": "Rephrase this passage",
+  "assistant.mode.paraphrase_check.suggestion2": "Make this passage clearer",
+  "copilot.paraphraseNeedsModel": "Connect an available model to paraphrase your text.",
+  "assistant.mode.gaps.label": "Find gaps",
+  "assistant.mode.gaps.short": "Gaps"
 };
 const es: Record<keyof typeof en, string> = {
   "copilot.modes": "Modos del asistente",
@@ -55,7 +63,15 @@ const es: Record<keyof typeof en, string> = {
   "assistant.mode.citations.suggestion1": "Revisa estas referencias",
   "assistant.mode.citations.suggestion2": "Da formato a una cita",
   "assistant.mode.gaps.suggestion1": "Busca afirmaciones sin respaldo",
-  "assistant.mode.gaps.suggestion2": "¿Qué evidencia falta?"
+  "assistant.mode.gaps.suggestion2": "¿Qué evidencia falta?",
+  "assistant.mode.paraphrase_check.label": "Parafrasear",
+  "assistant.mode.paraphrase_check.short": "Paráfrasis",
+  "assistant.mode.paraphrase_check.description": "Reformula el texto seleccionado conservando su significado",
+  "assistant.mode.paraphrase_check.suggestion1": "Parafrasea este pasaje",
+  "assistant.mode.paraphrase_check.suggestion2": "Reformula este pasaje con más claridad",
+  "copilot.paraphraseNeedsModel": "Conecta un modelo disponible para parafrasear tu texto.",
+  "assistant.mode.gaps.label": "Detectar carencias",
+  "assistant.mode.gaps.short": "Carencias"
 };
 const fr: Record<keyof typeof en, string> = {
   "copilot.modes": "Modes de l’assistant",
@@ -84,7 +100,15 @@ const fr: Record<keyof typeof en, string> = {
   "assistant.mode.citations.suggestion1": "Vérifiez ces références",
   "assistant.mode.citations.suggestion2": "Formatez une citation",
   "assistant.mode.gaps.suggestion1": "Repérez les affirmations non étayées",
-  "assistant.mode.gaps.suggestion2": "Quelles preuves manquent ?"
+  "assistant.mode.gaps.suggestion2": "Quelles preuves manquent ?",
+  "assistant.mode.paraphrase_check.label": "Paraphraser",
+  "assistant.mode.paraphrase_check.short": "Paraphrase",
+  "assistant.mode.paraphrase_check.description": "Reformulez le texte sélectionné en conservant son sens",
+  "assistant.mode.paraphrase_check.suggestion1": "Paraphrasez ce passage",
+  "assistant.mode.paraphrase_check.suggestion2": "Reformulez ce passage plus clairement",
+  "copilot.paraphraseNeedsModel": "Connectez un modèle disponible pour paraphraser votre texte.",
+  "assistant.mode.gaps.label": "Points à compléter",
+  "assistant.mode.gaps.short": "Manques"
 };
 const de: Record<keyof typeof en, string> = {
   "copilot.modes": "Assistentenmodi",
@@ -113,6 +137,14 @@ const de: Record<keyof typeof en, string> = {
   "assistant.mode.citations.suggestion1": "Diese Quellenangaben prüfen",
   "assistant.mode.citations.suggestion2": "Ein Zitat formatieren",
   "assistant.mode.gaps.suggestion1": "Unbelegte Aussagen finden",
-  "assistant.mode.gaps.suggestion2": "Welche Belege fehlen?"
+  "assistant.mode.gaps.suggestion2": "Welche Belege fehlen?",
+  "assistant.mode.paraphrase_check.label": "Umformulieren",
+  "assistant.mode.paraphrase_check.short": "Umformen",
+  "assistant.mode.paraphrase_check.description": "Den ausgewählten Text sinngemäß umformulieren",
+  "assistant.mode.paraphrase_check.suggestion1": "Diesen Abschnitt umformulieren",
+  "assistant.mode.paraphrase_check.suggestion2": "Diesen Abschnitt klarer formulieren",
+  "copilot.paraphraseNeedsModel": "Verbinden Sie ein verfügbares Modell, um Ihren Text umzuformulieren.",
+  "assistant.mode.gaps.label": "Lücken finden",
+  "assistant.mode.gaps.short": "Lücken"
 };
 export const copilot: Messages<typeof en> = {en,es,fr,de};

@@ -452,7 +452,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     setUseSelection(true);
   }, [selection]);
 
-  const gridModes = modes.filter(m => ["copilot", "critique", "grammar", "citations", "gaps"].includes(m.id));
+  const gridModes = modes.filter(m => ["copilot", "critique", "grammar", "citations", "gaps", "paraphrase_check"].includes(m.id));
   const wordsLabel = (n: number) => (n === 1 ? t("common.word_one") : t("common.words", { n }));
   /** Relative time in the active language; falls back to a formatted date after 30 days. */
   const ago = (iso: string) => {
@@ -897,9 +897,9 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const renderActions = (m: ChatMsg) => {
     if (m.files?.length) return null;
     const mm = m.mode || mode;
-    const guiding = mm === "critique" || mm === "gaps" || mm === "paraphrase_check";
+    const guiding = mm === "critique" || mm === "gaps";
     const insertable = mm === "copilot" || mm === "outline" || mm === "summarize" || mm === "citations" || mm === "brainstorm" || mm === "explain";
-    const grammar = mm === "grammar";
+    const grammar = mm === "grammar" || mm === "paraphrase_check";
     const canReplace = grammar && !!onReplaceSelection && !!selection;
     const canInsert = !!onInsert && (insertable || (grammar && !canReplace));
     const canNotes = !!onKeepAsNotes && insertable;
@@ -1113,7 +1113,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         }
         return (
       <div className={`px-3 pt-2 flex-shrink-0 ${column}`}>
-        <div className="grid grid-cols-5 gap-1" role="group" aria-label={t("copilot.modes")}>
+        <div className="grid grid-cols-6 gap-1" role="group" aria-label={t("copilot.modes")}>
           {gridModes.map((m) => {
             const Icon = ICONS[m.icon] || MessageSquare;
             const active = mode === m.id;
@@ -1126,7 +1126,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                 className={`flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-md border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-gray-100 border-gray-300 text-gray-900" : "bg-white border-transparent text-gray-500 hover:bg-gray-50"}`}
               >
                 <Icon className="w-3 h-3" />
-                <span>{t(`assistant.mode.${m.id}.short`)}</span>
+                <span className="min-w-0 break-words">{t(`assistant.mode.${m.id}.short`)}</span>
               </button>
             );
           })}

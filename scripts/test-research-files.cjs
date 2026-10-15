@@ -14,7 +14,7 @@ for (const ext of ['.ts', '.tsx']) require.extensions[ext] = (module, filename) 
 const assert = require('node:assert/strict');
 const {extractResearchFiles,stripResearchFiles,researchCsv} = require('../src/lib/ai/files.ts');
 const {checkPolicy} = require('../src/lib/ai/policy.ts');
-const {buildSystemPrompt} = require('../src/lib/ai/prompts.ts');
+const {buildSystemPrompt,MODES,MODE_INSTRUCTIONS} = require('../src/lib/ai/prompts.ts');
 const {missingKeys} = require('../src/lib/i18n/dictionary.ts');
 const {searchResearch,researchContext} = require('../src/lib/ai/research.ts');
 const wrap = file => 'Ready\n```thesisfic-file\n'+JSON.stringify(file)+'\n```';
@@ -33,8 +33,13 @@ const policy={university:'Test',researchCopilot:true,blockGeneration:true,allowe
 assert(checkPolicy(policy,'copilot','Write a research report based on these interview notes.').allowed);
 assert(!checkPolicy(policy,'critique','Write my thesis introduction for me.').allowed);
 assert(!checkPolicy({...policy,researchCopilot:false},'copilot','Help').allowed);
+assert(!checkPolicy(policy,'paraphrase_check','Paraphrase this supplied passage.').allowed);
+assert(checkPolicy({...policy,allowedModes:[...policy.allowedModes,'paraphrase_check']},'paraphrase_check','Paraphrase this supplied passage.').allowed);
 const system=buildSystemPrompt({mode:'copilot',policy,thesis:{title:'AI adoption',description:'Interview evidence',wordCount:100,provenance:{ai:0},targetWords:1000,citationStyle:'APA',status:'draft',kind:'thesis'},studentName:'Student',provider:'Test'});
 assert(system.includes('Stay within the objective'));assert(system.includes('ask one concise question'));assert(system.includes('AI adoption'));assert(system.includes('thesisfic-file'));assert(!system.includes('Never write original content'));
+assert.equal(MODES.find(m=>m.id==='paraphrase_check').insertable,true);
+assert(MODE_INSTRUCTIONS.paraphrase_check.includes('If there is no passage'));
+assert(MODE_INSTRUCTIONS.paraphrase_check.includes('numbers, hedging, quotations and citation markers'));
 assert(Object.values(missingKeys()).every(keys=>keys.length===0));
 (async()=>{
  const originalFetch=global.fetch;

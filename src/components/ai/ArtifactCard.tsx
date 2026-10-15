@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { setFigureDragImage, clearFigureDragImage } from "../editor/figureDragImage";
 import { Download, BarChart3, Check, CircleAlert, Code2, Network, PieChart, Sigma, Table2 } from "lucide-react";
 import type { Artifact } from "@/lib/db";
 import { useFormat, useT } from "@/lib/i18n/client";
@@ -125,7 +126,7 @@ export interface ArtifactCardProps {
 /**
  * One table, chart, test result, diagram or equation of a copilot answer (docs/papers.md §4.5, §9.4). Numbers come
  * from Thesisfic; the card shows them, says where they come from, and offers "Insert, marked as AI" only through the
- * cost card. No download, no drag, no selectable copy: a result enters the paper marked, or not at all.
+ * cost card. Downloads and local drags keep the structured result; insertions retain attribution.
  */
 export default function ArtifactCard({ artifact: a, insertable, onAction, costCard, done, insertHint, drag }: ArtifactCardProps) {
   const t = useT();
@@ -170,8 +171,16 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
   const toggleLabel = a.kind === "chart" ? (showData ? t("assistant.artifact.showChart") : t("assistant.artifact.showData")) : a.kind === "diagram" ? (showData ? t("assistant.artifact.showDiagram") : t("assistant.artifact.showData")) : null;
   const btn = "text-xs px-2.5 py-[5px] rounded-lg border border-gray-200 bg-white font-medium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40";
 
+  const startDrag = (event: React.DragEvent) => {
+    if (!drag || drag.disabled) return event.preventDefault();
+    drag.onStart(event);
+    const drawing = chartSvg || diagramSvg;
+    if (!event.defaultPrevented && drawing) setFigureDragImage(event.dataTransfer, drawing, figureWidth);
+  };
+  const endDrag = () => { clearFigureDragImage(); drag?.onEnd(); };
+
   return (
-    <figure draggable={!!drag && !drag.disabled} onDragStart={event => { if (drag && !drag.disabled) drag.onStart(event); else event.preventDefault(); }} onDragEnd={() => drag?.onEnd()} className="mt-2 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden" aria-label={a.title}>
+    <figure draggable={!!drag && !drag.disabled} onDragStart={startDrag} onDragEnd={endDrag} className="mt-2 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden" aria-label={a.title}>
       <figcaption className="px-3 pt-2.5 pb-1.5 flex items-start gap-2">
         <span className="w-6 h-6 rounded-lg bg-prov-ai-soft text-prov-ai-deep flex items-center justify-center flex-shrink-0 mt-px" aria-hidden="true">
           <Icon className="w-3.5 h-3.5" />
@@ -222,7 +231,7 @@ export default function ArtifactCard({ artifact: a, insertable, onAction, costCa
         </p>
       </div>
 
-      {drag && <div className="px-3 pb-2 text-xs text-gray-600"><p>{drag.hint}</p><button type="button" draggable={!drag.disabled} disabled={drag.disabled} onDragStart={event => { event.stopPropagation(); drag.onStart(event); }} onDragEnd={drag.onEnd} className="mt-1 inline-flex items-center border border-gray-200 rounded-lg px-2 py-1 cursor-grab active:cursor-grabbing disabled:opacity-40" aria-label={t("workspace.drag")}>{t("workspace.drag")}</button></div>}
+      {drag && <div className="px-3 pb-2 text-xs text-gray-600"><p>{drag.hint}</p><button type="button" draggable={!drag.disabled} disabled={drag.disabled} onDragStart={event => { event.stopPropagation(); startDrag(event); }} onDragEnd={endDrag} className="mt-1 inline-flex items-center border border-gray-200 rounded-lg px-2 py-1 cursor-grab active:cursor-grabbing disabled:opacity-40" aria-label={t("workspace.drag")}>{t("workspace.drag")}</button></div>}
       <div className="px-3 pb-2.5 flex flex-wrap items-center gap-1.5">
         {hasData && <button type="button" className={`${btn} text-gray-600 hover:bg-gray-50`} onClick={() => downloadResearchFile({ name: "research-data.csv", format: "csv", content: researchCsv([a.table.columns, ...a.table.rows]) })}><Download className="w-3 h-3" />CSV</button>}
         {(chartSvg || diagramSvg) && <button type="button" className={`${btn} text-gray-600 hover:bg-gray-50`} onClick={() => { const url=URL.createObjectURL(new Blob([chartSvg || diagramSvg],{type:"image/svg+xml;charset=utf-8"})); const link=document.createElement("a"); link.href=url; link.download="research-figure.svg"; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }}><Download className="w-3 h-3" />SVG</button>}
