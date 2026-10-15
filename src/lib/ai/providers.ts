@@ -297,10 +297,19 @@ export async function* streamCompletion(cfg: ResolvedProvider, system: string, m
 
 type ClaudeClient = { beta: { messages: Pick<Anthropic["beta"]["messages"], "stream"> } };
 
+/**
+ * An Anthropic key that is not scoped to a workspace must name one on every request. For the platform key that
+ * workspace comes from ANTHROPIC_WORKSPACE_ID; keys added by a university or a student are left as they are.
+ */
+function anthropicHeaders(apiKey?: string): Record<string, string> | undefined {
+  const workspace = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+  return workspace && apiKey && apiKey === process.env.ANTHROPIC_API_KEY ? { "anthropic-workspace-id": workspace } : undefined;
+}
+
 function anthropicClient(cfg: { apiKey?: string; authType?: string; backend?: ModelBackend; endpoint?: string }): ClaudeClient {
   // Claude inside the university's Microsoft Foundry resource: same Messages API, billed by Microsoft.
   if (cfg.backend === "foundry_claude") return new AnthropicFoundry({ apiKey: cfg.apiKey, resource: foundryResource(cfg.endpoint) });
-  return cfg.authType === "oauth" ? new Anthropic({ authToken: cfg.apiKey }) : new Anthropic({ apiKey: cfg.apiKey });
+  return cfg.authType === "oauth" ? new Anthropic({ authToken: cfg.apiKey }) : new Anthropic({ apiKey: cfg.apiKey, defaultHeaders: anthropicHeaders(cfg.apiKey) });
 }
 
 /** Accepts "my-resource", "my-resource.services.ai.azure.com" or a full https URL. */
@@ -473,7 +482,7 @@ export async function testInstitutionModel(m: Pick<InstitutionModel, "backend" |
 export async function testConnection(provider: Provider, apiKey: string, authType: "api_key" | "oauth" = "api_key"): Promise<{ ok: boolean; error?: string; models?: string[] }> {
   try {
     if (provider === "anthropic") {
-      const client = authType === "oauth" ? new Anthropic({ authToken: apiKey }) : new Anthropic({ apiKey });
+      const client = authType === "oauth" ? new Anthropic({ authToken: apiKey }) : new Anthropic({ apiKey, defaultHeaders: anthropicHeaders(apiKey) });
       const page = await client.models.list({ limit: 20 });
       return { ok: true, models: page.data.map((m) => m.id) };
     }
