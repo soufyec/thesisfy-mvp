@@ -2,10 +2,15 @@
 
 import React from "react";
 
-/** Small, dependency-free Markdown renderer for assistant replies (headings, lists, quotes, code, bold/italic/links). Produces React nodes, never raw HTML. */
-export default function Markdown({ text, className = "" }: { text: string; className?: string }) {
-  const blocks = parseBlocks(text);
-  return <div className={`md ${className}`}>{blocks.map((b, i) => renderBlock(b, i))}</div>;
+/**
+ * Small, dependency-free Markdown renderer for assistant replies (headings, lists, quotes, code, bold/italic/links).
+ * Produces React nodes, never raw HTML. GFM tables are never drawn as tables (docs/papers.md §4.5): tables of data
+ * come from Thesisfic's computed artifacts. By default their lines read as text, as before; with `tableNotice` (the
+ * assistant panel) a Markdown table is replaced by that notice, which cannot be selected or copied.
+ */
+export default function Markdown({ text, className = "", tableNotice }: { text: string; className?: string; tableNotice?: string }) {
+  const blocks = parseBlocks(text, !!tableNotice);
+  return <div className={`md ${className}`}>{blocks.map((b, i) => renderBlock(b, i, tableNotice))}</div>;
 }
 
 type Block =
@@ -15,9 +20,22 @@ type Block =
   | { type: "ol"; items: string[] }
   | { type: "quote"; text: string }
   | { type: "code"; text: string; lang?: string }
-  | { type: "hr" };
+  | { type: "hr" }
+  | { type: "table" };
 
-function parseBlocks(src: string): Block[] {
+/** A GFM delimiter row: `|---|:---:|`. */
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+
+/** Lines `start…` that form a GFM table (rows starting with "|" around a delimiter row), or 0. */
+function tableLength(lines: string[], start: number): number {
+  let end = start;
+  while (end < lines.length && lines[end].trim().startsWith("|")) end++;
+  if (end - start < 2) return 0;
+  for (let k = start; k < end; k++) if (TABLE_SEPARATOR.test(lines[k]) && lines[k].indexOf("-") !== -1) return end - start;
+  return 0;
+}
+
+function parseBlocks(src: string, tables = false): Block[] {
   const lines = src.replace(/\r/g, "").split("\n");
   const out: Block[] = [];
   let i = 0;
@@ -41,6 +59,14 @@ function parseBlocks(src: string): Block[] {
       out.push({ type: "h", level: h[1].length, text: h[2] });
       i++;
       continue;
+    }
+    if (tables && line.trim().startsWith("|")) {
+      const n = tableLength(lines, i);
+      if (n) {
+        out.push({ type: "table" });
+        i += n;
+        continue;
+      }
     }
     if (/^(-{3,}|\*{3,})$/.test(line.trim())) {
       out.push({ type: "hr" });
@@ -67,14 +93,20 @@ function parseBlocks(src: string): Block[] {
     }
     const buf: string[] = [line];
     i++;
-    while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|```|\s*[-*•]\s|\s*\d+[.)]\s|>)/.test(lines[i])) buf.push(lines[i++]);
+    while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|```|\s*[-*•]\s|\s*\d+[.)]\s|>)/.test(lines[i]) && !(tables && lines[i].trim().startsWith("|") && tableLength(lines, i))) buf.push(lines[i++]);
     out.push({ type: "p", text: buf.join(" ") });
   }
   return out;
 }
 
-function renderBlock(b: Block, key: number): React.ReactNode {
+function renderBlock(b: Block, key: number, tableNotice?: string): React.ReactNode {
   switch (b.type) {
+    case "table":
+      return (
+        <p key={key} className="my-1.5 select-none rounded-lg border border-dashed border-gray-300 bg-white/70 px-2.5 py-1.5 text-[12px] text-gray-500" onCopy={(e) => e.preventDefault()}>
+          {tableNotice}
+        </p>
+      );
     case "h": {
       const Tag = (`h${Math.min(6, b.level + 2)}` as unknown) as keyof JSX.IntrinsicElements;
       return (
@@ -169,6 +201,8 @@ export function markdownToHtml(src: string): string {
           return `<pre><code>${esc(b.text)}</code></pre>`;
         case "hr":
           return "<hr>";
+        case "table":
+          return "";
       }
     })
     .join("");

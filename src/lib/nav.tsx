@@ -1,4 +1,4 @@
-import { BarChart3, BookMarked, BookOpen, Bot, CreditCard, FileBarChart, FileText, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users, Inbox } from "lucide-react";
+import { BarChart3, BookMarked, BookOpen, Bot, ClipboardList, CreditCard, FileBarChart, Files, Flag, LayoutDashboard, Library, Plug, Settings, ShieldCheck, Users, Inbox } from "lucide-react";
 
 export interface NavItem {
   /** i18n key, rendered with `t(item.label)`. */
@@ -16,8 +16,8 @@ const cls = "w-5 h-5";
 
 export const studentNav: NavItem[] = [
   { label: "dashboard.nav.dashboard", href: "/dashboard", icon: <LayoutDashboard className={cls} />, mobile: true },
-  { label: "dashboard.nav.theses", href: "/dashboard/theses", icon: <FileText className={cls} />, mobile: true },
-  // Not in the mobile bar (it holds five items): phones reach it from the theses cards and the home quick actions.
+  { label: "glossary.myPapers", shortLabel: "dashboard.nav.short.papers", href: "/dashboard/papers", icon: <Files className={cls} />, mobile: true },
+  // Not in the mobile bar (it holds five items): phones reach it from the paper cards and the home quick actions.
   { label: "glossary.sourcesReferences", href: "/dashboard/sources", icon: <BookMarked className={cls} /> },
   { label: "dashboard.nav.copilot", shortLabel: "dashboard.nav.short.copilot", href: "/dashboard/ai-chat", icon: <Bot className={cls} />, mobile: true },
   { label: "dashboard.nav.library", shortLabel: "dashboard.nav.short.library", href: "/dashboard/library", icon: <Library className={cls} />, mobile: true },
@@ -28,7 +28,8 @@ export const studentNav: NavItem[] = [
 
 export const adminNav: NavItem[] = [
   { label: "dashboard.nav.overview", href: "/admin", icon: <LayoutDashboard className={cls} />, mobile: true },
-  { label: "dashboard.nav.allTheses", href: "/admin/theses", icon: <BookOpen className={cls} />, mobile: true },
+  { label: "dashboard.nav.allTheses", shortLabel: "dashboard.nav.short.papers", href: "/admin/theses", icon: <BookOpen className={cls} />, mobile: true },
+  { label: "dashboard.nav.assignments", shortLabel: "dashboard.nav.short.assignments", href: "/admin/assignments", icon: <ClipboardList className={cls} />, mobile: true },
   { label: "dashboard.nav.students", href: "/admin/students", icon: <Users className={cls} />, mobile: true },
   { label: "dashboard.nav.notices", shortLabel: "dashboard.nav.short.notices", href: "/admin/flags", icon: <Flag className={cls} />, mobile: true },
   { label: "dashboard.nav.policies", href: "/admin/policies", icon: <ShieldCheck className={cls} /> },

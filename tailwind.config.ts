@@ -70,6 +70,10 @@ const config: Config = {
           "paste-deep": "#b45309",
           human: "#20c997",
         },
+        // Neutral well behind the template thumbnails in the paper gallery (`bg-paper-well`).
+        paper: {
+          well: "#eef2ef",
+        },
       },
       backgroundImage: {
         "brand-primary": `linear-gradient(135deg, ${aubergine} 0%, ${smokyPlum} 100%)`,

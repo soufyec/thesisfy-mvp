@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
 
   // ---- scope ----
   const scope: "institution" | "advisor" = user.role === "admin" ? "institution" : "advisor";
-  const theses: Thesis[] = scope === "institution" ? db.theses.getByUniversity(user.university) : db.theses.getByProfessor(user.id);
+  // D8: an advisor's scope is the papers they may open (supervised, or started from an assignment they created).
+  const theses: Thesis[] = scope === "institution" ? db.theses.getByUniversity(user.university) : db.theses.visibleTo(user);
   const thesisIds = new Set(theses.map((t) => t.id));
   const universityUsers = db.users.getByUniversity(user.university);
   const studentIds = new Set(theses.map((t) => t.studentId));
@@ -77,7 +78,8 @@ export async function GET(request: NextRequest) {
 
   const allSessions = theses.flatMap((t) => t.sessions);
   const sessions = allSessions.filter((s) => inRange(s.startedAt));
-  const allInteractions = (scope === "institution" ? db.interactions.listByUniversity(user.university) : db.interactions.listByUniversity(user.university).filter((i) => (i.thesisId && thesisIds.has(i.thesisId)) || studentIds.has(i.userId)));
+  // D8: an advisor sees the interactions on their papers only, never a student's other chats.
+  const allInteractions = scope === "institution" ? db.interactions.listByUniversity(user.university) : db.interactions.listVisibleTo(user).filter((i) => !!i.thesisId && thesisIds.has(i.thesisId));
   const interactions = allInteractions.filter((i) => inRange(i.timestamp));
   const allFlags: IntegrityFlag[] = theses.flatMap((t) => db.flags.listByThesis(t.id));
   const flags = allFlags.filter((f) => inRange(f.timestamp));

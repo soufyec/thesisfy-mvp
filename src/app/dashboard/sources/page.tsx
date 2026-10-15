@@ -3,20 +3,24 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FileText, Lock, Plus, Search, Trash2 } from "lucide-react";
+import { FileText, Lock, Plus, Search, Table2, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { ConfirmDialog } from "@/components/editor/Dialogs";
 import { Spinner, Toast } from "@/components/ui";
 import { useUser } from "@/components/useUser";
 import { referenceHtml, type LibraryReferenceView, type LibraryResponse, type LibrarySourceView } from "@/components/editor/types";
-import { useT } from "@/lib/i18n/client";
+import { useFormat, useT } from "@/lib/i18n/client";
 import AddLibraryItemDialog, { type AddKind } from "@/components/library/AddLibraryItemDialog";
 import { libraryCall, LibraryRequestError } from "@/components/library/libraryApi";
-import { CHIP, ItemLink, LibraryItemRow, ReferenceTypeBadge, referenceMeta, SourceBadges, sourceMeta } from "@/components/library/LibraryItemRow";
+import { CHIP, CutNotes, ItemLink, LibraryItemRow, ReferenceTypeBadge, referenceMeta, SourceBadges, sourceMeta } from "@/components/library/LibraryItemRow";
+import DataPreviewModal from "@/components/library/DataPreviewModal";
+import { isPrimary, readAsSummary } from "@/components/library/primary";
 import { LockedHints, lockedHintId, ThesisToggleChip, UsedCheckbox } from "@/components/library/LibraryControls";
 
 type Section = "sources" | "references";
 type Show = "all" | "used" | "unused";
+/** Sources tab filter (docs/papers.md §4.7): everything, the student's own material, or the literature they cite. */
+type SourceFilter = "all" | "primary" | "literature";
 type ToastState = { message: string; kind: "info" | "success" | "error" } | null;
 
 const toggled = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -31,6 +35,7 @@ const matches = (needle: string, ...fields: (string | undefined)[]) => !needle |
  */
 function SourcesInner() {
   const t = useT();
+  const fmt = useFormat();
   const params = useSearchParams();
   const { user } = useUser();
   const paramThesis = params.get("thesis") || "";
@@ -40,6 +45,8 @@ function SourcesInner() {
   const [section, setSection] = useState<Section>(params.get("tab") === "references" ? "references" : "sources");
   const [q, setQ] = useState("");
   const [show, setShow] = useState<Show>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [preview, setPreview] = useState<LibrarySourceView | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<ToastState>(null);
   const [adding, setAdding] = useState<AddKind | null>(null);
@@ -104,7 +111,9 @@ function SourcesInner() {
   // ----- Filtering -----
   const needle = q.trim().toLowerCase();
   const usedFilter = (ids: string[]) => !current || show === "all" || (show === "used") === ids.includes(current.id);
-  const sources = (data?.sources || []).filter((s) => matches(needle, s.title, s.authors, s.doi, s.venue, s.url, s.year) && usedFilter(s.thesisIds));
+  const kindFilter = (s: LibrarySourceView) => sourceFilter === "all" || (sourceFilter === "primary") === isPrimary(s);
+  const searchedSources = (data?.sources || []).filter((s) => matches(needle, s.title, s.authors, s.doi, s.venue, s.url, s.year, s.file?.name) && usedFilter(s.thesisIds));
+  const sources = searchedSources.filter(kindFilter);
   const references = (data?.references || []).filter((r) => matches(needle, r.title, r.authors, r.doi, r.source, r.url, r.year) && usedFilter(r.thesisIds));
   const fullText = useMemo(() => {
     const ids = new Set<string>();
@@ -218,8 +227,11 @@ function SourcesInner() {
   const onSourceAdded = (s: LibrarySourceView, existing: boolean, linked: number) => {
     setData((d) => d && { ...d, sources: [s, ...d.sources.filter((x) => x.id !== s.id)] });
     setSection("sources");
-    const message = existing ? t(linked ? "dashboard.sources.toast.existing" : "dashboard.sources.toast.existingNoLink") : s.parseStatus === "parsed" && s.coverage === "full_text" ? t("dashboard.sources.toast.sourceAdded") : s.coverage === "abstract" ? t("dashboard.sources.toast.sourceAbstract") : t("dashboard.sources.toast.sourceNoText");
-    setToast({ message, kind: existing || s.coverage === "full_text" ? "success" : "info" });
+    const primary = isPrimary(s) && s.parseStatus !== "failed";
+    const message = existing ? t(linked ? "dashboard.sources.toast.existing" : "dashboard.sources.toast.existingNoLink") : primary ? t("library.ui.toast.primaryAdded", { summary: readAsSummary(s, t, (n) => fmt.number(n)) || "" }).trim() : s.parseStatus === "parsed" && s.coverage === "full_text" ? t("dashboard.sources.toast.sourceAdded") : s.coverage === "abstract" ? t("dashboard.sources.toast.sourceAbstract") : t("dashboard.sources.toast.sourceNoText");
+    if (!existing && primary && sourceFilter === "literature") setSourceFilter("all");
+    if (!existing && !primary && sourceFilter === "primary") setSourceFilter("all");
+    setToast({ message, kind: existing || primary || s.coverage === "full_text" ? "success" : "info" });
   };
   const onReferenceAdded = (r: LibraryReferenceView, existing: boolean, linked: number) => {
     setData((d) => d && { ...d, references: d.references.some((x) => x.id === r.id) ? d.references.map((x) => (x.id === r.id ? r : x)) : [r, ...d.references] });
@@ -292,6 +304,7 @@ function SourcesInner() {
 
   const sectionEmpty = (total: number, kind: AddKind) => {
     if (total === 0) return emptyState(t(`dashboard.sources.empty.${section}`), { label: t(kind === "source" ? "dashboard.sources.empty.addSource" : "dashboard.sources.empty.addReference"), kind });
+    if (kind === "source" && sourceFilter !== "all" && !needle && searchedSources.length > 0) return emptyState(t(sourceFilter === "primary" ? "dashboard.sources.empty.primary" : "dashboard.sources.empty.literature"), { label: t("dashboard.sources.empty.addSource"), kind });
     if (needle) return emptyState(t("dashboard.sources.empty.noMatch", { q: q.trim() }));
     if (current && show === "used") return emptyState(t("dashboard.sources.empty.usedNone"));
     if (current && show === "unused") return emptyState(t("dashboard.sources.empty.unusedNone"));
@@ -362,7 +375,7 @@ function SourcesInner() {
       {theses.length === 0 && (
         <div className="rounded-xl bg-gray-100 px-4 py-3 text-sm text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>{t("dashboard.sources.noTheses")}</span>
-          <Link href="/dashboard/theses?new=1" className="text-brand-600 font-medium hover:underline">{t("dashboard.theses.new")}</Link>
+          <Link href="/dashboard/papers?new=1" className="text-brand-600 font-medium hover:underline">{t("dashboard.theses.new")}</Link>
         </div>
       )}
 
@@ -418,13 +431,47 @@ function SourcesInner() {
 
         <div role="tabpanel" id={`library-panel-${section}`} aria-labelledby={`library-tab-${section}`}>
           <p className="px-4 sm:px-5 pt-3 text-xs text-gray-500">{t(`dashboard.sources.help.${section}`)}</p>
+          {section === "sources" && (data.sources.length > 0) && (
+            <div role="group" aria-label={t("library.ui.filter.label")} className="px-4 sm:px-5 pt-3 flex flex-wrap gap-1.5">
+              {(["all", "primary", "literature"] as SourceFilter[]).map((f) => {
+                const n = f === "all" ? searchedSources.length : searchedSources.filter((s) => (f === "primary") === isPrimary(s)).length;
+                const on = sourceFilter === f;
+                return (
+                  <button key={f} type="button" aria-pressed={on} onClick={() => setSourceFilter(f)} className={chipClass(on)}>
+                    {f === "all" ? t("library.ui.filter.all") : f === "primary" ? t("glossary.primaryData") : t("library.ui.filter.literature")}
+                    <span className={`tabular-nums ${on ? "text-white/80" : "text-gray-400"}`}>{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {section === "sources" ? (
             sources.length === 0 ? (
               sectionEmpty(data.sources.length, "source")
             ) : (
               <ul className="divide-y divide-gray-50">
                 {sources.map((s) => (
-                  <LibraryItemRow key={s.id} kind={s.kind} title={s.title} meta={sourceMeta(s)} busy={!!busy[`s:${s.id}`]} badges={<><SourceBadges source={s} /><ItemLink doi={s.doi} url={s.url} /></>} actions={deleteButton(`s-${s.id}`, s.thesisIds, () => setDelSource(s))}>
+                  <LibraryItemRow
+                    key={s.id}
+                    kind={s.kind}
+                    title={s.title}
+                    meta={sourceMeta(s) || (s.file && s.file.name !== s.title ? s.file.name : undefined)}
+                    busy={!!busy[`s:${s.id}`]}
+                    badges={
+                      <>
+                        <SourceBadges source={s} />
+                        <ItemLink doi={s.doi} url={s.url} />
+                        {s.kind === "sheet" && s.dataset && s.dataset.sheets.length > 0 && (
+                          <button type="button" onClick={() => setPreview(s)} className="inline-flex items-center gap-1 text-[12px] text-brand-600 font-medium hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 rounded" aria-label={t("library.ui.preview.buttonAria", { title: s.title })}>
+                            <Table2 className="w-[15px] h-[15px]" aria-hidden="true" />
+                            {t("library.ui.preview.button")}
+                          </button>
+                        )}
+                      </>
+                    }
+                    extra={s.kind === "sheet" ? <CutNotes source={s} /> : undefined}
+                    actions={deleteButton(`s-${s.id}`, s.thesisIds, () => setDelSource(s))}
+                  >
                     {selection(s.thesisIds, (ids) => setSourceLinks(s, ids), !!busy[`s:${s.id}`])}
                   </LibraryItemRow>
                 ))}
@@ -484,6 +531,8 @@ function SourcesInner() {
           )}
         </div>
       </div>
+
+      <DataPreviewModal open={!!preview} onClose={() => setPreview(null)} source={preview} thesisId={preview ? (current && preview.thesisIds.includes(current.id) ? current.id : preview.thesisIds[0]) : undefined} />
 
       <AddLibraryItemDialog open={!!adding} onClose={() => setAdding(null)} initialKind={adding || "source"} theses={theses} defaultThesisId={current?.id} onSourceAdded={onSourceAdded} onReferenceAdded={onReferenceAdded} />
 

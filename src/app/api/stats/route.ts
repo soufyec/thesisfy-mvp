@@ -6,13 +6,14 @@ export async function GET(request: NextRequest) {
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;
-  const theses = user.role === "student" ? db.theses.getByStudent(user.id) : user.role === "professor" ? db.theses.getByProfessor(user.id) : db.theses.getByUniversity(user.university);
+  // D8: the papers the caller may open (a student their own, a professor those they supervise or assigned, an admin the university's).
+  const theses = db.theses.visibleTo(user);
   // A student sees only their own figures: the institution's people counts are staff information.
   const users = user.role === "student" ? [user] : db.users.getByUniversity(user.university);
   const flags = theses.flatMap((t) => db.flags.listByThesis(t.id));
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
   const sessions = theses.flatMap((t) => t.sessions);
-  const interactions = user.role === "student" ? db.interactions.listByUser(user.id) : db.interactions.listByUniversity(user.university);
+  const interactions = db.interactions.listVisibleTo(user);
 
   const byMode: Record<string, number> = {};
   const byProvider: Record<string, number> = {};

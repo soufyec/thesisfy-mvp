@@ -22,7 +22,12 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body) return error("Invalid body");
   const patch: Record<string, unknown> = {};
-  if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim();
+  // A display name is one line of at most 120 characters: no control or line/paragraph separator characters (it is
+  // shown to staff and sent to the assistant, where a multi-line name could pose as an instruction).
+  if (typeof body.name === "string" && body.name.trim()) {
+    const name = body.name.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+    if (name) patch.name = name;
+  }
   if (body.preferences && typeof body.preferences === "object") patch.preferences = body.preferences;
   // The onboarding can only be marked as seen, never un-seen: replaying it is a client-side choice.
   if (body.onboarded === true && !r.user.onboardedAt) patch.onboardedAt = new Date().toISOString();

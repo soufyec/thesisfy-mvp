@@ -100,10 +100,15 @@ export async function POST(request: NextRequest) {
     return json({ answer: check.message, citations: [], meta: { ...meta, blocked: true, reason: check.reason, interactionId } });
   }
 
-  const sourceIds = Array.isArray(body.sourceIds) ? body.sourceIds.filter((s) => typeof s === "string") : undefined;
-  const candidates = retrieve(thesis.id, question, 12, sourceIds);
+  // Spreadsheets are left out: their indexed text is a data card for the copilot, not something to quote
+  // (docs/papers.md §3.5). An empty list means nothing to search, never "search everything".
+  const searchable = db.sources.list(thesis.id).filter((s) => s.kind !== "sheet").map((s) => s.id);
+  const requested = Array.isArray(body.sourceIds) ? body.sourceIds.filter((s) => typeof s === "string") : undefined;
+  const ids = requested ? requested.filter((id) => searchable.includes(id)) : searchable;
+  const candidates = ids.length ? retrieve(thesis.id, question, 12, ids) : [];
   if (!candidates.length) {
-    const indexed = db.sourceChunks.listByThesis(thesis.id).length;
+    const searchableSet = new Set(searchable);
+    const indexed = db.sourceChunks.listByThesis(thesis.id).filter((c) => searchableSet.has(c.sourceId)).length;
     // `meta.code` lets the panel render these fixed messages in the UI language; `answer` stays in English for other clients.
     // Retrieval only reads the sources linked to this thesis, so the messages speak of this thesis, not of the library.
     const answer = indexed
@@ -114,7 +119,7 @@ export async function POST(request: NextRequest) {
       // Owner only (staff never see the student's library): indexed sources of the library this thesis does not use yet,
       // so the panel can offer to choose one instead of adding it again.
       const counts = db.sourceChunks.countBySource();
-      extra.librarySources = db.sources.listByOwner(user.id).filter((s) => s.thesisIds.indexOf(thesis.id) === -1 && (counts.get(s.id) || 0) > 0).length;
+      extra.librarySources = db.sources.listByOwner(user.id).filter((s) => s.kind !== "sheet" && s.thesisIds.indexOf(thesis.id) === -1 && (counts.get(s.id) || 0) > 0).length;
     }
     return json({ answer, citations: [], meta: { ...meta, ...extra, passages: 0, reranked: false, empty: true, code: indexed ? "no_match" : "no_index" } });
   }

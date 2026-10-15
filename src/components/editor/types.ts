@@ -1,6 +1,22 @@
 import { createElement, Fragment, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import type { Translate } from "@/lib/i18n/dictionary";
+import type { PaperKind, TeacherLabel, WritingLanguage } from "@/lib/papers/kinds";
+import type { AssignmentView } from "@/lib/papers/views";
+import type { DatasetSummary, PaperFigures, SourceFile, SourceKind, SourceRole } from "@/lib/db";
+
+// Paper kinds and assignment views are pure modules shared with the server: re-exported so the editor and the
+// dashboards import paper types from one place.
+export * from "@/lib/papers/kinds";
+export * from "@/lib/papers/views";
+
+/**
+ * Primary data and copilot artifacts. Type-only re-exports of the server definitions in src/lib/db.ts (erased at
+ * build time, so nothing from the data layer reaches the client bundle): the mirror cannot drift.
+ */
+export type { AnalysisOp, AnalysisSpec, Artifact, ArtifactRef, ArtifactTable, ChartData, ConversationMessage, DatasetCell, DatasetColumn, DatasetSheet, DatasetSummary, PaperFigures, SourceFile, SourceKind, SourceRole } from "@/lib/db";
+export type { TestResult } from "@/lib/data/inference/types";
+export type { DiagramSpec, DiagramWarning } from "@/lib/diagrams/types";
 
 export interface ThesisDoc {
   id: string;
@@ -34,6 +50,23 @@ export interface ThesisDoc {
     /** Display-only numbering 1 / 1.1 / 1.1.1 of Heading 2 / 3 / 4. */
     numberHeadings?: boolean;
   };
+  /** Kind of paper; absent = "thesis" (read it with `paperKind(doc)`). */
+  kind?: PaperKind;
+  templateId?: string;
+  /** Set when the paper was started from an assignment: deadline, target and citation style are set by the teacher. */
+  assignmentId?: string;
+  writingLanguage?: WritingLanguage;
+  submittedAt?: string;
+  reviewedAt?: string;
+  /** Figures of the Final submission (charts inserted from the copilot); all AI-assisted in v1. */
+  figures?: PaperFigures;
+  equations?: PaperFigures;
+  /** Response-only (`GET /api/theses/[id]`): the assignment the paper was started from, the same view for student and staff. */
+  assignment?: AssignmentView;
+  /** Response-only: who reviews the paper ("advisor" for thesis kinds, "teacher" otherwise, "none" without professorId). */
+  teacherLabel?: TeacherLabel;
+  /** Response-only: handed in after the deadline (`submittedAt > deadline`). */
+  late?: boolean;
 }
 
 export interface ThesisTab {
@@ -75,7 +108,7 @@ export interface LibrarySourceView {
   thesisId: string;
   /** Theses of the student that use this source. */
   thesisIds: string[];
-  kind: "doi" | "url" | "pdf" | "text";
+  kind: SourceKind;
   title: string;
   authors?: string;
   year?: string;
@@ -92,6 +125,12 @@ export interface LibrarySourceView {
   lastUsedAt?: string;
   coverage: "full_text" | "abstract" | "none";
   chunkCount: number;
+  /** Primary data or literature; absent = "secondary". */
+  role?: SourceRole;
+  /** Uploaded file metadata (never the bytes). */
+  file?: SourceFile;
+  /** kind "sheet": sheets and columns of the parsed table, never its rows. */
+  dataset?: DatasetSummary;
 }
 
 /** A reference of the student's library (`/api/library`), with the theses that use it and where it is cited. */
@@ -123,7 +162,7 @@ export interface LibraryResponse {
 /** Error body of the library and thesis-sources routes; `code` tells the UI which consequence to show. */
 export interface LibraryErrorBody {
   error: string;
-  code?: "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only";
+  code?: "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only" | "legacy_format" | "too_large" | "encrypted" | "empty" | "no_text" | "unsupported_type" | "unreadable";
   /** With `code: "cited"`: in-text citations per thesis id that the change would leave without an entry. */
   citedIn?: Record<string, number>;
 }
@@ -161,9 +200,10 @@ export interface FlagItem {
 
 /**
  * The side panel that is open. "references", "sources" and "library" all open the Sources & references panel, on its
- * References, Sources and Your library tab respectively.
+ * References, Sources and Your library tab respectively. "brief" is the read-only assignment brief (papers with an
+ * `assignmentId` only, also in review mode).
  */
-export type SidebarKind = "none" | "outline" | "comments" | "versions" | "references" | "find" | "ai" | "integrity" | "reviewer" | "language" | "cite" | "process" | "sources" | "library" | "evidence";
+export type SidebarKind = "none" | "outline" | "comments" | "versions" | "references" | "find" | "ai" | "integrity" | "reviewer" | "language" | "cite" | "process" | "sources" | "library" | "evidence" | "brief";
 
 export interface EditorCtx {
   editor: Editor;
@@ -259,9 +299,12 @@ export function referenceHtml(r: Reference, style: ThesisDoc["citationStyle"]): 
 
 // ---------- Integrity ledger (mirrors src/lib/integrity.ts, which is server-only) ----------
 export type IntegrityFix = "attribute_paste" | "reduce_ai" | "open_notice" | "none";
-export type IntegrityLineCode = "ai_share" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
+export type IntegrityLineCode = "ai_share" | "ai_figures" | "ai_equations" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
 export interface IntegrityLine {
-  /** Translated on the client via `editor.ledger.line.<code>`; `reason` is the English fallback. */
+  /**
+   * Translated on the client via `editor.ledger.line.<code>` (`ai_figures` with `vars.n`, and `ai_figures_one` when
+   * n is 1); `reason` is the English fallback.
+   */
   code: IntegrityLineCode;
   vars: Record<string, string | number>;
   reason: string;

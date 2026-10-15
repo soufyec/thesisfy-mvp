@@ -48,7 +48,7 @@ await p.evaluate(async (d) => {
 }, deadline.toISOString());
 
 await p.goto(`${B}/dashboard/settings`); await p.waitForTimeout(2500); await shot(p, "s04-settings");
-await p.goto(`${B}/dashboard/theses`); await p.waitForTimeout(2500); await shot(p, "s05-theses");
+await p.goto(`${B}/dashboard/papers`); await p.waitForTimeout(2500); await shot(p, "s05-theses");
 
 await p.goto(`${B}/dashboard/editor/thesis_1`); await p.waitForTimeout(5000);
 // close the assistant for a clean "written" view, if open

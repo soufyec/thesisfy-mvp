@@ -4,6 +4,11 @@
  *
  * - A source (`ThesisSource`) is full text the assistant can quote. It belongs to `ownerId` and is linked to the
  *   theses in `thesisIds` (always theses of the same owner).
+ * - A source is primary data (`role: "primary"`: the student's own data, transcripts, field notes; sheets always) or
+ *   literature (absent or "secondary"). Each role has its own caps (docs/papers.md §1.3, D10).
+ * - Uploaded files (.pdf .docx .xlsx .csv .tsv .txt .md, ≤ 4 MB) are detected by extension and bytes, deduplicated by
+ *   SHA-256 within the library, parsed before anything is written, then stored: a sheet as a column-major dataset
+ *   plus its D11 data card as the indexed text, a document as its text. The file itself is never kept.
  * - A reference (`LibraryReference`) is a bibliographic entry. `thesis.references` stays the per-thesis list; a library
  *   reference is linked to a thesis iff that list holds the same id (see `db.libraryReferences`).
  * - Theses that are approved or submitted are locked: no link can be added to or removed from them.
@@ -11,19 +16,46 @@
 
 import { NextResponse } from "next/server";
 import { db, LibraryReference, Reference, Thesis, thesisCopyOf, ThesisSource, uid, User } from "@/lib/db";
+import type { SourceRole } from "@/lib/db";
 import { json } from "@/lib/api";
 import type { Translate } from "@/lib/i18n/dictionary";
 import { normalizeDoi } from "@/lib/scholar";
-import { extractFromDoi, extractFromPdf, extractFromUrl, Extracted, MAX_PDF_BYTES } from "./extract";
+import { dataCard } from "@/lib/data/summarize";
+import { extractFromDoi, extractFromUrl, Extracted } from "./extract";
 import { chunkText, wordCount } from "./chunk";
 import { librarySourceView, LibrarySourceView } from "./retrieve";
 import { thesisCitationCounts } from "./cited";
+import {
+  MAX_CELL_CHARS,
+  MAX_COLUMNS,
+  MAX_DATASET_CELLS,
+  MAX_LIBRARY_CELLS,
+  MAX_PRIMARY_PER_LIBRARY,
+  MAX_PRIMARY_PER_THESIS,
+  MAX_SHEETS,
+  MAX_SOURCES_PER_LIBRARY,
+  MAX_SOURCES_PER_THESIS,
+  MAX_TEXT_CHARS,
+  MAX_UPLOAD_BYTES,
+} from "./caps";
+import { IngestErrorCode, isIngestError } from "./errors";
+import { baseName, detectUpload, parseUpload, ParsedUpload, sha256Hex, SHEET_TYPES, UPLOAD_KIND, UPLOAD_MIME, UploadType } from "./upload";
 
-export const MAX_SOURCES_PER_THESIS = 40;
-export const MAX_SOURCES_PER_LIBRARY = 150;
-export const MAX_TEXT_CHARS = 250_000;
+export {
+  MAX_CELL_CHARS,
+  MAX_COLUMNS,
+  MAX_DATASET_CELLS,
+  MAX_LIBRARY_CELLS,
+  MAX_PRIMARY_PER_LIBRARY,
+  MAX_PRIMARY_PER_THESIS,
+  MAX_SHEETS,
+  MAX_SOURCES_PER_LIBRARY,
+  MAX_SOURCES_PER_THESIS,
+  MAX_TEXT_CHARS,
+  MAX_UPLOAD_BYTES,
+};
 
-export type LibraryErrorCode = "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only";
+export type LibraryErrorCode = "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only" | IngestErrorCode;
 
 /** A refused request, already shaped as the response `{ error, code?, ...extra }`. */
 export interface Fail {
@@ -35,6 +67,27 @@ export function fail(message: string, status = 400, code?: LibraryErrorCode, ext
 }
 
 export const isFail = (v: unknown): v is Fail => !!v && typeof v === "object" && "fail" in (v as Record<string, unknown>);
+
+const UPLOAD_ERROR: Record<IngestErrorCode, { key: string; status: number }> = {
+  legacy_format: { key: "library.error.legacyFormat", status: 415 },
+  unsupported_type: { key: "library.error.unsupportedType", status: 415 },
+  too_large: { key: "library.error.tooLarge", status: 413 },
+  encrypted: { key: "library.error.encrypted", status: 422 },
+  empty: { key: "library.error.empty", status: 422 },
+  no_text: { key: "library.error.noText", status: 422 },
+  unreadable: { key: "library.error.unreadable", status: 422 },
+};
+
+/**
+ * A refused upload: `{ error: <translated>, code }`. `stage` "parse" words two codes for what was found inside the
+ * file: `too_large` (it expands past what Thesisfic reads, 422) and `empty` (a sheet without data rows).
+ */
+export function uploadFail(code: IngestErrorCode, tr: Translate, stage: "upload" | "parse" = "upload"): Fail {
+  const e = UPLOAD_ERROR[code];
+  if (stage === "parse" && code === "too_large") return fail(tr("library.error.expandsTooLarge"), 422, code);
+  if (stage === "parse" && code === "empty") return fail(tr("library.error.noRows"), 422, code);
+  return fail(tr(e.key, { max: Math.round(MAX_UPLOAD_BYTES / (1024 * 1024)) }), e.status, code);
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Theses: ownership, lock, caps
@@ -49,12 +102,38 @@ export function lockedFail(t: Pick<Thesis, "title">, tr: Translate) {
   return fail(tr("library.error.locked", { title: t.title }), 409, "locked");
 }
 
-export function thesisCapFail(t: Pick<Thesis, "title">, tr: Translate) {
+export function thesisCapFail(t: Pick<Thesis, "title">, tr: Translate, role: SourceRole = "secondary") {
+  if (role === "primary") return fail(tr("library.error.primaryThesisCap", { max: MAX_PRIMARY_PER_THESIS, title: t.title }), 409, "thesis_cap");
   return fail(tr("library.error.thesisCap", { max: MAX_SOURCES_PER_THESIS, title: t.title }), 409, "thesis_cap");
 }
 
-export function libraryCapFail(tr: Translate) {
+export function libraryCapFail(tr: Translate, role: SourceRole = "secondary") {
+  if (role === "primary") return fail(tr("library.error.primaryLibraryCap", { max: MAX_PRIMARY_PER_LIBRARY }), 409, "library_cap");
   return fail(tr("library.error.libraryCap", { max: MAX_SOURCES_PER_LIBRARY }), 409, "library_cap");
+}
+
+/** The library cannot hold more cells of data (`MAX_LIBRARY_CELLS`). */
+export function dataCapFail(tr: Translate) {
+  return fail(tr("library.error.dataCap", { max: MAX_LIBRARY_CELLS }), 409, "library_cap");
+}
+
+/** Role of a source: "primary", or "secondary" (also when absent). */
+export function roleOf(s: Pick<ThesisSource, "role">): SourceRole {
+  return s.role === "primary" ? "primary" : "secondary";
+}
+
+/** Sources of a list with that role (the 40/150 caps count secondary sources only, the 20/60 caps primary ones). */
+export function countRole(list: Pick<ThesisSource, "role">[], role: SourceRole): number {
+  let n = 0;
+  for (const s of list) if (roleOf(s) === role) n++;
+  return n;
+}
+
+/** Fails when the owner's library holds the maximum of sources with this role. */
+export function libraryRoleCap(ownerId: string, role: SourceRole, tr: Translate): Fail | null {
+  const n = countRole(db.sources.listByOwner(ownerId), role);
+  if (role === "primary" ? n >= MAX_PRIMARY_PER_LIBRARY : n >= MAX_SOURCES_PER_LIBRARY) return libraryCapFail(tr, role);
+  return null;
 }
 
 /**
@@ -91,10 +170,25 @@ interface Given {
   title?: string;
   authors?: string;
   year?: string;
+  /** Asked for by the client; sheets are always primary whatever is sent. */
+  role?: SourceRole;
 }
 
+/** An uploaded file, already detected and hashed; the bytes live only for the request. */
+export interface UploadInput {
+  type: UploadType;
+  /** File name as sent (without folders), at most 200 characters. */
+  name: string;
+  /** MIME type of the detected type (the browser's is not trusted). */
+  mime: string;
+  bytes: Buffer;
+  sha256: string;
+}
+
+export type FileSourceInput = { kind: "file"; upload: UploadInput } & Given;
+
 export type SourceInput =
-  | ({ kind: "pdf"; file: File } & Given)
+  | FileSourceInput
   | ({ kind: "doi"; doi: string } & Given)
   | ({ kind: "url"; url: string } & Given)
   | ({ kind: "text"; text: string } & Given);
@@ -103,32 +197,91 @@ function str(v: unknown) {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }
 
+/** `role` field: absent → undefined; "primary"/"secondary" → that; anything else → null (refused). */
+function parseRole(v: unknown): SourceRole | undefined | null {
+  if (v === undefined || v === null || v === "") return undefined;
+  return v === "primary" || v === "secondary" ? v : null;
+}
+
+/** A multipart request: the 4 MB file plus room for the other fields and the multipart framing. */
+const MAX_MULTIPART_BYTES = MAX_UPLOAD_BYTES + 256 * 1024;
+
+/** The request body, or null as soon as it passes `limit` bytes (the rest is not read). */
+async function readBodyBounded(request: Request, limit: number): Promise<ArrayBuffer | null> {
+  if (!request.body) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > limit) {
+      reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  const out = new ArrayBuffer(total);
+  const view = new Uint8Array(out);
+  let at = 0;
+  for (const c of chunks) {
+    view.set(c, at);
+    at += c.byteLength;
+  }
+  return out;
+}
+
 /**
- * Reads a source from the request: multipart with a `file` PDF (≤ 15 MB, optional title, authors, year) or JSON
- * `{ kind: "doi" | "url" | "text", value, title?, authors?, year? }`. `thesisIds` is returned for the library route to
- * validate: the JSON value as sent, or the multipart field (repeated or comma-separated) as an array of ids.
+ * Reads a source from the request: multipart with a `file` (.pdf .docx .xlsx .csv .tsv .txt .md, ≤ 4 MB; optional
+ * title, authors, year, role) or JSON `{ kind: "doi" | "url" | "text", value, title?, authors?, year?, role? }`.
+ * `thesisIds` is returned for the library route to validate: the JSON value as sent, or the multipart field
+ * (repeated or comma-separated) as an array of ids. Files are detected, size-checked and hashed here; refusals carry
+ * a code (`legacy_format` 415, `unsupported_type` 415, `too_large` 413, `encrypted`/`empty`/`unreadable` 422).
  */
 export async function readSourceInput(request: Request, tr: Translate): Promise<{ input: SourceInput; thesisIds: unknown } | Fail> {
   const contentType = request.headers.get("content-type") || "";
   if (contentType.includes("multipart/form-data")) {
-    const form = await request.formData().catch(() => null);
+    const declared = Number(request.headers.get("content-length") || 0);
+    if (declared > MAX_MULTIPART_BYTES) return uploadFail("too_large", tr);
+    // The body is read with a byte counter whatever the headers say (a chunked request has no Content-Length), so a
+    // request larger than the cap is refused before it is held in memory or parsed.
+    const raw = await readBodyBounded(request, MAX_MULTIPART_BYTES).catch(() => undefined);
+    if (raw === null) return uploadFail("too_large", tr);
+    const form = raw ? await new Response(raw, { headers: { "content-type": contentType } }).formData().catch(() => null) : null;
     const file = form?.get("file");
-    if (!file || typeof file === "string") return fail(tr("library.error.attachPdf"));
-    if (file.size > MAX_PDF_BYTES) return fail(tr("library.error.pdfTooLarge"), 413);
-    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
-    if (!isPdf) return fail(tr("library.error.pdfOnly"), 415);
+    if (!file || typeof file === "string") return fail(tr("library.error.attachFile"));
+    if (file.size > MAX_UPLOAD_BYTES) return uploadFail("too_large", tr);
+    const role = parseRole(form?.get("role"));
+    if (role === null) return fail(tr("library.error.roleInvalid"));
+    const bytes = Buffer.from(await file.arrayBuffer());
+    if (bytes.length > MAX_UPLOAD_BYTES) return uploadFail("too_large", tr);
+    const detected = detectUpload(file.name || "", file.type || "", bytes);
+    if (!detected.ok) return uploadFail(detected.code, tr);
+    const type = detected.type;
+    const name = ((file.name || "").split(/[\\/]/).pop() || "").trim().slice(0, 200) || `upload.${type}`;
     const ids = (form?.getAll("thesisIds") || []).flatMap((v) => (typeof v === "string" ? v.split(",") : [])).filter((v) => v.trim());
-    const title = str(form?.get("title")) || (file.name || "").replace(/\.pdf$/i, "").trim() || tr("library.source.uploadedPdf");
+    const title = str(form?.get("title")) || baseName(name) || tr("library.source.uploadedFile");
     return {
-      input: { kind: "pdf", file, title: title.slice(0, 300), authors: str(form?.get("authors"))?.slice(0, 300), year: str(form?.get("year"))?.slice(0, 8) },
+      input: {
+        kind: "file",
+        upload: { type, name, mime: UPLOAD_MIME[type], bytes, sha256: sha256Hex(bytes) },
+        title: title.slice(0, 300),
+        authors: str(form?.get("authors"))?.slice(0, 300),
+        year: str(form?.get("year"))?.slice(0, 8),
+        role,
+      },
       thesisIds: ids.length ? ids : undefined,
     };
   }
 
-  const body = (await request.json().catch(() => null)) as { kind?: unknown; value?: unknown; title?: unknown; authors?: unknown; year?: unknown; thesisIds?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { kind?: unknown; value?: unknown; title?: unknown; authors?: unknown; year?: unknown; thesisIds?: unknown; role?: unknown } | null;
   const value = typeof body?.value === "string" ? body.value.trim() : "";
   if (!body || !value) return fail(tr("library.error.kindValue"));
-  const given: Given = { title: str(body.title)?.slice(0, 300), authors: str(body.authors)?.slice(0, 300), year: str(body.year)?.slice(0, 8) };
+  const role = parseRole(body.role);
+  if (role === null) return fail(tr("library.error.roleInvalid"));
+  const given: Given = { title: str(body.title)?.slice(0, 300), authors: str(body.authors)?.slice(0, 300), year: str(body.year)?.slice(0, 8), role };
 
   if (body.kind === "doi") {
     const doi = normalizeDoi(value);
@@ -152,21 +305,21 @@ export async function readSourceInput(request: Request, tr: Translate): Promise<
   return fail(tr("library.error.kindInvalid"));
 }
 
-/**
- * Creates the source in the owner's library, linked to `thesisIds`, then extracts, chunks and indexes its text in
- * the same request. A source whose text could not be indexed is still created, with `parseStatus` "no_text" or
- * "failed" and the reason in `abstract`. Caps, locks and duplicates are the caller's job (see `checkLinkable`): check
- * them right before calling, with no await in between; the source itself is created before this function's first await.
- */
-export async function createLibrarySource(ownerId: string, thesisIds: string[], input: SourceInput, tr: Translate): Promise<ThesisSource> {
-  const base = { ownerId, thesisIds, wordCount: 0, parseStatus: "pending" as const };
+/** Role a new source gets: sheets are always primary; otherwise what the client asked, or secondary. */
+export function roleFor(input: SourceInput): SourceRole {
+  if (input.kind === "file" && SHEET_TYPES.indexOf(input.upload.type) !== -1) return "primary";
+  return input.role || "secondary";
+}
 
-  if (input.kind === "pdf") {
-    const created = db.sources.create({ ...base, kind: "pdf", title: input.title || tr("library.source.uploadedPdf"), authors: input.authors, year: input.year });
-    const buffer = Buffer.from(await input.file.arrayBuffer());
-    const extracted = await extractFromPdf(buffer).catch((e: Error) => failed(e, tr));
-    return indexSource(created, extracted, tr);
-  }
+/**
+ * Creates a DOI, URL or pasted-text source in the owner's library, linked to `thesisIds`, then extracts, chunks and
+ * indexes its text in the same request. A source whose text could not be indexed is still created, with
+ * `parseStatus` "no_text" or "failed" and the reason in `abstract`. Caps, locks and duplicates are the caller's job
+ * (see `checkLinkable`): check them right before calling, with no await in between; the source itself is created
+ * before this function's first await. Uploaded files go through `addUploadedSource`.
+ */
+export async function createLibrarySource(ownerId: string, thesisIds: string[], input: Exclude<SourceInput, FileSourceInput>, tr: Translate): Promise<ThesisSource> {
+  const base = { ownerId, thesisIds, wordCount: 0, parseStatus: "pending" as const, ...(input.role ? { role: input.role } : {}) };
 
   if (input.kind === "doi") {
     const doi = input.doi;
@@ -236,14 +389,137 @@ function indexSource(source: ThesisSource, extracted: Extracted, tr: Translate):
   return db.sources.update(source.id, { text, pages: extracted.pageCount || undefined, wordCount: wordCount(text), parseStatus: "parsed" })!;
 }
 
-/** Fails when one of `theses` is locked, or cannot take one more source (ignoring theses the source already uses). */
-export function checkLinkable(theses: Thesis[], tr: Translate, already: string[] = []): Fail | null {
+/**
+ * Fails when one of `theses` is locked, or cannot take one more source of this role (ignoring theses the source
+ * already uses): 20 primary sources per paper, 40 secondary ones.
+ */
+export function checkLinkable(theses: Thesis[], tr: Translate, already: string[] = [], role: SourceRole = "secondary"): Fail | null {
   for (const t of theses) {
     if (already.indexOf(t.id) !== -1) continue;
     if (isLocked(t)) return lockedFail(t, tr);
-    if (db.sources.list(t.id).length >= MAX_SOURCES_PER_THESIS) return thesisCapFail(t, tr);
+    const n = countRole(db.sources.list(t.id), role);
+    if (n >= (role === "primary" ? MAX_PRIMARY_PER_THESIS : MAX_SOURCES_PER_THESIS)) return thesisCapFail(t, tr, role);
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Uploaded files
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The theses again by id (they may have changed while the request awaited), or a 404. */
+function freshTheses(ids: string[], tr: Translate): Thesis[] | Fail {
+  const out: Thesis[] = [];
+  for (const id of ids) {
+    const t = db.theses.findById(id);
+    if (!t) return fail(tr("library.error.thesisNotFound"), 404);
+    out.push(t);
+  }
+  return out;
+}
+
+/**
+ * The same file (SHA-256) already in the owner's library: links it to the theses that do not use it yet and returns
+ * it (`existing: true`), or a refusal (lock, caps). A primary upload of a file kept as literature makes it primary.
+ * Null when the library has no such file.
+ */
+function linkExisting(ownerId: string, ids: string[], sha256: string, role: SourceRole, tr: Translate): { source: ThesisSource; existing: true } | Fail | null {
+  const existing = db.sources.findByHash(ownerId, sha256);
+  if (!existing) return null;
+  const upgrade = role === "primary" && roleOf(existing) !== "primary";
+  const finalRole: SourceRole = upgrade ? "primary" : roleOf(existing);
+  const newIds = ids.filter((id) => existing.thesisIds.indexOf(id) === -1);
+  const theses = freshTheses(newIds, tr);
+  if (isFail(theses)) return theses;
+  const refused = checkLinkable(theses, tr, [], finalRole);
+  if (refused) return refused;
+  if (upgrade) {
+    const capped = libraryRoleCap(ownerId, "primary", tr);
+    if (capped) return capped;
+    for (const id of existing.thesisIds) {
+      const t = db.theses.findById(id);
+      if (t && countRole(db.sources.list(id), "primary") >= MAX_PRIMARY_PER_THESIS) return thesisCapFail(t, tr, "primary");
+    }
+  }
+  if (!newIds.length && !upgrade) return { source: existing, existing: true };
+  const updated = db.sources.update(existing.id, { thesisIds: existing.thesisIds.concat(newIds), ...(upgrade ? { role: "primary" as const } : {}) })!;
+  return { source: updated, existing: true };
+}
+
+/**
+ * Adds an uploaded file to the owner's library, linked to `theses` (the owner's own, already resolved).
+ * Order: an identical file already in the library is linked instead (200 `existing`); locks and caps (by role, and
+ * the library's data cells for sheets) are checked; the file is parsed (sheets within the cell budget); the checks run
+ * again with no await before the write; the source (and for a sheet its dataset and data card) is created.
+ */
+export async function addUploadedSource(ownerId: string, theses: Thesis[], input: FileSourceInput, tr: Translate): Promise<{ source: ThesisSource; existing: boolean } | Fail> {
+  const { upload } = input;
+  const role = roleFor(input);
+  const ids = theses.map((t) => t.id);
+  const sheet = SHEET_TYPES.indexOf(upload.type) !== -1;
+
+  const checks = (): Fail | { source: ThesisSource; existing: true } | null => {
+    const dup = linkExisting(ownerId, ids, upload.sha256, role, tr);
+    if (dup) return dup;
+    const fresh = freshTheses(ids, tr);
+    if (isFail(fresh)) return fresh;
+    return checkLinkable(fresh, tr, [], role) || libraryRoleCap(ownerId, role, tr);
+  };
+  const early = checks();
+  if (early) return early;
+
+  let budget = MAX_DATASET_CELLS;
+  if (sheet) {
+    const left = MAX_LIBRARY_CELLS - db.datasets.cellsByOwner(ownerId);
+    if (left < 1) return dataCapFail(tr);
+    budget = Math.min(budget, left);
+  }
+  let parsed: ParsedUpload;
+  try {
+    parsed = await parseUpload(upload.type, upload.bytes, upload.name, budget);
+  } catch (e) {
+    if (isIngestError(e)) return e.detail === "no_room" ? dataCapFail(tr) : uploadFail(e.code, tr, "parse");
+    return uploadFail("unreadable", tr, "parse");
+  }
+
+  // From here to the write nothing awaits: the checks below see the state the write will change.
+  const late = checks();
+  if (late) return late;
+  if (parsed.kind === "sheet" && db.datasets.cellsByOwner(ownerId) + parsed.cells > MAX_LIBRARY_CELLS) return dataCapFail(tr);
+  return { source: createUploadedSource(ownerId, ids, input, role, parsed, tr), existing: false };
+}
+
+function createUploadedSource(ownerId: string, thesisIds: string[], input: FileSourceInput, role: SourceRole, parsed: ParsedUpload, tr: Translate): ThesisSource {
+  const { upload } = input;
+  const base = {
+    ownerId,
+    thesisIds,
+    wordCount: 0,
+    parseStatus: "pending" as const,
+    role,
+    file: { name: upload.name, mime: upload.mime, bytes: upload.bytes.length, sha256: upload.sha256 },
+    title: input.title || baseName(upload.name) || tr("library.source.uploadedFile"),
+    authors: input.authors,
+    year: input.year,
+  };
+  if (parsed.kind === "sheet") {
+    const created = db.sources.create({ ...base, kind: "sheet" });
+    const dataset = db.datasets.create({
+      sourceId: created.id,
+      ownerId,
+      sha256: upload.sha256,
+      sheets: parsed.sheets,
+      ...(parsed.sheetsCut > 0 ? { sheetsCut: parsed.sheetsCut } : {}),
+    });
+    db.sources.update(created.id, { datasetId: dataset.id });
+    // The indexed text of a sheet is its data card (D11): names, types and statistics, never rows. Sheets past the
+    // sheet cap (D10) are kept on the dataset (`sheetsCut`), so the chat's data cards, the source views
+    // (`datasetSummary`) and this indexed card all name them.
+    const card = dataCard(dataset, upload.name);
+    return indexSource(db.sources.findById(created.id)!, { text: card, pages: [card], pageCount: 0, status: "parsed" }, tr);
+  }
+  const created = db.sources.create({ ...base, kind: UPLOAD_KIND[upload.type] });
+  return indexSource(created, parsed.extracted, tr);
 }
 
 /** Owner view of every source in the library, newest first. */

@@ -114,7 +114,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 7-day trial */}
+      {/* Waiting list for the trial */}
       {/* Academic quality seal: what the seal certifies and why it tells institutions apart today */}
       <section id="seal" className="py-20 px-5 sm:px-8 scroll-mt-16">
         <Reveal><div className="mx-auto max-w-[1200px] grid grid-cols-1 md:grid-cols-[240px_minmax(0,1fr)] gap-10 md:gap-14 items-center">

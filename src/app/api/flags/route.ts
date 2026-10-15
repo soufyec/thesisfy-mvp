@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
     r.user.role === "student"
       ? db.theses.getByStudent(r.user.id).flatMap((t) => db.flags.listByThesis(t.id))
       : r.user.role === "professor"
-        ? db.theses.getByProfessor(r.user.id).flatMap((t) => db.flags.listByThesis(t.id))
+        ? // D8: notices on the papers the professor may open (supervised, or started from their assignments).
+          db.theses.visibleTo(r.user).flatMap((t) => db.flags.listByThesis(t.id))
         : db.flags.listByUniversity(r.user.university);
   const enriched = flags
     .map((f) => {

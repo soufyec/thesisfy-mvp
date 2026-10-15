@@ -1,7 +1,8 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
-import { db, publicUser, Role, User } from "./db";
+import { db, paperVisibleTo, publicUser, Role, User } from "./db";
+import type { Assignment } from "./db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "thesisfy-mvp-dev-secret-key-2024";
 
@@ -109,12 +110,20 @@ export function isStaff(user: User) {
   return user.role === "admin" || user.role === "professor";
 }
 
-/** Can this user read/write the thesis? Students own theirs; professors their advisees; admins their university. */
+/**
+ * Can this user open the paper (decision D8)? Students their own; professors the papers they supervise
+ * (`professorId`) or that were started from an assignment they created; admins every paper of their university.
+ * The same rule covers the paper's sources and primary data. Returns the paper, or null.
+ */
 export function canAccessThesis(user: User, thesisId: string) {
   const thesis = db.theses.findById(thesisId);
   if (!thesis) return null;
-  if (user.role === "student" && thesis.studentId === user.id) return thesis;
-  if (user.role === "professor" && (thesis.professorId === user.id || db.users.findById(thesis.studentId)?.university === user.university)) return thesis;
-  if (user.role === "admin" && db.users.findById(thesis.studentId)?.university === user.university) return thesis;
-  return null;
+  return paperVisibleTo(user, thesis) ? thesis : null;
+}
+
+/** Can this user edit, close or delete the assignment? Its creator (still staff), or an admin of the same university. */
+export function canManageAssignment(user: Pick<User, "id" | "role" | "university">, assignment: Pick<Assignment, "createdBy" | "university">) {
+  if (user.role !== "professor" && user.role !== "admin") return false;
+  if (assignment.createdBy === user.id) return true;
+  return user.role === "admin" && assignment.university === user.university;
 }

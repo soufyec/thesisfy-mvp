@@ -2,6 +2,8 @@
 
 // Browser-side helpers shared by pages and components.
 
+import type { Artifact } from "@/lib/db";
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -34,16 +36,40 @@ export async function api<T = unknown>(url: string, init?: RequestInit & { json?
   return data as T;
 }
 
+/** A block the copilot asked for that Thesisfic could not compute (`event: artifact_error`). */
+export interface ArtifactErrorEvent {
+  /** `data.error.<code>` in the UI: invalid_spec, unsupported_op, unknown_sheet, unknown_column, missing_column, not_numeric, not_categorical, no_numeric, no_data, no_sheet. */
+  code: string;
+  column?: string;
+  /** Columns (or sheets) that would fit, for "Columns you can use: …". */
+  available?: string[];
+  /** File the block was computed against, when known. */
+  file?: string;
+}
+
 export interface StreamHandlers {
   onMeta?: (meta: Record<string, unknown>) => void;
   onDelta?: (text: string) => void;
   onDone?: (data: { interactionId?: string; usage?: { inputTokens: number; outputTokens: number }; blocked?: boolean }) => void;
   onError?: (err: { message: string; code?: string }) => void;
+  /** A table or chart Thesisfic computed for the answer (always with `interactionId`); arrives after the text, before `done`. */
+  onArtifact?: (artifact: Artifact) => void;
+  /** A requested artifact that could not be computed; arrives after the text, before `done`. */
+  onArtifactError?: (err: ArtifactErrorEvent) => void;
 }
 
-/** Consumes the SSE stream produced by /api/ai/chat. */
-export async function streamChat(body: Record<string, unknown>, handlers: StreamHandlers, signal?: AbortSignal) {
-  const res = await fetch("/api/ai/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, stream: true }), signal, credentials: "same-origin" });
+/** Library sources attached to a copilot message (docs/papers.md §3.5); the server keeps only the paper owner's sources linked to the paper. */
+export const MAX_CHAT_ATTACHMENTS = 20;
+
+/** Consumes the SSE stream produced by /api/ai/chat. `body.sourceIds` (attached sources) is passed through, de-duplicated. */
+export async function streamChat(body: Record<string, unknown> & { sourceIds?: string[] }, handlers: StreamHandlers, signal?: AbortSignal) {
+  const payload: Record<string, unknown> = { ...body, stream: true };
+  if (Array.isArray(body.sourceIds)) {
+    const ids = Array.from(new Set(body.sourceIds.filter((x): x is string => typeof x === "string" && !!x))).slice(0, MAX_CHAT_ATTACHMENTS);
+    if (ids.length) payload.sourceIds = ids;
+    else delete payload.sourceIds;
+  }
+  const res = await fetch("/api/ai/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal, credentials: "same-origin" });
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
     let parsed: { error?: string; code?: string } = {};
@@ -69,6 +95,12 @@ export async function streamChat(body: Record<string, unknown>, handlers: Stream
     else if (ev === "delta") handlers.onDelta?.(String(data.text || ""));
     else if (ev === "done") handlers.onDone?.(data as never);
     else if (ev === "error") handlers.onError?.(data as never);
+    else if (ev === "artifact") {
+      const a = (data as { artifact?: Artifact }).artifact;
+      if (a && typeof a === "object" && typeof a.id === "string" && typeof a.interactionId === "string" && a.interactionId) handlers.onArtifact?.(a);
+    } else if (ev === "artifact_error") {
+      if (typeof data.code === "string") handlers.onArtifactError?.(data as unknown as ArtifactErrorEvent);
+    }
   };
   while (true) {
     const { done, value } = await reader.read();
@@ -87,7 +119,41 @@ export async function streamChat(body: Record<string, unknown>, handlers: Stream
   }
 }
 
-/** Same paragraph/sentence split as the server (lib/crypto passages), so pasted fragments match assistant answers. */
+// ---------- Passages: mirror of src/lib/crypto.ts (same code, same output), so pasted fragments match answers ----------
+
+/** Rows of a Markdown table in AI text are short: they are kept from this many words (docs/papers.md §3.5). */
+export const TABLE_ROW_MIN_WORDS = 3;
+
+/** A Markdown table delimiter row: `|---|:---:|`, `--- | ---`. It needs a pipe, so a `---` rule is not one. */
+function isTableSeparator(line: string): boolean {
+  return line.indexOf("|") !== -1 && /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/.test(line);
+}
+
+/**
+ * The Markdown tables of a text, by line index: "sep" for delimiter rows, a table number for header and body rows.
+ * A table is a header line with a pipe, a delimiter row, then the following non-empty lines with a pipe.
+ */
+function markdownTableLines(lines: string[]): Map<number, number | "sep"> {
+  const map = new Map<number, number | "sep">();
+  let table = 0;
+  for (let i = 1; i < lines.length; i++) {
+    if (map.has(i) || !isTableSeparator(lines[i]) || map.has(i - 1) || lines[i - 1].indexOf("|") === -1 || !lines[i - 1].trim()) continue;
+    map.set(i - 1, table);
+    map.set(i, "sep");
+    let j = i + 1;
+    for (; j < lines.length && lines[j].trim() && lines[j].indexOf("|") !== -1; j++) map.set(j, isTableSeparator(lines[j]) ? "sep" : table);
+    table++;
+    i = j - 1;
+  }
+  return map;
+}
+
+/**
+ * Split text into the units a student is likely to copy: the whole text, paragraphs and sentences of at least
+ * `minWords` words. Markdown tables in AI text are read as tables: delimiter rows are dropped, each row is its cells
+ * joined with spaces (kept from 3 words, or `minWords` if lower), and the whole table is one more unit. Text without
+ * a Markdown table gives exactly the units it gave before tables were handled.
+ */
 export function passages(text: string, minWords = 8, max = 80): string[] {
   const out = new Set<string>();
   // Strip Markdown so a sentence copied from the rendered answer matches the raw one: emphasis, headings, quotes,
@@ -99,11 +165,30 @@ export function passages(text: string, minWords = 8, max = 80): string[] {
       .replace(/[*_`#>|]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-  const whole = clean(text);
   const words = (t: string) => (t ? t.split(" ").length : 0);
+  const lines = text.split("\n");
+  const tables = markdownTableLines(lines);
+  const rowMin = Math.min(minWords, TABLE_ROW_MIN_WORDS);
+  const whole = clean(tables.size ? lines.filter((_, i) => tables.get(i) !== "sep").join("\n") : text);
   if (words(whole) >= minWords) out.add(whole);
-  for (const para of text.split(/\n+/)) {
+  let rows: string[] = [];
+  const closeTable = () => {
+    const all = clean(rows.join(" "));
+    if (rows.length && words(all) >= rowMin) out.add(all);
+    rows = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const para = lines[i];
+    const t = tables.get(i);
+    if (rows.length && t === undefined) closeTable();
+    // Empty lines add nothing (the split on /\n+/ this replaces never produced them between paragraphs).
+    if (!para) continue;
+    if (t === "sep") continue;
     const cp = clean(para);
+    if (t !== undefined) {
+      if (words(cp) >= rowMin) out.add(cp);
+      rows.push(cp);
+    }
     if (words(cp) >= minWords) out.add(cp);
     for (const sentence of cp.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÀÈÙÂÊÎÔÛÇ0-9"'(])/)) {
       const cs = sentence.trim();
@@ -111,6 +196,7 @@ export function passages(text: string, minWords = 8, max = 80): string[] {
     }
     if (out.size >= max) break;
   }
+  if (rows.length && out.size < max) closeTable();
   return Array.from(out).slice(0, max);
 }
 

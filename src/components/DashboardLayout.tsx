@@ -196,7 +196,7 @@ export default function DashboardLayout({ children, navItems, fullBleed = false 
             </Link>
           </div>
           <div className="flex items-center gap-3 ml-auto">
-            <span className="text-xs text-gray-400 hidden sm:block capitalize">{t("dashboard.layout.account", { role: t(`common.role.${user.role}`) })}</span>
+            <span className="text-xs text-gray-500 hidden sm:block">{t("dashboard.layout.account", { role: t(`common.role.${user.role}`) })}</span>
             <div className="relative" ref={notifRef}>
               <button onClick={openNotifications} className="relative p-2 text-gray-500 hover:text-gray-700" aria-label={t("dashboard.layout.notifications")}>
                 <Bell className="w-5 h-5" />

@@ -1,10 +1,14 @@
-import { countWords, db, IntegrityFlag, Policy, Thesis, WritingSession } from "./db";
+import { db, IntegrityFlag, Policy, Thesis, WritingSession } from "./db";
+import { computeEquations, computeFigures, countUnattributedPaste as unattributedPasteWords } from "./countable";
 import { notifyUser } from "./notify";
 
 export type IntegrityFix = "attribute_paste" | "reduce_ai" | "open_notice" | "none";
 
-/** Stable identifiers for ledger rows; the client translates by code (`editor.ledger.line.<code>`). */
-export type IntegrityLineCode = "ai_share" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
+/**
+ * Stable identifiers for ledger rows; the client translates by code (`editor.ledger.line.<code>`, and
+ * `editor.ledger.line.ai_figures_one` / `ai_equations_one` when `vars.n === 1`).
+ */
+export type IntegrityLineCode = "ai_share" | "ai_figures" | "ai_equations" | "paste_unattributed" | "paste_attributed" | "open_notice" | "floor";
 
 export interface IntegrityLine {
   code: IntegrityLineCode;
@@ -44,18 +48,13 @@ export function formatPercent(value: number, limit?: number): string {
   return Number(one) !== limit ? one.replace(/\.0$/, "") : value.toFixed(2);
 }
 
-/** Pasted words that carry no attribution: `data-provenance="paste"` spans without a `data-source` label. */
+/**
+ * Pasted words that carry no attribution: `data-provenance="paste"` marks without a `data-source` label. Counted by
+ * the scan every server counter shares (src/lib/countable.ts): the AI-use declaration appendix, chart figures,
+ * captions and equations are left out, as in `countWords`.
+ */
 export function countUnattributedPaste(rawHtml: string): number {
-  // The AI-use declaration appendix (data-declaration="true") is a record, not thesis text.
-  const html = rawHtml.replace(/<span[^>]*data-declaration="true"[^>]*>[\s\S]*?<\/span>/gi, "");
-  let words = 0;
-  const re = /<span([^>]*)data-provenance="paste"([^>]*)>([\s\S]*?)<\/span>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html))) {
-    const attrs = `${m[1]} ${m[2]}`;
-    if (!/data-source="[^"]+"/i.test(attrs)) words += countWords(m[3]);
-  }
-  return words;
+  return unattributedPasteWords(rawHtml || "");
 }
 
 /**
@@ -73,6 +72,21 @@ export function integrityBreakdown(thesis: Thesis, policy: Policy, flags: Integr
   const aiPoints = aiPct > limit ? Math.min(30, Math.max(1, Math.round(aiPct - limit))) : 0;
   const aiShown = formatPercent(aiPct, limit);
   lines.push({ code: "ai_share", vars: { pct: aiShown, limit }, reason: `AI share ${aiShown}% of ${limit}% limit`, points: aiPoints, fix: aiPoints > 0 ? "reduce_ai" : "none" });
+
+  // AI-assisted figures (charts computed from the student's data, and diagrams, inserted from the copilot: every class
+  // of figure counts, D21) add no words, so they do not move the AI share: listed for information at 0 points, only
+  // when the Final submission holds at least one. Figures the student made (origin "human") are not listed.
+  const figures = typeof thesis.content === "string" ? computeFigures(thesis.content) : thesis.figures;
+  const aiFigures = figures?.ai || 0;
+  if (aiFigures > 0) {
+    lines.push({ code: "ai_figures", vars: { n: aiFigures }, reason: aiFigures === 1 ? "1 AI-assisted figure, inserted from the assistant" : `${aiFigures} AI-assisted figures, inserted from the assistant`, points: 0, fix: "none" });
+  }
+  // AI-assisted equations (D23): no words either, listed the same way; equations the student typed are not listed.
+  const equations = typeof thesis.content === "string" ? computeEquations(thesis.content) : thesis.equations;
+  const aiEquations = equations?.ai || 0;
+  if (aiEquations > 0) {
+    lines.push({ code: "ai_equations", vars: { n: aiEquations }, reason: aiEquations === 1 ? "1 AI-assisted equation, inserted from the assistant" : `${aiEquations} AI-assisted equations, inserted from the assistant`, points: 0, fix: "none" });
+  }
 
   // Pasted text costs only while it has no attribution: 0.5 point per percent of the document (max 20).
   // Quoted text with a named source (or recognised from the copilot) is shown for information at 0 points.

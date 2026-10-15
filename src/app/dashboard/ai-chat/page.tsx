@@ -7,6 +7,7 @@ import DashboardLayout, { useTimeAgo } from "@/components/DashboardLayout";
 import AssistantPanel, { AIMode } from "@/components/ai/AssistantPanel";
 import ConsentModal from "@/components/ConsentModal";
 import { useUser } from "@/components/useUser";
+import { byLastWorked, currentPaper, type PapersResponse } from "@/components/papers/paperList";
 import { api } from "@/lib/client";
 import { useT } from "@/lib/i18n/client";
 
@@ -36,9 +37,10 @@ function AIChatInner() {
   const [panelKey, setPanelKey] = useState(0);
 
   useEffect(() => {
-    api<{ theses: { id: string; title: string; status: string }[] }>("/api/theses").then((d) => {
-      setTheses(d.theses);
-      const active = d.theses.find((x) => x.status === "in_progress") || d.theses[0];
+    api<PapersResponse>("/api/theses").then((d) => {
+      // Most recent activity first, so the default context is the paper the student is currently working on.
+      setTheses([...d.theses].sort(byLastWorked));
+      const active = currentPaper(d.theses);
       if (active) setThesisId(active.id);
     }).catch(() => {});
   }, []);
@@ -70,7 +72,7 @@ function AIChatInner() {
       <div className="h-[calc(100dvh-3.5rem-4.5rem)] lg:h-[calc(100vh-4rem)] flex flex-col">
         <div className="px-4 py-2 border-b border-gray-100 bg-white flex items-center gap-3 flex-wrap">
           <div className="text-sm font-semibold flex items-center gap-2">{copilot ? <><Compass className="w-4 h-4 text-accent-600" />{t("glossary.assistant")} · {t("glossary.copilot")}</> : t("glossary.assistant")}</div>
-          <select value={thesisId || ""} onChange={(e) => { setThesisId(e.target.value || undefined); open(undefined); }} className="text-xs border border-gray-200 rounded-lg px-2 py-1 max-w-[60vw]">
+          <select value={thesisId || ""} onChange={(e) => { setThesisId(e.target.value || undefined); open(undefined); }} aria-label={t("glossary.paper")} className="text-xs border border-gray-200 rounded-lg px-2 py-1 max-w-[60vw]">
             <option value="">{t("dashboard.chat.noThesis")}</option>
             {theses.map((th) => <option key={th.id} value={th.id}>{th.title}</option>)}
           </select>

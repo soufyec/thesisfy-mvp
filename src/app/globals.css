@@ -487,7 +487,7 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 
 /* ---------- Thesis structure: footnotes, table of contents, numbered captions ---------- */
 /* Numbers are CSS counters, so they always follow document order without touching the content. */
-.ProseMirror { counter-reset: fn fnl fig tbl; }
+.ProseMirror { counter-reset: fn fnl fig tbl eq; }
 .ProseMirror sup.fn-ref { counter-increment: fn; cursor: pointer; color: theme("colors.brand.700"); font-size: 0.72em; line-height: 0; user-select: none; }
 .ProseMirror sup.fn-ref::before { content: counter(fn); }
 .ProseMirror sup.fn-ref.ProseMirror-selectednode { outline: 2px solid theme("colors.brand.400"); border-radius: 2px; }
@@ -516,6 +516,50 @@ body:has([role="dialog"][aria-modal="true"]) [data-tippy-root] { display: none !
 .ProseMirror p.caption-table { counter-increment: tbl; font-size: 10pt; text-align: center; margin-bottom: 0.3em; color: theme("colors.gray.700"); }
 .ProseMirror p.caption-table::before { content: var(--cap-table, "Table ") counter(tbl) ". "; font-weight: 600; }
 @media print { .ProseMirror nav.toc { background: none; border: none; padding: 0; } .ProseMirror sup.fn-ref, .ProseMirror .fn-item::before { color: inherit; } }
+
+/* ---------- Figures: the chart node (copilot charts, Timeline, PRISMA flow, Concept map) ---------- */
+/* Same frame, caption and tools as images; the SVG is drawn inline and scales to the column. Captions share the
+   "Figure n." counter with images. */
+.ProseMirror figure.chart-node { position: relative; break-inside: avoid; }
+.ProseMirror figure.chart-node > [data-node-view-wrapper] { display: block; }
+.chart-frame { position: relative; display: block; line-height: 0; border-radius: 2px; }
+.chart-svg { line-height: 0; }
+.chart-svg svg, .fig-preview svg { display: block; width: 100%; height: auto; }
+.chart-view.is-selected .chart-frame { outline: 2px solid theme("colors.brand.600"); outline-offset: 2px; }
+.chart-missing { font: 400 13px/1.45 Inter, system-ui, sans-serif; color: theme("colors.gray.600"); background: theme("colors.gray.50"); border: 1px dashed theme("colors.gray.300"); border-radius: 8px; padding: 16px; text-align: center; }
+.ProseMirror figure.chart-node figcaption { counter-increment: fig; }
+.ProseMirror figure.chart-node figcaption::before { content: var(--cap-figure, "Figure ") counter(fig) ". "; font-weight: 600; }
+.img-bar-tag { padding: 0 6px; font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.85); white-space: nowrap; }
+.show-provenance figure.chart-node[data-origin="ai"] .chart-frame { box-shadow: 0 0 0 2px theme("colors.prov.ai / 35%"); }
+figure[data-chart] img { display: block; max-width: 100%; height: auto; }
+@media print {
+  .ProseMirror figure.chart-node { break-inside: avoid; page-break-inside: avoid; }
+  .chart-view.is-selected .chart-frame { outline: none; }
+  .show-provenance figure.chart-node .chart-frame { box-shadow: none; }
+}
+
+/* ---------- Equations: math (inline) and mathBlock (own line, "(n)" when numbered) ---------- */
+math { font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", math; }
+.ProseMirror .math-node { display: inline; padding: 0 1px; border-radius: 3px; cursor: default; }
+.ProseMirror .math-node > [data-node-view-wrapper] { display: inline; }
+.ProseMirror .math-node.ProseMirror-selectednode { outline: 2px solid theme("colors.brand.400"); background: theme("colors.brand.50"); }
+.ProseMirror .math-block-node { display: block; position: relative; margin: 0.6em 0; padding: 0.15em 0; text-align: center; break-inside: avoid; cursor: default; }
+.ProseMirror .math-block-node > [data-node-view-wrapper] { display: block; }
+.ProseMirror .math-block-node.ProseMirror-selectednode { outline: 2px solid theme("colors.brand.400"); outline-offset: 2px; border-radius: 4px; }
+.ProseMirror .math-block-node[data-numbered="true"] { counter-increment: eq; padding-left: 3.5em; padding-right: 3.5em; }
+.ProseMirror .math-block-node[data-numbered="true"]::after { content: "(" counter(eq) ")"; position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.ProseMirror .math-render-block { display: block; text-align: center; overflow-x: auto; overflow-y: hidden; }
+.ProseMirror .math-error { font-size: 0.85em; color: theme("colors.red.600"); background: theme("colors.red.50"); border-radius: 3px; padding: 0 3px; white-space: pre-wrap; }
+.show-provenance .math-node[data-origin="ai"], .show-provenance .math-block-node[data-origin="ai"] { background: theme("colors.prov.ai / 13%"); box-shadow: inset 0 -2px 0 theme("colors.prov.ai / 55%"); }
+@media print {
+  .ProseMirror .math-node.ProseMirror-selectednode, .ProseMirror .math-block-node.ProseMirror-selectednode { outline: none; background: none; }
+  .show-provenance .math-node[data-origin="ai"], .show-provenance .math-block-node[data-origin="ai"] { background: none; box-shadow: none; }
+}
+
+/* Provenance gutter: "Fig · AI" / "Eq · AI" labels (figures and equations have no words, so no ¶ label of their own) */
+.prov-gutter-fig { position: absolute; left: -96px; width: 62px; display: flex; justify-content: flex-end; font-size: 10px; line-height: 1; white-space: nowrap; }
+.prov-gutter-fig-bar { position: absolute; left: -28px; width: 3px; border-radius: 2px; }
+.prov-gutter-eq-inline { left: -118px; width: 62px; }
 
 /* ---------- Student onboarding: intro modal and coachmarks ---------- */
 .onb-overlay { background: rgba(17, 24, 39, 0.55); backdrop-filter: blur(4px); }

@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Bot, CheckCircle2, FileText, Flag, Monitor, Smartphone } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, ChevronDown, ClipboardList, FileText, Flag, Monitor, Smartphone } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { DeadlineChip, Modal, ScoreRing, Toast } from "@/components/ui";
+import { DeadlineChip, KindChip, Modal, ScoreRing, Toast } from "@/components/ui";
+import { AssignmentBrief } from "@/components/assignments/AssignmentBrief";
 import { useUser } from "@/components/useUser";
 import { api, statusColors } from "@/lib/client";
 import { useT, useFormat } from "@/lib/i18n/client";
@@ -13,9 +14,12 @@ import { modeLabel, noticeTypeLabel, plural, statusLabel, timeAgoLabel } from "@
 import ProcessPanel from "@/components/editor/process/ProcessPanel";
 import ThesisSourcesCard from "@/components/library/ThesisSourcesCard";
 import type { Reference } from "@/components/editor/types";
+import type { PaperKind } from "@/lib/papers/kinds";
+import { teacherRoleKey } from "@/lib/papers/templates";
+import type { AssignmentView, PaperStatus } from "@/lib/papers/views";
 
 interface Detail {
-  thesis: { id: string; title: string; description: string; status: string; wordCount: number; targetWords: number; aiUsagePercent: number; integrityScore: number; provenance: { human: number; paste: number; ai: number }; studentName: string; professorName: string; updatedAt: string; deadline?: string; citationStyle: string; createdAt: string; references?: Reference[]; content?: string; tabs?: { content?: string }[] };
+  thesis: { id: string; title: string; description: string; status: PaperStatus; wordCount: number; targetWords: number; aiUsagePercent: number; integrityScore: number; provenance: { human: number; paste: number; ai: number }; studentName: string; professorName: string; updatedAt: string; deadline?: string; citationStyle: string; createdAt: string; references?: Reference[]; content?: string; tabs?: { content?: string }[]; kind?: PaperKind; professorId?: string; assignment?: AssignmentView; submittedAt?: string; late?: boolean };
   comments: { id: string; authorName: string; authorRole?: string; text: string; resolved: boolean; createdAt: string; quote: string }[];
   flags: { id: string; type: string; severity: string; description: string; timestamp: string; resolved: boolean; resolvedBy?: string; resolutionNote?: string }[];
   versionCount: number;
@@ -37,6 +41,7 @@ export default function AdminThesisDetail() {
   const [review, setReview] = useState<{ status: string; note: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; kind?: "info" | "success" | "error" } | null>(null);
   const [missing, setMissing] = useState(false);
+  const [fullBrief, setFullBrief] = useState(false);
 
   const load = useCallback(() => {
     api<Detail>(`/api/theses/${params.id}`).then(setD).catch(() => setMissing(true));
@@ -58,7 +63,7 @@ export default function AdminThesisDetail() {
       <div className="max-w-6xl">
         <div className="text-xs text-gray-400 mb-2"><Link href="/admin/theses" className="hover:text-brand-600">{t("admin.theses.title")}</Link> / {th.studentName}</div>
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
-          <div className="min-w-0"><h1 className="font-display text-2xl font-bold tracking-[-0.01em]">{th.title}</h1><p className="text-gray-500 mt-1 text-sm">{th.description}</p><div className="flex items-center gap-2 mt-2 flex-wrap text-xs text-gray-500"><span className={statusColors[th.status]}>{statusLabel(t, th.status)}</span><span>{th.studentName}</span><span>· {t("admin.detail.advisor", { name: th.professorName })}</span><span>· {t("admin.detail.wordsOfTarget", { n: fmt.number(th.wordCount), target: fmt.number(th.targetWords) })}</span><span>· {th.citationStyle}</span>{th.deadline && <span>· {t("admin.detail.due", { date: fmt.date(th.deadline) })}</span>}{th.deadline && <DeadlineChip deadline={th.deadline} wordCount={th.wordCount} targetWords={th.targetWords} />}<span>· {t("admin.detail.updated", { ago: ago(th.updatedAt) })}</span></div></div>
+          <div className="min-w-0"><div className="mb-2"><KindChip kind={th.kind ?? "thesis"} /></div><h1 className="font-display text-2xl font-bold tracking-[-0.01em] break-words">{th.title}</h1>{th.description && <p className="text-gray-500 mt-1 text-sm">{th.description}</p>}<div className="flex items-center gap-2 mt-2 flex-wrap text-xs text-gray-500"><span className={statusColors[th.status]}>{statusLabel(t, th.status)}</span><span>{th.studentName}</span><span>· {th.professorId ? `${t(teacherRoleKey(th))}: ${th.professorName}` : t("papers.teacher.none")}</span><span>· {t("admin.detail.wordsOfTarget", { n: fmt.number(th.wordCount), target: fmt.number(th.targetWords) })}</span><span>· {th.citationStyle}</span>{th.deadline && <span>· {t("admin.detail.due", { date: fmt.date(th.deadline) })}</span>}{(th.deadline || th.submittedAt) && !(th.assignment && th.submittedAt) && <DeadlineChip deadline={th.deadline} wordCount={th.wordCount} targetWords={th.targetWords} status={th.status} submittedAt={th.submittedAt} late={th.late} />}<span>· {t("admin.detail.updated", { ago: ago(th.updatedAt) })}</span></div></div>
           <div className="flex items-center gap-3 flex-shrink-0">
             <ScoreRing value={th.integrityScore} size={64} />
             <Link href={`/admin/theses/${th.id}/document`} className="btn-primary !py-2 !px-4 text-sm"><FileText className="w-4 h-4 mr-1" />{t("admin.detail.openDocument")}</Link>
@@ -66,10 +71,29 @@ export default function AdminThesisDetail() {
           </div>
         </div>
 
+        {th.assignment && (
+          <section className="card p-5 mb-6" aria-labelledby="paper-assignment">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <h2 id="paper-assignment" className="inline-flex items-center gap-2 font-semibold"><ClipboardList className="w-4 h-4 text-gray-500" aria-hidden="true" />{t("glossary.assignment")}</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {th.submittedAt && <DeadlineChip deadline={th.deadline} status={th.status} submittedAt={th.submittedAt} late={th.late} />}
+                {(user?.role === "admin" || user?.id === th.assignment.createdBy) && <Link href={`/admin/assignments/${th.assignment.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700 hover:underline">{t("assignments.paper.open")}<ArrowRight className="w-3.5 h-3.5" aria-hidden="true" /></Link>}
+              </div>
+            </div>
+            <AssignmentBrief view={th.assignment} compact={!fullBrief} />
+            {th.assignment.brief.trim().length > 0 && (
+              <button type="button" onClick={() => setFullBrief((v) => !v)} aria-expanded={fullBrief} className="mt-3 inline-flex items-center gap-1 rounded-lg text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${fullBrief ? "rotate-180" : ""}`} aria-hidden="true" />
+                {t(fullBrief ? "assignments.paper.showLess" : "assignments.paper.showFull")}
+              </button>
+            )}
+          </section>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="card p-5 lg:col-span-2">
             <h2 className="font-semibold mb-3">{t("admin.detail.provReport")}</h2>
-            <div className="flex h-4 rounded-full overflow-hidden bg-gray-100 mb-2"><div className="bg-green-500" style={{ width: `${pct(th.provenance.human)}%` }} /><div className="bg-amber-400" style={{ width: `${pct(th.provenance.paste)}%` }} /><div className="bg-purple-500" style={{ width: `${pct(th.provenance.ai)}%` }} /></div>
+            <div className="flex h-4 gap-0.5 rounded-full overflow-hidden bg-gray-100 mb-2"><div className="bg-prov-human" style={{ width: `${pct(th.provenance.human)}%` }} /><div className="bg-prov-paste" style={{ width: `${pct(th.provenance.paste)}%` }} /><div className="bg-prov-ai" style={{ width: `${pct(th.provenance.ai)}%` }} /></div>
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div><div className="text-green-600 font-bold text-lg">{pct(th.provenance.human)}%</div><div className="text-xs text-gray-500">{t("admin.detail.typed", { n: fmt.number(th.provenance.human) })}</div></div>
               <div><div className="text-amber-500 font-bold text-lg">{pct(th.provenance.paste)}%</div><div className="text-xs text-gray-500">{t("admin.detail.pasted", { n: fmt.number(th.provenance.paste) })}</div></div>
