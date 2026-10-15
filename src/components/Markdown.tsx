@@ -139,7 +139,7 @@ function renderBlock(b: Block, key: number, tableNotice?: string): React.ReactNo
       );
     case "quote":
       return (
-        <blockquote key={key} className="border-l-2 border-brand-300 pl-3 my-2 text-gray-600 italic whitespace-pre-wrap">
+        <blockquote key={key} className="rounded-lg bg-white px-3 py-2 my-2 shadow-glow-brand text-gray-600 italic whitespace-pre-wrap">
           {inline(b.text)}
         </blockquote>
       );

@@ -124,7 +124,7 @@ export default function StudentDashboard() {
         </div>
 
         {active && (
-          <div className="card p-5 sm:p-6 mb-6 border-l-4 border-l-brand-600">
+          <div className="card p-5 sm:p-6 mb-6 shadow-glow-brand hover:shadow-glow-brand-strong">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1.5">
