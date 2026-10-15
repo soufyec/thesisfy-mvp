@@ -1,7 +1,7 @@
 import type { Messages } from "../index";
 
 /**
- * Landing, login, register, consent modal, shared UI atoms and PWA hint.
+ * Landing, login, register, consent modal and shared UI atoms.
  * The landing speaks to the institution (buyer): no invented figures, no "detection" language.
  */
 const en = {
@@ -270,11 +270,6 @@ const en = {
   "ui.integrityPill.aiShare": "AI {ai}%",
   "ui.integrityPill.ofLimit": "of {limit}%",
 
-  // PWA hint
-  "ui.pwa.title": "Install Thesisfic",
-  "ui.pwa.body": "Write and chat with your assistant from your home screen.",
-  "ui.pwa.install": "Install",
-  "ui.pwa.dismiss": "Dismiss",
   "landing.login.invalidCredentials": "The email address or password is not correct.",
   "landing.login.missingFields": "Enter your email address and password.",
 };
@@ -529,10 +524,6 @@ export const landing: Messages<typeof en> = {
     "ui.integrityPill.aiShare": "IA {ai}%",
     "ui.integrityPill.ofLimit": "de {limit}%",
 
-    "ui.pwa.title": "Instala Thesisfic",
-    "ui.pwa.body": "Escribe y conversa con tu asistente desde la pantalla de inicio.",
-    "ui.pwa.install": "Instalar",
-    "ui.pwa.dismiss": "Descartar",
     "landing.login.invalidCredentials": "El correo o la contraseña no son correctos.",
     "landing.login.missingFields": "Introduce tu correo y tu contraseña.",
   },
@@ -784,10 +775,6 @@ export const landing: Messages<typeof en> = {
     "ui.integrityPill.aiShare": "IA {ai} %",
     "ui.integrityPill.ofLimit": "sur {limit} %",
 
-    "ui.pwa.title": "Installer Thesisfic",
-    "ui.pwa.body": "Rédigez et échangez avec votre assistant depuis votre écran d'accueil.",
-    "ui.pwa.install": "Installer",
-    "ui.pwa.dismiss": "Ignorer",
     "landing.login.invalidCredentials": "L'adresse e-mail ou le mot de passe est incorrect.",
     "landing.login.missingFields": "Saisissez votre adresse e-mail et votre mot de passe.",
   },
@@ -1039,10 +1026,6 @@ export const landing: Messages<typeof en> = {
     "ui.integrityPill.aiShare": "KI {ai} %",
     "ui.integrityPill.ofLimit": "von {limit} %",
 
-    "ui.pwa.title": "Thesisfic installieren",
-    "ui.pwa.body": "Schreiben Sie und tauschen Sie sich mit Ihrem Assistenten direkt vom Startbildschirm aus.",
-    "ui.pwa.install": "Installieren",
-    "ui.pwa.dismiss": "Schließen",
     "landing.login.invalidCredentials": "Die E-Mail-Adresse oder das Passwort ist nicht korrekt.",
     "landing.login.missingFields": "Geben Sie Ihre E-Mail-Adresse und Ihr Passwort ein.",
   },
