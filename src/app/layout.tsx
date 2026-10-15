@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import PWARegister from "@/components/PWARegister";
+import ServiceWorkerCleanup from "@/components/ServiceWorkerCleanup";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { getLocale, getT } from "@/lib/i18n/server";
+import { BRAND_THEME_COLOR } from "@/lib/brand";
 
 export function generateMetadata(): Metadata {
   const t = getT();
@@ -10,16 +11,14 @@ export function generateMetadata(): Metadata {
     title: t("meta.title"),
     description: t("meta.description"),
     keywords: ["academic integrity", "AI", "thesis", "university", "provenance"],
-    manifest: "/manifest.webmanifest",
     applicationName: "Thesisfic",
-    appleWebApp: { capable: true, statusBarStyle: "default", title: "Thesisfic" },
     icons: { icon: [{ url: "/icons/favicon-32.png?v=4", sizes: "32x32", type: "image/png" }, { url: "/icons/icon-192.png?v=4", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png?v=4" },
     openGraph: { title: t("meta.title"), description: t("meta.ogDescription"), type: "website" },
   };
 }
 
 export const viewport: Viewport = {
-  themeColor: "#037947",
+  themeColor: BRAND_THEME_COLOR,
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -32,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <LocaleProvider locale={locale}>
           {children}
-          <PWARegister />
+          <ServiceWorkerCleanup />
         </LocaleProvider>
       </body>
     </html>

@@ -65,6 +65,16 @@ interface SessionResponse {
 }
 
 const HEARTBEAT_MS = 60000;
+/** Fingerprints sent for one paste (the server keeps at most this many too). */
+const MAX_PASTE_FINGERPRINTS = 100;
+
+/** What a copilot insertion added, sent with its `ai_insert` event. */
+export interface AiInsertExtra {
+  kind?: "table" | "chart" | "test" | "diagram" | "equation";
+  artifactId?: string;
+  figures?: number;
+  equations?: number;
+}
 
 /**
  * Client-side writing-session monitor. Batches events (counts, timings, fingerprints — never the text
@@ -140,8 +150,11 @@ export class SessionMonitor {
     if (!this.scopes.paste) return { fingerprint: null, match: null };
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const fp = await fingerprint(text);
-    const parts = passages(text);
-    const fingerprints = Array.from(new Set([fp, ...(await Promise.all(parts.map(fingerprint)))]));
+    // Copied tables (tab-separated cells) and multi-line text also send their short rows (3 words and more), so a
+    // table copied from a copilot answer or an inserted table is recognised row by row (docs/papers.md §3.5).
+    const rows = /\t|\n\s*\S/.test(text.trim()) ? passages(text, 3) : [];
+    const parts = Array.from(new Set([...passages(text), ...rows]));
+    const fingerprints = Array.from(new Set([fp, ...(await Promise.all(parts.map(fingerprint)))])).slice(0, MAX_PASTE_FINGERPRINTS);
     // Sent in its own request so the attribution answer cannot be lost to a concurrent timed flush.
     this.flushTyping();
     const res = await this.send([{ type: "paste", data: { words, chars: text.length, fingerprint: fp, fingerprints, attribution } }]);
@@ -156,9 +169,18 @@ export class SessionMonitor {
     return this.send([{ type: "paste", data: { fingerprint: fp, declared: true, attribution, label: label || undefined } }]);
   }
 
-  recordAiInsert(words: number, provider: string, mode: string, interactionId?: string) {
+  /**
+   * AI text, a copilot artifact or AI content moved into the Final submission. `extra` describes an artifact
+   * (`kind`, `artifactId`) and what it added besides words (`figures`, `equations`); process.ts reads all four.
+   */
+  recordAiInsert(words: number, provider: string, mode: string, interactionId?: string, extra: AiInsertExtra = {}) {
     if (!this.scopes.aiInteractions) return;
-    this.push("ai_insert", { words, provider, mode, interactionId });
+    const data: Record<string, unknown> = { words, provider, mode, interactionId };
+    if (extra.kind) data.kind = extra.kind;
+    if (extra.artifactId) data.artifactId = extra.artifactId;
+    if (extra.figures) data.figures = extra.figures;
+    if (extra.equations) data.equations = extra.equations;
+    this.push("ai_insert", data);
     this.flush();
   }
 

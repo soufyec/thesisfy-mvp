@@ -68,6 +68,13 @@ const en = {
   "api.assignment.closed": "This assignment is closed. Ask your teacher if you still need to start it.",
   "api.assignment.started": "Students have already started this assignment, so it can't be deleted. You can close it instead.",
   "api.assignment.studentsOnly": "Only the students this assignment was sent to can start it.",
+  // Research copilot (src/app/api/ai/chat): demo answer for diagrams and equations, and titles of diagram and
+  // equation artifacts (in the paper's writing language).
+  "api.copilot.demoNeedsModel": "PRISMA flow diagrams, concept maps, equations and timelines you describe in the conversation need a connected AI model, and this answer runs in demo mode. Without a model, Thesisfic computes tables and figures from a spreadsheet you attach, including a timeline from its task, start and end columns.",
+  "api.copilot.title.gantt": "Timeline",
+  "api.copilot.title.prisma": "PRISMA 2020 flow diagram",
+  "api.copilot.title.conceptMap": "Concept map",
+  "api.copilot.title.equation": "Equation",
 };
 
 export const notifications: Messages<typeof en> = {
@@ -134,6 +141,11 @@ export const notifications: Messages<typeof en> = {
     "api.assignment.closed": "Esta tarea está cerrada. Pregunta a tu docente si aún necesitas empezarla.",
     "api.assignment.started": "Hay estudiantes que ya han empezado esta tarea, así que no se puede borrar. Puedes cerrarla.",
     "api.assignment.studentsOnly": "Solo pueden empezar esta tarea los estudiantes a los que se envió.",
+    "api.copilot.demoNeedsModel": "Los diagramas de flujo PRISMA, los mapas conceptuales, las ecuaciones y los cronogramas que describes en la conversación necesitan un modelo de IA conectado, y esta respuesta está en modo demo. Sin modelo, Thesisfic calcula tablas y figuras a partir de una hoja de cálculo que adjuntes, incluido un cronograma con sus columnas de tarea, inicio y fin.",
+    "api.copilot.title.gantt": "Cronograma",
+    "api.copilot.title.prisma": "Diagrama de flujo PRISMA 2020",
+    "api.copilot.title.conceptMap": "Mapa conceptual",
+    "api.copilot.title.equation": "Ecuación",
   },
   fr: {
     "notif.noticeResolved.title": "Avis résolu",
@@ -197,6 +209,11 @@ export const notifications: Messages<typeof en> = {
     "api.assignment.closed": "Ce devoir est fermé. Demandez à votre enseignant si vous devez encore le commencer.",
     "api.assignment.started": "Des étudiants ont déjà commencé ce devoir : il ne peut pas être supprimé. Vous pouvez le fermer.",
     "api.assignment.studentsOnly": "Seuls les étudiants à qui ce devoir a été donné peuvent le commencer.",
+    "api.copilot.demoNeedsModel": "Les diagrammes de flux PRISMA, les cartes conceptuelles, les équations et les calendriers que vous décrivez dans la conversation nécessitent un modèle d'IA connecté, et cette réponse est en mode démo. Sans modèle, Thesisfic calcule des tableaux et des figures à partir d'un tableur que vous joignez, y compris un calendrier à partir de ses colonnes de tâche, de début et de fin.",
+    "api.copilot.title.gantt": "Calendrier",
+    "api.copilot.title.prisma": "Diagramme de flux PRISMA 2020",
+    "api.copilot.title.conceptMap": "Carte conceptuelle",
+    "api.copilot.title.equation": "Équation",
   },
   de: {
     "notif.noticeResolved.title": "Hinweis geklärt",
@@ -260,5 +277,10 @@ export const notifications: Messages<typeof en> = {
     "api.assignment.closed": "Diese Aufgabe ist geschlossen. Fragen Sie Ihre Lehrkraft, falls Sie sie noch beginnen müssen.",
     "api.assignment.started": "Studierende haben diese Aufgabe bereits begonnen, daher kann sie nicht gelöscht werden. Sie können sie stattdessen schließen.",
     "api.assignment.studentsOnly": "Nur die Studierenden, an die diese Aufgabe gesendet wurde, können sie beginnen.",
+    "api.copilot.demoNeedsModel": "PRISMA-Flussdiagramme, Concept Maps, Gleichungen und Zeitpläne, die Sie im Gespräch beschreiben, benötigen ein verbundenes KI-Modell, und diese Antwort läuft im Demomodus. Ohne Modell berechnet Thesisfic Tabellen und Abbildungen aus einer Tabellenkalkulationsdatei, die Sie anhängen, auch einen Zeitplan aus deren Spalten für Aufgabe, Beginn und Ende.",
+    "api.copilot.title.gantt": "Zeitplan",
+    "api.copilot.title.prisma": "PRISMA-2020-Flussdiagramm",
+    "api.copilot.title.conceptMap": "Concept Map",
+    "api.copilot.title.equation": "Gleichung",
   },
 };

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { AlertTriangle, ArrowDown, ArrowUp, Bot, Check, CheckCircle2, History, Library, MessageSquare, Plus, RotateCcw, ShieldCheck, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Bot, Check, CheckCircle2, ClipboardList, History, Library, MessageSquare, Plus, RotateCcw, ShieldCheck, Trash2, X } from "lucide-react";
 import { api } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
 import DatabaseCard, { ResearchDb } from "../library/DatabaseCard";
-import { CommentItem, FlagItem, formatTimeAgo, IntegrityBreakdown, IntegrityFix, ThesisDoc, VersionItem } from "./types";
+import AssignmentBrief from "../assignments/AssignmentBrief";
+import { AssignmentView, CommentItem, FlagItem, formatTimeAgo, IntegrityBreakdown, IntegrityFix, ThesisDoc, VersionItem } from "./types";
 
 export function PanelShell({ title, icon, onClose, children, actions }: { title: string; icon?: React.ReactNode; onClose: () => void; children: React.ReactNode; actions?: React.ReactNode }) {
   const t = useT();
@@ -68,7 +69,7 @@ export function OutlinePanel({ editor, onClose }: { editor: Editor; onClose: () 
 }
 
 // ---------- Comments ----------
-export function CommentsPanel({ comments, activeId, canResolve, userId, onJump, onReply, onResolve, onDelete, onClose, pendingQuote, onCreate, onCancelCreate }: { comments: CommentItem[]; activeId: string | null; canResolve: boolean; userId: string; onJump: (c: CommentItem) => void; onReply: (id: string, text: string) => void; onResolve: (id: string, resolved: boolean) => void; onDelete: (id: string) => void; onClose: () => void; pendingQuote: string | null; onCreate: (text: string) => void; onCancelCreate: () => void }) {
+export function CommentsPanel({ comments, activeId, canResolve, userId, onJump, onReply, onResolve, onDelete, onClose, pendingQuote, onCreate, onCancelCreate, staffTag }: { comments: CommentItem[]; activeId: string | null; canResolve: boolean; userId: string; onJump: (c: CommentItem) => void; onReply: (id: string, text: string) => void; onResolve: (id: string, resolved: boolean) => void; onDelete: (id: string) => void; onClose: () => void; pendingQuote: string | null; onCreate: (text: string) => void; onCancelCreate: () => void; /** Tag after a staff author's name: the paper's reviewer role (Advisor, Teacher…). */ staffTag?: string }) {
   const t = useT();
   const fmt = useFormat();
   const ago = (iso: string) => formatTimeAgo(iso, t, (d) => fmt.date(d));
@@ -98,7 +99,7 @@ export function CommentsPanel({ comments, activeId, canResolve, userId, onJump, 
               ) : (
                 <div className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-[10px] font-semibold flex items-center justify-center">{c.authorName.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
               )}
-              <div className="text-xs font-medium flex-1 truncate">{c.authorName}{c.authorRole === "professor" && <span className="ml-1 text-[10px] text-brand-600">{t("editor.comments.advisorTag")}</span>}</div>
+              <div className="text-xs font-medium flex-1 truncate">{c.authorName}{c.authorRole === "professor" && <span className="ml-1 text-[10px] text-brand-600">{staffTag || t("editor.comments.advisorTag")}</span>}</div>
               <div className="text-[10px] text-gray-400">{ago(c.createdAt)}</div>
               {(canResolve || c.authorId === userId) && (
                 <button onClick={(e) => { e.stopPropagation(); onResolve(c.id, !c.resolved); }} className="text-gray-400 hover:text-green-600" title={c.resolved ? t("editor.comments.reopen") : t("editor.comments.resolve")} aria-label={c.resolved ? t("editor.comments.reopen") : t("editor.comments.resolve")}>
@@ -164,6 +165,23 @@ export function VersionsPanel({ versions, onRestore, onPreview, onCreate, onClos
   );
 }
 
+// ---------- Brief ----------
+/**
+ * The assignment's brief, read-only, for the student and in review alike (same view: CLAUDE.md principle 2).
+ * `AssignmentBrief` shows the kind, the due date, the word target, the citation style and "Brief updated {date}".
+ */
+export function BriefPanel({ view, onClose }: { view: AssignmentView; onClose: () => void }) {
+  const t = useT();
+  return (
+    <PanelShell title={t("glossary.brief")} icon={<ClipboardList className="w-4 h-4 text-gray-500" aria-hidden="true" />} onClose={onClose}>
+      <div className="p-4">
+        <AssignmentBrief view={view} />
+        <p className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">{t("editor.brief.note")}</p>
+      </div>
+    </PanelShell>
+  );
+}
+
 // References and sources: see sources/LibraryPanel.tsx (Sources & references).
 
 // ---------- Find & replace ----------
@@ -208,7 +226,9 @@ export function FindPanel({ editor, onClose, canEdit }: { editor: Editor; onClos
 
 // ---------- Integrity ledger ----------
 const NOTICE_TYPES = ["bulk_paste", "unattributed_ai", "policy_limit", "rapid_typing", "ai_generation", "style_inconsistency"];
-const LINE_CODES = ["ai_share", "paste_unattributed", "paste_attributed", "open_notice", "floor"];
+const LINE_CODES = ["ai_share", "ai_figures", "ai_equations", "paste_unattributed", "paste_attributed", "open_notice", "floor"];
+/** Informative lines (0 points) with a count: "1 AI-assisted figure" / "{n} AI-assisted figures". */
+const COUNT_LINES = ["ai_figures", "ai_equations"];
 
 /** Notice titles by type, shared by the ledger, the toasts and the pill (`editor.notice.type.<type>`). */
 export function useNoticeLabel() {
@@ -231,6 +251,10 @@ export function IntegrityLedger({ thesis, flags, session, maxAi, breakdown, show
     if (l.code === "open_notice") {
       const notice = noticeLabel(String(l.vars.type || ""));
       return l.vars.words !== undefined ? t("editor.ledger.line.open_notice_words", { notice, words: fmt.number(Number(l.vars.words)) }) : t("editor.ledger.line.open_notice", { notice });
+    }
+    if (COUNT_LINES.indexOf(l.code) !== -1) {
+      const n = Number(l.vars.n) || 0;
+      return t(n === 1 ? `editor.ledger.line.${l.code}_one` : `editor.ledger.line.${l.code}`, { n: fmt.number(n) });
     }
     return t(`editor.ledger.line.${l.code}`, l.vars);
   };

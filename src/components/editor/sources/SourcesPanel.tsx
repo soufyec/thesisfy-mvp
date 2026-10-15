@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ExternalLink, FileText, Link2, Loader2, Quote, Trash2, Upload, Type as TypeIcon } from "lucide-react";
+import { BookOpen, ExternalLink, FileSpreadsheet, FileText, Link2, Loader2, Quote, ShieldCheck, Table2, Trash2, Upload, Type as TypeIcon } from "lucide-react";
 import { api, ApiError } from "@/lib/client";
 import { useFormat, useT } from "@/lib/i18n/client";
 import type { Translate } from "@/lib/i18n/dictionary";
 import Markdown from "@/components/Markdown";
 import { Modal, Spinner } from "@/components/ui";
-import type { Reference, SourceKind } from "../types";
+import type { DatasetSummary, Reference, SourceFile, SourceKind, SourceRole } from "../types";
 import { referenceForSource } from "./match";
+import DataPreviewModal from "@/components/library/DataPreviewModal";
+import { CutNotes, PrimaryBadges } from "@/components/library/LibraryItemRow";
+import { checkUpload, isPrimary, isSheetName, MAX_UPLOAD_MB, privacyLines, readAsSummary, UPLOAD_ACCEPT, uploadErrorText } from "@/components/library/primary";
 
 /** A source linked to the thesis, as `/api/theses/[id]/sources` returns it (no extracted text). The source itself lives in the student's library. */
 export interface LibrarySource {
@@ -31,6 +34,12 @@ export interface LibrarySource {
   lastUsedAt?: string;
   coverage: "full_text" | "abstract" | "none";
   chunkCount: number;
+  /** Primary data or literature; absent = literature. Sheets are always primary. */
+  role?: SourceRole;
+  /** Uploaded file metadata (never the bytes). */
+  file?: SourceFile;
+  /** Spreadsheets: sheets and columns, never rows. */
+  dataset?: DatasetSummary;
 }
 
 export interface LibraryChunk {
@@ -81,13 +90,13 @@ export interface SourcesTabProps {
   focusId?: string | null;
 }
 
-type AddTab = "doi" | "url" | "pdf" | "text";
+type AddTab = "doi" | "url" | "file" | "text";
 
 /** `label` is a plain string for the technical names (DOI, URL, PDF) and a message key for "Text". */
 const TABS: { id: AddTab; label: string; translate?: boolean; icon: React.ReactNode }[] = [
   { id: "doi", label: "DOI", icon: <BookOpen className="w-3.5 h-3.5" /> },
   { id: "url", label: "URL", icon: <Link2 className="w-3.5 h-3.5" /> },
-  { id: "pdf", label: "PDF", icon: <Upload className="w-3.5 h-3.5" /> },
+  { id: "file", label: "panelsResearch.sources.tabFile", translate: true, icon: <Upload className="w-3.5 h-3.5" /> },
   { id: "text", label: "panelsResearch.sources.tabText", translate: true, icon: <TypeIcon className="w-3.5 h-3.5" /> },
 ];
 
@@ -152,6 +161,9 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
   const [value, setValue] = useState("");
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  /** "This is my own material (primary source)": forced for spreadsheets. */
+  const [primary, setPrimary] = useState(false);
+  const [preview, setPreview] = useState<LibrarySource | null>(null);
   const [adding, setAdding] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -177,7 +189,11 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
     document.getElementById(`library-source-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [focusId, loading]);
 
-  const indexed = useMemo(() => sources.filter((s) => s.parseStatus === "parsed" && s.chunkCount > 0), [sources]);
+  const indexed = useMemo(() => sources.filter((s) => s.parseStatus === "parsed" && s.chunkCount > 0 && !isPrimary(s)), [sources]);
+  const primarySources = useMemo(() => sources.filter((s) => isPrimary(s)), [sources]);
+  const literature = useMemo(() => sources.filter((s) => !isPrimary(s)), [sources]);
+  const sheetFile = !!file && isSheetName(file.name);
+  const asPrimary = sheetFile || primary;
 
   const say = (text: string, kind: "info" | "error" = "info") => {
     setNotice({ text, kind });
@@ -198,28 +214,34 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
     setAdding(true);
     try {
       let res: { source: LibrarySource; linked?: boolean };
-      if (tab === "pdf") {
-        if (!file) return say(t("panelsResearch.sources.choosePdfFirst"), "error");
+      if (tab === "file") {
+        if (!file) return say(t("panelsResearch.sources.chooseFileFirst"), "error");
+        const refused = checkUpload(file, t);
+        if (refused) return say(refused, "error");
         const form = new FormData();
         form.append("file", file);
         if (title.trim()) form.append("title", title.trim());
-        res = await api<{ source: LibrarySource; linked?: boolean }>(`/api/theses/${thesisId}/sources`, { method: "POST", body: form });
+        if (asPrimary) form.append("role", "primary");
+        res = await api<{ source: LibrarySource; linked?: boolean; existing?: boolean }>(`/api/theses/${thesisId}/sources`, { method: "POST", body: form });
       } else {
         if (!value.trim()) return say(tab === "text" ? t("panelsResearch.sources.pasteTextFirst") : t("panelsResearch.sources.enterFirst", { kind: tab.toUpperCase() }), "error");
-        res = await api<{ source: LibrarySource; linked?: boolean }>(`/api/theses/${thesisId}/sources`, { method: "POST", json: { kind: tab, value: value.trim(), title: title.trim() || undefined } });
+        res = await api<{ source: LibrarySource; linked?: boolean }>(`/api/theses/${thesisId}/sources`, { method: "POST", json: { kind: tab, value: value.trim(), title: title.trim() || undefined, ...(tab === "text" && primary ? { role: "primary" } : {}) } });
       }
       onSourcesChange((list) => [res.source, ...list.filter((s) => s.id !== res.source.id)]);
       setValue("");
       setTitle("");
       setFile(null);
+      setPrimary(false);
       if (fileInput.current) fileInput.current.value = "";
-      // The DOI was already in the library: the existing source (and its passages) now also serves this thesis.
-      if (res.linked) return say(t("panelsResearch.sources.linkedExisting"), "info");
+      // The DOI (or the same file) was already in the library: the existing source now also serves this paper.
+      if (res.linked || (res as { existing?: boolean }).existing) return say(t("panelsResearch.sources.linkedExisting"), "info");
+      if (isPrimary(res.source) && res.source.parseStatus !== "failed") return say(t("panelsResearch.sources.addedPrimary", { summary: readAsSummary(res.source, t, (n) => fmt.number(n)) || "" }).trim(), "info");
       const chip = statusChip(res.source, t).label;
       const from = res.source.pages ? t(res.source.pages === 1 ? "panelsResearch.sources.fromPages_one" : "panelsResearch.sources.fromPages", { n: res.source.pages }) : "";
       say(res.source.parseStatus === "parsed" ? t(res.source.chunkCount === 1 ? "panelsResearch.sources.added_one" : "panelsResearch.sources.added", { n: res.source.chunkCount, from }) : t("panelsResearch.sources.addedButStatus", { status: chip.toLowerCase(), detail: res.source.abstract || t("panelsResearch.sources.couldNotIndex") }), res.source.parseStatus === "parsed" ? "info" : "error");
     } catch (e) {
-      handleApiError(e, t("panelsResearch.sources.errAdd"));
+      if (tab === "file" && !(e instanceof ApiError && e.status === 428)) say(uploadErrorText(e, t) || t("panelsResearch.sources.errAdd"), "error");
+      else handleApiError(e, t("panelsResearch.sources.errAdd"));
     } finally {
       setAdding(false);
     }
@@ -292,6 +314,85 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
     if (s) openViewer(s, { chunkId: c.chunkId, quote: c.quote });
   };
 
+  const renderRow = (s: LibrarySource) => {
+    const chip = statusChip(s, t);
+    const link = s.doi ? `https://doi.org/${s.doi}` : s.url;
+    const busy = busyId === s.id;
+    const ref = referenceForSource(s, references);
+    const cited = ref ? citations[ref.id] || 0 : 0;
+    const primaryRow = isPrimary(s);
+    return (
+      <li key={s.id} id={`library-source-${s.id}`} className={`rounded-2xl border p-2.5 ${focusId === s.id ? "border-brand-400 ring-2 ring-brand-100" : "border-gray-100 hover:border-gray-200"}`}>
+        <div className="flex items-start gap-2">
+          {s.kind === "sheet" ? <FileSpreadsheet className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" aria-hidden="true" /> : <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" aria-hidden="true" />}
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-gray-800 leading-snug line-clamp-2">{s.title}</div>
+            <div className="text-xs text-gray-500 truncate">{[s.authors, s.year, s.venue].filter(Boolean).join(" · ") || (primaryRow && s.file ? s.file.name : (s.kind === "text" ? t("panelsResearch.sources.tabText") : s.kind).toUpperCase())}</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px]">
+          {primaryRow ? <PrimaryBadges source={s} /> : <span className={`px-2 py-0.5 rounded-full ${chip.className}`}>{chip.label}</span>}
+          {ref && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] ${cited ? "bg-brand-50 text-brand-700" : "bg-gray-100 text-gray-600"}`} title={t("editor.library.citedTitle")}>
+              <Quote className="w-3 h-3" aria-hidden="true" />
+              {cited ? t("editor.library.citedTimes", { n: cited }) : t("editor.library.inReferences")}
+            </span>
+          )}
+          {!primaryRow && s.pages ? <span className="text-gray-500">{countLabel(t, "panelsResearch.sources.pages", s.pages)}</span> : null}
+          {!primaryRow && s.wordCount ? <span className="text-gray-500">{s.wordCount === 1 ? t("common.word_one") : t("common.words", { n: fmt.number(s.wordCount) })}</span> : null}
+          {s.license && <span className="text-gray-500">{s.license}</span>}
+        </div>
+        {s.parseStatus !== "parsed" && s.abstract && <p className="text-[11px] text-gray-500 mt-1.5">{s.abstract}</p>}
+        {s.kind === "sheet" && <CutNotes source={s} className="mt-1.5" />}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs">
+          {s.kind === "sheet" ? (
+            s.dataset && s.dataset.sheets.length > 0 ? (
+              <button onClick={() => setPreview(s)} className="text-brand-600 hover:underline inline-flex items-center gap-1" aria-label={t("library.ui.preview.buttonAria", { title: s.title })}>
+                <Table2 className="w-3 h-3" aria-hidden="true" /> {t("library.ui.preview.button")}
+              </button>
+            ) : null
+          ) : link ? (
+            <a href={link} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline inline-flex items-center gap-1" aria-label={t("panelsResearch.sources.openNewTab", { title: s.title })}>
+              <ExternalLink className="w-3 h-3" /> {t("common.open")}
+            </a>
+          ) : (
+            <button onClick={() => openViewer(s)} disabled={busy || !s.chunkCount} className="text-brand-600 hover:underline disabled:opacity-40" aria-label={t("panelsResearch.sources.openText", { title: s.title })}>
+              {t("common.open")}
+            </button>
+          )}
+          {s.chunkCount > 0 && link && (
+            <button onClick={() => openViewer(s)} disabled={busy} className="text-brand-600 hover:underline" aria-label={t("panelsResearch.sources.showPassages", { title: s.title })}>
+              {t("panelsResearch.sources.passagesBtn")}
+            </button>
+          )}
+          {s.kind !== "sheet" && (
+            <button onClick={() => summarize(s)} disabled={busy || s.parseStatus !== "parsed"} className="text-brand-600 hover:underline disabled:opacity-40" aria-label={t("panelsResearch.sources.summarizeLabel", { title: s.title })}>
+              {t("panelsResearch.sources.summarize")}
+            </button>
+          )}
+          {onCite && canEdit && (
+            <button onClick={() => onCite(s)} className="text-brand-600 hover:underline inline-flex items-center gap-1" aria-label={t("panelsResearch.sources.citeLabel", { title: s.title })}>
+              <Quote className="w-3 h-3" /> {t("panelsResearch.sources.cite")}
+            </button>
+          )}
+          {canEdit && confirmRemove !== s.id && (
+            <button onClick={() => setConfirmRemove(s.id)} className="text-gray-400 hover:text-red-600 ml-auto" aria-label={t("panelsResearch.sources.removeLabel", { title: s.title })} title={t("panelsResearch.sources.removeLabel", { title: s.title })}>
+              <Trash2 className="w-[15px] h-[15px]" />
+            </button>
+          )}
+          {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 ml-auto" aria-label={t("panelsResearch.sources.working")} />}
+        </div>
+        {confirmRemove === s.id && (
+          <div className="mt-2 rounded-xl bg-gray-50 p-2 text-xs text-gray-600 flex flex-wrap items-center gap-2">
+            <span className="flex-1">{t("panelsResearch.sources.removeConsequence")}</span>
+            <button onClick={() => setConfirmRemove(null)} className="px-2 py-1 rounded-lg hover:bg-gray-200">{t("panelsResearch.sources.keep")}</button>
+            <button onClick={() => remove(s)} className="px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700">{t("panelsResearch.sources.removeConfirm")}</button>
+          </div>
+        )}
+      </li>
+    );
+  };
+
   return (
     <>
       <div className="p-3 space-y-3 text-[13px]">
@@ -313,11 +414,23 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
             </div>
             {tab === "doi" && <input value={value} onChange={(e) => setValue(e.target.value)} placeholder="10.1038/s41586-019-0912-1" aria-label="DOI" className="input-field !py-2 !text-[13px]" onKeyDown={(e) => e.key === "Enter" && add()} />}
             {tab === "url" && <input value={value} onChange={(e) => setValue(e.target.value)} placeholder="https://…" aria-label="URL" className="input-field !py-2 !text-[13px]" onKeyDown={(e) => e.key === "Enter" && add()} />}
-            {tab === "pdf" && (
-              <label className="flex items-center gap-2 text-xs text-gray-600 border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:border-brand-400">
-                <Upload className="w-4 h-4 text-gray-400" />
-                <span className="flex-1 truncate">{file ? t("dashboard.sources.form.pdfPicked", { name: file.name, size: fmt.number(file.size / 1048576, { maximumFractionDigits: 1 }) }) : t("panelsResearch.sources.choosePdf")}</span>
-                <input ref={fileInput} type="file" accept="application/pdf,.pdf" className="sr-only" aria-label={t("panelsResearch.sources.pdfFile")} onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            {tab === "file" && (
+              <label className="flex items-center gap-2 text-xs text-gray-600 border border-dashed border-gray-300 rounded-xl px-3 py-2.5 cursor-pointer hover:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/40">
+                {file && sheetFile ? <FileSpreadsheet className="w-4 h-4 text-gray-400" aria-hidden="true" /> : file ? <FileText className="w-4 h-4 text-gray-400" aria-hidden="true" /> : <Upload className="w-4 h-4 text-gray-400" aria-hidden="true" />}
+                <span className="flex-1 truncate">{file ? t("dashboard.sources.form.pdfPicked", { name: file.name, size: fmt.number(Math.max(0.1, file.size / 1048576), { maximumFractionDigits: 1 }) }) : t("library.ui.file.choose", { max: MAX_UPLOAD_MB })}</span>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept={UPLOAD_ACCEPT}
+                  className="sr-only"
+                  aria-label={t("library.ui.file.label")}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    setFile(f);
+                    const refused = f ? checkUpload(f, t) : null;
+                    if (refused) say(refused, "error");
+                  }}
+                />
               </label>
             )}
             {tab === "text" && <textarea value={value} onChange={(e) => setValue(e.target.value)} placeholder={t("panelsResearch.sources.textPlaceholder")} aria-label={t("panelsResearch.sources.sourceText")} rows={4} className="input-field !py-2 !text-[13px] resize-y" />}
@@ -325,9 +438,24 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
             <p className="text-[11px] text-gray-500">
               {tab === "doi" && t("panelsResearch.sources.hintDoi")}
               {tab === "url" && t("panelsResearch.sources.hintUrl", { n: fmt.number(200000) })}
-              {tab === "pdf" && t("panelsResearch.sources.hintPdf")}
+              {tab === "file" && t("library.ui.file.hint")}
               {tab === "text" && t("panelsResearch.sources.hintText")}
             </p>
+            {(tab === "file" || tab === "text") && (
+              <label className={`flex items-start gap-2 text-xs ${sheetFile ? "text-gray-500" : "text-gray-700"}`}>
+                <input type="checkbox" className="mt-0.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500" checked={asPrimary} disabled={sheetFile} onChange={(e) => setPrimary(e.target.checked)} aria-describedby="sources-add-primary-hint" />
+                <span>
+                  <span className="font-medium">{t("library.ui.primaryCheckbox")}</span>
+                  <span id="sources-add-primary-hint" className="block text-[11px] leading-snug text-gray-500">{sheetFile ? t("library.ui.primaryForced") : t("library.ui.primaryHint")}</span>
+                </span>
+              </label>
+            )}
+            {tab === "file" && file && (
+              <div className="flex gap-2 rounded-xl bg-gray-50 border border-gray-100 px-2.5 py-2 text-[11px] leading-snug text-gray-600">
+                <ShieldCheck className="w-4 h-4 text-gray-500 flex-shrink-0 mt-px" aria-hidden="true" />
+                <p>{privacyLines(sheetFile, t, asPrimary ? "assistant" : "library").join(" ")}</p>
+              </div>
+            )}
             <button onClick={add} disabled={adding} className="btn-primary w-full !py-2 text-[13px] disabled:opacity-50 inline-flex items-center justify-center gap-2">
               {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {adding ? t("panelsResearch.sources.adding") : t("panelsResearch.sources.addToLibrary")}
@@ -336,7 +464,7 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
         )}
 
         <section aria-label={t("panelsResearch.sources.libraryLabel")}>
-          {canEdit && !loading && !loadError && sources.length > 0 && <div className="text-[11px] text-gray-500 mb-1.5">{t("editor.library.sourcesCap", { n: sources.length, max: 40 })}</div>}
+          {canEdit && !loading && !loadError && literature.length > 0 && <div className="text-[11px] text-gray-500 mb-1.5">{t("editor.library.sourcesCap", { n: literature.length, max: 40 })}</div>}
           {loading && (
             <div className="flex items-center gap-2 text-xs text-gray-500 py-3">
               <Spinner /> {t("panelsResearch.sources.loading")}
@@ -349,76 +477,22 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
             </div>
           )}
           {!loading && !loadError && sources.length === 0 && <div className="text-xs text-gray-400 text-center py-4">{t(canEdit ? "panelsResearch.sources.empty" : "panelsResearch.sources.emptyReadOnly")}</div>}
-          <ul className="space-y-2">
-            {sources.map((s) => {
-              const chip = statusChip(s, t);
-              const link = s.doi ? `https://doi.org/${s.doi}` : s.url;
-              const busy = busyId === s.id;
-              const ref = referenceForSource(s, references);
-              const cited = ref ? citations[ref.id] || 0 : 0;
-              return (
-                <li key={s.id} id={`library-source-${s.id}`} className={`rounded-2xl border p-2.5 ${focusId === s.id ? "border-brand-400 ring-2 ring-brand-100" : "border-gray-100 hover:border-gray-200"}`}>
-                  <div className="flex items-start gap-2">
-                    <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-gray-800 leading-snug line-clamp-2">{s.title}</div>
-                      <div className="text-xs text-gray-500 truncate">{[s.authors, s.year, s.venue].filter(Boolean).join(" · ") || (s.kind === "text" ? t("panelsResearch.sources.tabText") : s.kind).toUpperCase()}</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px]">
-                    <span className={`px-2 py-0.5 rounded-full ${chip.className}`}>{chip.label}</span>
-                    {ref && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[10px] ${cited ? "bg-brand-50 text-brand-700" : "bg-gray-100 text-gray-600"}`} title={t("editor.library.citedTitle")}>
-                        <Quote className="w-3 h-3" aria-hidden="true" />
-                        {cited ? t("editor.library.citedTimes", { n: cited }) : t("editor.library.inReferences")}
-                      </span>
-                    )}
-                    {s.pages ? <span className="text-gray-500">{countLabel(t, "panelsResearch.sources.pages", s.pages)}</span> : null}
-                    {s.wordCount ? <span className="text-gray-500">{s.wordCount === 1 ? t("common.word_one") : t("common.words", { n: fmt.number(s.wordCount) })}</span> : null}
-                    {s.license && <span className="text-gray-500">{s.license}</span>}
-                  </div>
-                  {s.parseStatus !== "parsed" && s.abstract && <p className="text-[11px] text-gray-500 mt-1.5">{s.abstract}</p>}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs">
-                    {link ? (
-                      <a href={link} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline inline-flex items-center gap-1" aria-label={t("panelsResearch.sources.openNewTab", { title: s.title })}>
-                        <ExternalLink className="w-3 h-3" /> {t("common.open")}
-                      </a>
-                    ) : (
-                      <button onClick={() => openViewer(s)} disabled={busy || !s.chunkCount} className="text-brand-600 hover:underline disabled:opacity-40" aria-label={t("panelsResearch.sources.openText", { title: s.title })}>
-                        {t("common.open")}
-                      </button>
-                    )}
-                    {s.chunkCount > 0 && link && (
-                      <button onClick={() => openViewer(s)} disabled={busy} className="text-brand-600 hover:underline" aria-label={t("panelsResearch.sources.showPassages", { title: s.title })}>
-                        {t("panelsResearch.sources.passagesBtn")}
-                      </button>
-                    )}
-                    <button onClick={() => summarize(s)} disabled={busy || s.parseStatus !== "parsed"} className="text-brand-600 hover:underline disabled:opacity-40" aria-label={t("panelsResearch.sources.summarizeLabel", { title: s.title })}>
-                      {t("panelsResearch.sources.summarize")}
-                    </button>
-                    {onCite && canEdit && (
-                      <button onClick={() => onCite(s)} className="text-brand-600 hover:underline inline-flex items-center gap-1" aria-label={t("panelsResearch.sources.citeLabel", { title: s.title })}>
-                        <Quote className="w-3 h-3" /> {t("panelsResearch.sources.cite")}
-                      </button>
-                    )}
-                    {canEdit && confirmRemove !== s.id && (
-                      <button onClick={() => setConfirmRemove(s.id)} className="text-gray-400 hover:text-red-600 ml-auto" aria-label={t("panelsResearch.sources.removeLabel", { title: s.title })} title={t("panelsResearch.sources.removeLabel", { title: s.title })}>
-                        <Trash2 className="w-[15px] h-[15px]" />
-                      </button>
-                    )}
-                    {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 ml-auto" aria-label={t("panelsResearch.sources.working")} />}
-                  </div>
-                  {confirmRemove === s.id && (
-                    <div className="mt-2 rounded-xl bg-gray-50 p-2 text-xs text-gray-600 flex flex-wrap items-center gap-2">
-                      <span className="flex-1">{t("panelsResearch.sources.removeConsequence")}</span>
-                      <button onClick={() => setConfirmRemove(null)} className="px-2 py-1 rounded-lg hover:bg-gray-200">{t("panelsResearch.sources.keep")}</button>
-                      <button onClick={() => remove(s)} className="px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700">{t("panelsResearch.sources.removeConfirm")}</button>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          {primarySources.length > 0 && (
+            <>
+              <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                {t("glossary.primaryData")}
+                <span className="px-1.5 rounded-[10px] bg-gray-100 text-gray-500 normal-case tracking-normal font-medium">{primarySources.length}</span>
+              </h3>
+              <ul className="space-y-2 mb-3">{primarySources.map(renderRow)}</ul>
+              {literature.length > 0 && (
+                <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                  {t("library.ui.filter.literature")}
+                  <span className="px-1.5 rounded-[10px] bg-gray-100 text-gray-500 normal-case tracking-normal font-medium">{literature.length}</span>
+                </h3>
+              )}
+            </>
+          )}
+          <ul className="space-y-2">{literature.map(renderRow)}</ul>
         </section>
 
         <section aria-label={t("panelsResearch.sources.askTitle")} className="rounded-2xl border border-brand-100 bg-brand-50/40 p-3 space-y-2">
@@ -478,6 +552,7 @@ export default function SourcesTab({ thesisId, canEdit, sources, loading, loadEr
       </Modal>
 
       <ChunkViewer viewer={viewer} onClose={() => setViewer(null)} />
+      <DataPreviewModal open={!!preview} onClose={() => setPreview(null)} source={preview} thesisId={thesisId} />
     </>
   );
 }

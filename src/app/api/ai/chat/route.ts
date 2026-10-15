@@ -7,7 +7,7 @@ import { canAccessThesis } from "@/lib/auth";
 import { error, requireUser } from "@/lib/api";
 import { buildSystemPrompt, MODES } from "@/lib/ai/prompts";
 import { checkPolicy, detectLang } from "@/lib/ai/policy";
-import { demoAttachmentsResponse, demoDataResponse, demoGroundedResponse, demoNotice, demoResponse, demoLang } from "@/lib/ai/demo";
+import { demoAttachmentsResponse, demoDataResponse, demoGroundedResponse, demoNeedsModel, demoNotice, demoResponse, demoLang } from "@/lib/ai/demo";
 import { ChatMessage, costOf, resolveProvider, streamCompletion } from "@/lib/ai/providers";
 import { GROUNDING_RULE, passageLabel, retrieve } from "@/lib/sources/retrieve";
 import { splitSentences } from "@/lib/sources/chunk";
@@ -81,7 +81,9 @@ export async function POST(request: NextRequest) {
   // formats follow the paper's writing language (D19), by default the interface language.
   const uiTr = translator(lang);
   const writingLang: WritingLanguage = thesis?.writingLanguage ?? (isWritingLanguage(user.preferences.language) ? user.preferences.language : "en");
-  const runOpts = { lang: writingLang, tr: translator(writingLang), newId: () => uid("art") };
+  // Diagram and equation blocks (§9.3) only in the Research copilot; PRISMA numbers are checked against
+  // `studentTexts`, filled in once the conversation is known.
+  const runOpts = { lang: writingLang, tr: translator(writingLang), newId: () => uid("art"), allowDiagrams: mode === "copilot", studentTexts: [] as string[], priorArtifacts: [] as Artifact[] };
 
   // Attachments: Research copilot with a paper in context only.
   // Only the paper's student attaches its files: staff chats about a paper never send the student's data.
@@ -94,9 +96,18 @@ export async function POST(request: NextRequest) {
   if (conversation && conversation.messages.length && (conversation.messages[0].mode || "chat") !== mode) conversation = undefined;
   if (conversation && conversation.userId !== user.id) conversation = undefined;
   if (!conversation) conversation = db.conversations.create(user.id, thesis?.id, lastUser.slice(0, 60) || "New conversation");
-  // Aggregates of the last artifacts of this conversation, so the model can talk about them without new numbers.
-  const digests = hasSheets ? lastArtifactDigests(conversation.messages, attached.sheets, 3, translator) : [];
+  // Aggregates of the last artifacts of this conversation, so the model can talk about them without new numbers:
+  // data artifacts of the sheets attached to this turn, and diagrams drawn earlier (their kind and counts only).
+  const digests = mode === "copilot" ? lastArtifactDigests(conversation.messages, attached.sheets, 3, translator) : [];
   db.conversations.append(conversation.id, { role: "user", content: lastUser, mode, ...(attached.ids.length ? { attachmentIds: attached.ids } : {}) });
+  // What the student wrote in this conversation, this message (and any passage of their paper they selected)
+  // included: a PRISMA diagram the copilot proposes may only use numbers that appear here (D26).
+  runOpts.studentTexts = [
+    ...conversation.messages.filter((m) => m.role === "user" && typeof m.content === "string").map((m) => m.content),
+    ...messages.filter((m) => m.role === "user").map((m) => m.content),
+  ];
+  // Results Thesisfic computed earlier in this conversation: a proposed equation may reuse their numbers (D11).
+  runOpts.priorArtifacts = conversation.messages.flatMap((m) => (m.role === "assistant" && Array.isArray(m.artifacts) ? m.artifacts : []));
 
   const cfg = resolveProvider(user, policy, typeof body.provider === "string" ? body.provider : null);
   // "Use my sources" searches the paper's literature: spreadsheets, primary sources and this message's attachments are left out.
@@ -129,7 +140,9 @@ export async function POST(request: NextRequest) {
   const finish = (text: string, usage: Usage, blocked: boolean, artifacts: Artifact[] = []) => {
     // Per computed table (never per row): the whole inserted table and its grid alone (a copy of just the table),
     // next to the answer's sentences (docs/papers.md §3.5).
-    const fingerprints = blocked ? [] : Array.from(new Set([...passageFingerprints(text), ...artifacts.flatMap((a) => [artifactFingerprint(a, translator(a.lang)), artifactGridFingerprint(a)])]));
+    // Diagrams and equations have no table text to recognise in a paste.
+    const tabular = artifacts.filter((a) => a.kind !== "diagram" && a.kind !== "equation");
+    const fingerprints = blocked ? [] : Array.from(new Set([...passageFingerprints(text), ...tabular.flatMap((a) => [artifactFingerprint(a, translator(a.lang)), artifactGridFingerprint(a)])]));
     const interaction = db.interactions.create({
       userId: user.id,
       thesisId: thesis?.id,
@@ -199,7 +212,7 @@ export async function POST(request: NextRequest) {
     provider: cfg.label,
     context: {
       assignment: assignment ? { title: assignment.title, brief: assignment.brief } : null,
-      data: hasSheets ? { cards: dataCards(attached.sheets), digests, multipleFiles: attached.sheets.length > 1 } : null,
+      data: hasSheets ? { cards: dataCards(attached.sheets), digests, multipleFiles: attached.sheets.length > 1 } : digests.length ? { cards: [], digests } : null,
       primary,
       library: grounding ? { passages: grounding.map((p) => ({ ref: p.ref, label: passageLabel(p), section: p.section, text: p.text, summary: p.summary })), rule: GROUNDING_RULE } : null,
     },
@@ -210,6 +223,9 @@ export async function POST(request: NextRequest) {
     let artifactErrors: ArtifactError[] = [];
     let text: string;
     if (cfg.notice && cfg.source === "demo" && cfg.label === "Allowance used up") text = cfg.notice;
+    // Diagrams and equations are drafted from what the student writes: without a model there is nothing to draft
+    // them with. A timeline from a sheet (and a regression's fitted equation) is computed by the planner below.
+    else if (mode === "copilot" && demoNeedsModel(lastUser, hasSheets)) text = uiTr("api.copilot.demoNeedsModel");
     else if (hasSheets) {
       // No model: Thesisfic plans the analysis from the request and computes it (the numbers are real either way).
       const run = demoArtifacts(lastUser, attached.sheets, { ...runOpts, planTr: uiTr });

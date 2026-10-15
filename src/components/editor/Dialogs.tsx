@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { DOMParser as PMDOMParser, DOMSerializer, type Schema } from "@tiptap/pm/model";
 import { Modal, useDeadlineLabel } from "../ui";
 import { deadlineState } from "@/lib/deadline";
 import { useFormat, useT } from "@/lib/i18n/client";
@@ -147,11 +148,18 @@ export function WordCountDialog({ open, onClose, stats, thesis }: { open: boolea
         [t("deadline.paceLabel"), dl.wordsLeft === 0 ? t("deadline.paceDone") : t("deadline.paceValue", { n: fmt.number(dl.perDay) })],
       ]
     : [[t("deadline.title"), t("deadline.notSet")]];
+  // Figures and equations of the Final submission (they add no words), with how many are AI-assisted.
+  const counted = (c: { total: number; ai: number } | undefined) => (c && c.total ? t("editor.details.ofWhichAi", { n: fmt.number(c.total), ai: fmt.number(c.ai) }) : null);
+  const figureRows: [string, React.ReactNode][] = [];
+  const figures = counted(thesis.figures);
+  const equations = counted(thesis.equations);
+  if (figures) figureRows.push([t("editor.details.figures"), figures]);
+  if (equations) figureRows.push([t("editor.details.equations"), equations]);
   return (
     <Modal open={open} onClose={onClose} title={t("editor.details.title")} size="sm" footer={<button onClick={onClose} className="btn-primary !py-2 !px-4 text-sm">{t("common.done")}</button>}>
       <table className="w-full text-sm">
         <tbody>
-          {[[t("editor.details.pages"), stats.pages], [t("editor.details.words"), fmt.number(stats.words)], [t("editor.details.characters"), fmt.number(stats.chars)], [t("editor.details.charactersNoSpaces"), fmt.number(stats.charsNoSpaces)], [t("editor.details.paragraphs"), stats.paragraphs], [t("editor.details.headings"), stats.headings], [t("editor.details.readingTime"), t("common.minutes", { n: stats.readingMin })], [t("editor.details.target"), t("editor.details.targetValue", { target: fmt.number(thesis.targetWords), pct: Math.min(100, Math.round((stats.words / thesis.targetWords) * 100)) })], [t("editor.details.aiShare"), `${Math.round((thesis.provenance.ai / total) * 100)}%`], [t("editor.details.pastedShare"), `${Math.round((thesis.provenance.paste / total) * 100)}%`], ...deadlineRows].map(([k, v]) => (
+          {[[t("editor.details.pages"), stats.pages], [t("editor.details.words"), fmt.number(stats.words)], [t("editor.details.characters"), fmt.number(stats.chars)], [t("editor.details.charactersNoSpaces"), fmt.number(stats.charsNoSpaces)], [t("editor.details.paragraphs"), stats.paragraphs], [t("editor.details.headings"), stats.headings], [t("editor.details.readingTime"), t("common.minutes", { n: stats.readingMin })], [t("editor.details.target"), t("editor.details.targetValue", { target: fmt.number(thesis.targetWords), pct: Math.min(100, Math.round((stats.words / thesis.targetWords) * 100)) })], [t("editor.details.aiShare"), `${Math.round((thesis.provenance.ai / total) * 100)}%`], [t("editor.details.pastedShare"), `${Math.round((thesis.provenance.paste / total) * 100)}%`], ...figureRows, ...deadlineRows].map(([k, v]) => (
             <tr key={String(k)} className="border-b border-gray-50"><td className="py-1.5 text-gray-500">{k}</td><td className="py-1.5 text-right font-medium">{v}</td></tr>
           ))}
         </tbody>
@@ -160,18 +168,22 @@ export function WordCountDialog({ open, onClose, stats, thesis }: { open: boolea
   );
 }
 
-export function ShareDialog({ open, onClose, thesis }: { open: boolean; onClose: () => void; thesis: ThesisDoc }) {
+export function ShareDialog({ open, onClose, thesis, role = "advisor" }: { open: boolean; onClose: () => void; thesis: ThesisDoc; role?: TeacherRole }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
   const link = typeof window !== "undefined" ? `${window.location.origin}/admin/theses/${thesis.id}` : "";
   return (
     <Modal open={open} onClose={onClose} title={t("editor.share.title")} size="sm" footer={<button onClick={onClose} className="btn-primary !py-2 !px-4 text-sm">{t("common.done")}</button>}>
       <div className="space-y-3 text-sm">
-        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-          <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-semibold">{thesis.professorName.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
-          <div className="flex-1"><div className="font-medium">{thesis.professorName}</div><div className="text-xs text-gray-500">{t("editor.share.advisorRole")}</div></div>
-          <span className="badge-success">{t("editor.share.shared")}</span>
-        </div>
+        {role === "none" ? (
+          <p className="p-3 bg-gray-50 rounded-xl text-gray-700">{t("editor.share.noTeacher")}</p>
+        ) : (
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-semibold" aria-hidden="true">{thesis.professorName.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
+            <div className="flex-1"><div className="font-medium">{thesis.professorName}</div><div className="text-xs text-gray-500">{t("editor.share.roleCanReview", { role: t(`papers.teacher.${role}`) })}</div></div>
+            <span className="badge-success">{t("editor.share.shared")}</span>
+          </div>
+        )}
         <p className="text-xs text-gray-500">{t("editor.share.body")}</p>
         <div className="flex gap-2">
           <input readOnly value={link} className="input-field !py-2 text-xs" />
@@ -199,6 +211,105 @@ export function ConfirmDialog({ open, onClose, title, body, onConfirm, confirmLa
   return (
     <Modal open={open} onClose={onClose} title={title} size="sm" footer={<><button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button><button onClick={() => { onConfirm(); onClose(); }} className={`${danger ? "bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold" : "btn-primary"} !py-2 !px-4 text-sm`}>{confirmLabel || t("common.confirm")}</button></>}>
       <div className="text-sm text-gray-600">{body}</div>
+    </Modal>
+  );
+}
+
+/** Reviewer of a paper, as `teacherRoleKey` names it (`papers.teacher.<role>`). */
+export type TeacherRole = "advisor" | "advisorDoctoral" | "teacher" | "none";
+
+/**
+ * Submit for review. The body names the paper's reviewer with the role of its kind (Advisor for theses, Teacher
+ * otherwise, with the fr/es variants of D5). A paper without a teacher cannot be submitted: the button is disabled
+ * and the sentence says why. After the due date, a sentence says the paper will show as submitted late, for the
+ * student and the teacher alike.
+ */
+export function SubmitDialog({ open, onClose, role, teacherName, lateDate, onConfirm }: { open: boolean; onClose: () => void; role: TeacherRole; teacherName: string; lateDate?: string; onConfirm: () => void }) {
+  const t = useT();
+  const finalSubmission = t("glossary.finalSubmission");
+  const blocked = role === "none";
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("editor.dialog.submitTitle")}
+      size="sm"
+      footer={
+        <>
+          <button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button>
+          <button disabled={blocked} onClick={() => { onConfirm(); onClose(); }} className="btn-primary !py-2 !px-4 text-sm disabled:opacity-40 disabled:cursor-not-allowed">{t("editor.dialog.submitConfirm")}</button>
+        </>
+      }
+    >
+      {blocked ? (
+        <p className="text-sm text-gray-700" role="note">{t("editor.dialog.submitNoTeacher")}</p>
+      ) : (
+        <div className="space-y-3 text-sm text-gray-600">
+          <p>{richText(t(`editor.dialog.submitBody.${role}`), { finalSubmission: <strong>{finalSubmission}</strong>, name: <strong>{teacherName}</strong> })}</p>
+          {lateDate && <p className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[13px]" role="note">{t(`editor.dialog.submitLate.${role}`, { date: lateDate })}</p>}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/** What a paste into the Final submission adds that is marked as AI (from the pasted HTML, counted as the server does). */
+export interface AiPasteCost {
+  /** AI-assisted words in the pasted HTML. */
+  aiWords: number;
+  /** All words of the pasted HTML (the share's denominator grows by these). */
+  totalWords: number;
+  /** AI-assisted figures and equations in the pasted HTML. */
+  figures: number;
+  equations: number;
+}
+
+/** Renders `**bold**` segments of a translated string. */
+const bold = (text: string) => text.split("**").map((part, i) => (i % 2 === 1 ? <b key={i}>{part}</b> : part));
+
+/**
+ * The cost card of a paste into the Final submission that carries AI-assisted content (text marked AI, AI figures or
+ * equations, e.g. copied from Research notes): shown before anything is pasted (principle 5), with the same numbers
+ * and the same limit as the assistant's cost card. Above the limit the paste is refused here.
+ */
+export function AiPasteDialog({ open, cost, ctx, role, onConfirm, onCancel }: { open: boolean; cost: AiPasteCost | null; ctx: { wordCount: number; aiWords: number; limitPct: number }; role: TeacherRole; onConfirm: () => void; onCancel: () => void }) {
+  const t = useT();
+  const fmt = useFormat();
+  const c = cost || { aiWords: 0, totalWords: 0, figures: 0, equations: 0 };
+  const cur = ctx.wordCount > 0 ? Math.round((ctx.aiWords / ctx.wordCount) * 100) : 0;
+  const nextExact = ((ctx.aiWords + c.aiWords) / (ctx.wordCount + c.totalWords || 1)) * 100;
+  const next = Math.round(nextExact);
+  const over = c.aiWords > 0 && nextExact > ctx.limitPct;
+  const items: string[] = [];
+  if (c.aiWords) items.push(c.aiWords === 1 ? t("editor.pasteCost.words_one") : t("editor.pasteCost.words", { n: fmt.number(c.aiWords) }));
+  if (c.figures) items.push(c.figures === 1 ? t("editor.pasteCost.figures_one") : t("editor.pasteCost.figures", { n: fmt.number(c.figures) }));
+  if (c.equations) items.push(c.equations === 1 ? t("editor.pasteCost.equations_one") : t("editor.pasteCost.equations", { n: fmt.number(c.equations) }));
+  const finalSubmission = t("glossary.finalSubmission");
+  return (
+    <Modal
+      open={open}
+      onClose={onCancel}
+      title={t("editor.pasteCost.title", { finalSubmission })}
+      size="sm"
+      footer={
+        <>
+          <button onClick={onCancel} className="btn-outline !py-2 !px-4 text-sm">{t("common.cancel")}</button>
+          <button disabled={over} onClick={onConfirm} className="px-4 py-2 rounded-xl bg-prov-ai text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-prov-ai/40" data-testid="ai-paste-confirm">{t("editor.pasteCost.confirm")}</button>
+        </>
+      }
+    >
+      <div className="border border-prov-ai-line bg-prov-ai-soft rounded-xl p-3 text-[13px] leading-normal text-gray-700" data-testid="ai-paste-card">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="w-2 h-2 rounded-full bg-prov-ai" aria-hidden="true" />
+          <span className="text-xs font-semibold text-prov-ai-deep">{t("editor.pasteCost.intro", { aiAssisted: t("glossary.aiAssisted"), finalSubmission })}</span>
+        </div>
+        <ul className="list-disc pl-5 space-y-0.5">
+          {items.map((s) => <li key={s}>{bold(s)}</li>)}
+        </ul>
+        <p className="mt-2">{bold(c.aiWords ? t("editor.pasteCost.share", { cur, next, limit: ctx.limitPct }) : t("editor.pasteCost.shareStays", { cur, limit: ctx.limitPct }))}</p>
+        <p className="mt-1">{t(`editor.pasteCost.marked.${role}`)}</p>
+        {over && <p className="mt-2 text-prov-ai-deep font-medium" role="alert">{t("editor.pasteCost.over", { next, limit: ctx.limitPct })}</p>}
+      </div>
     </Modal>
   );
 }
@@ -271,11 +382,30 @@ export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () 
   );
 }
 
-export function VersionPreviewDialog({ open, onClose, html, label, onRestore, canRestore }: { open: boolean; onClose: () => void; html: string; label: string; onRestore: () => void; canRestore: boolean }) {
+/**
+ * Stored HTML made safe to show: parsed in an inert document (no script runs, no image loads) and round-tripped
+ * through the editor's schema, which keeps only what the editor itself can hold (no event handlers, no unknown
+ * attributes; figures and equations are redrawn from their spec and LaTeX). Without a schema, the text only.
+ */
+function safeDocumentFragment(html: string, schema?: Schema): Node {
+  const body = new DOMParser().parseFromString(html || "", "text/html").body;
+  if (!schema) return document.createTextNode(body.textContent || "");
+  try {
+    return DOMSerializer.fromSchema(schema).serializeFragment(PMDOMParser.fromSchema(schema).parse(body).content);
+  } catch {
+    return document.createTextNode(body.textContent || "");
+  }
+}
+
+export function VersionPreviewDialog({ open, onClose, html, label, onRestore, canRestore, schema }: { open: boolean; onClose: () => void; html: string; label: string; onRestore: () => void; canRestore: boolean; schema?: Schema }) {
   const t = useT();
+  // Never injected as raw HTML: a version is whatever the client saved, and staff open it too.
+  const fill = useCallback((el: HTMLDivElement | null) => {
+    if (el) el.replaceChildren(safeDocumentFragment(html, schema));
+  }, [html, schema]);
   return (
     <Modal open={open} onClose={onClose} title={t("editor.preview.title", { label })} size="xl" footer={<><button onClick={onClose} className="btn-outline !py-2 !px-4 text-sm">{t("common.close")}</button>{canRestore && <button onClick={() => { onRestore(); onClose(); }} className="btn-primary !py-2 !px-4 text-sm">{t("editor.preview.restore")}</button>}</>}>
-      <div className="docs-page !min-h-0 !shadow-none !p-6 border border-gray-100"><div className="ProseMirror !min-h-0" dangerouslySetInnerHTML={{ __html: html }} /></div>
+      <div className="docs-page !min-h-0 !shadow-none !p-6 border border-gray-100"><div ref={fill} className="ProseMirror !min-h-0" /></div>
     </Modal>
   );
 }

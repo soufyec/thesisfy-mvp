@@ -37,6 +37,8 @@ export interface LibraryPanelProps {
   onConsentRequired?: () => void;
   notify: (message: string, kind?: "info" | "success" | "error") => void;
   // References tab
+  /** Set when the citation style is fixed (teacher's brief, handed-in paper): the sentence shown next to the style. */
+  styleLock?: string | null;
   onChangeStyle: (s: ThesisDoc["citationStyle"]) => void;
   onAddReference: (r: Reference) => void;
   onRemoveReference: (id: string) => void;
@@ -144,6 +146,7 @@ export default function LibraryPanel(props: LibraryPanelProps) {
             sources={sources}
             citations={citations}
             onChangeStyle={props.onChangeStyle}
+            styleLock={props.styleLock}
             onAdd={props.onAddReference}
             onRemove={props.onRemoveReference}
             onInsertInText={props.onInsertReference}

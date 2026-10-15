@@ -58,12 +58,12 @@ Con Postgres, `load()` no persiste su copia local (semilla o `DATA_FILE`): el do
 
 ## Contratos de API
 
-Errores: `{ error: string, code?: "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only", citedIn? }`, con `error` traducido al idioma de la petición.
+Errores: `{ error: string, code?: "locked" | "cited" | "thesis_cap" | "library_cap" | "duplicate" | "conflict" | "owner_only" | "legacy_format" | "unsupported_type" | "too_large" | "encrypted" | "empty" | "no_text" | "unreadable", citedIn? }`, con `error` traducido al idioma de la petición.
 
 ### Por tesis (los campos nuevos son opcionales)
 
 - `GET /api/theses/:id/sources` → `{ sources: PublicSource[] }`: las fuentes **vinculadas** a la tesis. `PublicSource` = `ThesisSource` sin `text`, `ownerId` ni `thesisIds`, con `thesisId` = la tesis pedida, más `coverage: "full_text" | "abstract" | "none"` y `chunkCount`. Acceso: `canAccessThesis` (dueño, tutor, administración).
-- `POST /api/theses/:id/sources` (solo el dueño, 403 `owner_only` si no) → crea la fuente en la biblioteca del dueño y la vincula a esta tesis: `201 { source: PublicSource }`. Si el DOI ya está en la biblioteca, la vincula: `200 { source, linked: true }` (409 `duplicate` si ya estaba vinculada a esta tesis). Errores: 400 (valor inválido), 409 `locked` / `thesis_cap` (40) / `library_cap` (150), 413 (> 15 MB), 415 (no PDF). Una fuente que no se pudo indexar se crea igualmente con `parseStatus: "no_text" | "failed"` y el motivo en `abstract`.
+- `POST /api/theses/:id/sources` (solo el dueño, 403 `owner_only` si no) → crea la fuente en la biblioteca del dueño y la vincula a esta tesis: `201 { source: PublicSource }`. Si el DOI ya está en la biblioteca, la vincula: `200 { source, linked: true }` (409 `duplicate` si ya estaba vinculada a esta tesis). Errores: 400 (valor inválido), 409 `locked` / `thesis_cap` (40 secundarias, 20 primarias) / `library_cap` (150 secundarias, 60 primarias, 80 000 celdas), 413 `too_large` (> 4 MB), 415 `legacy_format` / `unsupported_type`, 422 `encrypted` / `empty` / `no_text` / `unreadable`. Ver «Datos primarios y archivos». Una fuente que no se pudo indexar se crea igualmente con `parseStatus: "no_text" | "failed"` y el motivo en `abstract`.
 - `GET /api/theses/:id/sources/:sourceId` → `{ source, chunks: [{ id, index, page?, section?, text }] }`; 404 si la fuente no está vinculada a esa tesis.
 - `DELETE …/:sourceId` (solo el dueño; 409 `locked`) → **desvincula** de esta tesis; la fuente sigue en la biblioteca: `{ ok: true, unlinked: true }`.
 - `POST …/:sourceId` `{ action: "summarize", sessionId?, provider? }` → `{ summary, meta, interactionId, usage }`; 428 `consent_required`, 403 si el modo `summarize` no está permitido.
@@ -111,3 +111,19 @@ Un solo panel lateral (`LibraryPanel.tsx`) sustituye a los antiguos "Citations" 
 - Documento único con "el último que escribe gana": una elección hecha en la página de biblioteca puede pisarse con un `PUT` de referencias de un editor abierto con datos viejos. El editor recarga `thesis.references` al volver a la pestaña (`visibilitychange`).
 - Los ids de referencia no son globales: dos tesis del mismo estudiante con el mismo id y contenido distinto (caso heredado) cuentan como la misma referencia de biblioteca; la última escritura de una de ellas fija el contenido de la biblioteca.
 - `Reference.sourceId` que apunte a una fuente borrada no se limpia: la UI comprueba que la fuente exista y, si no, recurre al DOI (`sourceForReference` en `match.ts`).
+
+## Datos primarios y archivos (docs/papers.md §1.3, §3.3, §4.5, §4.7)
+
+- **Rol**: `ThesisSource.role = "primary" | "secondary"` (ausente = secundaria, «Literature»). Las hojas (`kind: "sheet"`) son siempre primarias. `file?: { name, mime, bytes, sha256 }` describe el archivo subido (nunca se guardan los bytes); `datasetId` apunta a la tabla parseada en `datasets` (por columnas).
+- **Tipos aceptados** en `POST /api/theses/:id/sources` y `POST /api/library/sources` (multipart `file`): `.pdf .docx .xlsx .csv .tsv .txt .md`, detectados por extensión y bytes mágicos (el MIME es solo pista). Campo `role` (`primary|secondary`). `.xls .doc .xlsb .numbers .ods` → 415 `legacy_format`; otros → 415 `unsupported_type`; > 4 MB → 413 `too_large` (el cliente comprueba 4 MB antes de enviar y trata un 413 sin JSON, que corta la plataforma, como `too_large`); con contraseña → 422 `encrypted`; vacío o sin texto → 422 `empty` / `no_text`; ilegible → 422 `unreadable`.
+- **Deduplicación por SHA-256**: un archivo idéntico ya presente en la biblioteca no se vuelve a leer: `200 { source, existing: true }` y se vincula. La UI lo trata como añadido.
+- **Vistas**: `PublicSource` y `LibrarySourceView` llevan opcionales `role`, `file` y `dataset?: { sheetsCut?, sheets: { name, rowCount, headerRow (1-based; 0 = sin cabecera), truncated, columns: { name, label, type, role }[] }[] }` (nunca filas ni estadísticas).
+- **Filas**: `GET /api/theses/:id/sources/:sourceId/data?sheet=0&offset=0&limit=100` (limit 1–500) → `{ sheet: { name, columns (con estadísticas), rowCount, headerRow, truncated }, rows (por filas), offset, limit, total, sheets: { name, rowCount }[] }`. Mismo acceso que los fragmentos (dueño, docente D8, administración). En la biblioteca, `GET /api/library/sources/:id/data` devuelve lo mismo solo al dueño (404 para cualquier otro), para previsualizar una hoja que aún no usa ningún trabajo. Ambas rutas paginan con `datasetPage` (`src/lib/sources/dataPage.ts`).
+- **UI** (componentes en `src/components/library/`):
+  - `primary.ts`: `UPLOAD_ACCEPT`, `MAX_UPLOAD_MB`, `checkUpload`, `uploadErrorText`, `isPrimary`, `fileTypeLabel`, `readAsSummary` («Read as: 1 sheet · 132 rows · 6 columns (header on row 1)»), `compactSummary`, `cutNotes` (recorte y `sheetsCut`), `privacyLines` (frases de privacidad por tipo).
+  - `DataPreviewModal.tsx`: «Preview data», columnas con etiqueta, tipo y rol + filas paginadas de 100 en 100; el mismo para estudiante y tutor.
+  - `LibraryItemRow.tsx`: `SourceBadges` pinta en las primarias la insignia «Primary», el tipo de archivo y el resumen leído (`PrimaryBadges`); `CutNotes`.
+  - Página `/dashboard/sources`: filtro «All · Primary data · Literature», «Preview data» en hojas, alta de archivos con la casilla «This is my own material (primary source)» (forzada en hojas) y la frase de privacidad.
+  - Panel del editor (`SourcesPanel.tsx`): secciones «Primary data» y «Literature», alta «File» con la misma casilla, «Preview data» en hojas; «Ask my sources» solo usa la literatura. El tope «N/40» cuenta solo literatura.
+  - `ThesisSourcesCard.tsx` (tutor): primarias primero, con insignia, resumen y «Preview data».
+  - Asistente (`src/components/ai/`): el clip del Research copilot sube con `role=primary` a la ruta por trabajo, o vincula una primaria de la biblioteca con `PATCH /api/library/sources/:id`; ver `AssistantPanel.tsx`.

@@ -33,10 +33,15 @@ export interface ReferencesTabProps {
   onShowSource: (sourceId: string) => void;
   /** Opens Find support › Reference check. */
   onCheckReferences: () => void;
+  /**
+   * Why the citation style cannot change on this paper (set in the teacher's brief, or the paper is handed in): the
+   * style shows as text with this sentence instead of the select (docs/papers.md §4.4).
+   */
+  styleLock?: string | null;
 }
 
 /** References tab of the Sources & references panel: this thesis's reference list, its style and the bibliography. */
-export default function ReferencesTab({ references, style, canEdit, sources, citations, onChangeStyle, onAdd, onRemove, onInsertInText, onInsertBibliography, onFindReference, onShowSource, onCheckReferences }: ReferencesTabProps) {
+export default function ReferencesTab({ references, style, canEdit, sources, citations, onChangeStyle, onAdd, onRemove, onInsertInText, onInsertBibliography, onFindReference, onShowSource, onCheckReferences, styleLock }: ReferencesTabProps) {
   const t = useT();
   const [form, setForm] = useState<Reference | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<Reference | null>(null);
@@ -47,7 +52,11 @@ export default function ReferencesTab({ references, style, canEdit, sources, cit
   return (
     <div className="p-3 space-y-2 text-[13px]">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-gray-600">
-        {canEdit ? (
+        {canEdit && styleLock ? (
+          <span>
+            {t("editor.library.styleLabel")} <span className="font-medium text-gray-800">{style}</span> <span className="text-xs text-gray-500">{styleLock}</span>
+          </span>
+        ) : canEdit ? (
           <label className="inline-flex items-center gap-1.5">
             {t("editor.library.styleLabel")}
             <select value={style} onChange={(e) => onChangeStyle(e.target.value as ThesisDoc["citationStyle"])} className="text-xs border border-gray-200 rounded-md px-1.5 py-1 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">

@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import DashboardLayout, { useTimeAgo } from "@/components/DashboardLayout";
 import { useUser } from "@/components/useUser";
+import ArtifactRefChips from "@/components/ai/ArtifactRefChips";
+import { libraryCall } from "@/components/library/libraryApi";
+import type { ArtifactRef, LibraryResponse, SourceKind } from "@/components/editor/types";
 import { api } from "@/lib/client";
 import { useFormat, useLocale, useT } from "@/lib/i18n/client";
 
@@ -32,6 +35,10 @@ interface Interaction {
   blockedByPolicy: boolean;
   timestamp: string;
   thesisTitle?: string;
+  /** Tables, figures, tests, diagrams and equations the copilot produced for this interaction. */
+  artifacts?: ArtifactRef[];
+  /** Library sources attached to the request. */
+  attachmentIds?: string[];
 }
 
 export default function AnalyticsPage() {
@@ -43,10 +50,15 @@ export default function AnalyticsPage() {
   const modeLabel = (id: string) => (MODE_IDS.indexOf(id) !== -1 ? t(`assistant.mode.${id}.label`) : id.replace("_", " "));
   const [stats, setStats] = useState<Stats | null>(null);
   const [logs, setLogs] = useState<Interaction[]>([]);
+  /** Names of attached files, from the student's library (attachment ids are library source ids). */
+  const [files, setFiles] = useState<Record<string, { name: string; kind: SourceKind }>>({});
 
   useEffect(() => {
     api<{ stats: Stats }>("/api/stats").then((d) => setStats(d.stats)).catch(() => {});
     api<{ interactions: Interaction[] }>("/api/ai/logs").then((d) => setLogs(d.interactions)).catch(() => {});
+    libraryCall<LibraryResponse>("/api/library")
+      .then((d) => setFiles(Object.fromEntries(d.sources.map((s) => [s.id, { name: s.file?.name || s.title, kind: s.kind }]))))
+      .catch(() => {});
   }, []);
 
   const total = stats ? Math.max(1, stats.provenance.human + stats.provenance.paste + stats.provenance.ai) : 1;
@@ -113,6 +125,7 @@ export default function AnalyticsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap"><span className="font-medium capitalize">{modeLabel(i.mode)}</span><span className="text-xs text-gray-400">{i.provider} · {i.model}</span>{i.mode === "copilot" && <span className="badge bg-emerald-50 text-emerald-700 !text-[10px]">{t("dashboard.analytics.copilotBadge")}</span>}{i.blockedByPolicy && <span className="badge-danger !text-[10px]">{t("dashboard.analytics.blocked")}</span>}{i.insertedWords > 0 && <span className="badge-info !text-[10px]">{i.insertedWords === 1 ? t("dashboard.analytics.inserted_one") : t("dashboard.analytics.inserted", { n: i.insertedWords })}</span>}</div>
                   <div className="text-gray-600 truncate">{i.promptPreview}</div>
+                  <ArtifactRefChips artifacts={i.artifacts} attachments={(i.attachmentIds || []).filter((id) => files[id]).map((id) => ({ id, name: files[id].name, kind: files[id].kind }))} />
                   <div className="text-[11px] text-gray-400">{i.thesisTitle ? `${i.thesisTitle} · ` : ""}{timeAgo(i.timestamp)}</div>
                 </div>
               </div>

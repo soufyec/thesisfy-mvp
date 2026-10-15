@@ -6,7 +6,9 @@
  *  2. Layers by longest path from the roots; edges spanning several layers get virtual nodes.
  *  3. Order inside layers: barycenter, 4 down/up sweeps (best crossing count kept) and an adjacent-swap pass.
  *  4. x by weighted isotonic regression (pool-adjacent-violators) towards the mean of each node's neighbours,
- *     keeping order and spacing; narrower label wrapping is tried when the map is wider than the target width.
+ *     keeping order and spacing, then every layer is centred on the map's axis (alternating with the relaxation, so
+ *     the spacing inside a layer still follows its neighbours); narrower label wrapping is tried when the map is
+ *     wider than the target width.
  *  5. Edges leave the bottom of the source and enter the top of the target with vertical tangents (smooth S-curves,
  *     straight through virtual nodes), ports spread along the side; arrowheads drawn as paths (no <marker> ids).
  *  6. Edge labels sit at the midpoint on a white halo and are nudged along the edge or beside it when they would
@@ -317,11 +319,32 @@ export function layoutConceptMap(spec: ConceptMapSpec, opts: ConceptMapLayoutOpt
       const xs = placeLayer(desired, weights, seps);
       lv.forEach((v, i) => (verts[v].x = xs[i]));
     };
+    /** Centres every layer (real and virtual nodes) on x = 0, so no layer, and no side of the map, hangs off-centre. */
+    const centreLayers = () => {
+      for (const lv of order) {
+        if (!lv.length) continue;
+        let lo = Infinity;
+        let hi = -Infinity;
+        for (const v of lv) {
+          lo = Math.min(lo, verts[v].x - verts[v].w / 2);
+          hi = Math.max(hi, verts[v].x + verts[v].w / 2);
+        }
+        const shift = (lo + hi) / 2;
+        for (const v of lv) verts[v].x -= shift;
+      }
+    };
     for (let it = 0; it < 6; it++) {
       for (let l = 1; l < L; l++) relax(l, "down");
       for (let l = L - 2; l >= 0; l--) relax(l, "up");
     }
     for (let it = 0; it < 4; it++) for (let l = 0; l < L; l++) relax(l, "both");
+    // Balance: alternate centring each layer with relaxing towards neighbours (spacing inside a layer follows its
+    // neighbours), and finish centred, so the drawing sits on the vertical axis instead of drifting to one side.
+    for (let it = 0; it < 4; it++) {
+      centreLayers();
+      for (let l = 0; l < L; l++) relax(l, "both");
+    }
+    centreLayers();
     let minX = Infinity;
     let maxX = -Infinity;
     for (const v of verts) {

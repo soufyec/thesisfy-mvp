@@ -44,6 +44,8 @@ const config: Config = {
         paper: {
           well: "#eef2ef",
         },
+        // Editor area behind the page (CLAUDE.md §4, `.docs-workspace`): `bg-workspace`.
+        workspace: "#f1f3f4",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],

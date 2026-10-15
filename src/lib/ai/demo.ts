@@ -57,6 +57,38 @@ export function demoDataResponse(opts: { file: string; computed: boolean; unsupp
   return opts.unsupported ? `${lead}\n\n${tr("data.unsupported")}` : lead;
 }
 
+/** The diagram or equation a Research copilot request asks for (docs/papers.md §9.3), in en/es/fr/de, or null. */
+export type DiagramRequestKind = "gantt" | "prisma" | "conceptMap" | "equation";
+
+const DIAGRAM_REQUEST_RES: [DiagramRequestKind, RegExp][] = [
+  ["prisma", /\bprisma\b|flow ?(?:chart|diagram) of (?:the|my) (?:search|screening|review)|diagrama de flujo de (?:la )?(?:búsqueda|revisión|selección)|diagramme de flux (?:de|du) (?:la )?(?:recherche|revue|sélection)|flussdiagramm (?:der|des|für die) (?:suche|recherche|review|auswahl)/i],
+  ["conceptMap", /\b(?:concept|mind)[ -]?maps?\b|\bmapas? (?:conceptual(?:es)?|mental(?:es)?)\b|\bcartes? (?:conceptuelles?|mentales?|heuristiques?)\b|\b(?:concept|mind)map\b|begriffslandkarte|konzeptkarte|gedankenlandkarte/i],
+  ["gantt", /\bgantt\b|\b(?:project|research|work) (?:timeline|schedule|plan)\b|\bwork ?plan\b|\bcronograma\b|\bchronogramme\b|\bcalendrier (?:du|de) (?:projet|travail|recherche|mémoire|thèse)\b|\bzeitplan\b|\barbeitsplan\b|\bprojektplan\b/i],
+  ["equation", /\bequations?\b|\bformula(?:s|e)?\b|\blatex\b|\becuaci(?:ón|ones)\b|\bf[oó]rmulas?\b|équations?|\bformules?\b|\bgleichung(?:en)?\b|\bformeln?\b/i],
+];
+
+export function diagramRequestKind(text: string): DiagramRequestKind | null {
+  const t = String(text || "").slice(0, 4000);
+  for (const [kind, re] of DIAGRAM_REQUEST_RES) if (re.test(t)) return kind;
+  return null;
+}
+
+/** A regression asked for by name: its fitted equation is computed from the attached data, not written by a model. */
+const REGRESSION_RE = /\bregress|\bregresi[oó]n|\brégression\b/i;
+
+/**
+ * Demo mode (no model) of the Research copilot: diagrams and equations are drafted from what the student writes, so
+ * they need a model (`api.copilot.demoNeedsModel`). A timeline from a spreadsheet, and the fitted equation of a
+ * regression, are computed from the attached data by the planner instead.
+ */
+export function demoNeedsModel(text: string, hasSheets: boolean): boolean {
+  const kind = diagramRequestKind(text);
+  if (!kind) return false;
+  if (kind === "gantt") return !hasSheets;
+  if (kind === "equation") return !(hasSheets && REGRESSION_RE.test(text));
+  return true;
+}
+
 /** Simulated assistant used when no provider key is configured. Mode-aware, in the user's language; the demo notice is separate (see `demoNotice`). */
 export function demoResponse(mode: AIMode, messages: { role: string; content: string }[], lang: DemoLang): string {
   const last = messages[messages.length - 1]?.content || "";

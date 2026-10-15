@@ -5,7 +5,10 @@
  * white, so charts with 2 or more series always carry a legend, direct labels where they fit, and a table view.
  *
  * Fixed order: a series keeps its colour from its position, never from its rank. At most 4 series + "Other" (grey).
- * Never the provenance colours (violet AI, amber paste, mint written).
+ * Never the provenance colours (violet AI, amber paste, mint written). A pie chart follows the same rule: its four
+ * largest slices take the four series colours and the rest is folded into a grey "Other" slice.
+ *
+ * Diagrams (src/lib/diagrams/theme.ts) import these values too: this file is the single home of chart and diagram hex.
  */
 
 /** Series colours, in this order: fir green, pink, blue, orange. */
@@ -20,8 +23,10 @@ export const CHART_AXIS = "#d1d5db";
 export const CHART_TEXT = "#4b5563";
 /** Tick labels and secondary text (gray-500). */
 export const CHART_MUTED = "#6b7280";
-/** Chart background and the 2px separating gap/ring. */
+/** Chart background and the 2px separating gap/ring (also the white separators between pie slices). */
 export const CHART_SURFACE = "#ffffff";
+/** Header bands and panels of diagrams (gray-100): PRISMA phase labels, Gantt group rows. */
+export const CHART_PANEL = "#f3f4f6";
 /** Least-squares line: dark neutral, never a series colour. */
 export const CHART_FIT = CHART_TEXT;
 export const CHART_FONT = "Inter, Helvetica, Arial, sans-serif";
