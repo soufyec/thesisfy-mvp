@@ -140,7 +140,7 @@
   "Autorizado se declarado",
   "Proibido",
   "Outra abordagem",
-  "Imagine uma ferramenta em que o estudante escreve a dissertação. Aplica as regras de IA do curso, regista cada utilização e gera automaticamente a declaração exigida. O docente vê como o texto foi construído (o que vem do estudante, da IA ou das fontes), sem detetor nem classificação automática.\n\nEntrevista: leia este texto em voz alta, sem mostrar o software.",
+  "Imagine um software no qual o estudante redige diretamente a sua dissertação, tendo, ao mesmo tempo, acesso controlado à IA através desta ferramenta. O estudante pode utilizar a IA para o apoiar na redação da dissertação (reformulação, correção ortográfica, citações…), dentro das orientações definidas pela sua instituição ou pelo docente. O docente pode configurar diretamente no software os limites de utilização da IA. Cada utilização da IA pelo estudante é automaticamente registada pelo software, indicando que elemento foi redigido com a ajuda de IA e em que medida a IA participou (reformulação, correção ortográfica, citações…). Assim, o estudante pode verificar em tempo real se os seus métodos de trabalho respeitam as orientações. O docente também tem acesso ao trabalho do estudante no software durante todo o processo de redação e pode verificar onde e como a IA foi utilizada, graças às informações recolhidas em tempo real pelo software. Pode, assim, acompanhar o cumprimento das orientações de utilização da IA ao longo da elaboração da dissertação.\n\nEntrevista: leia este texto em voz alta, sem mostrar o software.",
   "Uma ferramenta deste tipo seria útil para si?",
   "Nada útil",
   "Muito útil",

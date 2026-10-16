@@ -140,7 +140,7 @@
   "Permitido si se declara",
   "Prohibido",
   "Otro enfoque",
-  "Imagina una herramienta en la que el estudiante escribe su tesis. Aplica las normas de uso de IA de su formación, registra cada uso y genera automáticamente la declaración requerida. El docente ve cómo se construyó el texto (qué procede del estudiante, de la IA o de las fuentes), sin detector ni nota automática.\n\nEntrevista: lee este texto en voz alta sin mostrar el programa.",
+  "Imagina un software en el que el estudiante redacta directamente su trabajo de fin de estudios y, al mismo tiempo, tiene acceso controlado a la IA a través de esta herramienta. El estudiante puede utilizar la IA como apoyo en la redacción de su trabajo (reformulación, corrección ortográfica, citas…), dentro de las instrucciones establecidas por su institución o profesor. El profesor puede configurar directamente en el software los límites de uso de la IA. Cada uso de la IA por parte del estudiante queda registrado automáticamente en el software, indicando qué elemento se ha redactado con ayuda de la IA y en qué medida ha intervenido (reformulación, corrección ortográfica, citas…). Así, el estudiante puede comprobar en tiempo real si sus métodos de trabajo respetan las instrucciones. El profesor también tiene acceso al trabajo del estudiante en el software durante todo el proceso de redacción y puede comprobar dónde y cómo se ha utilizado la IA gracias a la información que el software recopila en tiempo real. De este modo, puede supervisar el cumplimiento de las instrucciones de uso de la IA a lo largo de la elaboración del trabajo.\n\nEntrevista: lee este texto en voz alta sin mostrar el programa.",
   "¿Te resultaría útil una herramienta así?",
   "Nada útil",
   "Muy útil",

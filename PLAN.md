@@ -191,3 +191,12 @@ Archivos: componentes de cuestionario, definición/ediciones y datos, rutas del 
 - [x] Evento configurado en el plan gratuito, Google Calendar conectado y página pública verificada: `https://cal.com/soufyan-ess-dnaecp/demo-thesisfic`. Horario inicial L–V 9–17, Europe/Paris, con conflictos del calendario excluidos.
 
 - [x] Build final y Chrome: CTA en cuatro idiomas, sin lista de espera, redirección real a Cal.com, escritorio y móvil. Clic desde la web verificado también en el navegador integrado.
+
+### Descripción del software en el cuestionario — 16 octubre 2026
+
+Archivos: definición del cuestionario y seis catálogos, documentación QA.
+
+- [x] Sustituir la descripción en `p_solution` y `e_solution` por el texto francés proporcionado en el DOCX.
+- [x] Actualizar EN/ES/DE/PT/AR y conservar la indicación de entrevista y las claves/respuestas originales.
+- [x] Regresión de cuestionario y comparación estructural: solo cambia la descripción solicitada.
+- [x] Compilación, comprobación visual en seis idiomas y cambio preparado para el PR existente.

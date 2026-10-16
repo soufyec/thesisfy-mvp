@@ -140,7 +140,7 @@
   "Allowed if declared",
   "Prohibited",
   "Another approach",
-  "Imagine a tool in which students write their thesis. It applies the AI-use rules set by their programme, records each use and automatically generates the required declaration. Teachers see how the text was built (what comes from the student, AI or sources), without a detector or automatic grading.\n\nInterview: read this aloud without showing the software.",
+  "Imagine a software application in which students write their thesis directly, while having controlled access to AI through the tool. Students can then use AI to assist them in writing their thesis (rephrasing, spelling correction, citations, etc.), within the guidelines set by their institution or teacher. The teacher can configure the limits on AI use directly in the software. Each use of AI by a student is automatically recorded by the software, indicating which element was written with AI assistance and how AI contributed (rephrasing, spelling correction, citations, etc.). Students can therefore check in real time whether their working methods comply with the guidelines. The teacher also has access to the student's work in the software throughout the writing process and can check where and how AI has been used, thanks to the information collected by the software in real time. They can therefore monitor compliance with the AI-use guidelines as the thesis is being written.\n\nInterview: read this aloud without showing the software.",
   "Would this kind of tool be useful to you?",
   "Not at all useful",
   "Very useful",
