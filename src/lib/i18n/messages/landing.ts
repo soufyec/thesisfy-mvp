@@ -5,6 +5,13 @@ import type { Messages } from "../index";
  * The landing speaks to the institution (buyer): no invented figures, no "detection" language.
  */
 const en = {
+  "landing.hero.impact.label": "What Thesisfic changes for you",
+  "landing.hero.impact.student.audience": "For students",
+  "landing.hero.impact.student.title": "Keep your research on track.",
+  "landing.hero.impact.student.body": "Bring your document, sources and AI together to test ideas, analyse data and work within clear rules. Your research stays connected; you choose what goes into your paper.",
+  "landing.hero.impact.institution.audience": "For educators and institutions",
+  "landing.hero.impact.institution.title": "Review with context. Guide progress early.",
+  "landing.hero.impact.institution.body": "See how each paper took shape and how AI was used. Apply your rules and leave feedback in the document to guide learning throughout the process.",
     "landing.demo.unavailable": "Demo booking is not available yet. Please try again later.",
     "landing.demo.details": "30 minutes · Google Meet",
   // Metadata (src/app/layout.tsx)
@@ -279,6 +286,13 @@ const en = {
 export const landing: Messages<typeof en> = {
   en,
   es: {
+    "landing.hero.impact.label": "Lo que cambia con Thesisfic",
+    "landing.hero.impact.student.audience": "Para estudiantes",
+    "landing.hero.impact.student.title": "Investiga sin perder el hilo.",
+    "landing.hero.impact.student.body": "Reúne tu documento, tus fuentes y la IA para contrastar ideas, analizar datos y avanzar con las reglas claras. Tu trabajo sigue conectado; tú decides qué incorporas.",
+    "landing.hero.impact.institution.audience": "Para docentes e instituciones",
+    "landing.hero.impact.institution.title": "Evalúa con contexto. Orienta a tiempo.",
+    "landing.hero.impact.institution.body": "Comprueba cómo se construyó cada trabajo y cómo se utilizó la IA. Aplica tus reglas y deja feedback en el documento para guiar el aprendizaje durante el proceso.",
     "landing.demo.unavailable": "La reserva de demos todavía no está disponible. Vuelve a intentarlo más tarde.",
     "landing.demo.details": "30 minutos · Google Meet",
 
@@ -532,6 +546,13 @@ export const landing: Messages<typeof en> = {
     "landing.login.missingFields": "Introduce tu correo y tu contraseña.",
   },
   fr: {
+    "landing.hero.impact.label": "Ce que Thesisfic change pour vous",
+    "landing.hero.impact.student.audience": "Pour les étudiants",
+    "landing.hero.impact.student.title": "Avancez sans perdre le fil.",
+    "landing.hero.impact.student.body": "Réunissez votre document, vos sources et l’IA pour confronter vos idées, analyser vos données et avancer dans un cadre clair. Votre travail reste connecté ; vous choisissez ce que vous intégrez.",
+    "landing.hero.impact.institution.audience": "Pour les enseignants et établissements",
+    "landing.hero.impact.institution.title": "Évaluez avec du contexte. Accompagnez à temps.",
+    "landing.hero.impact.institution.body": "Voyez comment chaque travail a été construit et comment l’IA a été utilisée. Appliquez vos consignes et commentez le document pour guider l’apprentissage tout au long du processus.",
     "landing.demo.unavailable": "La réservation des démos n’est pas encore disponible. Veuillez réessayer plus tard.",
     "landing.demo.details": "30 minutes · Google Meet",
 
@@ -785,6 +806,13 @@ export const landing: Messages<typeof en> = {
     "landing.login.missingFields": "Saisissez votre adresse e-mail et votre mot de passe.",
   },
   de: {
+    "landing.hero.impact.label": "Was sich mit Thesisfic für Sie ändert",
+    "landing.hero.impact.student.audience": "Für Studierende",
+    "landing.hero.impact.student.title": "Forschen, ohne den Faden zu verlieren.",
+    "landing.hero.impact.student.body": "Verbinden Sie Dokument, Quellen und KI, um Ideen zu prüfen, Daten zu analysieren und mit klaren Regeln voranzukommen. Ihre Arbeit bleibt im Zusammenhang; Sie entscheiden, was Sie übernehmen.",
+    "landing.hero.impact.institution.audience": "Für Lehrkräfte und Hochschulen",
+    "landing.hero.impact.institution.title": "Mit Kontext beurteilen. Frühzeitig begleiten.",
+    "landing.hero.impact.institution.body": "Sehen Sie, wie jede Arbeit entstanden ist und wie KI eingesetzt wurde. Setzen Sie Ihre Vorgaben um und geben Sie Feedback direkt im Dokument, um den Lernprozess zu begleiten.",
     "landing.demo.unavailable": "Die Demo-Buchung ist noch nicht verfügbar. Bitte versuchen Sie es später erneut.",
     "landing.demo.details": "30 Minuten · Google Meet",
 

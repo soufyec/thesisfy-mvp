@@ -200,3 +200,13 @@ Archivos: definición del cuestionario y seis catálogos, documentación QA.
 - [x] Actualizar EN/ES/DE/PT/AR y conservar la indicación de entrevista y las claves/respuestas originales.
 - [x] Regresión de cuestionario y comparación estructural: solo cambia la descripción solicitada.
 - [x] Compilación, comprobación visual en seis idiomas y cambio preparado para el PR existente.
+
+### Impacto por público en el hero — 16 octubre 2026
+
+Archivos: `Hero.tsx`, diccionario de landing, documentación QA.
+
+- [x] Sustituir los tres puntos bajo los CTA por dos bloques para estudiantes y docentes/instituciones.
+- [x] Copy centrado en continuidad del trabajo, reglas claras, contexto para evaluar y feedback durante el proceso.
+- [x] Adaptar los textos a EN/ES/FR/DE sin añadir cifras ni promesas de notas o ahorro cuantificado.
+- [x] Compilación, tipos y HTML de los cuatro idiomas: dos bloques, puntos anteriores ausentes y destinos de CTA conservados; cambio preparado para el PR existente.
+- [ ] Revisión visual automática pendiente: navegador integrado no disponible. Vista previa local ofrecida para revisión humana.

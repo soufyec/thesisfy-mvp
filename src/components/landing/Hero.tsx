@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, GraduationCap, School } from "lucide-react";
 import HeroScene from "./HeroScene";
 import FallingPapers from "./FallingPapers";
 import HeroEditorPreview from "./HeroEditorPreview";
 import FilmButton from "./FilmButton";
 import { useT } from "@/lib/i18n/client";
 
-const BULLETS = [
-  { dot: "bg-accent-500", text: "landing.hero.bullet1" },
-  { dot: "bg-prov-ai", text: "landing.hero.bullet2" },
-  { dot: "bg-brand-500", text: "landing.hero.bullet4" },
-];
+const IMPACTS = [
+  { id: "student", icon: GraduationCap },
+  { id: "institution", icon: School },
+] as const;
 
 const HI_WORDS = ["landing.hero.titleHi2", "landing.hero.titleHi3", "landing.hero.titleHi4"] as const;
 const FIRST_SWAP_MS = 2600;
@@ -138,14 +137,22 @@ export default function Hero() {
             </a>
             <FilmButton which="teaser" label={t("landing.film.watch")} title={t("landing.film.teaserTitle")} />
           </div>
-          <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-gray-500 list-none p-0 m-0">
-            {BULLETS.map((b) => (
-              <li key={b.text} className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${b.dot}`} aria-hidden="true" />
-                {t(b.text)}
-              </li>
+          <section aria-label={t("landing.hero.impact.label")} className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {IMPACTS.map(({ id, icon: Icon }) => (
+              <article key={id} className="rounded-2xl border border-brand-100 bg-white/85 p-5 backdrop-blur-sm">
+                <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold text-brand-600">
+                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                  {t(`landing.hero.impact.${id}.audience`)}
+                </div>
+                <h2 className="text-[19px] sm:text-[20px] font-bold leading-[1.25] tracking-[-0.02em] text-brand-800 [text-wrap:balance]">
+                  {t(`landing.hero.impact.${id}.title`)}
+                </h2>
+                <p className="mt-3 mb-0 text-[13px] leading-[1.65] text-gray-600 [text-wrap:pretty]">
+                  {t(`landing.hero.impact.${id}.body`)}
+                </p>
+              </article>
             ))}
-          </ul>
+          </section>
         </div>
       </div>
 
