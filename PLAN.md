@@ -205,8 +205,8 @@ Archivos: definición del cuestionario y seis catálogos, documentación QA.
 
 Archivos: `Hero.tsx`, diccionario de landing, documentación QA.
 
-- [x] Sustituir los tres puntos bajo los CTA por dos bloques para estudiantes y docentes/instituciones.
-- [x] Copy centrado en continuidad del trabajo, reglas claras, contexto para evaluar y feedback durante el proceso.
-- [x] Adaptar los textos a EN/ES/FR/DE sin añadir cifras ni promesas de notas o ahorro cuantificado.
-- [x] Compilación, tipos y HTML de los cuatro idiomas: dos bloques, puntos anteriores ausentes y destinos de CTA conservados; cambio preparado para el PR existente.
-- [ ] Revisión visual automática pendiente: navegador integrado no disponible. Vista previa local ofrecida para revisión humana.
+- [x] Sustituir los tres puntos bajo los CTA por dos encabezados y párrafos breves, sin tarjetas, iconos ni títulos secundarios.
+- [x] Destacar menos cambios entre herramientas para el estudiante; registro automático del uso de IA en Thesisfic, menos declaraciones manuales y feedback en el documento para la institución.
+- [x] Adaptar EN/ES/FR/DE sin inventar ahorros económicos o de tiempo cuantificados ni garantizar autoría o esfuerzo.
+- [x] Compilación, tipos y HTML de los cuatro idiomas: encabezados traducidos, tarjetas y títulos secundarios ausentes, CTA conservados.
+- [ ] Revisión visual automática pendiente: el inventario del navegador integrado sigue vacío. Vista previa local ofrecida para revisión humana.

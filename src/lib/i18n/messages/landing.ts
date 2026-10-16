@@ -6,12 +6,10 @@ import type { Messages } from "../index";
  */
 const en = {
   "landing.hero.impact.label": "What Thesisfic changes for you",
-  "landing.hero.impact.student.audience": "For students",
-  "landing.hero.impact.student.title": "Keep your research on track.",
-  "landing.hero.impact.student.body": "Bring your document, sources and AI together to test ideas, analyse data and work within clear rules. Your research stays connected; you choose what goes into your paper.",
-  "landing.hero.impact.institution.audience": "For educators and institutions",
-  "landing.hero.impact.institution.title": "Review with context. Guide progress early.",
-  "landing.hero.impact.institution.body": "See how each paper took shape and how AI was used. Apply your rules and leave feedback in the document to guide learning throughout the process.",
+  "landing.hero.impact.student.audience": "As a student",
+  "landing.hero.impact.student.body": "Spend less time switching tools. Write, consult sources and use AI in one place, so you can focus on your argument instead of moving files and repeating context.",
+  "landing.hero.impact.institution.audience": "As an institution",
+  "landing.hero.impact.institution.body": "AI use within Thesisfic is recorded automatically. Spend less time collecting declarations and give feedback directly in the document, with the development of the work and the student’s decisions in view.",
     "landing.demo.unavailable": "Demo booking is not available yet. Please try again later.",
     "landing.demo.details": "30 minutes · Google Meet",
   // Metadata (src/app/layout.tsx)
@@ -287,12 +285,10 @@ export const landing: Messages<typeof en> = {
   en,
   es: {
     "landing.hero.impact.label": "Lo que cambia con Thesisfic",
-    "landing.hero.impact.student.audience": "Para estudiantes",
-    "landing.hero.impact.student.title": "Investiga sin perder el hilo.",
-    "landing.hero.impact.student.body": "Reúne tu documento, tus fuentes y la IA para contrastar ideas, analizar datos y avanzar con las reglas claras. Tu trabajo sigue conectado; tú decides qué incorporas.",
-    "landing.hero.impact.institution.audience": "Para docentes e instituciones",
-    "landing.hero.impact.institution.title": "Evalúa con contexto. Orienta a tiempo.",
-    "landing.hero.impact.institution.body": "Comprueba cómo se construyó cada trabajo y cómo se utilizó la IA. Aplica tus reglas y deja feedback en el documento para guiar el aprendizaje durante el proceso.",
+    "landing.hero.impact.student.audience": "Como estudiante",
+    "landing.hero.impact.student.body": "Dedica menos tiempo a cambiar de herramienta. Escribe, consulta fuentes y usa la IA en un mismo lugar: céntrate en tu argumento, sin mover archivos ni repetir el contexto.",
+    "landing.hero.impact.institution.audience": "Como institución",
+    "landing.hero.impact.institution.body": "El uso de IA dentro de Thesisfic se registra automáticamente. Dedica menos tiempo a recopilar declaraciones y da feedback directamente en el documento, viendo cómo evoluciona el trabajo y qué decisiones toma el estudiante.",
     "landing.demo.unavailable": "La reserva de demos todavía no está disponible. Vuelve a intentarlo más tarde.",
     "landing.demo.details": "30 minutos · Google Meet",
 
@@ -547,12 +543,10 @@ export const landing: Messages<typeof en> = {
   },
   fr: {
     "landing.hero.impact.label": "Ce que Thesisfic change pour vous",
-    "landing.hero.impact.student.audience": "Pour les étudiants",
-    "landing.hero.impact.student.title": "Avancez sans perdre le fil.",
-    "landing.hero.impact.student.body": "Réunissez votre document, vos sources et l’IA pour confronter vos idées, analyser vos données et avancer dans un cadre clair. Votre travail reste connecté ; vous choisissez ce que vous intégrez.",
-    "landing.hero.impact.institution.audience": "Pour les enseignants et établissements",
-    "landing.hero.impact.institution.title": "Évaluez avec du contexte. Accompagnez à temps.",
-    "landing.hero.impact.institution.body": "Voyez comment chaque travail a été construit et comment l’IA a été utilisée. Appliquez vos consignes et commentez le document pour guider l’apprentissage tout au long du processus.",
+    "landing.hero.impact.student.audience": "En tant qu’étudiant",
+    "landing.hero.impact.student.body": "Passez moins de temps à changer d’outil. Rédigez, consultez vos sources et utilisez l’IA au même endroit : concentrez-vous sur votre argumentation, sans déplacer de fichiers ni répéter le contexte.",
+    "landing.hero.impact.institution.audience": "En tant qu’établissement",
+    "landing.hero.impact.institution.body": "L’usage de l’IA dans Thesisfic est enregistré automatiquement. Passez moins de temps à recueillir des déclarations et commentez directement le document, en suivant la progression du travail et les choix de l’étudiant.",
     "landing.demo.unavailable": "La réservation des démos n’est pas encore disponible. Veuillez réessayer plus tard.",
     "landing.demo.details": "30 minutes · Google Meet",
 
@@ -807,12 +801,10 @@ export const landing: Messages<typeof en> = {
   },
   de: {
     "landing.hero.impact.label": "Was sich mit Thesisfic für Sie ändert",
-    "landing.hero.impact.student.audience": "Für Studierende",
-    "landing.hero.impact.student.title": "Forschen, ohne den Faden zu verlieren.",
-    "landing.hero.impact.student.body": "Verbinden Sie Dokument, Quellen und KI, um Ideen zu prüfen, Daten zu analysieren und mit klaren Regeln voranzukommen. Ihre Arbeit bleibt im Zusammenhang; Sie entscheiden, was Sie übernehmen.",
-    "landing.hero.impact.institution.audience": "Für Lehrkräfte und Hochschulen",
-    "landing.hero.impact.institution.title": "Mit Kontext beurteilen. Frühzeitig begleiten.",
-    "landing.hero.impact.institution.body": "Sehen Sie, wie jede Arbeit entstanden ist und wie KI eingesetzt wurde. Setzen Sie Ihre Vorgaben um und geben Sie Feedback direkt im Dokument, um den Lernprozess zu begleiten.",
+    "landing.hero.impact.student.audience": "Als Studierende",
+    "landing.hero.impact.student.body": "Verbringen Sie weniger Zeit mit dem Wechsel zwischen Werkzeugen. Schreiben Sie, prüfen Sie Quellen und nutzen Sie KI an einem Ort: Konzentrieren Sie sich auf Ihre Argumentation, ohne Dateien zu verschieben oder Kontext zu wiederholen.",
+    "landing.hero.impact.institution.audience": "Als Hochschule",
+    "landing.hero.impact.institution.body": "Die KI-Nutzung innerhalb von Thesisfic wird automatisch erfasst. Sammeln Sie weniger Erklärungen manuell ein und geben Sie Feedback direkt im Dokument, mit Einblick in die Entwicklung der Arbeit und die Entscheidungen der Studierenden.",
     "landing.demo.unavailable": "Die Demo-Buchung ist noch nicht verfügbar. Bitte versuchen Sie es später erneut.",
     "landing.demo.details": "30 Minuten · Google Meet",
 
