@@ -1,10 +1,9 @@
 import Image from "next/image";
-import { Check, Plug } from "lucide-react";
+import { CalendarDays, Check, Plug, Video } from "lucide-react";
 import LandingNav, { Logo } from "@/components/landing/LandingNav";
 import QualitySeal from "@/components/QualitySeal";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
-import TrialForm from "@/components/landing/TrialForm";
 import Reveal from "@/components/landing/Reveal";
 import StatTiles from "@/components/landing/StatTiles";
 import FilmButton from "@/components/landing/FilmButton";
@@ -25,7 +24,7 @@ export default function LandingPage() {
     { href: "#how", label: t("landing.footer.model") },
     { href: "#how", label: t("landing.footer.data") },
     { href: "#how", label: t("landing.footer.privacy") },
-    { href: "#trial", label: t("landing.footer.contact") },
+    { href: "/demo", label: t("landing.footer.contact") },
   ];
 
   return (
@@ -140,7 +139,12 @@ export default function LandingPage() {
             <p className="text-[16px] leading-[1.6] text-brand-100 max-w-[520px] [text-wrap:pretty]">{t("landing.trial.body")}</p>
             <div className="mt-6 -ml-1.5"><FilmButton which="university" tone="dark" label={t("landing.film.watchUniversity")} title={t("landing.film.universityTitle")} /></div>
           </div>
-          <TrialForm />
+          <div className="rounded-2xl bg-white p-7 sm:p-8 text-gray-900">
+            <CalendarDays className="mb-4 h-8 w-8 text-brand-600" aria-hidden="true" />
+            <p className="text-xl font-semibold">{t("landing.hero.cta")}</p>
+            <p className="mt-3 flex items-center gap-2 text-sm text-gray-600"><Video className="h-4 w-4" aria-hidden="true" />{t("landing.demo.details")}</p>
+            <a href="/demo" className="btn-primary mt-6 w-full">{t("landing.hero.cta")}</a>
+          </div>
         </div></Reveal>
       </section>
 

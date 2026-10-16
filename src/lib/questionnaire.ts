@@ -2,7 +2,7 @@ import base from "@/data/questionnaire.json";
 
 /**
  * Validation questionnaire (Master SMI, Université Paris-Saclay): the public form at /questionnaire, the team's
- * additions (questions and alternative phrasings) and the aggregation used by /equipe/resultats.
+ * edits (questions, text, order and alternative phrasings) and the aggregation used by /equipe/resultats.
  *
  * The base content is `src/data/questionnaire.json`, kept verbatim (French, validated by the team). Team additions
  * are stored in the data layer and merged here, so the form, the results page and the CSV all see one definition.
@@ -32,6 +32,9 @@ export interface Item {
   addedBy?: string;
   /** Alternative ways of asking the question, added by the team for the interviewer. */
   phrasings?: Phrasing[];
+  translations?: Record<string, { title: string; help?: string; labels?: Record<string, string> }>;
+  removed?: boolean;
+  sourceLanguage?: string;
 }
 
 export interface Phrasing {
@@ -58,12 +61,14 @@ export interface Questionnaire {
 /** A team addition: a new question placed in a section, or an alternative phrasing attached to a question. */
 export interface QuestionnaireEdit {
   id: string;
-  kind: "item" | "phrasing";
+  kind: "item" | "phrasing" | "update" | "remove" | "order";
   sectionId: string;
   /** item: answer key of the question it goes after (omitted = end of section). phrasing: key of the question. */
   targetKey?: string;
   item?: Omit<Item, "id" | "addedBy" | "phrasings">;
   text?: string;
+  keys?: string[];
+  locale?: string;
   author?: string;
   createdAt: string;
 }
@@ -101,8 +106,8 @@ export function keyOf(section: Section, item: Item): string {
   return DUPLICATE_IDS.has(item.id) ? `${section.id}.${item.id}` : item.id;
 }
 
-/** Base definition plus the team's additions, in display order. */
-export function withEdits(edits: QuestionnaireEdit[]): Questionnaire {
+/** Apply team edits in sequence. Archived questions remain available to historical results. */
+export function withEdits(edits: QuestionnaireEdit[], includeRemoved = false): Questionnaire {
   const sections = BASE.sections.map((s) => ({ ...s, items: s.items.map((i) => ({ ...i })) }));
   const sorted = edits.slice().sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   for (const e of sorted) {
@@ -113,13 +118,28 @@ export function withEdits(edits: QuestionnaireEdit[]): Questionnaire {
       const at = e.targetKey ? section.items.findIndex((i) => keyOf(section, i) === e.targetKey) : -1;
       if (at >= 0) section.items.splice(at + 1, 0, item);
       else section.items.push(item);
+    } else if (e.kind === "order" && e.keys) {
+      const positions = new Map(e.keys.map((key, index) => [key, index]));
+      section.items.sort((a, b) => (positions.get(keyOf(section, a)) ?? e.keys!.length) - (positions.get(keyOf(section, b)) ?? e.keys!.length));
+    } else if (e.kind === "update" && e.item && e.targetKey) {
+      const target = section.items.find(i => keyOf(section, i) === e.targetKey);
+      if (target) {
+        if (e.locale && e.locale !== (target.sourceLanguage || "fr")) target.translations = { ...target.translations, [e.locale]: { title: e.item.title, help: e.item.help, labels: e.item.translations?.[e.locale]?.labels } };
+        else { target.title = e.item.title; target.help = e.item.help; }
+      }
+    } else if (e.kind === "remove" && e.targetKey) {
+      const target = section.items.find(i => keyOf(section, i) === e.targetKey);
+      if (target && canRemoveQuestion(target)) target.removed = true;
     } else if (e.kind === "phrasing" && e.text && e.targetKey) {
       const target = section.items.find((i) => keyOf(section, i) === e.targetKey);
       if (target) target.phrasings = [...(target.phrasings || []), { id: e.id, text: e.text, author: e.author }];
     }
   }
-  return { ...BASE, sections };
+  return { ...BASE, sections: sections.map(s => ({ ...s, items: includeRemoved ? s.items : s.items.filter(i => !i.removed) })) };
 }
+
+/** Consent, mode and profile keep the public form valid and its routing stable. */
+export function canRemoveQuestion(item: Item): boolean { return ![CONSENT_ITEM, MODE_ITEM, PROFIL_ITEM].includes(item.id); }
 
 export function modeOf(answers: Answers): Mode {
   return answers[MODE_ITEM] === ENTRETIEN_CHOICE ? "entretien" : "en_ligne";
@@ -302,6 +322,7 @@ export function sanitizeNewItem(raw: unknown): Omit<Item, "id" | "addedBy" | "ph
 // ---------- results ----------
 
 export interface ResponseRow {
+  language?: import("./questionnaire/languages").QuestionnaireLanguage;
   id: string;
   createdAt: string;
   mode: Mode;
@@ -324,6 +345,7 @@ export function toCsv(q: Questionnaire, rows: ResponseRow[]): string {
   const cols: { header: string; get: (r: ResponseRow) => string }[] = [
     { header: "id", get: (r) => r.id },
     { header: "created_at", get: (r) => r.createdAt },
+    { header: "language", get: (r) => r.language || "fr" },
     { header: "mode", get: (r) => r.mode },
     { header: "profil", get: (r) => r.profil },
     { header: "interviewer", get: (r) => r.interviewer || "" },

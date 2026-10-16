@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (!isTeamRequest(request)) return error("Team access required", 401);
   await db.ready();
   const rows = db.questionnaire.responses() as ResponseRow[];
-  const q = currentQuestionnaire();
+  const q = currentQuestionnaire(true);
   if (request.nextUrl.searchParams.get("format") === "csv") {
     const date = new Date().toISOString().slice(0, 10);
     return new NextResponse(toCsv(q, rows), {

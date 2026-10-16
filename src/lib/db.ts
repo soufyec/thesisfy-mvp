@@ -861,6 +861,7 @@ export interface QuestionnaireResponse {
   profil: "enseignant" | "etudiant";
   interviewer: string | null;
   answers: Record<string, string | string[] | number | Record<string, string>>;
+  language?: import("./questionnaire/languages").QuestionnaireLanguage;
   durationSeconds: number;
   path: string[];
 }
@@ -868,11 +869,13 @@ export interface QuestionnaireResponse {
 /** A question or an alternative phrasing the team added to the questionnaire from the form itself. */
 export interface QuestionnaireEditRow {
   id: string;
-  kind: "item" | "phrasing";
+  kind: "item" | "phrasing" | "update" | "remove" | "order";
   sectionId: string;
   targetKey?: string;
   item?: Record<string, unknown>;
   text?: string;
+  keys?: string[];
+  locale?: string;
   author?: string;
   createdAt: string;
 }

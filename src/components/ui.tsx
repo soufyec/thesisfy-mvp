@@ -16,7 +16,7 @@ const focusables = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLE
  * otherwise the first control, the close button), Tab stays inside the topmost dialog, Escape closes, and on close focus
  * returns to the control that opened it, unless something else (the editor, another dialog) has taken it meanwhile.
  */
-export function Modal({ open, onClose, title, children, size = "md", footer }: { open: boolean; onClose: () => void; title?: string; children: React.ReactNode; size?: "sm" | "md" | "lg" | "xl"; footer?: React.ReactNode }) {
+export function Modal({ open, onClose, title, children, size = "md", footer, closeLabel }: { open: boolean; onClose: () => void; title?: string; children: React.ReactNode; size?: "sm" | "md" | "lg" | "xl"; footer?: React.ReactNode; closeLabel?: string }) {
   const t = useT();
   const titleId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -65,7 +65,7 @@ export function Modal({ open, onClose, title, children, size = "md", footer }: {
         {title && (
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h2 id={titleId} className="font-semibold text-base">{title}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label={t("common.close")}>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label={closeLabel || t("common.close")}>
               <X className="w-5 h-5" />
             </button>
           </div>

@@ -2,10 +2,19 @@ import type { Messages } from "../index";
 
 /**
  * Validation questionnaire (/questionnaire) and the team pages (/equipe, /equipe/resultats). The questions
- * themselves live in src/data/questionnaire.json (French only); these are the chrome strings. The pages force
- * French, the other locales exist so the keys stay typed and the pages could be opened in them later.
+ * use stable French answer keys; their display translations live in src/data/questionnaire-*.json.
+ * Portuguese and Arabic questionnaire UI is scoped in lib/questionnaire/ui-extra.ts.
  */
 const en = {
+  "q.team.deleteConfirm": "Remove this question from future questionnaires? Saved answers are kept.",
+  "q.team.protected": "Consent, mode and profile are needed for the questionnaire to work.",
+  "q.team.undoRemove": "Undo removal",
+  "q.team.moveDown": "Move down",
+  "q.team.moveUp": "Move up",
+  "q.team.drag": "Drag to reorder",
+  "q.team.start": "Start",
+  "q.team.stage": "Stage",
+  "q.team.editQuestion": "Edit question",
   "q.progress": "Step {n} of {total}",
   "q.back": "Back",
   "q.next": "Next",
@@ -33,7 +42,7 @@ const en = {
   "q.phrasings.title": "Other ways to ask",
   "q.duration": "About {min} minutes",
   "q.team.edit": "Edit the questionnaire",
-  "q.team.editHelp": "Additions appear at once for everyone who opens the link. Base questions cannot be changed here.",
+  "q.team.editHelp": "Edit texts, remove or reorder questions. You can visit any stage without answering; no response is submitted in edit mode.",
   "q.team.addQuestion": "Add a question",
   "q.team.addQuestionHere": "Add a question after this one",
   "q.team.addPhrasing": "Add a phrasing",
@@ -119,6 +128,15 @@ const en = {
 export const questionnaire: Messages<typeof en> = {
   en,
   es: {
+    "q.team.deleteConfirm": "¿Eliminar esta pregunta de los futuros cuestionarios? Las respuestas guardadas se conservan.",
+    "q.team.protected": "El consentimiento, el modo y el perfil son necesarios para el cuestionario.",
+    "q.team.undoRemove": "Deshacer eliminación",
+    "q.team.moveDown": "Bajar",
+    "q.team.moveUp": "Subir",
+    "q.team.drag": "Arrastrar para ordenar",
+    "q.team.start": "Inicio",
+    "q.team.stage": "Etapa",
+    "q.team.editQuestion": "Editar pregunta",
     "q.progress": "Paso {n} de {total}",
     "q.back": "Atrás",
     "q.next": "Siguiente",
@@ -146,7 +164,7 @@ export const questionnaire: Messages<typeof en> = {
     "q.phrasings.title": "Otras formas de preguntar",
     "q.duration": "Unos {min} minutos",
     "q.team.edit": "Editar el cuestionario",
-    "q.team.editHelp": "Lo que añadas aparece al momento para quien abra el enlace. Las preguntas de base no se cambian aquí.",
+    "q.team.editHelp": "Edita textos, elimina u ordena preguntas. Puedes visitar cualquier etapa sin responder; el modo de edición no envía respuestas.",
     "q.team.addQuestion": "Añadir una pregunta",
     "q.team.addQuestionHere": "Añadir una pregunta después de esta",
     "q.team.addPhrasing": "Añadir una formulación",
@@ -229,6 +247,15 @@ export const questionnaire: Messages<typeof en> = {
     "q.ind.etudiants": "Estudiantes",
   },
   fr: {
+    "q.team.deleteConfirm": "Supprimer cette question des prochains questionnaires ? Les réponses enregistrées sont conservées.",
+    "q.team.protected": "Le consentement, le mode et le profil sont nécessaires au questionnaire.",
+    "q.team.undoRemove": "Annuler la suppression",
+    "q.team.moveDown": "Descendre",
+    "q.team.moveUp": "Monter",
+    "q.team.drag": "Glisser pour réordonner",
+    "q.team.start": "Début",
+    "q.team.stage": "Étape",
+    "q.team.editQuestion": "Modifier la question",
     "q.progress": "Étape {n} sur {total}",
     "q.back": "Retour",
     "q.next": "Suivant",
@@ -256,7 +283,7 @@ export const questionnaire: Messages<typeof en> = {
     "q.phrasings.title": "Autres façons de poser la question",
     "q.duration": "Environ {min} minutes",
     "q.team.edit": "Modifier le questionnaire",
-    "q.team.editHelp": "Vos ajouts apparaissent immédiatement pour toute personne qui ouvre le lien. Les questions de base ne se modifient pas ici.",
+    "q.team.editHelp": "Modifiez les textes, supprimez ou réordonnez les questions. Accédez librement aux étapes sans répondre ; aucune réponse n’est envoyée en mode édition.",
     "q.team.addQuestion": "Ajouter une question",
     "q.team.addQuestionHere": "Ajouter une question après celle-ci",
     "q.team.addPhrasing": "Ajouter une formulation",
@@ -339,6 +366,15 @@ export const questionnaire: Messages<typeof en> = {
     "q.ind.etudiants": "Étudiants",
   },
   de: {
+    "q.team.deleteConfirm": "Diese Frage aus künftigen Fragebögen entfernen? Gespeicherte Antworten bleiben erhalten.",
+    "q.team.protected": "Einwilligung, Modus und Profil werden für den Fragebogen benötigt.",
+    "q.team.undoRemove": "Entfernen rückgängig machen",
+    "q.team.moveDown": "Nach unten",
+    "q.team.moveUp": "Nach oben",
+    "q.team.drag": "Zum Sortieren ziehen",
+    "q.team.start": "Start",
+    "q.team.stage": "Schritt",
+    "q.team.editQuestion": "Frage bearbeiten",
     "q.progress": "Schritt {n} von {total}",
     "q.back": "Zurück",
     "q.next": "Weiter",
@@ -366,7 +402,7 @@ export const questionnaire: Messages<typeof en> = {
     "q.phrasings.title": "Andere Formulierungen der Frage",
     "q.duration": "Etwa {min} Minuten",
     "q.team.edit": "Fragebogen bearbeiten",
-    "q.team.editHelp": "Ergänzungen erscheinen sofort für alle, die den Link öffnen. Die Basisfragen lassen sich hier nicht ändern.",
+    "q.team.editHelp": "Texte bearbeiten, Fragen entfernen oder sortieren. Im Bearbeitungsmodus können Sie alle Schritte ohne Antworten aufrufen; es werden keine Antworten gesendet.",
     "q.team.addQuestion": "Frage hinzufügen",
     "q.team.addQuestionHere": "Frage nach dieser hinzufügen",
     "q.team.addPhrasing": "Formulierung hinzufügen",

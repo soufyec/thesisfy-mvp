@@ -173,3 +173,21 @@ Archivos: `AssistantPanel`, `DocsEditor`, ruta de chat, `ai/{prompts,document-co
 
 - [x] `dashboard/connections`: ocultar el acceso OAuth «próximamente» cuando el proveedor no ofrece OAuth. Mantener conexiones disponibles y acceso mediante clave.
 - [x] Compilación con comprobación de tipos y Chrome en francés: sin enlaces «bientôt», conexión por clave conservada. Captura posterior inspeccionada.
+
+
+### Edición del cuestionario e idiomas — 16 octubre 2026
+
+Archivos: componentes de cuestionario, definición/ediciones y datos, rutas del equipo, diccionarios, catálogos de traducción y pruebas.
+
+- [x] Editar texto y ayuda de preguntas existentes; eliminar con opción de deshacer y conservar respuestas anteriores.
+- [x] Ordenar dentro de una etapa mediante arrastre o botones de teclado/móvil.
+- [x] Navegación libre entre etapas en edición; respuestas de prueba separadas y envío desactivado.
+- [x] Seis idiomas confirmados: FR/EN/ES/DE/PT/AR, preguntas y opciones, editor y resultados. Claves de respuestas estables y árabe RTL.
+- [x] Verificar permisos, conservación de resultados, validación pública, traducciones y recorrido de navegador.
+
+### Reserva de demos — 16 octubre 2026
+
+- [x] Sustituir lista de espera por «Reservar una demo», enlace de Cal.com a evento de 30 minutos con Google Meet.
+- [x] Evento configurado en el plan gratuito, Google Calendar conectado y página pública verificada: `https://cal.com/soufyan-ess-dnaecp/demo-thesisfic`. Horario inicial L–V 9–17, Europe/Paris, con conflictos del calendario excluidos.
+
+- [x] Build final y Chrome: CTA en cuatro idiomas, sin lista de espera, redirección real a Cal.com, escritorio y móvil. Clic desde la web verificado también en el navegador integrado.

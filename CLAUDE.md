@@ -116,3 +116,12 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 ## 9. Cómo trabajar con PLAN.md
 
 `PLAN.md` define las fases y su orden. Cada sesión empieza leyendo esta guía y la fase activa, enumera los archivos que va a tocar, implementa solo esa fase, y al terminar marca las tareas y resume en 5 líneas qué cambió y qué queda.
+
+
+## Cuestionario y reservas (16 octubre 2026)
+
+El cuestionario tiene su propio selector FR/EN/ES/DE/PT/AR, independiente de los cuatro idiomas del resto del producto. Las traducciones de preguntas, opciones y etapas están en `src/data/questionnaire-*.json`; los valores de respuesta y las reglas de navegación mantienen sus claves originales. El árabe usa RTL. El equipo puede adaptar textos por idioma; los textos personalizados sin traducción muestran una indicación pendiente.
+
+Las ediciones del cuestionario requieren sesión de equipo. En edición se puede saltar de etapa sin responder; las respuestas de prueba están separadas y no se pueden enviar. El borrado archiva la pregunta para conservar resultados históricos. Consentimiento, modo y perfil se conservan porque sostienen el consentimiento y la navegación pública. El orden se cambia dentro de cada etapa mediante arrastre o flechas.
+
+La landing ofrece una demo de 30 minutos por Google Meet en lugar de lista de espera. Los CTA apuntan a `/demo`, que redirige al evento Cal.com definido en `DEMO_BOOKING_URL`. La URL es configuración pública, no una credencial. Si falta, se muestra una indisponibilidad honesta, sin inventar una agenda. El usuario eligió el plan gratuito de Cal.com y su cuenta de Google existente; no se contrató dominio ni correo.

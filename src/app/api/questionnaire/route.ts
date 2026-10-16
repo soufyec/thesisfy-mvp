@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { error, json } from "@/lib/api";
 import { isTeamRequest } from "@/lib/team";
 import { validateSubmission } from "@/lib/questionnaire";
+import { isQuestionnaireLanguage } from "@/lib/questionnaire/languages";
 import { currentQuestionnaire } from "@/lib/questionnaireData";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,6 @@ export async function POST(request: NextRequest) {
   const q = currentQuestionnaire();
   const v = validateSubmission(q, { answers: body.answers, path: body.path, durationSeconds: Number(body.durationSeconds) || 0 });
   if (!v.ok) return error(v.error, 422);
-  const saved = db.questionnaire.addResponse(v.value);
+  const saved = db.questionnaire.addResponse({ ...v.value, language: isQuestionnaireLanguage(body.language) ? body.language : "fr" });
   return json({ ok: true, id: saved.id }, 201);
 }

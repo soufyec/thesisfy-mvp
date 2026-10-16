@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui";
-import { useT } from "@/lib/i18n/client";
-import { ItemType } from "@/lib/questionnaire";
+import { useQuestionnaireT as useT, useQuestionnaireLanguage } from "./Language";
+import { Item, ItemType } from "@/lib/questionnaire";
 
 const TEAM_NAME_KEY = "team_name";
 
@@ -25,7 +25,7 @@ export function useTeamName(): [string, (v: string) => void] {
   ];
 }
 
-export type AddRequest = { kind: "item"; sectionId: string; targetKey?: string } | { kind: "phrasing"; sectionId: string; targetKey: string; questionTitle: string };
+export type AddRequest = { kind: "update"; sectionId: string; targetKey: string; item: Item; locale?: string } | { kind: "item"; sectionId: string; targetKey?: string } | { kind: "phrasing"; sectionId: string; targetKey: string; questionTitle: string };
 
 interface Props {
   request: AddRequest | null;
@@ -38,6 +38,7 @@ const TYPES: ItemType[] = ["mc", "cb", "scale", "text", "para"];
 /** Dialog the team uses to add a question to a section or an alternative phrasing to a question. */
 export default function TeamEditor({ request, onClose, onSaved }: Props) {
   const t = useT();
+  const lang = useQuestionnaireLanguage();
   const [author, setAuthor] = useTeamName();
   const [type, setType] = useState<ItemType>("mc");
   const [title, setTitle] = useState("");
@@ -51,6 +52,7 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
   const [high, setHigh] = useState("");
   const [req, setReq] = useState(false);
   const [interviewerOnly, setInterviewerOnly] = useState(false);
+  const [labels, setLabels] = useState<Record<string, string>>({});
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -58,8 +60,8 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
   useEffect(() => {
     if (!request) return;
     setType("mc");
-    setTitle("");
-    setHelp("");
+    setTitle(request.kind === "update" ? request.item.title : "");
+    setHelp(request.kind === "update" ? request.item.help || "" : "");
     setChoices("");
     setOther(false);
     setMax("");
@@ -71,6 +73,7 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
     setInterviewerOnly(false);
     setText("");
     setError("");
+    setLabels(request.kind === "update" ? Object.fromEntries([...(request.item.choices || []), ...(request.item.rows || []), ...(request.item.cols || []), request.item.low || "", request.item.high || ""].filter(Boolean).map(value => [value, lang.label(request.item, value)])) : {});
   }, [request]);
 
   if (!request) return null;
@@ -79,7 +82,9 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
     setSaving(true);
     setError("");
     const body: Record<string, unknown> = { kind: request.kind, sectionId: request.sectionId, targetKey: request.targetKey, author: author.trim() || undefined };
-    if (request.kind === "item") {
+    if (request.kind === "update") {
+      body.item = { title, help, labels }; body.locale = request.locale || "fr";
+    } else if (request.kind === "item") {
       body.item = {
         type,
         title,
@@ -97,7 +102,7 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
       body.text = text;
     }
     try {
-      const res = await fetch("/api/questionnaire/edits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch("/api/questionnaire/edits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, locale: lang.language }) });
       if (!res.ok) throw new Error(String(res.status));
       onSaved();
       onClose();
@@ -108,21 +113,22 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
     }
   };
 
-  const canSave = request.kind === "phrasing" ? text.trim().length >= 3 : title.trim().length >= 3 && (!(type === "mc" || type === "cb") || choices.split("\n").filter((c) => c.trim()).length >= 2);
+  const canSave = request.kind === "phrasing" ? text.trim().length >= 3 : title.trim().length >= 3 && (request.kind === "update" || (!(type === "mc" || type === "cb") || choices.split("\n").filter((c) => c.trim()).length >= 2));
   const label = "block text-[13px] font-medium text-gray-700 mb-1";
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={request.kind === "item" ? t("q.team.addQuestion") : t("q.team.addPhrasing")}
+      closeLabel={t("common.close")}
+      title={request.kind === "update" ? t("q.team.editQuestion") : request.kind === "item" ? t("q.team.addQuestion") : t("q.team.addPhrasing")}
       footer={
         <>
           <button type="button" className="btn-outline !py-2 !px-4" onClick={onClose}>
             {t("common.cancel")}
           </button>
           <button type="button" className="btn-primary !py-2 !px-4" disabled={!canSave || saving} onClick={submit}>
-            {saving ? t("common.saving") : t("q.team.save")}
+            {saving ? t("common.saving") : request.kind === "update" ? t("common.save") : t("q.team.save")}
           </button>
         </>
       }
@@ -147,7 +153,7 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
           </div>
         ) : (
           <>
-            <div>
+            {request.kind !== "update" && <div>
               <label className={label} htmlFor="team-type">
                 {t("q.team.type")}
               </label>
@@ -158,7 +164,7 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
                   </option>
                 ))}
               </select>
-            </div>
+            </div>}
             <div>
               <label className={label} htmlFor="team-title">
                 {t("q.team.title")}
@@ -171,7 +177,8 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
               </label>
               <input id="team-help" className="input-field !py-2" value={help} onChange={(e) => setHelp(e.target.value)} maxLength={600} />
             </div>
-            {(type === "mc" || type === "cb") && (
+            {request.kind === "update" && lang.language !== (request.item.sourceLanguage || "fr") && Object.keys(labels).length > 0 && <fieldset className="space-y-2"><legend className={label}>{t("q.team.labels")}</legend>{Object.entries(labels).map(([key, value], index) => <label key={key} className="block text-xs text-gray-500">{key}<input aria-label={`${t("q.team.labels")} ${index + 1}`} className="input-field mt-1 !py-2" maxLength={300} value={value} onChange={event => setLabels(current => ({ ...current, [key]: event.target.value }))} /></label>)}</fieldset>}
+            {request.kind !== "update" && (type === "mc" || type === "cb") && (
               <>
                 <div>
                   <label className={label} htmlFor="team-choices">
@@ -193,7 +200,7 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
                 )}
               </>
             )}
-            {type === "scale" && (
+            {request.kind !== "update" && type === "scale" && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={label} htmlFor="team-min">
@@ -221,7 +228,7 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
                 </div>
               </div>
             )}
-            <div className="flex flex-col gap-2">
+            {request.kind !== "update" && <div className="flex flex-col gap-2">
               <label className="flex items-center gap-2 text-[13px] text-gray-700">
                 <input type="checkbox" className="h-4 w-4 rounded accent-brand-600" checked={req} onChange={(e) => setReq(e.target.checked)} />
                 {t("q.team.req")}
@@ -230,7 +237,7 @@ export default function TeamEditor({ request, onClose, onSaved }: Props) {
                 <input type="checkbox" className="h-4 w-4 rounded accent-brand-600" checked={interviewerOnly} onChange={(e) => setInterviewerOnly(e.target.checked)} />
                 {t("q.team.interviewerOnly")}
               </label>
-            </div>
+            </div>}
           </>
         )}
         {error && <p className="text-[13px] text-red-600">{error}</p>}
