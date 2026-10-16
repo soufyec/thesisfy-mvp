@@ -1,3 +1,4 @@
+import { requestedYearFilters } from "@/lib/data/filters";
 import { fullRange } from "@/lib/data/workspace";
 /**
  * The artifact pipeline of the Research copilot (docs/papers.md §3.5, D11, D12): blocks the model wrote (or specs
@@ -66,6 +67,9 @@ export interface ArtifactRunOptions {
   /** Set by the route once the interaction exists; "" until then. */
   interactionId?: string;
   now?: string;
+  /** Current user request only; explicit unambiguous year bounds also apply if the model omits them. */
+  requestText?: string;
+  maxArtifacts?: number;
   /**
    * Diagram and equation blocks are accepted (Research copilot only, docs/papers.md §9.3). Without it they are
    * refused with `unsupported_op`.
@@ -228,7 +232,7 @@ export function computeArtifacts(specs: unknown[], sheets: SheetAttachment[], op
   const artifacts: Artifact[] = [];
   const errors: ArtifactError[] = [];
   specs.forEach((raw, index) => {
-    if (artifacts.length >= MAX_ARTIFACTS) {
+    if (artifacts.length >= Math.min(MAX_ARTIFACTS, opts.maxArtifacts ?? MAX_ARTIFACTS)) {
       errors.push({ code: "invalid_spec" });
       return;
     }
@@ -248,7 +252,14 @@ export function computeArtifacts(specs: unknown[], sheets: SheetAttachment[], op
       errors.push({ code: "no_sheet" });
       return;
     }
-    const { sheet, result } = pick;
+    const { sheet } = pick;
+    let result = pick.result;
+    if (result.ok && opts.requestText) {
+      const sh = sheet.dataset.sheets.find(s => s.name === (result.ok ? result.spec.sheet : "")) || sheet.dataset.sheets[0];
+      const requested = requestedYearFilters(opts.requestText, sh);
+      // Keep the user's explicit interval even if a model forgets it; other model conditions remain conjunctive.
+      if (requested.length) result = validateSpec({ ...result.spec, filters: [...(result.spec.filters || []), ...requested] }, sheet.dataset);
+    }
     if (!result.ok) {
       const e: ArtifactError = { code: result.code, available: result.available, file: sheet.fileName };
       if (result.column !== undefined) e.column = result.column;

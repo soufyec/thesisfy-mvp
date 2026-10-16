@@ -210,3 +210,16 @@ Archivos: `Hero.tsx`, diccionario de landing, documentación QA.
 - [x] Adaptar EN/ES/FR/DE sin inventar ahorros económicos o de tiempo cuantificados ni garantizar autoría o esfuerzo.
 - [x] Compilación, tipos y HTML de los cuatro idiomas: encabezados traducidos, tarjetas y títulos secundarios ausentes, CTA conservados.
 - [ ] Revisión visual automática pendiente: el inventario del navegador integrado sigue vacío. Vista previa local ofrecida para revisión humana.
+
+### Filtros de datos y panel del producto — 16 octubre 2026
+
+Archivos: motor/especificación de análisis, instrucciones del asistente, rutas de chat/artefactos/proveedores, acceso y panel del equipo, diccionarios y pruebas.
+
+- [x] Filtrar filas por años, fechas, categorías y valores antes de calcular; conservar condiciones, coordenadas y fuente original; rechazar filtros inválidos o sin coincidencias.
+- [x] Petición «desde 2012 hasta 2014»: aplicar intervalo inclusivo también cuando el modelo omite el filtro y la columna temporal es inequívoca; planificador demo en EN/ES/FR/DE.
+- [x] Panel global del equipo en `/equipe/produit`, accesible desde resultados, con activación, modos, instrucciones, descripciones por idioma, búsqueda, archivos y límites de contexto/respuesta/artefactos.
+- [x] Protección por sesión de equipo, tipos/límites de servidor y revisión de configuración; instrucciones privadas ausentes de la respuesta para estudiantes.
+- [x] Explicación breve del modo activo, sin panel adicional; valores predeterminados revisados en EN/ES/FR/DE.
+- [x] Pruebas puras y recorrido HTTP con CSV de 132 filas, proveedor local conocido, JSON/SSE, instrucciones/tokens efectivos y bloqueo real de modos.
+- [x] Compilación final, TypeScript, regresiones y recorrido HTTP sobre la compilación de producción; cambio preparado para el PR existente.
+- [ ] Capturas posteriores y revisión visual completa pendientes: el panel se comprobó en navegador y guardó una descripción en ES; sus cuatro idiomas se revisaron en el árbol de accesibilidad. El navegador se desconectó durante la revisión de escritorio. No se afirma que se haya revisado visualmente el chat ni la gráfica.

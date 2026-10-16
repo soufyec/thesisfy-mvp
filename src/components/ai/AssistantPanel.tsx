@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import Markdown, { markdownToHtml } from "../Markdown";
 import { api, ApiError, countWordsInText, streamChat } from "@/lib/client";
-import { useFormat, useT } from "@/lib/i18n/client";
+import { useFormat, useT, useLocale } from "@/lib/i18n/client";
 import type { Artifact, Dataset, DatasetCell, DatasetColumn } from "@/lib/db";
 import type { LibraryResponse, LibrarySourceView } from "@/components/editor/types";
 import { artifactBlockState, extractArtifactBlocks, stripPartialArtifactBlocks } from "@/lib/data/blocks";
@@ -58,6 +58,7 @@ interface ModeInfo {
   id: AIMode;
   label: string;
   description: string;
+  descriptions?: Partial<Record<import("@/lib/i18n").Locale, string>>;
   /** lucide-react icon name (see `MODES` in `src/lib/ai/prompts.ts`). */
   icon: string;
   insertable: boolean;
@@ -326,7 +327,10 @@ async function loadChipDataset(thesisId: string, source: AttachedSource): Promis
 
 export default function AssistantPanel({ thesisId, sessionId, selection, getDocumentContext, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode, initialConversationId, onConversationChange, className = "", onConversationsChanged, insertContext, onClearSelection, onAddComment, onKeepAsNotes, onInsertArtifact, attachments: attachmentsAllowed = true }: AssistantPanelProps) {
   const t = useT();
+  const { locale } = useLocale();
   const fmt = useFormat();
+  const [assistantEnabled, setAssistantEnabled] = useState(true);
+  const [researchEnabled, setResearchEnabled] = useState(true);
   const [modes, setModes] = useState<ModeInfo[]>([]);
   /** The mode grid folds into a chip once a conversation is under way, so the messages get the space (phones above all). */
   const [modesOpen, setModesOpen] = useState<boolean | null>(null);
@@ -401,20 +405,22 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
   const restoreRef = useRef<((msgs: ChatMsg[]) => void) | null>(null);
 
   useEffect(() => {
-    api<{ providers: ProviderInfo[]; modes: ModeInfo[]; defaultProvider: string | null; institutionModels?: InstitutionModelInfo[]; allowance?: AllowanceInfo | null; policy?: { researchCopilot?: boolean } }>("/api/ai/providers")
+    api<{ assistant?: { enabled: boolean; defaultMode: AIMode; searchEnabled: boolean }; providers: ProviderInfo[]; modes: ModeInfo[]; defaultProvider: string | null; institutionModels?: InstitutionModelInfo[]; allowance?: AllowanceInfo | null; policy?: { researchCopilot?: boolean } }>("/api/ai/providers")
       .then((d) => {
         setProviders(d.providers);
         // The copilot leads when the institution offers it.
         const ordered = [...d.modes.filter((m) => m.id === "copilot"), ...d.modes.filter((m) => m.id !== "copilot")];
         setModes(ordered);
-        if (!initialMode && !initialConversationId) setMode(d.policy?.researchCopilot ? "copilot" : ordered[0]?.id || "critique");
+        setAssistantEnabled(d.assistant?.enabled !== false);
+        setResearchEnabled(d.assistant?.searchEnabled !== false);
+        if (!initialMode && !initialConversationId) setMode(ordered.find(m => m.id === d.assistant?.defaultMode)?.id || ordered[0]?.id || "critique");
         setInstitutionModels(d.institutionModels || []);
         const ready = (d.institutionModels || []).filter((m) => m.ready);
         const preset = ready.find((m) => m.isDefault) || ready[0];
         if (preset && d.allowance?.institutionPays) setProviderChoice((c) => (c === "auto" ? preset.id : c));
         setAllowance(d.allowance || null);
       })
-      .catch(() => {});
+      .catch(() => { setAssistantEnabled(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -454,6 +460,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
     setUseSelection(true);
   }, [selection]);
 
+  const modeAvailable = assistantEnabled && modes.some(m => m.id === mode);
+  const modeDescription = (id: AIMode) => modes.find(m => m.id === id)?.descriptions?.[locale]?.trim() || t(`assistant.mode.${id}.description`);
   const gridModes = modes.filter(m => ["copilot", "critique", "grammar", "citations", "gaps", "paraphrase_check"].includes(m.id));
   const wordsLabel = (n: number) => (n === 1 ? t("common.word_one") : t("common.words", { n }));
   /** Relative time in the active language; falls back to a formatted date after 30 days. */
@@ -643,7 +651,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
 
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
-    if (!content || loading) return;
+    if (!content || loading || !modeAvailable) return;
     setInput("");
     setPending(null);
     setArtifactPending(null);
@@ -1124,7 +1132,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
               <button
                 key={m.id}
                 onClick={() => { chooseMode(m.id); if (messages.length) setModesOpen(false); }}
-                title={t(`assistant.mode.${m.id}.description`)}
+                title={modeDescription(m.id)}
                 aria-pressed={active}
                 className={`flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-md border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-gray-100 border-gray-300 text-gray-900" : "bg-white border-transparent text-gray-500 hover:bg-gray-50"}`}
               >
@@ -1137,6 +1145,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
       </div>
         );
       })()}
+      <p className="px-4 pt-1 pb-1.5 mb-0 text-[11px] leading-snug text-gray-500 flex-shrink-0" aria-live="polite">{modeAvailable ? modeDescription(mode) : t("product.assistantUnavailable")}</p>
 
       {/* Working on */}
       {workingOn && (
@@ -1204,7 +1213,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
             <button type="button" onClick={() => setUseSources((v) => !v)} aria-pressed={useSources} className={`inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-lg border ${useSources ? "bg-accent-50 border-accent-200 text-accent-800" : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"}`} title={t("assistant.sources.title")}>
               <BookOpen className="w-3.5 h-3.5" />{useSources ? t("assistant.sources.on") : t("assistant.sources.button")}
             </button>
-            {mode === "copilot" && <button type="button" className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border ${searchResearch ? "border-brand-300 text-brand-700 bg-brand-50" : "border-gray-200 text-gray-500"}`} aria-pressed={searchResearch} onClick={() => setSearchResearch(v => !v)} title={t("copilot.searchTitle")}><Search className="w-3.5 h-3.5" />{t("copilot.search")}</button>}
+            {mode === "copilot" && researchEnabled && <button type="button" className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border ${searchResearch ? "border-brand-300 text-brand-700 bg-brand-50" : "border-gray-200 text-gray-500"}`} aria-pressed={searchResearch} onClick={() => setSearchResearch(v => !v)} title={t("copilot.searchTitle")}><Search className="w-3.5 h-3.5" />{t("copilot.search")}</button>}
           </div>
         )}
         <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-[9px] border border-gray-200 focus-within:border-brand-400">
@@ -1248,7 +1257,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
               <Square className="w-3.5 h-3.5" />
             </button>
           ) : (
-            <button onClick={() => send()} disabled={!input.trim()} className="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-30" aria-label={t("assistant.composer.send")}>
+            <button onClick={() => send()} disabled={!input.trim() || !modeAvailable} className="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-30" aria-label={t("assistant.composer.send")}>
               <ArrowUp className="w-3.5 h-3.5" />
             </button>
           )}

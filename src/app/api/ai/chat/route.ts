@@ -1,3 +1,4 @@
+import { modeEnabled } from "@/lib/product-settings";
 import { NextRequest, NextResponse } from "next/server";
 import { AIMode, db, Provider, uid } from "@/lib/db";
 import type { Artifact } from "@/lib/db";
@@ -62,7 +63,9 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as Body | null;
   if (!body || !Array.isArray(body.messages) || !body.messages.length) return error("messages are required");
 
-  const mode: AIMode = MODES.some((m) => m.id === body.mode) ? (body.mode as AIMode) : "copilot";
+  const product = db.productSettings.get();
+  const mode: AIMode = MODES.some((m) => m.id === body.mode) ? (body.mode as AIMode) : product.defaultMode;
+  if (!modeEnabled(product, mode)) return NextResponse.json({ error: translator(user.preferences.language)("product.assistantUnavailable"), code: "assistant_disabled" }, { status: 403 });
   const policy = db.policies.get(user.university);
   const consent = db.consents.latest(user.id);
   if (user.role === "student" && policy.requireConsent && !consent?.scopes.aiInteractions) {
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
 
   const messages: ChatMessage[] = body.messages
     .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-30)
+    .slice(-product.historyMessages)
     .map((m) => ({ role: m.role, content: m.content.slice(0, 20000) }));
   // What the student typed: the language, the conversation title and the saved message come from it, not from the
   // selected passage that is prepended as context for the model.
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest) {
   const writingLang: WritingLanguage = thesis?.writingLanguage ?? (isWritingLanguage(user.preferences.language) ? user.preferences.language : "en");
   // Diagram and equation blocks (§9.3) only in the Research copilot; PRISMA numbers are checked against
   // `studentTexts`, filled in once the conversation is known.
-  const runOpts = { lang: writingLang, tr: translator(writingLang), newId: () => uid("art"), allowDiagrams: mode === "copilot", studentTexts: [] as string[], priorArtifacts: [] as Artifact[] };
+  const runOpts = { maxArtifacts: product.maxArtifacts, requestText: lastUser, lang: writingLang, tr: translator(writingLang), newId: () => uid("art"), allowDiagrams: mode === "copilot", studentTexts: [] as string[], priorArtifacts: [] as Artifact[] };
 
   // Attachments: Research copilot with a paper in context only.
   // Only the paper's student attaches its files: staff chats about a paper never send the student's data.
@@ -154,7 +157,7 @@ export async function POST(request: NextRequest) {
   const finish = (text: string, usage: Usage, blocked: boolean, artifacts: Artifact[] = []) => {
     const generated = extractResearchFiles(text, () => uid("file"));
     responseText = generated.text;
-    responseFiles = mode === "copilot" && !blocked ? generated.files : [];
+    responseFiles = mode === "copilot" && product.filesEnabled && !blocked ? generated.files : [];
     invalidFiles = generated.invalid;
     text = responseText;
     // Per computed table (never per row): the whole inserted table and its grid alone (a copy of just the table),
@@ -222,7 +225,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (mode === "copilot") {
+  if (mode === "copilot" && product.searchEnabled) {
     if (body.searchResearch || wantsResearchSearch(lastUser)) research = await searchResearch(lastUser, thesis?.title);
     else research = [...conversation.messages].reverse().find(m => m.role === "assistant" && m.research)?.research;
   }
@@ -235,6 +238,7 @@ export async function POST(request: NextRequest) {
   const answerMeta = { ...meta, ...(primary ? { groundedFiles: passagesPerFile(primary) } : {}), ...(research ? { research } : {}) };
   const assignment = thesis?.assignmentId ? db.assignments.findById(thesis.assignmentId) : undefined;
   const system = buildSystemPrompt({
+    product,
     mode,
     policy,
     thesis,
@@ -287,7 +291,7 @@ export async function POST(request: NextRequest) {
     let text = "";
     let usage = NO_USAGE;
     let err: string | undefined;
-    for await (const chunk of streamCompletion(cfg, system, messages, mode === "copilot" ? 8192 : 4096)) {
+    for await (const chunk of streamCompletion(cfg, system, messages, Math.min(product.maxOutputTokens, mode === "copilot" ? 8192 : 4096))) {
       if (chunk.type === "delta") text += chunk.text;
       else if (chunk.type === "usage") usage = { inputTokens: chunk.inputTokens, outputTokens: chunk.outputTokens };
       else if (chunk.type === "error") err = chunk.message;
@@ -302,7 +306,7 @@ export async function POST(request: NextRequest) {
     send("meta", answerMeta);
     let text = "";
     let usage = NO_USAGE;
-    for await (const chunk of streamCompletion(cfg, system, messages, mode === "copilot" ? 8192 : 4096)) {
+    for await (const chunk of streamCompletion(cfg, system, messages, Math.min(product.maxOutputTokens, mode === "copilot" ? 8192 : 4096))) {
       if (chunk.type === "delta") {
         text += chunk.text;
         send("delta", { text: chunk.text });

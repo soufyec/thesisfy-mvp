@@ -1,3 +1,4 @@
+import { modeEnabled } from "@/lib/product-settings";
 import { NextRequest } from "next/server";
 import { db, uid, type Dataset } from "@/lib/db";
 import { json, requireUser } from "@/lib/api";
@@ -23,6 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (!paper || paper.studentId !== auth.user.id) return fail("library.error.thesisNotFound", 404);
   if (isLockedStatus(paper.status)) return fail("api.paper.locked", 409);
   const body = await request.json().catch(() => null);
+  if (body?.preview !== true && body?.selectionOnly !== true && !modeEnabled(db.productSettings.get(), "copilot")) return fail("product.assistantUnavailable", 403);
   const config = body?.config as WorkspaceRequest | undefined;
   if (!config || !["chart", "table", "analysis"].includes(config.output) || !Number.isInteger(config.sheet) || config.sheet < 0 || typeof config.range !== "string" || config.range.length > 80 || typeof config.x !== "string" || !Array.isArray(config.ys) || config.ys.some(c => typeof c !== "string") || !["bar", "groupedBar", "line", "scatter", "pie", "histogram", "box"].includes(config.chartType)) return fail("workspace.invalidRange");
   const source = db.sources.list(paper.id).find(s => s.id === body.sourceId && s.ownerId === auth.user.id);

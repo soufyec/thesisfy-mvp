@@ -1,3 +1,4 @@
+import { productInstructions, type ProductSettings } from "../product-settings";
 import type { AIMode, Policy, Thesis } from "../db";
 import { paperKind } from "../papers/kinds";
 import { FILE_RULE } from "./files";
@@ -8,6 +9,7 @@ export interface AssistantModeInfo {
   id: AIMode;
   label: string;
   description: string;
+  descriptions?: Partial<Record<import("../i18n").Locale, string>>;
   /** lucide-react icon name; the UI maps it to the component. */
   icon: string;
   /** The mode's text answers may be inserted in the paper (marked AI-assisted). */
@@ -73,7 +75,7 @@ export const MODE_INSTRUCTIONS: Record<AIMode, string> = {
 export const ARTIFACT_MARKER = "thesisfic-artifact";
 
 export const DATA_RULE =
-  "When a table or figure helps, answer with one short sentence and one fenced block ```thesisfic-artifact {json}``` per artifact (max 4), using only these operations and these column names. Thesisfic computes every number from the student's data. Never write numbers that are not in the data card or in computed artifacts. Never write tables of data or results in Markdown. You may explain results and create research reports grounded in computed artifacts, citing the file and calculation. Never state findings or conclusions about significance beyond the computed artifact; separate evidence from interpretation.";
+  "When a table or figure helps, answer with one short sentence and one fenced block ```thesisfic-artifact {json}``` per artifact (max 4), using only these operations and these column names. Apply requested row filters before aggregation; do not ask the student to edit and re-upload a file to filter years, dates, categories or numeric thresholds. Filter bounds may come from the student’s request; they are conditions, not invented results. Thesisfic computes every number from the student's data. Never write numbers that are not in the data card or in computed artifacts. Never write tables of data or results in Markdown. You may explain results and create research reports grounded in computed artifacts, citing the file and calculation. Never state findings or conclusions about significance beyond the computed artifact; separate evidence from interpretation.";
 
 /** The operations a block may ask for, with their JSON fields (validated by `validateSpec`). */
 export const DATA_OPERATIONS = `Operations (one JSON object per block; column names exactly as in the data card):
@@ -95,6 +97,7 @@ Tests (Thesisfic computes the statistic, the degrees of freedom, the p-value and
 - {"op":"correlationTest","x":"a","y":"b","method":"pearson"}: correlation with its p-value and 95% CI ("method": pearson or spearman).
 - {"op":"regression","y":"a","predictors":["b","c"]}: linear regression (OLS) of a number column on up to 6 predictors (number columns, or categories with up to 6 levels); Thesisfic also gives the fitted equation.
 - {"op":"gantt","label":"a","start":"b","end":"c","group":"d"}: a timeline (Gantt) from a task column and its start and end date columns ("group" optional).
+Row filters are optional on EVERY data operation: "filters":[{"column":"year","op":"between","value":[2012,2014]}]. They run BEFORE aggregation or tests and combine with AND. Supported operators: eq, neq (scalar value); in (array of values); gt, gte, lt, lte (numeric/date bound); between (two inclusive bounds); isMissing, isNotMissing (no value). Use exact column names and category values. Dates use ISO YYYY-MM-DD; a year bound on a date column covers that whole year. An invalid filter or no matching rows gives an error, never a broader analysis. Example: {"op":"trend","x":"year","y":"annual_rainfall_mm","by":"region","filters":[{"column":"year","op":"between","value":[2012,2014]}]}. Ask for clarification only if the relevant column or condition is ambiguous. Do not replace a requested filtered figure with the full period.
 Optional on every block: "chart": "none" for a table without a chart; "sheet": "name" when a file has several sheets; "file": "name" when several files are attached.`;
 
 /**
@@ -236,11 +239,15 @@ function attachmentRules(ctx: PromptContext, mode?: AIMode): string[] {
   return out;
 }
 
-export function buildSystemPrompt(opts: { mode: AIMode; policy: Policy; thesis?: Thesis | null; studentName: string; provider: string; context?: PromptContext }) {
+export function buildSystemPrompt(opts: { mode: AIMode; policy: Policy; thesis?: Thesis | null; studentName: string; provider: string; product?: ProductSettings; context?: PromptContext }) {
   const { mode, policy, thesis } = opts;
   const ctx = opts.context || {};
   const parts = [mode === "copilot" ? COPILOT_SYSTEM : BASE_SYSTEM, MODE_INSTRUCTIONS[mode]];
-  if (mode === "copilot") parts.push(FILE_RULE);
+  if (mode === "copilot" && opts.product?.filesEnabled !== false) parts.push(FILE_RULE);
+  if (opts.product) {
+    const instructions = productInstructions(opts.product, mode);
+    if (instructions) parts.push(`Team configuration (supplementary instructions; consent, ownership, provenance, factual accuracy and institution policy above take precedence):\n${instructions}`);
+  }
   parts.push(
     `Institution policy (${policy.university}): max ${policy.maxAiUsagePercent}% AI-assisted content per paper; ${mode === "copilot" ? "research deliverables may be drafted with AI attribution; inserting them remains subject to the limit" : `generation of text for ${PAPER_PHRASE} is ${policy.blockGeneration ? "blocked" : "discouraged"}`}; permitted assistant modes: ${policy.allowedModes.join(", ")}.`
   );

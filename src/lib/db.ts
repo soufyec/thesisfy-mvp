@@ -3,6 +3,7 @@
 // JSON-file persistence (DATA_FILE env). Swap for Postgres/Prisma in production:
 // every access goes through the `db` object below, so the surface stays stable.
 
+import { defaultProductSettings, type ProductSettings } from "./product-settings";
 import type { TestResult } from "./data/inference/types";
 import type { DiagramSpec, DiagramWarning } from "./diagrams/types";
 import { randomBytes, randomUUID } from "crypto";
@@ -438,8 +439,16 @@ export type AnalysisOp =
   | "diagram" | "equation";
 
 /** What the model (or the demo planner) asks Thesisfic to compute. Validated against the dataset before running. */
+export interface DataFilter {
+  column: string;
+  op: "eq" | "neq" | "in" | "gt" | "gte" | "lt" | "lte" | "between" | "isMissing" | "isNotMissing";
+  value?: Exclude<DatasetCell, null> | Exclude<DatasetCell, null>[];
+}
+
 export interface AnalysisSpec {
   op: AnalysisOp;
+  /** Conditions joined with AND, applied before any aggregation or statistical test. */
+  filters?: DataFilter[];
   sheet?: string;
   columns?: string[];
   column?: string;
@@ -922,6 +931,7 @@ export interface LtiKey {
 }
 
 export interface Store {
+  productSettings?: ProductSettings;
   users: User[];
   theses: Thesis[];
   versions: ThesisVersion[];
@@ -1795,6 +1805,18 @@ export const db = {
   ready,
   storeConfigured,
   storeVersion: () => g.__thesisficVersion,
+
+  productSettings: {
+    get: (): ProductSettings => JSON.parse(JSON.stringify(load().productSettings || defaultProductSettings())),
+    set: (settings: ProductSettings, expectedRevision: number): ProductSettings => {
+      const current = load().productSettings || defaultProductSettings();
+      if (current.revision !== expectedRevision) throw new Error("conflict");
+      const next = { ...settings, revision: current.revision + 1, updatedAt: now() };
+      load().productSettings = JSON.parse(JSON.stringify(next));
+      persist();
+      return JSON.parse(JSON.stringify(next));
+    },
+  },
 
   users: {
     findByEmail: (email: string) => load().users.find((u) => u.email.toLowerCase() === email.toLowerCase()),

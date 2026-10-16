@@ -111,7 +111,7 @@ export default function Results() {
       <header className="bg-white border-b border-gray-100">
         <div className="mx-auto max-w-[1040px] px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           <Logo />
-          <nav className="flex flex-wrap items-center gap-1 text-[13px] font-medium"><QuestionnaireLanguageSelector />
+          <nav className="flex flex-wrap items-center gap-1 text-[13px] font-medium"><QuestionnaireLanguageSelector /><Link href="/equipe/produit" className="px-2.5 py-1.5 text-brand-700">{t("product.title")}</Link>
             <Link href="/questionnaire" className="px-2.5 py-1.5 text-gray-600 hover:text-gray-900">
               {t("q.results.openForm")}
             </Link>
