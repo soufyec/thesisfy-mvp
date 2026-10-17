@@ -1,4 +1,5 @@
 import { zoteroConnections } from "./zotero-store";
+import { supportStore } from "./support-store";
 import { courseReadings } from "./course-store";
 // Thesisfic data layer.
 // In-memory store persisted on globalThis (survives hot reloads) with optional
@@ -631,6 +632,7 @@ export interface AIConnection {
 }
 
 export interface AIInteraction {
+  effort?: import("./ai/effort").Effort;
   id: string;
   userId: string;
   thesisId?: string;
@@ -1808,6 +1810,7 @@ const dedupe = (ids: string[]) => ids.filter((id, i) => typeof id === "string" &
 // ---------- data access ----------
 
 export const db = {
+  support: supportStore,
   courseReadings,
   zotero: zoteroConnections,
   raw: () => load(),

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ServiceWorkerCleanup from "@/components/ServiceWorkerCleanup";
+import SupportWidget from "@/components/support/SupportWidget";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { BRAND_THEME_COLOR } from "@/lib/brand";
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LocaleProvider locale={locale}>
           {children}
           <ServiceWorkerCleanup />
+          <SupportWidget />
         </LocaleProvider>
       </body>
     </html>

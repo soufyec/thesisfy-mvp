@@ -5,6 +5,7 @@ import { allowanceFor, DEFAULT_MODELS, institutionModelReady, oauthConfigured, p
 import { BACKEND_META } from "@/lib/ai/providers";
 import { modeEnabled, publicAssistantSettings } from "@/lib/product-settings";
 import { MODES } from "@/lib/ai/prompts";
+import { supportedEfforts, defaultEffort } from "@/lib/ai/effort";
 
 export async function GET(request: NextRequest) {
   const r = await requireUser(request);
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
       id: p,
       ...PROVIDER_META[p],
       defaultModel: DEFAULT_MODELS[p],
+      efforts: supportedEfforts(p, conn?.model || DEFAULT_MODELS[p]),
       allowedByPolicy: policy.allowedProviders.includes(p),
       platformKey: platformKeyAvailable(p),
       oauthAvailable: oauthConfigured(p),
@@ -28,18 +30,18 @@ export async function GET(request: NextRequest) {
   const institutionModels = funding.institutionPays
     ? db.aiAccess.models(r.user.university)
         .filter((m) => m.enabled && policy.allowedProviders.includes(m.provider))
-        .map((m) => ({ id: m.id, provider: m.provider, label: m.label, model: m.model, backend: m.backend, backendName: BACKEND_META[m.backend].name, region: m.region, isDefault: m.isDefault, ready: institutionModelReady(m), color: PROVIDER_META[m.provider].color }))
+        .map((m) => ({ id: m.id, provider: m.provider, label: m.label, model: m.model, backend: m.backend, backendName: BACKEND_META[m.backend].name, region: m.region, isDefault: m.isDefault, ready: institutionModelReady(m), color: PROVIDER_META[m.provider].color, efforts: supportedEfforts(m.provider, m.model, m.backend), defaultEffort: defaultEffort(m.provider, m.model, m.backend) }))
     : [];
   // Platform keys the university pays for appear as institution models too (default when no configured model is ready),
   // so the student never sees a "demo" choice: the university's model first, the rest marked unavailable.
-  if (funding.institutionPays) {
+  if (funding.institutionPays && db.aiAccess.models(r.user.university).length === 0) {
     const pretty = (id: string) => id.split("-").map((part) => (/^\d/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1))).join(" ").replace(/ Preview$/, " (preview)");
     const hasReadyDefault = institutionModels.some((m) => m.ready && m.isDefault);
     (Object.keys(PROVIDER_META) as Provider[]).forEach((p) => {
       if (!policy.allowedProviders.includes(p) || !platformKeyAvailable(p)) return;
       if (institutionModels.some((m) => m.provider === p && m.ready)) return;
       if (!hasReadyDefault) institutionModels.forEach((m) => { if (!m.ready) m.isDefault = false; });
-      institutionModels.unshift({ id: `platform:${p}`, provider: p, label: pretty(DEFAULT_MODELS[p]), model: DEFAULT_MODELS[p], backend: "thesisfic", backendName: BACKEND_META.thesisfic.name, region: "", isDefault: !hasReadyDefault && !institutionModels.some((m) => m.id.startsWith("platform:")), ready: true, color: PROVIDER_META[p].color });
+      institutionModels.unshift({ id: `platform:${p}`, provider: p, label: pretty(DEFAULT_MODELS[p]), model: DEFAULT_MODELS[p], backend: "thesisfic", backendName: BACKEND_META.thesisfic.name, region: "", isDefault: !hasReadyDefault && !institutionModels.some((m) => m.id.startsWith("platform:")), ready: true, color: PROVIDER_META[p].color, efforts: supportedEfforts(p, DEFAULT_MODELS[p]), defaultEffort: defaultEffort(p, DEFAULT_MODELS[p]) });
     });
   }
   return json({ assistant: publicAssistantSettings(product), institutionModels, allowance: funding.institutionPays ? allowanceFor(r.user) : null, providers, modes: MODES.filter((m) => modeEnabled(product, m.id) && ["copilot", "critique", "grammar", "citations", "gaps", "paraphrase_check"].includes(m.id) && (m.id === "copilot" ? policy.researchCopilot : policy.allowedModes.includes(m.id))).map(m => ({ ...m, descriptions: product.modes[m.id as keyof typeof product.modes]?.descriptions })), policy: { allowBYOK: policy.allowBYOK, allowedProviders: policy.allowedProviders, maxAiUsagePercent: policy.maxAiUsagePercent, researchCopilot: policy.researchCopilot }, defaultProvider: r.user.preferences.defaultProvider || null });

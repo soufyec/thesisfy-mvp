@@ -50,6 +50,8 @@ import AttachMenu from "./AttachMenu";
 import AttachmentChips, { attachedName, type AttachedSource } from "./AttachmentChips";
 import GroundedNote, { groundedFilesOf, type GroundedFile } from "./GroundedNote";
 import PrivacyNotice from "./PrivacyNotice";
+import EffortSelector from "./EffortSelector";
+import type { Effort } from "@/lib/ai/effort";
 import { artifactInsertWords, type ArtifactErrorInfo } from "./artifactText";
 
 export type AIMode = "chat" | "brainstorm" | "outline" | "critique" | "grammar" | "summarize" | "explain" | "citations" | "gaps" | "paraphrase_check" | "copilot";
@@ -67,6 +69,7 @@ interface ModeInfo {
 }
 
 interface ProviderInfo {
+  efforts?: Effort[];
   id: string;
   name: string;
   product: string;
@@ -77,6 +80,8 @@ interface ProviderInfo {
 }
 
 interface InstitutionModelInfo {
+  efforts?: Effort[];
+  defaultEffort?: Effort;
   id: string;
   provider: string;
   label: string;
@@ -339,6 +344,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
   const [allowance, setAllowance] = useState<AllowanceInfo | null>(null);
   const [mode, setMode] = useState<AIMode>(initialMode || "copilot");
   const [providerChoice, setProviderChoice] = useState<string>("auto");
+  const [effort, setEffort] = useState<Effort>("medium");
+  const chooseModel = (id: string) => { if (id === providerChoice || window.confirm(t("effort.modelNotice"))) setProviderChoice(id); };
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -483,6 +490,19 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
   const activeInstitution = institutionModels.find((m) => m.id === providerChoice);
   const readyInstitution = institutionModels.filter((m) => m.ready);
   const defaultInstitution = readyInstitution.find((m) => m.isDefault) || readyInstitution[0];
+  const effortOptions = (activeInstitution || activeProvider || defaultInstitution)?.efforts || ["medium"] as Effort[];
+  const effortKey = effortOptions.join(",");
+  useEffect(() => { setEffort(e => effortOptions.includes(e) ? e : effortOptions.includes("medium") ? "medium" : effortOptions[0]); }, [providerChoice, effortKey]);
+  useEffect(() => {
+    const refresh = (event: Event) => {
+      const d = (event as CustomEvent<{ providers: ProviderInfo[]; institutionModels?: InstitutionModelInfo[] }>).detail;
+      if (!d || !Array.isArray(d.providers)) return;
+      setProviders(d.providers); setInstitutionModels(d.institutionModels || []);
+      const available = (d.institutionModels || []).filter(m => m.ready);
+      setProviderChoice(current => current === "auto" || available.some(m => m.id === current) || d.providers.some(p => p.id === current && p.allowedByPolicy && p.connection?.status === "active") ? current : available.find(m => m.isDefault)?.id || available[0]?.id || "auto");
+    };
+    window.addEventListener("thesisfic:refresh-ai", refresh); return () => window.removeEventListener("thesisfic:refresh-ai", refresh);
+  }, []);
 
   // Provider chip: "Claude · your account" / "Claude Sonnet 5.5 · your university" / "Demo assistant".
   const shortLabel = (s: string) => s.split(" (")[0];
@@ -675,6 +695,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
           sessionId,
           conversationId,
           provider: providerChoice === "auto" ? null : providerChoice.startsWith("platform:") ? providerChoice.slice(9) : providerChoice,
+          effort,
           selection: workingOn ? selection : undefined,
           document: getDocumentContext?.(),
           useSources: useSources && !!thesisId ? true : undefined,
@@ -870,7 +891,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
     const placeholderLabel = modeLabel(mode);
   /** A provider failure in words the student can act on; the raw provider payload stays in the server log. */
   const providerErrorText = (e: { message: string; code?: string }) =>
-    e.code === "auth" ? t("assistant.msg.errorAuth") : e.code === "rate_limit" ? t("assistant.msg.errorRateLimit") : e.code === "refusal" ? e.message : e.code === "provider" ? t("assistant.msg.errorProvider") : e.message;
+    e.code === "privacy_unavailable" ? t("assistant.msg.errorPrivacy") : e.code === "auth" ? t("assistant.msg.errorAuth") : e.code === "rate_limit" ? t("assistant.msg.errorRateLimit") : e.code === "refusal" ? e.message : e.code === "provider" ? t("assistant.msg.errorProvider") : e.message;
 
   const renderCostCard = (m: ChatMsg) => {
     if (!pending || pending.id !== m.id) return null;
@@ -1037,7 +1058,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
             <ChevronDown className="w-3 h-3 flex-shrink-0" />
           </button>
           {providerOpen && (
-            <div className="absolute right-0 mt-1 w-72 max-w-[calc(100vw-24px)] bg-white rounded-[10px] shadow-xl border border-gray-100 z-20 py-1 text-sm">
+            <div className="absolute right-0 mt-1 w-72 max-w-[calc(100vw-24px)] max-h-[55dvh] overflow-y-auto bg-white rounded-[10px] shadow-xl border border-gray-100 z-20 py-1 text-sm">
               {!(allowance?.institutionPays && readyInstitution.length) && (
                 <button onClick={() => { setProviderChoice("auto"); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${providerChoice === "auto" ? "text-brand-600 font-medium" : ""}`}>
                   {t("assistant.provider.autoAccount")}
@@ -1048,7 +1069,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
                   <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{t("glossary.providedByUniversity")}</div>
                   <div className="px-3 pb-2 border-b border-gray-100"><AllowanceSummary allowance={allowance} /></div>
                   {readyInstitution.map((m) => (
-                    <button key={m.id} disabled={!m.ready || allowance.exhausted !== "none"} onClick={() => { setProviderChoice(m.id); setProviderOpen(false); }} title={`${m.backendName} · ${m.region}`} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === m.id ? "text-brand-600 font-medium" : ""}`}>
+                    <button key={m.id} disabled={!m.ready || allowance.exhausted !== "none"} onClick={() => { chooseModel(m.id); setProviderOpen(false); }} title={`${m.backendName} · ${m.region}`} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === m.id ? "text-brand-600 font-medium" : ""}`}>
                       <span className="w-2 h-2 rounded-full" style={{ background: m.color }} />
                       <span className="flex-1 truncate">{m.label}</span>
                       <span className="text-[10px] text-gray-400">{!m.ready ? t("assistant.provider.unavailable") : allowance.exhausted !== "none" ? t("assistant.provider.allowanceUsed") : m.region}</span>
@@ -1058,7 +1079,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
                 </>
               )}
               {providers.filter((p) => p.allowedByPolicy && (p.connection?.status === "active" || p.platformKey) && !institutionModels.some((m) => m.id === `platform:${p.id}`)).map((p) => (
-                <button key={p.id} disabled={!p.allowedByPolicy || !(p.connection?.status === "active" || p.platformKey)} onClick={() => { setProviderChoice(p.id); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === p.id ? "text-brand-600 font-medium" : ""}`}>
+                <button key={p.id} disabled={!p.allowedByPolicy || !(p.connection?.status === "active" || p.platformKey)} onClick={() => { chooseModel(p.id); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === p.id ? "text-brand-600 font-medium" : ""}`}>
                   <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
                   <span className="flex-1">{p.product}</span>
                   <span className="text-[10px] text-gray-400">{p.connection?.status === "active" ? t("assistant.provider.yourAccount") : p.platformKey ? t("assistant.provider.institution") : t("assistant.provider.unavailable")}</span>
@@ -1103,6 +1124,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
         </button>
       </div>
 
+      <EffortSelector value={effort} options={effortOptions} onChange={setEffort} disabled={loading} />
       {/* Modes */}
       {(() => {
         const open = modesOpen === null ? messages.length === 0 : modesOpen;

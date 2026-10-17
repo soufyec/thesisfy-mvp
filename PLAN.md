@@ -1,5 +1,16 @@
 # PLAN.md — Thesisfic: identidad, editor + asistente y landing B2B
 
+## Petición de producto · 17 octubre 2026
+
+- [x] Catálogo institucional exacto y esfuerzo independiente con aviso previo.
+- [x] Capacidades por modelo, control servidor y consumo de razonamiento Gemini.
+- [x] Soporte guiado minimizable, recuperación de opciones IA y tickets privados.
+- [x] Bandeja de equipo, categorías, prioridad, primera respuesta en 2 horas y notificaciones.
+- [x] Adaptador Resend con destino privado, estados de envío y reintento.
+- [ ] Publicación por el propietario y prueba real de Resend/modelos/Neon en producción.
+
+Detalle: `docs/student-models-and-support.md`.
+
 Estado: pre-piloto. Comprador: universidad. Foco: editor + asistente IA, landing y onboarding. Idioma UI: inglés.
 Mockups de referencia en `docs/design-handoff/mockups/`: `01 Landing Actual`, `02 Editor Actual` (estado previo), `05 Landing Propuesta v2`, `06 Editor Propuesta v2` (dirección elegida). Especificación en `docs/design-handoff/README.md`.
 
