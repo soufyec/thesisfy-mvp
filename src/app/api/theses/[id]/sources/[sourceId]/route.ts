@@ -29,7 +29,8 @@ async function load(request: NextRequest, params: { id: string; sourceId: string
 }
 
 /** GET → the source (without text) and its chunks, for the chunk viewer and quote highlighting. */
-export async function GET(request: NextRequest, { params }: { params: { id: string; sourceId: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; sourceId: string }> }) {
+  const params = await routeParams;
   const l = await load(request, params);
   if ("response" in l) return l.response;
   const chunks = db.sourceChunks.listBySource(l.source.id).map((c) => ({ id: c.id, index: c.index, page: c.page, section: c.section, text: c.text }));
@@ -40,7 +41,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  * DELETE → removes the source from this thesis (owner only). The source stays in the student's library with its
  * chunks; deleting it from the library is `DELETE /api/library/sources/[id]`.
  */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string; sourceId: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; sourceId: string }> }) {
+  const params = await routeParams;
   const l = await load(request, params);
   if ("response" in l) return l.response;
   const t = getT();
@@ -51,7 +53,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 }
 
 /** POST { action: "summarize" } → a short summary of the source's first ~3000 words, logged as a "summarize" interaction. */
-export async function POST(request: NextRequest, { params }: { params: { id: string; sourceId: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; sourceId: string }> }) {
+  const params = await routeParams;
   const l = await load(request, params);
   if ("response" in l) return l.response;
   const { user, thesis, source } = l;

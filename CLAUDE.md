@@ -94,7 +94,7 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 
 ## 7. Arquitectura y límites técnicos
 
-- Stack fijo: Next 14 (App Router), React 18, Tailwind 3, TipTap 2, `lucide-react`. No añadir librerías de UI ni de estado global.
+- Stack fijo: Next 15 (actualización autorizada el 17 octubre 2026) (App Router), React 18, Tailwind 3, TipTap 2, `lucide-react`. No añadir librerías de UI ni de estado global.
 - `src/lib/db.ts` es el único acceso a datos (memoria + `DATA_FILE` opcional). Cambios de esquema se hacen ahí y en `src/components/editor/types.ts`.
 - No tocar `extensions.ts` (Provenance, CommentMark, CitationMark) sin la prueba manual: insertar IA → marca; pegar → diálogo; pegar texto de una respuesta del copilot → reconocido y marcado; copiar entre pestañas → sin diálogo. Si se toca el nodo `chart`, el pegado o la inserción de artefactos, además: insertar tabla y gráfico del copilot → tarjeta de coste, marca y «Fig · AI»; pegar desde notas a Final submission contenido IA → tarjeta de coste antes de pegar; copiar o arrastrar el gráfico → no entra como imagen sin origen.
 - Los cuatro contadores de procedencia (cliente, `db.ts`, `integrity.ts`, `process.ts`) quitan las figuras `figure[data-chart]` antes de contar palabras; las figuras se cuentan aparte (`computeFigures` ≡ `figureStats.ts`).

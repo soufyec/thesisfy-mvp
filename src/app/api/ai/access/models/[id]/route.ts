@@ -14,7 +14,8 @@ async function own(request: NextRequest, id: string) {
   return { user: r.user, model };
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await own(request, params.id);
   if ("response" in r) return r.response;
   const body = await request.json().catch(() => null);
@@ -35,7 +36,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 /** Test the stored credentials. */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await own(request, params.id);
   if ("response" in r) return r.response;
   let key: string | undefined;
@@ -49,7 +51,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   return json(test);
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await own(request, params.id);
   if ("response" in r) return r.response;
   db.aiAccess.removeModel(r.model.id);

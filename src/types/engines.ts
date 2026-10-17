@@ -1,6 +1,6 @@
 /** Wire contracts. Existing db.ts and editor types remain the persistence source of truth. */
 import type { IntegrityBreakdown } from "@/components/editor/types";
-export type EngineLanguage = "fr" | "en" | "es";
+export type EngineLanguage = "fr" | "en" | "es" | "de";
 export type EngineErrorCode = "invalid_input" | "forbidden" | "unavailable" | "privacy_unavailable" | "stale_revision";
 export type EngineResult<T> = { ok: true; data: T } | { ok: false; code: EngineErrorCode };
 export type AcademicProvider = "openalex" | "crossref" | "s2";
@@ -38,17 +38,17 @@ export interface PasteMatchResponse {
   /** Absence of a match is not evidence of authorship. */
   coverage: "linked_sources" | "institution_corpus" | "external_provider";
 }
-export type CitationStyle = "apa-7" | "chicago-author-date" | "ieee" | "harvard";
+export type CitationStyle = "APA" | "Chicago" | "IEEE" | "Harvard";
 export interface CSLItem {
   id: string; type: string; title: string;
   author?: { family?: string; given?: string; literal?: string }[];
   issued?: { "date-parts": number[][] }; DOI?: string; URL?: string;
   "container-title"?: string; volume?: string; issue?: string; page?: string;
 }
-export interface CitationFormatRequest { items: CSLItem[]; style: CitationStyle; locale: string }
-export interface CitationFormatResponse { citations: { id: string; text: string }[]; bibliographyHtml: string }
+export interface CitationFormatRequest { ids: string[]; style: CitationStyle; language?: "en-US" | "fr-FR" | "es-ES" | "de-DE" }
+export interface CitationFormatResponse { citations: { id: string; text: string }[]; bibliography: [string, string][] }
 export interface ReferenceImportRequest { format: "bib" | "ris"; content: string }
-export interface ZoteroImportRequest { collectionKey?: string; itemKeys: string[] }
+export interface ZoteroImportRequest { start?: number; keys: string[] }
 /** Resolved by the server from authenticated membership, never trusted from request JSON. */
 export interface CourseScope { institutionId: string; assignmentId: string; corpusVersion: string }
 export interface CourseIngestionJob {
@@ -91,3 +91,8 @@ export interface ZoteroConnectionState { connected: boolean; libraryId?: string;
 export interface ZoteroItemsResponse { items: CSLItem[]; nextCursor?: string }
 export interface CourseReadingUploadRequest { assignmentId: string; file: File }
 export interface CourseReadingUploadResponse { job: CourseIngestionJob }
+
+/** Actual atomic PDF upload: multipart file, teacher/admin authorization, indexed before response. */
+export interface CourseUploadResponse { id: string }
+export interface CourseReadingsPolicyUpdate { officialOnly: boolean }
+export interface ZoteroConnectionRequest { libraryId: string; key: string }

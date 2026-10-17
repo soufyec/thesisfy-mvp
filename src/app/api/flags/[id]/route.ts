@@ -5,7 +5,8 @@ import { canAccessThesis } from "@/lib/auth";
 import { notifyUser } from "@/lib/notify";
 import { refreshThesisMetrics } from "@/lib/integrity";
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const flag = db.flags.list().find((f) => f.id === params.id);

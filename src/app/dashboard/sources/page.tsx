@@ -10,6 +10,7 @@ import { Spinner, Toast } from "@/components/ui";
 import { useUser } from "@/components/useUser";
 import { referenceHtml, type LibraryReferenceView, type LibraryResponse, type LibrarySourceView } from "@/components/editor/types";
 import { useFormat, useT } from "@/lib/i18n/client";
+import { ReferenceImports } from "@/components/library/ReferenceImports";
 import AddLibraryItemDialog, { type AddKind } from "@/components/library/AddLibraryItemDialog";
 import { libraryCall, LibraryRequestError } from "@/components/library/libraryApi";
 import { CHIP, CutNotes, ItemLink, LibraryItemRow, ReferenceTypeBadge, referenceMeta, SourceBadges, sourceMeta } from "@/components/library/LibraryItemRow";
@@ -330,6 +331,7 @@ function SourcesInner() {
     return (
       <div className="max-w-6xl space-y-6">
         {header}
+        {isStudent && section === "references" && <ReferenceImports onImported={() => { void load(true); }} />}
         <div className="card p-10 text-center text-sm text-gray-500">{t("library.error.studentsOnly")}</div>
       </div>
     );
@@ -339,6 +341,7 @@ function SourcesInner() {
     return (
       <div className="max-w-6xl space-y-6">
         {header}
+        {isStudent && section === "references" && <ReferenceImports onImported={() => { void load(true); }} />}
         {failed ? (
           <div className="card p-10 text-center">
             <p className="text-sm text-gray-500">{t("dashboard.sources.loadFailed")}</p>
@@ -358,6 +361,7 @@ function SourcesInner() {
   return (
     <div className="max-w-6xl space-y-5 min-w-0">
       {header}
+        {isStudent && section === "references" && <ReferenceImports onImported={() => { void load(true); }} />}
 
       {/* Thesis selector */}
       <div role="group" aria-label={t("dashboard.sources.thesisFilter")} className="flex flex-wrap gap-1.5 min-w-0">

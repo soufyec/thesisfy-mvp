@@ -5,7 +5,8 @@ import { error, json, requireUser } from "@/lib/api";
 export const dynamic = "force-dynamic";
 
 /** Remove a Moodle site; its user links go with it (the accounts stay). */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (r.user.role !== "admin") return error("Only administrators manage integrations", 403);

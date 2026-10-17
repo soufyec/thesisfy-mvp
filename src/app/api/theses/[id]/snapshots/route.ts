@@ -16,7 +16,8 @@ const REPLAY_CAP = 200;
  * GET ?tabId=submission&replay=1   → { states: [{ at, text, wordCount }] } (last 200)
  * Owner, advisor and admin all see the same record.
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
@@ -39,7 +40,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 /** POST { tabId, html, wordCount, provenance, sessionId? } → { snapshot } or { skipped: true }. Owner only. */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);

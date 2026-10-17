@@ -15,7 +15,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** Preview and create from an explicit range. Computation stays on the server; no model or paid API is called. */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const auth = await requireUser(request);
   if ("response" in auth) return auth.response;
   const t = getT();

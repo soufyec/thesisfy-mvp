@@ -233,3 +233,15 @@ Archivos: motor/especificación de análisis, instrucciones del asistente, rutas
 - [x] Documentar estructura, rutas implementadas/propuestas, permisos, flujo, límites RGPD y fases pendientes sin afirmar servicios externos conectados.
 - [x] Verificación final: build de producción, TypeScript sin errores, pruebas de servicios/ruta, regresión de contexto y HTTP 401 sin sesión.
 - [ ] Integración posterior: protección de todas las llamadas LLM y búsquedas del chat, CSL/Zotero, corpus oficial vectorial y proveedor externo de coincidencias; requiere configuración y pruebas específicas.
+
+### Configuración y despliegue de motores — 17 octubre 2026
+
+Archivos: servicios privados (`services/privacy`, `services/language`, `vercel.json`), proveedores/búsqueda, rutas y almacenamiento de lecturas/Zotero/citas, controles de tarea/biblioteca, migración Next 15 y pruebas.
+
+- [x] Actualización autorizada a Next 15.5.28 y rutas dinámicas asíncronas; PostCSS corregido mediante override compatible.
+- [x] Pseudonimización previa a proveedores y búsquedas; restauración de streaming y bloqueo si falta el analizador privado.
+- [x] Servicios privados Presidio + embeddings multilingües y LanguageTool; configuración Docker preparada, primera compilación remota de Java corregida.
+- [x] Código de lecturas oficiales en Neon/pgvector, carga PDF atómica, separación por universidad/tarea, política oficial y coincidencias exactas en pegados.
+- [x] CSL real en editor y API, importación BibTeX/RIS, conexión personal cifrada y lectura/importación de Zotero.
+- [ ] Verificación final de permisos, rutas, servicios remotos, persistencia y regresiones; actualizar documentación.
+- [ ] Despliegue de producción y verificación del dominio. No se considera publicado hasta comprobar los motores reales.

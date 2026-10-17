@@ -31,6 +31,7 @@ async function testServices() {
   const safe=await scrub.scrub(original,'fr');
   assert(!safe.text.includes('Ana (Test)')); assert(!safe.text.includes('ana@example.org'));assert(!safe.text.includes('+33'));
   assert.equal(scrub.restore(safe.text),original);assert.equal(safe.summary.strategy,'local_patterns');
+  for (let i=0;i<=safe.text.length;i++) { const restore=scrub.streamRestorer(); assert.equal(restore(safe.text.slice(0,i))+restore(safe.text.slice(i))+restore('',true), original); }
   const again=await scrub.scrub('ana@example.org'); assert(safe.text.includes(again.text));
   const other = new PIIScrubberService({requireNER:false});assert.notEqual((await other.scrub('ana@example.org')).text,again.text);
   const unicode='📚 Alice lives in Paris';

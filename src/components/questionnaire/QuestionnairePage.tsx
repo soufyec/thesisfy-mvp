@@ -6,9 +6,10 @@ import { currentQuestionnaire } from "@/lib/questionnaireData";
 import { isTeamCookie, TEAM_COOKIE } from "@/lib/team";
 
 /** Server side of /questionnaire and its direct links: current definition, team cookie, mode from the URL. */
-export default async function QuestionnairePage({ searchParams, profil }: { searchParams?: Record<string, string | string[] | undefined>; profil?: Profil }) {
+export default async function QuestionnairePage({ searchParams: inputSearchParams, profil }: { searchParams?: Promise<Record<string, string | string[] | undefined>>; profil?: Profil }) {
+  const searchParams = await inputSearchParams;
   await db.ready();
   const mode: Mode = searchParams?.mode === "entretien" ? "entretien" : "en_ligne";
-  const team = isTeamCookie(cookies().get(TEAM_COOKIE)?.value);
+  const team = isTeamCookie((await cookies()).get(TEAM_COOKIE)?.value);
   return <Questionnaire questionnaire={currentQuestionnaire()} team={team} initialMode={mode} presetProfil={profil} />;
 }

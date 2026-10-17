@@ -1,3 +1,5 @@
+import { zoteroConnections } from "./zotero-store";
+import { courseReadings } from "./course-store";
 // Thesisfic data layer.
 // In-memory store persisted on globalThis (survives hot reloads) with optional
 // JSON-file persistence (DATA_FILE env). Swap for Postgres/Prisma in production:
@@ -125,6 +127,7 @@ export interface ThesisTab {
 }
 
 export interface Reference {
+  csl?: import("@citation-js/core").CSL;
   id: string;
   type: "book" | "article" | "web" | "thesis" | "chapter";
   authors: string;
@@ -686,6 +689,8 @@ export interface Conversation {
 
 /** A piece of work a teacher (or an admin) sends to students. Each student's paper is a `Thesis` with `assignmentId`. */
 export interface Assignment {
+  /** Restrict research grounding to the teacher’s uploaded readings. */
+  officialReadingsOnly?: boolean;
   id: string;
   university: string;
   /** Professor or admin who created it; becomes the `professorId` of each paper started from it. */
@@ -1697,9 +1702,11 @@ async function ready(): Promise<void> {
   return g.__thesisficSync;
 }
 
-async function flushToDb() {
-  if (writeInFlight) return;
+let activeWrite: Promise<void> | undefined;
+function flushToDb(): Promise<void> {
+  if (activeWrite) return activeWrite;
   writeInFlight = true;
+  activeWrite = (async () => {
   try {
     while (writeDirty) {
       writeDirty = false;
@@ -1712,6 +1719,8 @@ async function flushToDb() {
   } finally {
     writeInFlight = false;
   }
+  })().finally(() => { activeWrite = undefined; });
+  return activeWrite;
 }
 
 let persistTimer: NodeJS.Timeout | null = null;
@@ -1799,8 +1808,12 @@ const dedupe = (ids: string[]) => ids.filter((id, i) => typeof id === "string" &
 // ---------- data access ----------
 
 export const db = {
+  courseReadings,
+  zotero: zoteroConnections,
   raw: () => load(),
   persist,
+  /** New writes can wait for durability without changing the existing fire-and-forget API. */
+  flush: async () => { if (storeConfigured) { await flushToDb(); if (writeDirty) throw new Error("persistence_failed"); } },
   /** Await before reading when Postgres is configured (route handlers do this through requireUser). */
   ready,
   storeConfigured,

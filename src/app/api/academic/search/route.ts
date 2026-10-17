@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const reply = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { "Cache-Control": "no-store" } });
 
-/** New standalone endpoint. Existing chat is deliberately not silently switched to a new privacy policy. */
+/** Authenticated academic search with private pseudonymization before external queries. */
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
   if ("response" in auth) return auth.response;
@@ -36,14 +36,14 @@ export async function POST(request: NextRequest) {
     const b = body as Record<string, unknown>;
     if (typeof b.query !== "string" || !b.query.trim() || b.query.length > 500 ||
         (b.limit !== undefined && (typeof b.limit !== "number" || !Number.isInteger(b.limit) || b.limit < 1 || b.limit > 20)) ||
-        (b.language !== undefined && !["fr", "en", "es"].includes(String(b.language)))) throw new Error("invalid_input");
+        (b.language !== undefined && !["fr", "en", "es", "de"].includes(String(b.language)))) throw new Error("invalid_input");
     const url = process.env.PRIVACY_INTERNAL_URL || process.env.PRESIDIO_ANALYZER_URL;
     if (!url) throw new PrivacyUnavailableError();
     scrubber = new PIIScrubberService({
       knownNames: [auth.user.name], knownEmails: [auth.user.email],
       analyzer: createPresidioAnalyzer(url),
     });
-    const safe = await scrubber.scrub(b.query, (b.language as "fr" | "en" | "es") ?? "en");
+    const safe = await scrubber.scrub(b.query, (b.language as "fr" | "en" | "es" | "de") ?? "en");
     // Remove placeholders from public search keywords; they have no scholarly meaning.
     const query = safe.text.replace(/\[TF_[a-f0-9]+_[A-Z_]+_\d+\]/g, " ").replace(/\s+/g, " ").trim();
     if (!query) return reply({ ok: false, code: "invalid_input" }, 400);

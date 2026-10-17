@@ -14,7 +14,8 @@ import { fail, isRecipient } from "../../shared";
  * takes the assignment's title, kind and template (headings in the writing language), its due date, word target and
  * citation style, `professorId` = the assignment's creator and `assignmentId`.
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const user = r.user;

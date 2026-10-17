@@ -52,7 +52,8 @@ function withFields<T extends Reference>(ref: T, fields: ReferenceFields): T {
  *   409 { error, code: "cited", citedIn }. Locked theses → 409 code "locked". `thesisIds` must be an array (else 400).
  * Response { reference: LibraryReferenceView }.
  */
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const l = await load(request, params.id);
   if ("response" in l) return l.response;
   const { user, item, t } = l;
@@ -115,7 +116,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
  * code "locked". In-text citations are never rewritten: they stay in the text without a bibliography entry.
  * Response { ok: true }.
  */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const l = await load(request, params.id);
   if ("response" in l) return l.response;
   const { user, item, t } = l;

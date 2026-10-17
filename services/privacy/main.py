@@ -50,6 +50,10 @@ def health(x_thesisfic_engine: str | None = Header(default=None)):
 def analyze(body: AnalyzeBody, x_thesisfic_engine: str | None = Header(default=None)):
     authorize(x_thesisfic_engine)
     language = body.language
+    if language == "auto" and len(body.text.split()) < 8:
+        # Short search terms cannot be reliably language-classified. Union all supported NER models.
+        results = [r for lang in LANGUAGES for r in analyzer().analyze(text=body.text, language=lang, entities=body.entities)]
+        return [{"start": r.start, "end": r.end, "entity_type": r.entity_type, "score": r.score} for r in results]
     if language == "auto":
         try:
             language = detect(body.text)

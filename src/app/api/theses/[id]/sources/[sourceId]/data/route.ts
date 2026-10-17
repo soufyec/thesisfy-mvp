@@ -16,7 +16,8 @@ export const dynamic = "force-dynamic";
  * (`rows[i][c]` is column c of row offset + i), `total` is the sheet's row count, `sheets` lists every sheet
  * ({ name, rowCount }). `limit` is clamped to 1–500. 404 when the thesis, the source or its table is not reachable.
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string; sourceId: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; sourceId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const t = getT();

@@ -4,7 +4,8 @@ import { error, json, requireUser } from "@/lib/api";
 import { invitationStatus } from "@/lib/invitations";
 
 /** Public: what the invite page needs to render. No ids, no inviter, nothing beyond email, university and role. */
-export async function GET(_request: NextRequest, { params }: { params: { token: string } }) {
+export async function GET(_request: NextRequest, { params: routeParams }: { params: Promise<{ token: string }> }) {
+  const params = await routeParams;
   await db.ready();
   const inv = db.invitations.findByToken(params.token);
   if (!inv || inv.revokedAt) return error("Invitation not found", 404);
@@ -13,7 +14,8 @@ export async function GET(_request: NextRequest, { params }: { params: { token: 
 }
 
 /** Admin of the same university: revokes an invitation by id (the segment is the id here, not the token). */
-export async function DELETE(request: NextRequest, { params }: { params: { token: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ token: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (r.user.role !== "admin") return error("Forbidden", 403);

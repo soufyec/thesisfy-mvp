@@ -4,7 +4,8 @@ import { error, json, requireUser } from "@/lib/api";
 import { decrypt } from "@/lib/crypto";
 import { testConnection } from "@/lib/ai/providers";
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const c = db.connections.findById(params.id);
@@ -17,7 +18,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   return json({ success: true });
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const c = db.connections.findById(params.id);
@@ -33,7 +35,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 /** Re-test a stored key. */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const c = db.connections.findById(params.id);

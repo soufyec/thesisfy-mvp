@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import { canAccessThesis } from "@/lib/auth";
 import { error, json, requireUser } from "@/lib/api";
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string; commentId: string } }) {
+export async function PATCH(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; commentId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (!canAccessThesis(r.user, params.id)) return error("Thesis not found", 404);
@@ -16,7 +17,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   return json({ comment: c });
 }
 
-export async function POST(request: NextRequest, { params }: { params: { id: string; commentId: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; commentId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (!canAccessThesis(r.user, params.id)) return error("Thesis not found", 404);
@@ -27,7 +29,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   return json({ comment: { ...c, replies: c.replies.map((rp) => ({ ...rp, authorName: db.users.findById(rp.authorId)?.name })) } });
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string; commentId: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; commentId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (!canAccessThesis(r.user, params.id)) return error("Thesis not found", 404);

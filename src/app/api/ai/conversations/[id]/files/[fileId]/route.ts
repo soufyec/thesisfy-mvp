@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { error, requireUser } from "@/lib/api";
 import { FILE_MIME } from "@/lib/ai/files";
-export async function GET(request: NextRequest, { params }: { params: { id: string; fileId: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; fileId: string }> }) {
+  const params = await routeParams;
   const auth = await requireUser(request); if ("response" in auth) return auth.response;
   const conversation = db.conversations.findById(params.id);
   if (!conversation || conversation.userId !== auth.user.id) return error("Not found", 404);

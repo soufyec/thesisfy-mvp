@@ -14,6 +14,6 @@ export async function embedPrivate(texts: string[]): Promise<number[][]> {
   });
   if (!response.ok) throw new Error("embedding_unavailable");
   const data = await response.json();
-  if (!Array.isArray(data.vectors) || data.vectors.length !== texts.length || data.vectors.some((v: unknown) => !Array.isArray(v) || v.length !== 384 || v.some(n => typeof n !== "number" || !Number.isFinite(n)))) throw new Error("embedding_invalid");
+  if (data.model !== "multilingual-minilm-l12-v2-e8f8c211" || data.dimensions !== 384 || !Array.isArray(data.vectors) || data.vectors.length !== texts.length || data.vectors.some((v: unknown) => !Array.isArray(v) || v.length !== 384 || v.some(n => typeof n !== "number" || !Number.isFinite(n)))) throw new Error("embedding_invalid");
   return data.vectors;
 }

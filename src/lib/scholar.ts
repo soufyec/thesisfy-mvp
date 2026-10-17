@@ -1,3 +1,4 @@
+import { safeAcademicQuery } from "./services/privacy-egress";
 /**
  * Thin clients for the open scholarly graphs the literature features sit on:
  * OpenAlex (search, works, abstracts, retraction flag), Crossref (DOI resolution, bibliographic matching),
@@ -108,7 +109,7 @@ function oaParams(extra: Record<string, string>) {
 
 /** Relevance search over OpenAlex works. `semantic` uses the embedding search (keyed, 1 rps) when a key is set. */
 export async function openAlexSearch(query: string, opts: { perPage?: number; semantic?: boolean; fromYear?: number } = {}): Promise<ScholarWork[]> {
-  const q = query.trim().slice(0, 500);
+  const q = await safeAcademicQuery(query.trim().slice(0, 500));
   if (!q) return [];
   const perPage = Math.min(25, opts.perPage || 10);
   const params: Record<string, string> = { "per-page": String(perPage), select: OA_FIELDS };
@@ -166,7 +167,7 @@ export async function crossrefWork(doi: string): Promise<ScholarWork | null> {
 
 /** Match a free-text reference string (Crossref's query.bibliographic is built for this). Returns best candidates with Crossref's score. */
 export async function crossrefBibliographic(reference: string, rows = 3): Promise<(ScholarWork & { score: number })[]> {
-  const q = reference.trim().slice(0, 500);
+  const q = await safeAcademicQuery(reference.trim().slice(0, 500));
   if (!q) return [];
   const params = new URLSearchParams({ "query.bibliographic": q, rows: String(rows), mailto: MAILTO, select: "DOI,title,author,issued,container-title,type,is-referenced-by-count,URL,abstract,score" });
   const res = await timeoutFetch(`${CROSSREF}/works?${params}`);
@@ -183,7 +184,7 @@ function s2Headers(): Record<string, string> {
 
 /** Semantic Scholar title match (returns the closest paper). Requires S2_API_KEY for reliable rate limits. */
 export async function s2MatchTitle(title: string): Promise<ScholarWork | null> {
-  const params = new URLSearchParams({ query: title.slice(0, 300), fields: "paperId,externalIds,title,authors,year,venue,abstract,citationCount,openAccessPdf,publicationTypes" });
+  const params = new URLSearchParams({ query: (await safeAcademicQuery(title)).slice(0, 300), fields: "paperId,externalIds,title,authors,year,venue,abstract,citationCount,openAccessPdf,publicationTypes" });
   const res = await timeoutFetch(`${S2}/paper/search/match?${params}`, { headers: s2Headers() });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Semantic Scholar match failed (${res.status})`);
@@ -194,7 +195,7 @@ export async function s2MatchTitle(title: string): Promise<ScholarWork | null> {
 
 /** Semantic Scholar snippet search: ~500-word passages from paper bodies that match a query. */
 export async function s2SnippetSearch(query: string, limit = 10): Promise<{ text: string; section?: string; work: ScholarWork }[]> {
-  const params = new URLSearchParams({ query: query.slice(0, 500), limit: String(Math.min(limit, 20)) });
+  const params = new URLSearchParams({ query: await safeAcademicQuery(query.slice(0, 500)), limit: String(Math.min(limit, 20)) });
   const res = await timeoutFetch(`${S2}/snippet/search?${params}`, { headers: s2Headers() });
   if (!res.ok) throw new Error(`Semantic Scholar snippet search failed (${res.status})`);
   const json = await res.json();

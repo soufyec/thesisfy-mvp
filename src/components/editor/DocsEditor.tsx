@@ -55,7 +55,7 @@ import DocumentTabs from "./DocumentTabs";
 import { ARTIFACT_DRAG_TYPE, draggedArtifact, endArtifactDrag } from "../ai/artifactDrag";
 import { artifactInsertWords } from "../ai/artifactText";
 import { AiPasteDialog, ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, SubmitDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, type AiPasteCost, type PasteMatchInfo, type TeacherRole } from "./Dialogs";
-import { CommentItem, FlagItem, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
+import { CommentItem, FlagItem, referenceHtml, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
 import { LogoMark } from "../Logo";
 import AssistantPanel, { type InsertArtifactHandler, type InsertMeta } from "../ai/AssistantPanel";
 import { LanguageReview } from "./language/languageReview";
@@ -1620,7 +1620,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     // The numbered list and the chips in the text must agree: chips left over from an older order are renumbered first.
     if (thesis.citationStyle === "IEEE") renumberIeee();
     const refs = [...referencesRef.current].sort((a, b) => a.authors.localeCompare(b.authors));
-    const items = refs.map((r, i) => `<p>${thesis.citationStyle === "IEEE" ? `[${i + 1}] ` : ""}${formatReference(r, thesis.citationStyle).full}</p>`).join("");
+    const items = refs.map((r, i) => `<p>${thesis.citationStyle === "IEEE" ? `[${i + 1}] ` : ""}${referenceHtml(r, thesis.citationStyle)}</p>`).join("");
     const title = t("editor.doc.references");
     programmatic(() => {
       // Replace an existing References block (heading plus the paragraphs under it) instead of adding a second one.
