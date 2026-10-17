@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 from presidio_analyzer import AnalyzerEngine
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from langdetect import detect, DetectorFactory
+from languages import LANGUAGES, analysis_languages
 
 DetectorFactory.seed = 0
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-LANGUAGES = {"en": "en_core_web_sm", "fr": "fr_core_news_sm", "es": "es_core_news_sm", "de": "de_core_news_sm"}
 ENTITIES = {"PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "LOCATION", "IBAN_CODE", "CREDIT_CARD", "IP_ADDRESS"}
 
 def authorize(token):
@@ -49,21 +49,13 @@ def health(x_thesisfic_engine: str | None = Header(default=None)):
 @app.post("/analyze")
 def analyze(body: AnalyzeBody, x_thesisfic_engine: str | None = Header(default=None)):
     authorize(x_thesisfic_engine)
-    language = body.language
-    if language == "auto" and len(body.text.split()) < 8:
-        # Short search terms cannot be reliably language-classified. Union all supported NER models.
-        results = [r for lang in LANGUAGES for r in analyzer().analyze(text=body.text, language=lang, entities=body.entities)]
-        return [{"start": r.start, "end": r.end, "entity_type": r.entity_type, "score": r.score} for r in results]
-    if language == "auto":
-        try:
-            language = detect(body.text)
-        except Exception:
-            language = "en"
-    if language not in LANGUAGES:
-        raise HTTPException(422, "unsupported_language")
     if any(entity not in ENTITIES for entity in body.entities):
         raise HTTPException(422, "unsupported_entity")
-    results = analyzer().analyze(text=body.text, language=language, entities=body.entities)
+    try:
+        languages = analysis_languages(body.text, body.language, detect)
+    except ValueError:
+        raise HTTPException(422, "unsupported_language")
+    results = [r for language in languages for r in analyzer().analyze(text=body.text, language=language, entities=body.entities)]
     return [{"start": r.start, "end": r.end, "entity_type": r.entity_type, "score": r.score} for r in results]
 
 @app.post("/embed")
