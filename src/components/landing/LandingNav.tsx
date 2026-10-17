@@ -10,7 +10,7 @@ const LINKS = [
   { href: "#how", label: "landing.nav.how" },
   { href: "#data", label: "landing.nav.data" },
   { href: "#roles", label: "landing.nav.institutions" },
-  { href: "#trial", label: "landing.nav.pilot" },
+  { href: "/demo", label: "landing.nav.pilot" },
 ];
 
 export { default as Logo } from "@/components/Logo";
@@ -25,16 +25,16 @@ export default function LandingNav() {
     <nav className="sticky top-0 z-50 bg-brand-50/85 backdrop-blur-xl border-b border-gray-100" aria-label={t("landing.nav.main")}>
       <div className="mx-auto max-w-[1200px] px-5 sm:px-8 h-16 flex items-center justify-between gap-6">
         <Logo />
-        {/* Section links only where they fit on one line in every language (German is the longest); the trial link
+        {/* Section links only where they fit on one line in every language (German is the longest); the demo link
             is left out here because the button next to it already goes there. */}
         <div className="hidden md:flex items-center gap-5 xl:gap-6 text-[14px] font-medium">
-          {LINKS.filter((l) => l.href !== "#trial").map((l) => (
+          {LINKS.filter((l) => l.href !== "/demo").map((l) => (
             <a key={l.href} href={l.href} className="hidden xl:inline whitespace-nowrap text-gray-600 hover:text-gray-900 transition-colors">
               {t(l.label)}
             </a>
           ))}
           <LanguageSwitcher variant="inline" />
-          <a href="#trial" className={`${CTA} whitespace-nowrap`}>
+          <a href="/demo" className={`${CTA} whitespace-nowrap`}>
             {t("landing.nav.requestPilot")}
           </a>
         </div>
@@ -57,7 +57,7 @@ export default function LandingNav() {
             </a>
           ))}
           <LanguageSwitcher variant="inline" className="py-2" />
-          <a href="#trial" className={`${CTA} mt-2`} onClick={() => setOpen(false)}>
+          <a href="/demo" className={`${CTA} mt-2`} onClick={() => setOpen(false)}>
             {t("landing.nav.requestPilot")}
           </a>
         </div>

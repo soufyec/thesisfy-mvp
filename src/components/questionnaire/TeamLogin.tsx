@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/landing/LandingNav";
-import { useT } from "@/lib/i18n/client";
+import { useQuestionnaireT as useT, useQuestionnaireLanguage, QuestionnaireLanguageSelector } from "./Language";
 
 /** Password form for the team: sets the team cookie, then goes to `next` (results by default). */
 export default function TeamLogin({ next }: { next: string }) {
@@ -37,7 +37,7 @@ export default function TeamLogin({ next }: { next: string }) {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-100">
         <div className="mx-auto max-w-[720px] px-4 sm:px-6 h-14 flex items-center">
-          <Logo />
+          <Logo /><div className="ms-auto"><QuestionnaireLanguageSelector /></div>
         </div>
       </header>
       <main className="flex-1 flex items-start justify-center px-4 py-10">

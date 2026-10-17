@@ -1,8 +1,11 @@
+import { zoteroConnections } from "./zotero-store";
+import { courseReadings } from "./course-store";
 // Thesisfic data layer.
 // In-memory store persisted on globalThis (survives hot reloads) with optional
 // JSON-file persistence (DATA_FILE env). Swap for Postgres/Prisma in production:
 // every access goes through the `db` object below, so the surface stays stable.
 
+import { defaultProductSettings, type ProductSettings } from "./product-settings";
 import type { TestResult } from "./data/inference/types";
 import type { DiagramSpec, DiagramWarning } from "./diagrams/types";
 import { randomBytes, randomUUID } from "crypto";
@@ -124,6 +127,7 @@ export interface ThesisTab {
 }
 
 export interface Reference {
+  csl?: import("@citation-js/core").CSL;
   id: string;
   type: "book" | "article" | "web" | "thesis" | "chapter";
   authors: string;
@@ -369,6 +373,8 @@ export interface DatasetColumn {
 }
 
 export interface DatasetSheet {
+  /** Original worksheet row for each retained data row (new imports preserve blank-row gaps). */
+  rowNumbers?: number[];
   name: string;
   columns: DatasetColumn[];
   /** Column-major: `data[c][r]` is row r of column c (same order as `columns`). */
@@ -383,6 +389,8 @@ export interface DatasetSheet {
 
 /** The table parsed from a `sheet` source. One per source; removed with it. */
 export interface Dataset {
+  /** Transient selection used for one analysis or assistant turn. */
+  selection?: import("./data/workspace").DataSelection;
   id: string;
   sourceId: string;
   ownerId: string;
@@ -399,7 +407,7 @@ export interface Dataset {
 export interface DatasetSummary {
   /** Sheets dropped because the workbook had more than MAX_SHEETS. */
   sheetsCut?: number;
-  sheets: { name: string; rowCount: number; truncated: boolean; headerRow: number; columns: { name: string; label: string; type: DatasetColumn["type"]; role: DatasetColumn["role"] }[] }[];
+  sheets: { name: string; rowCount: number; truncated: boolean; headerRow: number; lastRow?: number; columns: { name: string; label: string; type: DatasetColumn["type"]; role: DatasetColumn["role"] }[] }[];
 }
 
 /** Summary of a dataset for source views: sheet names, sizes and columns, never rows or statistics. */
@@ -411,6 +419,7 @@ export function datasetSummary(d: Dataset): DatasetSummary {
       rowCount: s.rowCount,
       truncated: s.truncated,
       headerRow: s.headerRow,
+      lastRow: s.rowNumbers?.[s.rowNumbers.length - 1] ?? s.headerRow + s.rowCount,
       columns: s.columns.map((c) => ({ name: c.name, label: c.label, type: c.type, role: c.role })),
     })),
   };
@@ -433,8 +442,16 @@ export type AnalysisOp =
   | "diagram" | "equation";
 
 /** What the model (or the demo planner) asks Thesisfic to compute. Validated against the dataset before running. */
+export interface DataFilter {
+  column: string;
+  op: "eq" | "neq" | "in" | "gt" | "gte" | "lt" | "lte" | "between" | "isMissing" | "isNotMissing";
+  value?: Exclude<DatasetCell, null> | Exclude<DatasetCell, null>[];
+}
+
 export interface AnalysisSpec {
   op: AnalysisOp;
+  /** Conditions joined with AND, applied before any aggregation or statistical test. */
+  filters?: DataFilter[];
   sheet?: string;
   columns?: string[];
   column?: string;
@@ -473,11 +490,12 @@ export interface ArtifactTable {
 }
 
 export interface ChartData {
+  style?: { showGrid?: boolean; fontSize?: number; color?: string };
   type: "bar" | "groupedBar" | "line" | "scatter" | "histogram" | "pie" | "box";
   xLabel: string;
   yLabel: string;
   categories?: string[];
-  series: { name: string; values?: number[]; points?: [number, number][]; other?: boolean }[];
+  series: { name: string; color?: string; values?: number[]; points?: [number, number][]; other?: boolean }[];
   fit?: { slope: number; intercept: number; r: number; n: number };
   percent?: boolean;
   /** box: Tukey five-number summaries per group (≤ 12). */
@@ -490,6 +508,8 @@ export interface ChartData {
  * no data source: their `sourceId`, `fileName`, `sheet` and `datasetSha256` are "" and `n` is 0 (spec op "diagram"/"equation").
  */
 export interface Artifact {
+  /** Explicit user selection retained for editing and reproducing the result. */
+  dataSelection?: import("./data/workspace").WorkspaceRequest;
   id: string;
   interactionId: string;
   kind: "table" | "chart" | "test" | "diagram" | "equation";
@@ -639,6 +659,9 @@ export interface AIInteraction {
 }
 
 export interface ConversationMessage {
+  files?: import("./ai/files").ResearchFile[];
+  research?: import("./ai/research").ResearchSearch;
+  sourceSelections?: Record<string, import("./data/workspace").DataSelection>;
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -666,6 +689,8 @@ export interface Conversation {
 
 /** A piece of work a teacher (or an admin) sends to students. Each student's paper is a `Thesis` with `assignmentId`. */
 export interface Assignment {
+  /** Restrict research grounding to the teacher’s uploaded readings. */
+  officialReadingsOnly?: boolean;
   id: string;
   university: string;
   /** Professor or admin who created it; becomes the `professorId` of each paper started from it. */
@@ -850,6 +875,7 @@ export interface QuestionnaireResponse {
   profil: "enseignant" | "etudiant";
   interviewer: string | null;
   answers: Record<string, string | string[] | number | Record<string, string>>;
+  language?: import("./questionnaire/languages").QuestionnaireLanguage;
   durationSeconds: number;
   path: string[];
 }
@@ -857,11 +883,13 @@ export interface QuestionnaireResponse {
 /** A question or an alternative phrasing the team added to the questionnaire from the form itself. */
 export interface QuestionnaireEditRow {
   id: string;
-  kind: "item" | "phrasing";
+  kind: "item" | "phrasing" | "update" | "remove" | "order";
   sectionId: string;
   targetKey?: string;
   item?: Record<string, unknown>;
   text?: string;
+  keys?: string[];
+  locale?: string;
   author?: string;
   createdAt: string;
 }
@@ -908,6 +936,7 @@ export interface LtiKey {
 }
 
 export interface Store {
+  productSettings?: ProductSettings;
   users: User[];
   theses: Thesis[];
   versions: ThesisVersion[];
@@ -1673,9 +1702,11 @@ async function ready(): Promise<void> {
   return g.__thesisficSync;
 }
 
-async function flushToDb() {
-  if (writeInFlight) return;
+let activeWrite: Promise<void> | undefined;
+function flushToDb(): Promise<void> {
+  if (activeWrite) return activeWrite;
   writeInFlight = true;
+  activeWrite = (async () => {
   try {
     while (writeDirty) {
       writeDirty = false;
@@ -1688,6 +1719,8 @@ async function flushToDb() {
   } finally {
     writeInFlight = false;
   }
+  })().finally(() => { activeWrite = undefined; });
+  return activeWrite;
 }
 
 let persistTimer: NodeJS.Timeout | null = null;
@@ -1775,12 +1808,28 @@ const dedupe = (ids: string[]) => ids.filter((id, i) => typeof id === "string" &
 // ---------- data access ----------
 
 export const db = {
+  courseReadings,
+  zotero: zoteroConnections,
   raw: () => load(),
   persist,
+  /** New writes can wait for durability without changing the existing fire-and-forget API. */
+  flush: async () => { if (storeConfigured) { await flushToDb(); if (writeDirty) throw new Error("persistence_failed"); } },
   /** Await before reading when Postgres is configured (route handlers do this through requireUser). */
   ready,
   storeConfigured,
   storeVersion: () => g.__thesisficVersion,
+
+  productSettings: {
+    get: (): ProductSettings => JSON.parse(JSON.stringify(load().productSettings || defaultProductSettings())),
+    set: (settings: ProductSettings, expectedRevision: number): ProductSettings => {
+      const current = load().productSettings || defaultProductSettings();
+      if (current.revision !== expectedRevision) throw new Error("conflict");
+      const next = { ...settings, revision: current.revision + 1, updatedAt: now() };
+      load().productSettings = JSON.parse(JSON.stringify(next));
+      persist();
+      return JSON.parse(JSON.stringify(next));
+    },
+  },
 
   users: {
     findByEmail: (email: string) => load().users.find((u) => u.email.toLowerCase() === email.toLowerCase()),

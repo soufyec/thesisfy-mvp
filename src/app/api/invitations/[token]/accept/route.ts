@@ -8,7 +8,8 @@ import { getLocale } from "@/lib/i18n/server";
 const MIN_PASSWORD = 8;
 
 /** Public: creates the invited account (email, role and university come from the invitation) and signs in. */
-export async function POST(request: NextRequest, { params }: { params: { token: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ token: string }> }) {
+  const params = await routeParams;
   await db.ready();
   const inv = db.invitations.findByToken(params.token);
   if (!inv || inv.revokedAt) return error("Invitation not found", 404);

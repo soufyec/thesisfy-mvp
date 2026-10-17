@@ -12,7 +12,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 
 1. **Atribución en el momento, nunca inferencia después.** Toda marca de procedencia nace de un evento real: inserción desde el asistente, pegado, o pegado que coincide con las huellas por frase de una respuesta del asistente o del Research copilot (`responseFingerprints`). No añadir heurísticas que "adivinen" IA. No existe extensión de navegador ni vigilancia de sitios externos: se eliminó a propósito.
 2. **El estudiante ve lo mismo que el tutor.** Ninguna métrica, aviso o registro es visible para el tutor y oculto para el estudiante.
-3. **La IA piensa contigo, no escribe por ti.** El asistente puede esquematizar, criticar, corregir texto del estudiante, explicar, citar y, en modo **Research copilot**, conversar libremente sobre cualquier tema de la investigación. Nunca redacta texto del trabajo (tesis, ensayo, informe…). Las **tablas y figuras** que el Research copilot propone sobre los datos primarios adjuntos los calcula siempre el servidor (`src/lib/data/`), nunca el modelo, y solo se insertan como AI-assisted con su coste. `src/lib/ai/policy.ts` y `prompts.ts` son la fuente de verdad; no relajar `GENERATION_PATTERNS` ni `BASE_SYSTEM`.
+3. **Asistencia vinculada al objetivo del trabajo.** Por petición explícita del usuario (16 octubre 2026), **Research copilot** puede crear y revisar informes, materiales, plantillas, código y archivos relacionados con el objetivo de la tesis o tarea. La conversación libre sustituye a Ask, Brainstorm, Outline, Summarize y Explain en la navegación; Critique, Grammar, Citations, Find gaps y Paraphrase conservan sus funciones enfocadas. Paraphrase reformula texto suministrado sin añadir contenido; usa el identificador persistido `paraphrase_check`. Los modos antiguos permanecen compatibles con el historial. No inventar resultados, fuentes ni búsquedas; los cálculos de los datos adjuntos siguen en `src/lib/data/`. Toda inserción conserva procedencia y coste. Las restricciones de redacción de `BASE_SYSTEM` y `GENERATION_PATTERNS` permanecen para los modos enfocados; el copilot usa `COPILOT_SYSTEM`, sin saltarse consentimiento, propiedad ni límites de inserción.
 4. **Consentimiento primero, aplicado en servidor.** Los scopes de monitorización (interacciones con IA, ritmo de tecleo, pegados, actividad de pestañas) se eligen en cliente y se filtran en servidor (`/api/monitor/consent`, `/api/sessions/*`). No registrar texto tecleado, solo recuentos y huellas.
 5. **Cada inserción de IA muestra su coste antes de ocurrir.** Palabras añadidas y nuevo % de IA respecto al límite. Sin excepciones. No se muestra quién paga el modelo (ni en la landing ni en el producto); la facturación vive solo en `Admin → AI access & billing`.
 6. **La universidad paga la IA.** Los modelos se ofrecen y presupuestan desde `Admin → AI access & billing` (`src/lib/ai/funding.ts`, `providers.ts`); el estudiante puede añadir su propia cuenta, nunca es obligatorio.
@@ -24,7 +24,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 |---|---|---|
 | Asistente de IA | **Thesisfic AI** / **AI assistant** | `AssistantPanel` |
 | Modo libre pagado por la universidad | **Research copilot** | `AIMode = "copilot"`, `Policy.researchCopilot` |
-| Modos del asistente | **Research copilot · Ask · Brainstorm · Outline · Critique · Grammar · Summarize · Explain · Citations · Find gaps · Paraphrase** | `AIMode` (11), rejilla visible sin scroll horizontal; el copilot va destacado en primera posición |
+| Modos del asistente | **Research copilot · Critique · Grammar · Citations · Find gaps · Paraphrase** | `AIMode` mantiene identificadores antiguos; seis accesos compactos, copilot primero |
 | Marcas de procedencia en el margen | **Provenance gutter** | `ProvenanceGutter`, decoraciones en `extensions.ts` |
 | Texto escrito por el estudiante | **Written** | `provenance: "human"` (no cambiar el valor almacenado) |
 | Texto insertado desde IA | **AI-assisted** | `provenance: "ai"` |
@@ -45,7 +45,7 @@ No es un detector. No acusa. No puntúa "probabilidad de IA". Cualquier texto, c
 | Ecuación | **Equation** («Eq · AI» si viene del copilot) | nodos `math` / `mathBlock`, `src/lib/math/`, línea `ai_equations` |
 | Cronograma, PRISMA, mapa conceptual | **Diagram** (Timeline · PRISMA flow · Concept map) | nodo `chart` con `spec.figure`, `src/lib/diagrams/` |
 
-Cada modo lleva icono `lucide` (campo `icon` de `MODES` es el nombre del icono), una línea de ayuda y 2–4 sugerencias rápidas propias. No introducir agrupaciones intermedias.
+Cada modo lleva icono `lucide` (campo `icon` de `MODES` es el nombre del icono), dos sugerencias breves al iniciar; ayuda en el título del control. No introducir agrupaciones intermedias.
 
 ## 4. Sistema visual
 
@@ -74,11 +74,11 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 ## 5. Reglas de layout del editor
 
 - Máximo **tres filas de cromo** encima del documento: cabecera (52px), barra de herramientas (40px) y fila de pestañas del documento (34px, `.doc-tab`). El resto va al menú `⋯`, al bubble menu de selección o a la session bar inferior (30px).
-- Las pestañas del documento se mantienen como fila propia sobre la hoja, con "Final submission" bloqueada a la izquierda y `+` al final.
+- Las pestañas se eligen desde un selector compacto sobre la hoja: muestra la pestaña activa y abre un menú con Final submission y las pestañas de trabajo. El menú conserva crear, renombrar, duplicar, promover y borrar. Toolbar y selector pertenecen a la columna del documento; el asistente empieza justo debajo de la cabecera.
 - La barra de herramientas conserva el conjunto completo (`Toolbar.tsx`); fondo blanco, sin forma de píldora, 40px de alto, y el interruptor **Provenance** al final a la derecha.
 - El bubble menu de selección ofrece: B, I, U, Cite, Comment, **Ask AI** (abre el asistente con la selección como contexto).
 - El provenance gutter es visible por defecto y se apaga con el interruptor de la barra; su estado se persiste en `localStorage` (`provenance_gutter`).
-- Panel del asistente: 400px, a la derecha, desmontable. En móvil, bottom sheet.
+- Panel del asistente: 400px, a la derecha, desmontable. En móvil, bottom sheet. Los adjuntos permiten configurar hoja, rango y resultado; sus tarjetas se arrastran al documento con coste visible y procedencia conservada. Los gráficos admiten edición de datos y formato, conservando la primera versión y el origen.
 - Los trabajos de una tarea abren el panel **Brief** (solo lectura, también en revisión) desde la session bar, el menú `⋯` y el menú móvil; sin tarea no aparece.
 - Las plantillas solo escriben encabezados; la guía de cada sección es un placeholder (`data-hint`) que no cuenta, no se exporta y no se ve en revisión.
 
@@ -94,11 +94,12 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 
 ## 7. Arquitectura y límites técnicos
 
-- Stack fijo: Next 14 (App Router), React 18, Tailwind 3, TipTap 2, `lucide-react`. No añadir librerías de UI ni de estado global.
+- Stack fijo: Next 15 (actualización autorizada el 17 octubre 2026) (App Router), React 18, Tailwind 3, TipTap 2, `lucide-react`. No añadir librerías de UI ni de estado global.
 - `src/lib/db.ts` es el único acceso a datos (memoria + `DATA_FILE` opcional). Cambios de esquema se hacen ahí y en `src/components/editor/types.ts`.
 - No tocar `extensions.ts` (Provenance, CommentMark, CitationMark) sin la prueba manual: insertar IA → marca; pegar → diálogo; pegar texto de una respuesta del copilot → reconocido y marcado; copiar entre pestañas → sin diálogo. Si se toca el nodo `chart`, el pegado o la inserción de artefactos, además: insertar tabla y gráfico del copilot → tarjeta de coste, marca y «Fig · AI»; pegar desde notas a Final submission contenido IA → tarjeta de coste antes de pegar; copiar o arrastrar el gráfico → no entra como imagen sin origen.
 - Los cuatro contadores de procedencia (cliente, `db.ts`, `integrity.ts`, `process.ts`) quitan las figuras `figure[data-chart]` antes de contar palabras; las figuras se cuentan aparte (`computeFigures` ≡ `figureStats.ts`).
 - Las rutas `/api/*` mantienen sus contratos; si se añade un campo a una respuesta, es opcional.
+- El asistente recibe el texto de la pestaña abierta al enviar, incluidos cambios sin guardar; sin editor usa el documento guardado autorizado. Esta lectura es independiente de «Use my sources». Una selección centra la respuesta. Solo el propietario puede aportar una instantánea sin guardar; los documentos largos se envían como fragmentos identificados, sin fingir lectura completa.
 - Componentes compartidos viven en `src/components/ui.tsx`. Si un patrón se repite 3 veces, se extrae ahí.
 - Accesibilidad mínima: cada control con `aria-label` o texto visible, foco visible, contraste 4.5:1.
 - `docs/design-handoff/` es documentación: excluida del build y del lint.
@@ -115,3 +116,12 @@ Definido en `tailwind.config.ts` y `globals.css`. Usar tokens, nunca hex sueltos
 ## 9. Cómo trabajar con PLAN.md
 
 `PLAN.md` define las fases y su orden. Cada sesión empieza leyendo esta guía y la fase activa, enumera los archivos que va a tocar, implementa solo esa fase, y al terminar marca las tareas y resume en 5 líneas qué cambió y qué queda.
+
+
+## Cuestionario y reservas (16 octubre 2026)
+
+El cuestionario tiene su propio selector FR/EN/ES/DE/PT/AR, independiente de los cuatro idiomas del resto del producto. Las traducciones de preguntas, opciones y etapas están en `src/data/questionnaire-*.json`; los valores de respuesta y las reglas de navegación mantienen sus claves originales. El árabe usa RTL. El equipo puede adaptar textos por idioma; los textos personalizados sin traducción muestran una indicación pendiente.
+
+Las ediciones del cuestionario requieren sesión de equipo. En edición se puede saltar de etapa sin responder; las respuestas de prueba están separadas y no se pueden enviar. El borrado archiva la pregunta para conservar resultados históricos. Consentimiento, modo y perfil se conservan porque sostienen el consentimiento y la navegación pública. El orden se cambia dentro de cada etapa mediante arrastre o flechas.
+
+La landing ofrece una demo de 30 minutos por Google Meet en lugar de lista de espera. Los CTA apuntan a `/demo`, que redirige al evento Cal.com definido en `DEMO_BOOKING_URL`. La URL es configuración pública, no una credencial. Si falta, se muestra una indisponibilidad honesta, sin inventar una agenda. El usuario eligió el plan gratuito de Cal.com y su cuenta de Google existente; no se contrató dominio ni correo.

@@ -16,7 +16,7 @@ import type { ChartData, WritingLanguage } from "./types";
 /**
  * The `chart` node (docs/papers.md §4.6, §9 D21–D22): one block for every figure Thesisfic draws itself.
  * - `figure: "chart"`: a chart computed by Thesisfic from the student's data and inserted from the Research copilot
- *   (always origin "ai"; the data cannot be edited).
+ *   (origin "ai"; data and styling are editable while the original data and origin are retained).
  * - `figure: "gantt" | "prisma" | "conceptMap"`: a diagram, made by the student with Insert › Diagram (origin
  *   "human", Written) or proposed by the copilot (origin "ai"). Both can be edited with the same form; editing never
  *   changes the origin, like AI text the student retouches (D22).
@@ -39,12 +39,12 @@ export type ChartAlign = "left" | "center" | "right";
 
 /** Figures a single tab can hold (§4.6). */
 export const MAX_CHARTS_PER_TAB = 30;
-/** Event a selected diagram's DOM receives when the student presses Enter: its NodeView opens the edit form. */
+/** Event a selected figure's DOM receives when the student presses Enter: its NodeView opens the edit form. */
 export const CHART_EDIT_EVENT = "thesisfic:edit-diagram";
 /** Titles and captions are cut to this length before they are drawn or saved. */
 export const CHART_TEXT_MAX = 200;
-/** A `data-spec` longer than this is dropped (the engine's largest spec, 500 scatter points, is far below). */
-const MAX_SPEC_CHARS = 400_000;
+/** Storage bound for edited data plus the retained original chart. */
+const MAX_SPEC_CHARS = 1_000_000;
 /** Width the SVG is drawn at (the page column scales it down), as for the copilot's inserted charts (§3.4). */
 export const CHART_DRAW_WIDTH = 640;
 const CHART_DRAW_HEIGHT = 400;
@@ -57,8 +57,11 @@ export interface ChartNodeSpec {
   title: string;
   /** Writing language of the labels (axis numbers, PRISMA boxes, Gantt months). */
   lang: WritingLanguage;
-  /** figure "chart": the computed chart (normalised: ≤ 500 points per series, finite numbers only). */
+  /** figure "chart": the computed or edited chart (bounded by CHART_LIMITS, finite numbers only). */
   chart?: ChartData;
+  originalChart?: ChartData;
+  editedAt?: string;
+  dataSelection?: import("@/lib/data/workspace").WorkspaceRequest;
   n?: number;
   fileName?: string;
   sheet?: string;
@@ -90,6 +93,7 @@ export interface ChartAttrs {
 }
 
 export interface ChartOptions {
+  thesisId?: string;
   /** Called when an insertion or a paste would put more than `MAX_CHARTS_PER_TAB` figures in the tab. */
   onLimit?: (max: number) => void;
 }
@@ -137,6 +141,9 @@ export function normalizeChartSpec(input: unknown, hint?: FigureKind): ChartNode
     if (!isObj(input.chart)) return null;
     const chart = normalizeChart(input.chart as unknown as ChartData);
     const out: ChartNodeSpec = { ...base, figure, chart, ...extra };
+    if (isObj(input.originalChart)) out.originalChart = normalizeChart(input.originalChart as unknown as ChartData);
+    if (typeof input.editedAt === "string") out.editedAt = str(input.editedAt, 40);
+    if (isObj(input.dataSelection)) out.dataSelection = input.dataSelection as unknown as ChartNodeSpec["dataSelection"];
     const n = typeof input.n === "number" && Number.isFinite(input.n) && input.n >= 0 ? Math.round(input.n) : undefined;
     if (n !== undefined) out.n = n;
     for (const k of ["fileName", "sheet", "sourceId", "datasetSha256"] as const) {
@@ -380,7 +387,7 @@ export const ChartNode = Node.create<ChartOptions>({
         const sel = editor.state.selection;
         if (!(sel instanceof NodeSelection) || sel.node.type.name !== this.name || !editor.isEditable) return false;
         const figure = readChartSpec((sel.node.attrs as ChartAttrs).spec, (sel.node.attrs as ChartAttrs).figure)?.figure ?? (sel.node.attrs as ChartAttrs).figure;
-        if (figure === "chart") return false;
+
         const dom = editor.view.nodeDOM(sel.from) as HTMLElement | null;
         const target = (dom?.querySelector?.("[data-node-view-wrapper]") as HTMLElement | null) || dom;
         target?.dispatchEvent(new CustomEvent(CHART_EDIT_EVENT));
@@ -572,7 +579,7 @@ export function patchChart(editor: Editor, pos: number, patch: Partial<ChartAttr
 
 /**
  * Replaces the diagram of the figure at `pos` (the edit form, D22). The origin is kept: an AI diagram the student
- * edits stays AI-assisted. Charts computed from data are never edited.
+ * edits stays AI-assisted. Data charts use patchChart through their dedicated data and formatting form.
  */
 export function updateDiagram(editor: Editor, pos: number, value: { spec: DiagramSpec; caption?: string | null }): boolean {
   const node = editor.state.doc.nodeAt(pos);

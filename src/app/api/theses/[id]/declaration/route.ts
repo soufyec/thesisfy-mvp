@@ -12,7 +12,8 @@ export const dynamic = "force-dynamic";
 const LANGS: DeclarationLang[] = ["en", "es", "fr"];
 
 /** GET → { declarations } newest first. Same list for the student and the advisor. */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
@@ -26,7 +27,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  * Renders the declaration from the ledger with the deterministic template and stores it with its summary.
  * With `rephrase`, also asks the model for a reworded proposal (not stored until the student accepts it).
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
@@ -75,7 +77,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
  * PATCH { id, text?, sign?: true, aiReworded?: boolean } (owner only).
  * Text can be edited until the declaration is signed; signing is final for that version.
  */
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);

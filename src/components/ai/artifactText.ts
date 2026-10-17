@@ -53,7 +53,7 @@ export function isComputed(a: Pick<Artifact, "sourceId" | "fileName">): boolean 
 
 /** Tables (and the data view of tests) that the insert button refuses: wider than the page. */
 export function tooWide(a: Artifact): boolean {
-  return (a.kind === "table" || a.kind === "test") && a.table.columns.length > MAX_INSERT_COLUMNS;
+  return false; // The author controls table layout and may resize columns or use a landscape page.
 }
 
 /**

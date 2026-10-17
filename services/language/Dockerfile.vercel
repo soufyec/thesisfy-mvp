@@ -1,0 +1,12 @@
+FROM maven:3.9.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn -B org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies -DoutputDirectory=/app/lib
+FROM python:3.11-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends openjdk-17-jre-headless && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir fastapi==0.143.3 uvicorn==0.54.0 httpx==0.28.1
+WORKDIR /app
+COPY --from=build /app/lib /app/lib
+COPY main.py server.properties ./
+EXPOSE 8080
+CMD ["sh", "-c", "java -Xms128m -Xmx768m -cp '/app/lib/*' org.languagetool.server.HTTPServer --config /app/server.properties --port 8081 >/dev/null 2>&1 & exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080} --no-access-log"]

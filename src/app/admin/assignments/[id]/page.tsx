@@ -7,6 +7,7 @@ import { Lock, LockOpen, Settings2, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { KindTile, Toast } from "@/components/ui";
 import { ConfirmDialog } from "@/components/editor/Dialogs";
+import { CourseReadings } from "@/components/assignments/CourseReadings";
 import { AssignmentBrief } from "@/components/assignments/AssignmentBrief";
 import { AssignmentStatusBar } from "@/components/assignments/AssignmentStatusBar";
 import { AssignmentDue } from "@/components/assignments/AssignmentCard";
@@ -169,6 +170,7 @@ export default function AssignmentDetailPage() {
                 {t("assignments.detail.studentView")}
               </h2>
               <AssignmentBrief view={a} />
+              <CourseReadings assignmentId={a.id} />
             </section>
 
             <section className="card p-5" aria-labelledby="asg-manage">

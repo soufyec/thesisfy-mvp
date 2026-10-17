@@ -10,7 +10,8 @@ import { PROVIDER_META } from "@/lib/ai/providers";
  *   <PROVIDER>_OAUTH_CLIENT_ID, <PROVIDER>_OAUTH_AUTHORIZE_URL, <PROVIDER>_OAUTH_TOKEN_URL, <PROVIDER>_OAUTH_SCOPES
  * and this route works without code changes. Until then it redirects back with oauth=unavailable.
  */
-export async function GET(request: NextRequest, { params }: { params: { provider: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ provider: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const provider = params.provider as Provider;

@@ -6,7 +6,8 @@ import { refreshThesisMetrics } from "@/lib/integrity";
 import { getT } from "@/lib/i18n/server";
 import { isLockedStatus } from "@/lib/paperSections";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string; versionId: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; versionId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   if (!canAccessThesis(r.user, params.id)) return error("Thesis not found", 404);
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 /** Restore: the current content is snapshotted first, then replaced by the version. */
-export async function POST(request: NextRequest, { params }: { params: { id: string; versionId: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string; versionId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);

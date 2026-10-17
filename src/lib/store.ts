@@ -14,7 +14,7 @@ export const storeConfigured = Boolean(url);
 const ROW_ID = "main";
 const g = globalThis as unknown as { __thesisficPool?: Pool; __thesisficTable?: Promise<void> };
 
-function pool(): Pool {
+export function databasePool(): Pool {
   if (!g.__thesisficPool) {
     const local = /localhost|127\.0\.0\.1/.test(url);
     g.__thesisficPool = new Pool({
@@ -31,7 +31,7 @@ function pool(): Pool {
 
 export function ensureTable(): Promise<void> {
   if (!g.__thesisficTable) {
-    g.__thesisficTable = pool()
+    g.__thesisficTable = databasePool()
       .query(
         `CREATE TABLE IF NOT EXISTS thesisfic_store (
            id text PRIMARY KEY,
@@ -50,18 +50,18 @@ export function ensureTable(): Promise<void> {
 }
 
 export async function readVersion(): Promise<number | null> {
-  const r = await pool().query<{ version: string }>("SELECT version FROM thesisfic_store WHERE id = $1", [ROW_ID]);
+  const r = await databasePool().query<{ version: string }>("SELECT version FROM thesisfic_store WHERE id = $1", [ROW_ID]);
   return r.rows[0] ? Number(r.rows[0].version) : null;
 }
 
 export async function readStore<T>(): Promise<{ data: T; version: number } | null> {
-  const r = await pool().query<{ data: T; version: string }>("SELECT data, version FROM thesisfic_store WHERE id = $1", [ROW_ID]);
+  const r = await databasePool().query<{ data: T; version: string }>("SELECT data, version FROM thesisfic_store WHERE id = $1", [ROW_ID]);
   return r.rows[0] ? { data: r.rows[0].data, version: Number(r.rows[0].version) } : null;
 }
 
 /** Upserts the document; returns the new version. */
 export async function writeStore(json: string): Promise<number> {
-  const r = await pool().query<{ version: string }>(
+  const r = await databasePool().query<{ version: string }>(
     `INSERT INTO thesisfic_store (id, data, version, updated_at) VALUES ($1, $2::jsonb, 1, now())
      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, version = thesisfic_store.version + 1, updated_at = now()
      RETURNING version`,

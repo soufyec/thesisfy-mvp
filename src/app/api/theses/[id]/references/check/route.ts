@@ -20,7 +20,8 @@ const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
  * stores `verification`, `isRetracted` and the resolved ids on each one. No model is involved; nothing is logged as AI use.
  * Response: { references, checked, results: { [referenceId]: ReferenceCheck } }.
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);

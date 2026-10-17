@@ -1,0 +1,1 @@
+Estilos IEEE y Chicago author-date de https://github.com/citation-style-language/styles, recuperados el 17 octubre 2026. Licencia Creative Commons Attribution-ShareAlike 3.0; autores y condiciones conservados en los metadatos XML. https://creativecommons.org/licenses/by-sa/3.0/

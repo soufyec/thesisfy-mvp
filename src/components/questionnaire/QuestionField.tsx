@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { useT } from "@/lib/i18n/client";
+import { useQuestionnaireT as useT, useQuestionnaireLanguage } from "./Language";
 import { AnswerValue, Item, Mode, OTHER_PREFIX, paragraphsFor } from "@/lib/questionnaire";
 
 interface Props {
@@ -21,8 +21,10 @@ const isOther = (v: string) => v.startsWith(OTHER_PREFIX);
 /** One question, rendered from its JSON definition. Tap targets are large: interviews are done on a phone. */
 export default function QuestionField({ item, fieldKey, value, onChange, mode, error, editing, onRemovePhrasing }: Props) {
   const t = useT();
+  const lang = useQuestionnaireLanguage();
   const id = useId();
-  const help = paragraphsFor(item.help, mode);
+  const translatedHelp = item.translations?.[lang.language]?.help;
+  const help = translatedHelp !== undefined ? translatedHelp.split(/\n\n+/).filter(Boolean) : paragraphsFor(item.help, mode).map(lang.text);
   const phrasings = item.phrasings || [];
   const showPhrasings = phrasings.length > 0 && (mode === "entretien" || editing);
 
@@ -36,7 +38,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
       value={current.slice(OTHER_PREFIX.length)}
       onChange={(e) => set(e.target.value)}
       placeholder={t("q.otherPlaceholder")}
-      aria-label={`${item.title} — ${t("q.other")}`}
+      aria-label={`${lang.title(item)} — ${t("q.other")}`}
       maxLength={300}
     />
   );
@@ -50,7 +52,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
           {(item.choices || []).map((c) => (
             <label key={c} className={choice(v === c)}>
               <input type="radio" name={fieldKey} className="mt-0.5 h-4 w-4 flex-shrink-0 accent-brand-600" checked={v === c} onChange={() => onChange(c)} />
-              <span>{c}</span>
+              <span>{lang.label(item, c)}</span>
             </label>
           ))}
           {item.other && (
@@ -80,7 +82,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
             return (
               <label key={c} className={`${choice(checked)} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
                 <input type="checkbox" className="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-brand-600" checked={checked} disabled={disabled} onChange={() => toggle(c)} />
-                <span>{c}</span>
+                <span>{lang.label(item, c)}</span>
               </label>
             );
           })}
@@ -130,10 +132,10 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
           {(item.low || item.high) && (
             <div className="flex justify-between gap-4 mt-2 text-[12px] text-gray-500">
               <span>
-                {min} · {item.low}
+                {min} · {lang.label(item, item.low || "")}
               </span>
               <span className="text-right">
-                {max} · {item.high}
+                {max} · {lang.label(item, item.high || "")}
               </span>
             </div>
           )}
@@ -147,7 +149,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
         <div className="flex flex-col gap-4">
           {(item.rows || []).map((row) => (
             <fieldset key={row} className="min-w-0">
-              <legend className="text-[14px] text-gray-800 mb-2">{row}</legend>
+              <legend className="text-[14px] text-gray-800 mb-2">{lang.label(item, row)}</legend>
               <div className="flex flex-wrap gap-2">
                 {(item.cols || []).map((col) => {
                   const checked = v[row] === col;
@@ -160,7 +162,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
                       onClick={() => onChange({ ...v, [row]: col })}
                       className={`px-3 h-9 rounded-[10px] border text-[13px] transition-colors ${checked ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-gray-200 text-gray-700 hover:border-brand-300"}`}
                     >
-                      {col}
+                      {lang.label(item, col)}
                     </button>
                   );
                 })}
@@ -172,10 +174,10 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
       break;
     }
     case "text":
-      field = <input id={`${id}-input`} type={item.format === "email" ? "email" : "text"} inputMode={item.format === "email" ? "email" : undefined} autoComplete={item.format === "email" ? "email" : undefined} className="input-field" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder={item.format === "email" ? t("q.emailPlaceholder") : t("q.textPlaceholder")} maxLength={4000} aria-labelledby={`${id}-title`} />;
+      field = <input id={`${id}-input`} type={item.format === "email" ? "email" : "text"} inputMode={item.format === "email" ? "email" : undefined} autoComplete={item.format === "email" ? "email" : undefined} dir="auto" className="input-field" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder={item.format === "email" ? t("q.emailPlaceholder") : t("q.textPlaceholder")} maxLength={4000} aria-labelledby={`${id}-title`} />;
       break;
     case "para":
-      field = <textarea id={`${id}-input`} className="input-field min-h-[110px] resize-y" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder={t("q.textPlaceholder")} maxLength={4000} aria-labelledby={`${id}-title`} />;
+      field = <textarea id={`${id}-input`} dir="auto" className="input-field min-h-[110px] resize-y" value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} placeholder={t("q.textPlaceholder")} maxLength={4000} aria-labelledby={`${id}-title`} />;
       break;
   }
 
@@ -183,7 +185,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
     <div id={`field-${fieldKey}`} className={`rounded-2xl ${error ? "ring-2 ring-red-500/40 p-3 -m-3" : ""}`} data-key={fieldKey}>
       <div className="mb-3">
         <p id={`${id}-title`} className="text-[15px] font-semibold text-gray-900 leading-snug">
-          {item.title}
+          {lang.title(item)}
           {item.req ? <span className="text-red-600" aria-label={t("q.required")}> *</span> : <span className="ml-2 text-[12px] font-normal text-gray-400">{t("q.optional")}</span>}
         </p>
         {item.interviewerOnly && <span className="inline-block mt-1 text-[11px] font-medium uppercase tracking-wide text-amber-700 bg-amber-50 rounded-full px-2 py-0.5">{t("q.interviewer.badge")}</span>}
@@ -199,7 +201,7 @@ export default function QuestionField({ item, fieldKey, value, onChange, mode, e
               {phrasings.map((p) => (
                 <li key={p.id} className="flex items-start justify-between gap-2 text-[13px] text-gray-800">
                   <span>
-                    {p.text}
+                    {lang.text(p.text)}
                     {p.author && <span className="text-gray-400"> — {p.author}</span>}
                   </span>
                   {editing && onRemovePhrasing && (

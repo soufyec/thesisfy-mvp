@@ -6,7 +6,9 @@ import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import { Accessibility, AlignCenter, AlignLeft, AlignRight, Captions, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { useT } from "@/lib/i18n/client";
-import { CHART_EDIT_EVENT, drawChartSpec, patchChart, readChartSpec, updateDiagram, type ChartAlign, type ChartAttrs } from "./chart";
+import { CHART_EDIT_EVENT, encodeChartSpec, drawChartSpec, patchChart, readChartSpec, updateDiagram, type ChartAlign, type ChartAttrs } from "./chart";
+import { setFigureDragImage } from "./figureDragImage";
+import ChartDialog from "./forms/ChartDialog";
 import DiagramDialog from "./forms/DiagramDialog";
 
 function Btn({ label, onClick, active, children }: { label: string; onClick: () => void; active?: boolean; children: ReactNode }) {
@@ -40,15 +42,15 @@ const inlineSvg = (svg: string) => svg.replace(/^<svg\b/, '<svg draggable="false
 /**
  * NodeView of the `chart` node (§4.6, D21–D22): the figure drawn inline from its spec (normalised; titles and
  * captions cut to 200 characters), an editable caption (like an image), width and alignment, delete. Diagrams open
- * their form on double-click or with "Edit diagram"; the origin stays as it was. Charts computed from data have no
- * data editing. In review (read-only) the same figure and caption are shown without tools.
+ * their form on double-click or with "Edit diagram"; the origin stays as it was. Charts computed from data have a data and formatting editor that retains their original data. In review (read-only) the same figure and caption are shown without tools.
  */
-export default function ChartView({ node, editor, getPos, deleteNode }: NodeViewProps) {
+export default function ChartView({ node, editor, getPos, deleteNode, extension }: NodeViewProps) {
   const t = useT();
   const a = node.attrs as ChartAttrs;
   const editable = useEditorEditable(editor);
   const wrapperRef = useRef<HTMLElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const resizeStop = useRef<(() => void) | null>(null);
   const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isSelected, setIsSelected] = useState(false);
   const [panel, setPanel] = useState<null | "alt">(null);
@@ -59,8 +61,16 @@ export default function ChartView({ node, editor, getPos, deleteNode }: NodeView
 
   const spec = useMemo(() => readChartSpec(a.spec, a.figure), [a.spec, a.figure]);
   const drawn = useMemo(() => (spec ? drawChartSpec(spec, a.caption) : null), [spec, a.caption]);
+  // Window bubbling runs after TipTap's own drag handler, so its default node snapshot is replaced.
+  useEffect(() => {
+    const start = (event: DragEvent) => {
+      if (event.dataTransfer && drawn && wrapperRef.current?.contains(event.target as Node)) setFigureDragImage(event.dataTransfer, drawn.svg, wrapperRef.current.getBoundingClientRect().width);
+    };
+    window.addEventListener("dragstart", start);
+    return () => window.removeEventListener("dragstart", start);
+  }, [drawn]);
   const isDiagram = !!spec && spec.figure !== "chart";
-  const canEditDiagram = editable && isDiagram;
+  const canEditFigure = editable && !!spec;
 
   // Tools only while this figure itself is selected (not when a text selection merely runs across it).
   useEffect(() => {
@@ -85,6 +95,7 @@ export default function ChartView({ node, editor, getPos, deleteNode }: NodeView
   useEffect(
     () => () => {
       if (commitTimer.current) clearTimeout(commitTimer.current);
+      resizeStop.current?.();
     },
     []
   );
@@ -156,16 +167,16 @@ export default function ChartView({ node, editor, getPos, deleteNode }: NodeView
   const setAlign = (align: ChartAlign) => patch({ align });
 
   const openEdit = () => {
-    if (canEditDiagram) setEditing(true);
+    if (canEditFigure) setEditing(true);
   };
   // Enter on the selected diagram (chart.ts keyboard shortcut) opens the same form as a double-click.
   useEffect(() => {
     const el = wrapperRef.current;
-    if (!el || !canEditDiagram) return;
+    if (!el || !canEditFigure) return;
     const open = () => setEditing(true);
     el.addEventListener(CHART_EDIT_EVENT, open);
     return () => el.removeEventListener(CHART_EDIT_EVENT, open);
-  }, [canEditDiagram]);
+  }, [canEditFigure]);
   const closeEdit = () => {
     setEditing(false);
     editor.commands.focus();
@@ -187,15 +198,24 @@ export default function ChartView({ node, editor, getPos, deleteNode }: NodeView
         data-drag-handle=""
         role="img"
         aria-label={label}
-        title={canEditDiagram ? t("figures.chart.editHint") : undefined}
+        title={canEditFigure ? t(isDiagram ? "figures.chart.editHint" : "workspace.editChart") : undefined}
         onDoubleClick={(e) => {
-          if (!canEditDiagram || !wrapperRef.current?.contains(e.target as Node)) return;
+          if (!canEditFigure || !wrapperRef.current?.contains(e.target as Node)) return;
           e.preventDefault();
           openEdit();
         }}
       >
         {figureBody}
+        {showUi && <button type="button" className="img-handle img-handle-se" aria-label={t("editor.image.resize")} data-fig-ui="" onPointerDown={event => {
+          event.preventDefault(); event.stopPropagation();
+          const startX = event.clientX, startWidth = event.currentTarget.parentElement!.getBoundingClientRect().width;
+          const move = (next: PointerEvent) => patch({ width: `${Math.max(120, Math.round(startWidth + next.clientX - startX))}px` });
+          const stop = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", stop); window.removeEventListener("pointercancel", stop); };
+          resizeStop.current?.(); resizeStop.current = stop;
+          window.addEventListener("pointermove", move); window.addEventListener("pointerup", stop, { once: true }); window.addEventListener("pointercancel", stop, { once: true });
+        }} />}
       </div>
+      {spec?.editedAt && <p className="text-xs text-gray-500" data-fig-ui="">{t("workspace.edited")}</p>}
 
       {(captionOpen || a.caption) && (
         <figcaption className="img-caption chart-caption">
@@ -252,7 +272,7 @@ export default function ChartView({ node, editor, getPos, deleteNode }: NodeView
             <span className="img-sep" />
             <Btn label={captionOpen || a.caption ? t("figures.chart.captionRemove") : t("figures.chart.captionAdd")} active={captionOpen || !!a.caption} onClick={toggleCaption}><Captions size={15} /></Btn>
             <Btn label={t("figures.chart.altText")} active={panel === "alt" || !!a.alt} onClick={openAlt}><Accessibility size={15} /></Btn>
-            {canEditDiagram && <Btn label={t("figures.chart.edit")} onClick={openEdit}><Pencil size={15} /></Btn>}
+            {canEditFigure && <Btn label={t(isDiagram ? "figures.chart.edit" : "workspace.editChart")} onClick={openEdit}><Pencil size={15} /></Btn>}
             <Btn label={t("figures.chart.delete")} onClick={() => deleteNode()}><Trash2 size={15} /></Btn>
           </div>
           {panel === "alt" && (
@@ -282,6 +302,8 @@ export default function ChartView({ node, editor, getPos, deleteNode }: NodeView
         </div>
       )}
 
+      {editing && spec?.chart && typeof document !== "undefined" && createPortal(
+        <div data-fig-ui=""><ChartDialog initial={spec} thesisId={extension.options.thesisId} onClose={closeEdit} onApply={value => { patch({ spec: encodeChartSpec(value) }); closeEdit(); }} /></div>, document.body)}
       {editing &&
         spec?.diagram &&
         typeof document !== "undefined" &&

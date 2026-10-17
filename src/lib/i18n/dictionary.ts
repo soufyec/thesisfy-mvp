@@ -1,4 +1,6 @@
+import { engines } from "./messages/engines";
 import { DEFAULT_LOCALE, interpolate, Locale, LOCALES, Vars } from "./index";
+import { product } from "./messages/product";
 import { common } from "./messages/common";
 import { landing } from "./messages/landing";
 import { dashboard } from "./messages/dashboard";
@@ -17,9 +19,11 @@ import { library } from "./messages/library";
 import { papers } from "./messages/papers";
 import { assignments } from "./messages/assignments";
 import { data } from "./messages/data";
+import { copilot } from "./messages/copilot";
+import { workspace } from "./messages/workspace";
 import { figures } from "./messages/figures";
 
-const AREAS = [common, landing, dashboard, admin, editor, assistant, panelsReview, panelsResearch, accounts, report, questionnaire, notifications, lti, onboarding, library, papers, assignments, data, figures] as const;
+const AREAS = [engines, product, common, landing, dashboard, admin, editor, assistant, panelsReview, panelsResearch, accounts, report, questionnaire, notifications, lti, onboarding, library, papers, assignments, data, figures, workspace, copilot] as const;
 
 function merge(locale: Locale): Record<string, string> {
   const out: Record<string, string> = {};

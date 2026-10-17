@@ -1,3 +1,4 @@
+import { formatEditorReference } from "@/lib/csl/editor-format";
 import { createElement, Fragment, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import type { Translate } from "@/lib/i18n/dictionary";
@@ -77,6 +78,7 @@ export interface ThesisTab {
 }
 
 export interface Reference {
+  csl?: import("@citation-js/core").CSL;
   id: string;
   type: "book" | "article" | "web" | "thesis" | "chapter";
   authors: string;
@@ -215,6 +217,8 @@ export const COLORS = ["#000000", "#434343", "#666666", "#999999", "#b7b7b7", "#
 export const HIGHLIGHTS = ["#fff59d", "#ffe082", "#b9f6ca", "#b3e5fc", "#e1bee7", "#ffccbc", "#cfd8dc"];
 
 export function formatReference(r: Reference, style: ThesisDoc["citationStyle"]): { full: string; inText: string } {
+  const formatted = formatEditorReference(r, style);
+  if (formatted) return formatted;
   const authors = r.authors.trim();
   const firstAuthorLast = authors.split(/,|&| and /)[0].trim().split(" ").pop() || authors;
   const etAl = authors.split(/,|&| and /).length > 2 ? `${firstAuthorLast} et al.` : authors.split(/&| and /).length === 2 ? `${firstAuthorLast} & ${(authors.split(/&| and /)[1] || "").trim().split(" ").pop()}` : firstAuthorLast;
@@ -293,6 +297,8 @@ export function referenceHtml(r: Reference, style: ThesisDoc["citationStyle"]): 
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/&lt;(\/?)(i|em|sub|sup)&gt;/gi, "<$1$2>");
+  const formatted = formatEditorReference(r, style);
+  if (formatted) return esc(formatted.full);
   const safe = Object.fromEntries(Object.entries(r).map(([k, v]) => [k, typeof v === "string" ? esc(v) : v])) as unknown as Reference;
   return formatReference(safe, style).full;
 }

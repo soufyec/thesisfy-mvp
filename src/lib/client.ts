@@ -65,6 +65,8 @@ export interface StreamHandlers {
   onDone?: (data: { interactionId?: string; usage?: { inputTokens: number; outputTokens: number }; blocked?: boolean }) => void;
   onError?: (err: { message: string; code?: string }) => void;
   /** A table or chart Thesisfic computed for the answer (always with `interactionId`); arrives after the text, before `done`. */
+  onResearchFile?: (file: import("./ai/files").ResearchFile) => void;
+  onResearchFileError?: (message: string) => void;
   onArtifact?: (artifact: Artifact) => void;
   /** A requested artifact that could not be computed; arrives after the text, before `done`. */
   onArtifactError?: (err: ArtifactErrorEvent) => void;
@@ -110,6 +112,11 @@ export async function streamChat(body: Record<string, unknown> & { sourceIds?: s
     else if (ev === "artifact") {
       const a = (data as { artifact?: Artifact }).artifact;
       if (a && typeof a === "object" && typeof a.id === "string" && typeof a.interactionId === "string" && a.interactionId) handlers.onArtifact?.(a);
+    } else if (ev === "research_file") {
+      const file = data.file as import("./ai/files").ResearchFile;
+      if (file && typeof file.id === "string" && typeof file.content === "string" && file.interactionId) handlers.onResearchFile?.(file);
+    } else if (ev === "research_file_error") {
+      handlers.onResearchFileError?.(String(data.message || ""));
     } else if (ev === "artifact_error") {
       if (typeof data.code === "string") handlers.onArtifactError?.(data as unknown as ArtifactErrorEvent);
     }

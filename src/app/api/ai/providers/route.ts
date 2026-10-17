@@ -3,11 +3,13 @@ import { db, Provider } from "@/lib/db";
 import { json, requireUser } from "@/lib/api";
 import { allowanceFor, DEFAULT_MODELS, institutionModelReady, oauthConfigured, platformKeyAvailable, PROVIDER_META } from "@/lib/ai/providers";
 import { BACKEND_META } from "@/lib/ai/providers";
+import { modeEnabled, publicAssistantSettings } from "@/lib/product-settings";
 import { MODES } from "@/lib/ai/prompts";
 
 export async function GET(request: NextRequest) {
   const r = await requireUser(request);
   if ("response" in r) return r.response;
+  const product = db.productSettings.get();
   const policy = db.policies.get(r.user.university);
   const connections = db.connections.listByUser(r.user.id);
   const providers = (Object.keys(PROVIDER_META) as Provider[]).map((p) => {
@@ -40,5 +42,5 @@ export async function GET(request: NextRequest) {
       institutionModels.unshift({ id: `platform:${p}`, provider: p, label: pretty(DEFAULT_MODELS[p]), model: DEFAULT_MODELS[p], backend: "thesisfic", backendName: BACKEND_META.thesisfic.name, region: "", isDefault: !hasReadyDefault && !institutionModels.some((m) => m.id.startsWith("platform:")), ready: true, color: PROVIDER_META[p].color });
     });
   }
-  return json({ institutionModels, allowance: funding.institutionPays ? allowanceFor(r.user) : null, providers, modes: MODES.filter((m) => (m.id === "copilot" ? policy.researchCopilot : policy.allowedModes.includes(m.id))), policy: { allowBYOK: policy.allowBYOK, allowedProviders: policy.allowedProviders, maxAiUsagePercent: policy.maxAiUsagePercent, researchCopilot: policy.researchCopilot }, defaultProvider: r.user.preferences.defaultProvider || null });
+  return json({ assistant: publicAssistantSettings(product), institutionModels, allowance: funding.institutionPays ? allowanceFor(r.user) : null, providers, modes: MODES.filter((m) => modeEnabled(product, m.id) && ["copilot", "critique", "grammar", "citations", "gaps", "paraphrase_check"].includes(m.id) && (m.id === "copilot" ? policy.researchCopilot : policy.allowedModes.includes(m.id))).map(m => ({ ...m, descriptions: product.modes[m.id as keyof typeof product.modes]?.descriptions })), policy: { allowBYOK: policy.allowBYOK, allowedProviders: policy.allowedProviders, maxAiUsagePercent: policy.maxAiUsagePercent, researchCopilot: policy.researchCopilot }, defaultProvider: r.user.preferences.defaultProvider || null });
 }

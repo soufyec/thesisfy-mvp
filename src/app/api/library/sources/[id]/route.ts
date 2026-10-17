@@ -24,7 +24,8 @@ async function load(request: NextRequest, id: string) {
  * by the source's role). Metadata fields are trimmed;
  * an empty title is refused, other empty fields are cleared. Response { source: LibrarySourceView }.
  */
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const l = await load(request, params.id);
   if ("response" in l) return l.response;
   const { user, source, t } = l;
@@ -64,7 +65,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
  * DELETE → deletes the source and its passages from the library, and so from every thesis that uses it.
  * Refused (409 code "locked") while an approved or submitted thesis uses it. Response { ok: true }.
  */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const l = await load(request, params.id);
   if ("response" in l) return l.response;
   const { source, t } = l;

@@ -295,7 +295,7 @@ const en = {
   // AI connections
   "dashboard.connections.title": "AI Connections",
   "dashboard.connections.subtitle": "Use the models your university provides, or the AI account you already pay for, inside Thesisfic, with every interaction logged transparently.",
-  "dashboard.connections.providedBody": "These models are ready to use, the same way companies give staff Copilot. Nothing to set up: pick one in the assistant or leave it on Auto.",
+  "dashboard.connections.providedBody": "These models are provided by your university. Choose your model in the assistant.",
   "dashboard.connections.allowance": "Your allowance this month",
   "dashboard.connections.usedUpBlock": "Used up: resets on the 1st.",
   "dashboard.connections.usedUpOwn": "Used up: your own account is used until the 1st.",
@@ -697,7 +697,7 @@ export const dashboard: Messages<typeof en> = {
     // AI connections
     "dashboard.connections.title": "Conexiones de IA",
     "dashboard.connections.subtitle": "Usa los modelos que ofrece tu universidad, o la cuenta de IA que ya pagas, dentro de Thesisfic, con cada interacción registrada de forma transparente.",
-    "dashboard.connections.providedBody": "Estos modelos están listos para usar, igual que las empresas dan Copilot a su personal. No hay nada que configurar: elige uno en el asistente o déjalo en Auto.",
+    "dashboard.connections.providedBody": "Tu universidad ofrece estos modelos. Elige tu modelo en el asistente.",
     "dashboard.connections.allowance": "Tu asignación de este mes",
     "dashboard.connections.usedUpBlock": "Agotada: se renueva el día 1.",
     "dashboard.connections.usedUpOwn": "Agotada: se usa tu propia cuenta hasta el día 1.",
@@ -1096,7 +1096,7 @@ export const dashboard: Messages<typeof en> = {
     // AI connections
     "dashboard.connections.title": "Connexions IA",
     "dashboard.connections.subtitle": "Utilisez les modèles que fournit votre université, ou le compte IA que vous payez déjà, dans Thesisfic, avec chaque interaction journalisée de façon transparente.",
-    "dashboard.connections.providedBody": "Ces modèles sont prêts à l'emploi, comme les entreprises offrent Copilot à leurs équipes. Rien à configurer : choisissez-en un dans l'assistant ou laissez-le sur Auto.",
+    "dashboard.connections.providedBody": "Ces modèles sont proposés par votre université. Choisissez votre modèle dans l’assistant.",
     "dashboard.connections.allowance": "Votre dotation de ce mois-ci",
     "dashboard.connections.usedUpBlock": "Épuisée : renouvelée le 1er du mois.",
     "dashboard.connections.usedUpOwn": "Épuisée : votre propre compte est utilisé jusqu'au 1er du mois.",
@@ -1495,7 +1495,7 @@ export const dashboard: Messages<typeof en> = {
     // AI connections
     "dashboard.connections.title": "KI-Verbindungen",
     "dashboard.connections.subtitle": "Nutzen Sie die Modelle Ihrer Hochschule oder das KI-Konto, für das Sie bereits zahlen, direkt in Thesisfic; jede Interaktion wird transparent protokolliert.",
-    "dashboard.connections.providedBody": "Diese Modelle sind sofort nutzbar, so wie Unternehmen ihren Mitarbeitenden Copilot bereitstellen. Nichts einzurichten: Wählen Sie eines im Assistenten oder lassen Sie es auf Auto.",
+    "dashboard.connections.providedBody": "Ihre Hochschule stellt diese Modelle bereit. Wählen Sie Ihr Modell im Assistenten.",
     "dashboard.connections.allowance": "Ihr Kontingent in diesem Monat",
     "dashboard.connections.usedUpBlock": "Aufgebraucht: wird am 1. zurückgesetzt.",
     "dashboard.connections.usedUpOwn": "Aufgebraucht: bis zum 1. wird Ihr eigenes Konto verwendet.",

@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Plus, Trash2 } from "lucide-react";
-import { useT } from "@/lib/i18n/client";
+import { ArrowDown, ArrowUp, Check, GripVertical, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
+import { useQuestionnaireT as useT, useQuestionnaireLanguage, QuestionnaireLanguageSelector } from "./Language";
 import {
   Answers,
+  canRemoveQuestion,
   AnswerValue,
   ENTRETIEN_CHOICE,
   isAnswered,
@@ -50,6 +51,7 @@ interface Props {
  */
 export default function Questionnaire({ questionnaire: initial, team, initialMode, presetProfil }: Props) {
   const t = useT();
+  const lang = useQuestionnaireLanguage();
   const [q, setQ] = useState<Definition>(initial);
   const baseAnswers = useMemo<Answers>(() => {
     const a: Answers = {};
@@ -68,12 +70,20 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [editorSectionId, setEditorSectionId] = useState(initial.sections[0].id);
+  const [previewAnswers, setPreviewAnswers] = useState<Answers>({});
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [undoRemoval, setUndoRemoval] = useState<string>();
+  const dragging = useRef<string>();
+  const [dragKey, setDragKey] = useState<string>();
   const [addRequest, setAddRequest] = useState<AddRequest | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const hydrated = useRef(false);
 
   // Draft: restore once, then keep in sync. Removed on submit.
   useEffect(() => {
+    if (hydrated.current) return;
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
@@ -99,15 +109,18 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
     } catch {}
   }, [answers, stack, startedAt, submitted]);
 
-  const mode = modeOf(answers);
-  const current = q.sections.find((s) => s.id === stack[stack.length - 1]) || q.sections[0];
-  const items = visibleItems(current, mode);
-  const isFirst = stack.length === 1;
+  const displayAnswers = team && editing ? previewAnswers : answers;
+  const mode = modeOf(displayAnswers);
+  const current = q.sections.find((s) => s.id === (team && editing ? editorSectionId : stack[stack.length - 1])) || q.sections[0];
+  const items = team && editing ? current.items : visibleItems(current, mode);
+  const editorIndex = q.sections.findIndex(s => s.id === current.id);
+  const isFirst = team && editing ? editorIndex === 0 : stack.length === 1;
   const nextId = nextSectionId(q, current, answers, mode);
-  const total = stack.length + remainingAfter(q, current.id, answers, mode);
+  const total = team && editing ? q.sections.length : stack.length + remainingAfter(q, current.id, answers, mode);
+  const progress = team && editing ? editorIndex + 1 : stack.length;
 
   const setValue = (key: string, value: AnswerValue | undefined) => {
-    setAnswers((a) => {
+    (team && editing ? setPreviewAnswers : setAnswers)((a) => {
       const n = { ...a };
       if (value === undefined) delete n[key];
       else n[key] = value;
@@ -145,6 +158,7 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
   };
 
   const goNext = async () => {
+    if (team && editing) { const next = q.sections[editorIndex + 1]; if (next) { setEditorSectionId(next.id); scrollTop(); } return; }
     if (!validate()) return;
     if (nextId === SUBMIT) {
       await submit();
@@ -155,6 +169,7 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
   };
 
   const goBack = () => {
+    if (team && editing) { const previous = q.sections[editorIndex - 1]; if (previous) { setEditorSectionId(previous.id); scrollTop(); } return; }
     if (isFirst) return;
     setErrors(new Set());
     setStack((s) => s.slice(0, -1));
@@ -176,13 +191,14 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
   }, [baseAnswers, q]);
 
   const submit = async () => {
+    if (team && editing) return;
     setSubmitting(true);
     setSubmitError("");
     try {
       const res = await fetch("/api/questionnaire", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, path: stack, durationSeconds: Math.round((Date.now() - startedAt) / 1000), website: "" }),
+        body: JSON.stringify({ answers, path: stack, durationSeconds: Math.round((Date.now() - startedAt) / 1000), language: lang.language, website: "" }),
       });
       if (res.status === 422) {
         setSubmitError(t("q.submitInvalid"));
@@ -204,14 +220,39 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
   const reload = async () => {
     try {
       const res = await fetch("/api/questionnaire", { cache: "no-store" });
-      if (res.ok) setQ((await res.json()).questionnaire);
-    } catch {}
+      if (!res.ok) throw new Error();
+      setQ((await res.json()).questionnaire);
+    } catch { setEditError(t("q.team.saveError")); }
   };
 
   const removeEdit = async (id: string) => {
     if (!confirm(t("q.team.removeConfirm"))) return;
-    await fetch(`/api/questionnaire/edits/${id}`, { method: "DELETE" });
-    await reload();
+    try { const res = await fetch(`/api/questionnaire/edits/${id}`, { method: "DELETE" }); if (!res.ok) throw new Error(); await reload(); }
+    catch { setEditError(t("q.team.saveError")); }
+  };
+
+  const changeDefinition = async (body: Record<string, unknown>) => {
+    setEditBusy(true); setEditError("");
+    try {
+      const res = await fetch("/api/questionnaire/edits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sectionId: current.id, ...body }) });
+      if (!res.ok) throw new Error();
+      const result = await res.json();
+      if (body.kind === "remove") setUndoRemoval(result.edit.id);
+      await reload();
+    } catch { setEditError(t("q.team.saveError")); }
+    finally { setEditBusy(false); }
+  };
+  const moveQuestion = (key: string, target: string) => {
+    const keys = current.items.map(i => keyOf(current, i));
+    const from = keys.indexOf(key), to = keys.indexOf(target);
+    if (from < 0 || to < 0 || from === to || editBusy) return;
+    keys.splice(from, 1); keys.splice(to, 0, key);
+    void changeDefinition({ kind: "order", keys });
+  };
+  const undoDelete = async () => {
+    if (!undoRemoval) return; setEditBusy(true);
+    try { const res = await fetch(`/api/questionnaire/edits/${undoRemoval}`, { method: "DELETE" }); if (!res.ok) throw new Error(); setUndoRemoval(undefined); await reload(); }
+    catch { setEditError(t("q.team.saveError")); } finally { setEditBusy(false); }
   };
 
   const minutes = mode === "entretien" ? 30 : 10;
@@ -219,9 +260,10 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="bg-white border-b border-gray-100">
-        <div className="mx-auto max-w-[720px] px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+        <div className="mx-auto max-w-[720px] px-4 sm:px-6 min-h-14 py-2 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[13px] text-gray-500 truncate">{t("q.subtitle")}</p>
-          <div className="flex items-center gap-2 text-[12px] flex-shrink-0">
+          <div className="flex flex-wrap items-center justify-end gap-2 text-[12px]">
+            <QuestionnaireLanguageSelector />
             {mode === "entretien" && <span className="rounded-full bg-amber-50 text-amber-800 px-2.5 py-1 font-medium">{t("q.mode.entretien")}</span>}
             {team ? (
               <>
@@ -230,7 +272,7 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
                 </Link>
                 <button
                   type="button"
-                  onClick={() => setEditing((v) => !v)}
+                  onClick={() => { setEditorSectionId(current.id); setEditing((v) => !v); setErrors(new Set()); setSubmitError(""); }}
                   aria-pressed={editing}
                   className={`rounded-full px-3 py-1 font-medium border transition-colors ${editing ? "bg-brand-600 border-brand-600 text-white" : "border-gray-200 text-gray-700 hover:border-brand-300"}`}
                 >
@@ -249,7 +291,7 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
               <Check className="w-6 h-6" strokeWidth={2.5} />
             </span>
             <h1 className="text-[22px] font-bold tracking-[-0.02em]">{t("q.done.title")}</h1>
-            <p className="mt-3 text-[15px] text-gray-600 leading-relaxed">{q.confirmation.replace(/\s*!\s*/g, ". ")}</p>
+            <p className="mt-3 text-[15px] text-gray-600 leading-relaxed">{lang.text(q.confirmation).replace(/\s*!\s*/g, ". ")}</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               {mode === "entretien" && (
                 <button type="button" className="btn-primary" onClick={reset}>
@@ -262,15 +304,15 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
           <>
             <div className="mb-5">
               <div className="flex items-baseline justify-between gap-3 mb-2">
-                <h1 className="text-[20px] sm:text-[24px] font-bold tracking-[-0.02em] leading-tight">{q.title}</h1>
-                <span className="text-[12px] text-gray-500 whitespace-nowrap">{t("q.progress", { n: stack.length, total })}</span>
+                <h1 className="text-[20px] sm:text-[24px] font-bold tracking-[-0.02em] leading-tight">{lang.text(q.title)}</h1>
+                <span className="text-[12px] text-gray-500 whitespace-nowrap">{t("q.progress", { n: progress, total })}</span>
               </div>
-              <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={stack.length} aria-label={t("q.progress", { n: stack.length, total })}>
-                <div className="h-full bg-brand-600 rounded-full transition-all" style={{ width: `${Math.min(100, Math.round((stack.length / Math.max(total, 1)) * 100))}%` }} />
+              <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={progress} aria-label={t("q.progress", { n: progress, total })}>
+                <div className="h-full bg-brand-600 rounded-full transition-all" style={{ width: `${Math.min(100, Math.round((progress / Math.max(total, 1)) * 100))}%` }} />
               </div>
             </div>
 
-            {restored && (
+            {restored && !editing && (
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-brand-50 px-4 py-3 text-[13px] text-brand-900">
                 <span>{t("q.draftRestored")}</span>
                 <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={reset}>
@@ -279,14 +321,23 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
               </div>
             )}
 
-            {team && editing && <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900">{t("q.team.editHelp")}</p>}
+            {team && editing && <div className="mb-4 space-y-3 rounded-xl bg-brand-50 p-4">
+              <p className="text-[13px] text-brand-900">{t("q.team.editHelp")}</p>
+              <label className="block text-[13px] font-medium">{t("q.team.stage")}
+                <select aria-label={t("q.team.stage")} className="input-field mt-1" value={current.id} onChange={e => { setEditorSectionId(e.target.value); setErrors(new Set()); }}>
+                  {q.sections.map((s, index) => <option key={s.id} value={s.id}>{index + 1}. {lang.text(s.title) || t("q.team.start")}</option>)}
+                </select>
+              </label>
+              {undoRemoval && <button className="inline-flex items-center gap-1 text-sm text-brand-800 underline" disabled={editBusy} onClick={undoDelete}><Undo2 className="w-4 h-4" />{t("q.team.undoRemove")}</button>}
+            </div>}
+            {editError && <p role="alert" className="mb-4 text-sm text-red-600">{editError}</p>}
 
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-8" aria-labelledby={current.title ? "section-title" : undefined}>
               {isFirst && (
                 <div className="mb-6 text-[14px] text-gray-600 leading-relaxed">
                   {paragraphsFor(q.description, mode).map((p) => (
                     <p key={p} className="mb-2 last:mb-0">
-                      {p}
+                      {lang.text(p)}
                     </p>
                   ))}
                   <p className="mt-2 text-[12px] text-gray-400">{t("q.duration", { min: minutes })}</p>
@@ -294,12 +345,12 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
               )}
               {current.title && (
                 <h2 id="section-title" className="text-[17px] font-bold mb-2">
-                  {current.title}
+                  {lang.text(current.title)}
                 </h2>
               )}
               {paragraphsFor(current.description, mode).map((p) => (
                 <p key={p} className={`text-[14px] leading-relaxed mb-3 ${/^Entretien/.test(p) ? "text-amber-900 bg-amber-50 rounded-xl px-3 py-2" : "text-gray-600"}`}>
-                  {p}
+                  {lang.text(p)}
                 </p>
               ))}
 
@@ -307,8 +358,18 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
                 {items.map((item) => {
                   const key = keyOf(current, item);
                   return (
-                    <div key={key}>
-                      <QuestionField item={item} fieldKey={key} value={answers[key]} onChange={(v) => setValue(key, v)} mode={mode} error={errors.has(key)} editing={team && editing} onRemovePhrasing={removeEdit} />
+                    <div key={key} data-edit-key={key} className={dragKey === key ? "opacity-50" : ""}
+                      onDragOver={event => { if (team && editing && dragging.current) event.preventDefault(); }}
+                      onDrop={event => { if (!team || !editing || !dragging.current) return; event.preventDefault(); event.stopPropagation(); moveQuestion(dragging.current, key); dragging.current = undefined; setDragKey(undefined); }}>
+                      {team && editing && <div className="mb-2 flex flex-wrap items-center gap-1">
+                        <button type="button" draggable={!editBusy} disabled={editBusy} aria-label={t("q.team.drag")} className="p-2 text-gray-500 cursor-grab touch-none" onDragStart={event => { dragging.current = key; setDragKey(key); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", key); }} onDragEnd={() => { dragging.current = undefined; setDragKey(undefined); }}><GripVertical className="w-4 h-4" /></button>
+                        <button type="button" disabled={editBusy || current.items.indexOf(item) === 0} aria-label={t("q.team.moveUp")} className="p-2 text-gray-500 disabled:opacity-30" onClick={() => moveQuestion(key, keyOf(current, current.items[current.items.indexOf(item) - 1]))}><ArrowUp className="w-4 h-4" /></button>
+                        <button type="button" disabled={editBusy || current.items.indexOf(item) === current.items.length - 1} aria-label={t("q.team.moveDown")} className="p-2 text-gray-500 disabled:opacity-30" onClick={() => moveQuestion(key, keyOf(current, current.items[current.items.indexOf(item) + 1]))}><ArrowDown className="w-4 h-4" /></button>
+                        <button type="button" disabled={editBusy} className="inline-flex items-center gap-1 px-2 py-1 text-xs text-brand-700" onClick={() => setAddRequest({ kind: "update", sectionId: current.id, targetKey: key, item: { ...item, title: lang.title(item), help: lang.help(item) }, locale: lang.language })}><Pencil className="w-3.5 h-3.5" />{t("q.team.editQuestion")}</button>
+                        <button type="button" disabled={editBusy || !canRemoveQuestion(item)} title={!canRemoveQuestion(item) ? t("q.team.protected") : undefined} className="inline-flex items-center gap-1 px-2 py-1 text-xs text-red-600 disabled:opacity-30" onClick={() => { if (confirm(t("q.team.deleteConfirm"))) void changeDefinition({ kind: "remove", targetKey: key }); }}><Trash2 className="w-3.5 h-3.5" />{t("q.team.remove")}</button>
+                      </div>}
+                      <QuestionField item={item} fieldKey={key} value={displayAnswers[key]} onChange={(v) => setValue(key, v)} mode={team && editing ? "entretien" : mode} error={errors.has(key)} editing={team && editing} onRemovePhrasing={removeEdit} />
+                      {lang.needsTranslation(item) && <p className="mt-1 text-xs text-amber-700">{t("q.team.translationPending")}</p>}
                       {item.addedBy && <p className="mt-2 text-[11px] text-gray-400">{t("q.team.added")}</p>}
                       {team && editing && (
                         <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
@@ -318,11 +379,7 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
                           <button type="button" className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2.5 py-1 text-gray-600 hover:border-brand-400 hover:text-brand-700" onClick={() => setAddRequest({ kind: "item", sectionId: current.id, targetKey: key })}>
                             <Plus className="w-3.5 h-3.5" /> {t("q.team.addQuestionHere")}
                           </button>
-                          {item.addedBy && (
-                            <button type="button" className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2.5 py-1 text-gray-600 hover:border-red-400 hover:text-red-600" onClick={() => removeEdit(item.addedBy!)}>
-                              <Trash2 className="w-3.5 h-3.5" /> {t("q.team.remove")}
-                            </button>
-                          )}
+
                         </div>
                       )}
                     </div>
@@ -350,8 +407,8 @@ export default function Questionnaire({ questionnaire: initial, team, initialMod
                 <button type="button" className="btn-outline !px-5" onClick={goBack} disabled={isFirst} aria-disabled={isFirst}>
                   {t("q.back")}
                 </button>
-                <button type="button" className="btn-primary !px-7" onClick={goNext} disabled={submitting}>
-                  {nextId === SUBMIT ? (submitting ? t("q.sending") : t("q.send")) : t("q.next")}
+                <button type="button" className="btn-primary !px-7" onClick={goNext} disabled={submitting || (team && editing && editorIndex === q.sections.length - 1)}>
+                  {team && editing ? t("q.next") : nextId === SUBMIT ? (submitting ? t("q.sending") : t("q.send")) : t("q.next")}
                 </button>
               </div>
             </section>

@@ -8,7 +8,8 @@ import { fail, isRecipient, notifyAssigned, notifyUpdated, staffView, validatePa
  * One assignment. Its creator and the admins of its university get the staff view with the roster; a student it was
  * sent to (or who started it) gets their view, with `paperId` once started. Anyone else: 404.
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const a = db.assignments.findById(params.id);
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  * written into every paper already started (D7). A changed brief or due date notifies the students
  * (`notif.assignmentUpdated`); added students get `notif.assigned` while the assignment is open.
  */
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const a = db.assignments.findById(params.id);
@@ -54,7 +56,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 /** Deletes an assignment nobody has started (its creator or an admin of its university); otherwise 409 `started`. */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const a = db.assignments.findById(params.id);

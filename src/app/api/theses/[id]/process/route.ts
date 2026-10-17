@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** GET → { timeline, summary }. The student, the advisor and the administration receive the same record. */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);

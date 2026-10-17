@@ -4,7 +4,8 @@ import { canAccessThesis } from "@/lib/auth";
 import { deviceFromUA, error, json, requireUser } from "@/lib/api";
 import { isEmptySession } from "@/lib/integrity";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
@@ -13,7 +14,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 /** Starts a monitored writing session. Requires a valid consent when the policy demands it. */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);

@@ -15,7 +15,8 @@ function state(token: string) {
 }
 
 /** Public: what the reset page needs to render. */
-export async function GET(_request: NextRequest, { params }: { params: { token: string } }) {
+export async function GET(_request: NextRequest, { params: routeParams }: { params: Promise<{ token: string }> }) {
+  const params = await routeParams;
   await db.ready();
   const s = state(params.token);
   if (!s) return error("Reset link not found", 404);
@@ -23,7 +24,8 @@ export async function GET(_request: NextRequest, { params }: { params: { token: 
 }
 
 /** Public: `{ password }` sets the new password, marks the link used and signs in with the regular session cookie. */
-export async function POST(request: NextRequest, { params }: { params: { token: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ token: string }> }) {
+  const params = await routeParams;
   await db.ready();
   const s = state(params.token);
   if (!s) return error("Reset link not found", 404);

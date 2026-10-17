@@ -15,7 +15,8 @@ const MAX_PASTE_TEXT = 200_000;
 const MAX_BATCH_PASTE_TEXT = 1_000_000;
 
 /** Batched session events from the editor. Scopes the student did not consent to are dropped server-side too. */
-export async function POST(request: NextRequest, { params }: { params: { sessionId: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ sessionId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const session = db.sessions.findById(params.sessionId);
@@ -81,7 +82,13 @@ export async function POST(request: NextRequest, { params }: { params: { session
       data.fingerprintCount = fps.length;
       // Text taken from the Thesisfic assistant / research copilot: recognised by the answer's sentence fingerprints.
       // Text taken from a source in the thesis library: attributed to it (quoted), never to the student.
-      const src = matchPasteFingerprintsToSources(session.thesisId, fps);
+      let src = matchPasteFingerprintsToSources(session.thesisId, fps);
+      const paper = db.theses.findById(session.thesisId);
+      const assignment = paper?.assignmentId ? db.assignments.findById(paper.assignmentId) : undefined;
+      if (!src && assignment && assignment.university === r.user.university) {
+        try { src = await db.courseReadings.match(assignment.university, assignment.id, fps); }
+        catch { /* Preserve the declaration dialog when the private matching service is unavailable. */ }
+      }
       if (src) data.matchedSource = { kind: "source", ...src };
       const ai = db.interactions.matchFingerprints(r.user.id, fps)[0];
       if (ai) {
@@ -106,7 +113,8 @@ export async function POST(request: NextRequest, { params }: { params: { session
   });
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { sessionId: string } }) {
+export async function PATCH(request: NextRequest, { params: routeParams }: { params: Promise<{ sessionId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const session = db.sessions.findById(params.sessionId);
@@ -128,7 +136,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { sessio
   return json({ ok: true });
 }
 
-export async function GET(request: NextRequest, { params }: { params: { sessionId: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ sessionId: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const session = db.sessions.findById(params.sessionId);

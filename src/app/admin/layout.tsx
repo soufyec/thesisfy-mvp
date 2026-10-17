@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Staff only: a student with a valid session goes back to their dashboard, an anonymous visitor to the home page. */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const token = cookies().get("token")?.value;
+  const token = (await cookies()).get("token")?.value;
   const payload = token ? verifyToken(token) : null;
   if (!payload) redirect("/");
   await db.ready();

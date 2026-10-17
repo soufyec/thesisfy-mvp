@@ -19,6 +19,7 @@
  */
 import type { AnalysisOp, AnalysisSpec, Artifact, ArtifactTable, ChartData, Dataset, DatasetCell, DatasetColumn, DatasetSheet, WritingLanguage } from "@/lib/db";
 import * as S from "./stats";
+import { DataFilterError, filterSheet, normalizeFilters, requestedYearFilters } from "./filters";
 import { capFirst, formatNumber, inSentence, listJoin } from "./labels";
 import type { Translate } from "./labels";
 import { cellText, dateMs, isoDate, sanitizeForPrompt } from "./summarize";
@@ -198,7 +199,9 @@ export type SpecErrorCode =
   | "collinear"
   | "perfect_fit"
   | "not_date"
-  | "range_too_long";
+  | "range_too_long"
+  | "invalid_filter"
+  | "no_matching_rows";
 
 /** Every code `validateSpec`, `runAnalysis` and `tryRunAnalysis` can return (UI copy: `data.error.<code>`). */
 export const SPEC_ERROR_CODES: SpecErrorCode[] = [
@@ -221,6 +224,8 @@ export const SPEC_ERROR_CODES: SpecErrorCode[] = [
   "perfect_fit",
   "not_date",
   "range_too_long",
+  "invalid_filter",
+  "no_matching_rows",
 ];
 
 export type ValidateResult = { ok: true; spec: AnalysisSpec } | { ok: false; code: SpecErrorCode; column?: string; available: string[] };
@@ -257,6 +262,7 @@ export function validateSpec(spec: unknown, dataset: Pick<Dataset, "sheets">, sh
     return { ok: true, spec: normalizeSpec(spec, dataset, sheetIndex) };
   } catch (e) {
     if (isSpecError(e)) return failure(e);
+    if (e instanceof DataFilterError) return failure(new SpecError(e.code, e.column, e.available));
     return { ok: false, code: "invalid_spec", available: [] };
   }
 }
@@ -273,7 +279,9 @@ function normalizeSpec(raw: unknown, dataset: Pick<Dataset, "sheets">, sheetInde
   if ((ANALYSIS_OPS as string[]).indexOf(op) === -1) throw new SpecError("unsupported_op", op);
   const si = sheetIndexOf(dataset, r.sheet, sheetIndex);
   if (si === -1) throw new SpecError("unknown_sheet", str(r.sheet) ?? "", dataset.sheets.map((s) => s.name));
-  const sheet = dataset.sheets[si];
+  const originalSheet = dataset.sheets[si];
+  const filters = normalizeFilters(r.filters, originalSheet, ref => resolveColumn(originalSheet, ref));
+  const sheet = filterSheet(originalSheet, filters);
   const cols = sheet.columns;
   const names = (pred: (c: DatasetColumn) => boolean) => cols.filter(pred).map((c) => c.name);
   const all = names((c) => c.role !== "empty");
@@ -307,7 +315,7 @@ function normalizeSpec(raw: unknown, dataset: Pick<Dataset, "sheets">, sheetInde
     // Measured numbers with many values cannot be groups (they would make 30 meaningless bars).
     if (c.type === "number" && c.role === "measure" && c.distinct > MAX_CATEGORIES) throw new SpecError("not_categorical", c.name, groupNames);
   };
-  const out: AnalysisSpec = { op: op as AnalysisOp, sheet: sheet.name };
+  const out: AnalysisSpec = { op: op as AnalysisOp, sheet: sheet.name, ...(filters.length ? { filters } : {}) };
   const classes = classifyColumns(sheet);
   const c0 = columnsField[0];
   const c1 = columnsField[1];
@@ -365,7 +373,7 @@ function normalizeSpec(raw: unknown, dataset: Pick<Dataset, "sheets">, sheetInde
           if (by !== -1) out.by = cols[by].name;
         } else {
           const bins = typeof r.bins === "number" && Number.isFinite(r.bins) ? Math.round(r.bins) : undefined;
-          if (bins !== undefined) out.bins = Math.max(2, Math.min(50, bins));
+          if (bins !== undefined) out.bins = Math.max(2, Math.min(1000, bins));
           out.chart = chart === "none" ? "none" : "histogram";
         }
       }
@@ -669,8 +677,10 @@ export function runAnalysis(spec: AnalysisSpec, dataset: Dataset, meta: RunMeta,
   if (!v.ok) throw new SpecError(v.code, v.column, v.available);
   const s = v.spec;
   const si = Math.max(0, sheetIndexOf(dataset, s.sheet, meta.sheetIndex ?? 0));
-  const sheet = dataset.sheets[si];
+  const originalSheet = dataset.sheets[si];
+  const sheet = filterSheet(originalSheet, s.filters || []);
   const ctx: Ctx = { sheet, cols: sheet.columns, lang: meta.lang, tr, notes: [] };
+  if (s.filters?.length) ctx.notes.push(tr("data.note.filtered", { kept: sheet.rowCount, total: originalSheet.rowCount, filters: s.filters.map(f => `${f.column} ${f.op}${f.value === undefined ? "" : " " + (Array.isArray(f.value) ? f.value.join(" – ") : f.value)}`).join("; ") }));
   const col = (name: string | undefined) => (name === undefined ? -1 : resolveColumn(sheet, name));
   let built: Built;
   switch (s.op) {
@@ -728,7 +738,7 @@ export function runAnalysis(spec: AnalysisSpec, dataset: Dataset, meta: RunMeta,
     if (built.cellPrecision) built.cellPrecision = built.cellPrecision.slice(0, MAX_TABLE_ROWS);
     ctx.notes.push(tr("data.note.rowsCut", { n: MAX_TABLE_ROWS }));
   }
-  if (sheet.truncated) ctx.notes.push(tr("data.note.truncated", { n: sheet.rowCount, cells: dataset.cells }));
+  if (originalSheet.truncated) ctx.notes.push(tr("data.note.truncated", { n: originalSheet.rowCount, cells: dataset.cells }));
   const table: ArtifactTable = { columns: built.columns, rows: built.rows, precision: built.precision };
   if (built.cellPrecision && built.cellPrecision.some((row) => row.some((p) => p !== null))) table.cellPrecision = built.cellPrecision;
   if (ctx.notes.length) table.notes = uniq(ctx.notes);
@@ -774,6 +784,7 @@ export function tryRunAnalysis(spec: AnalysisSpec, dataset: Dataset, meta: RunMe
     return { ok: true, artifact: runAnalysis(spec, dataset, meta, tr) };
   } catch (e) {
     if (isSpecError(e)) return failure(e);
+    if (e instanceof DataFilterError) return failure(new SpecError(e.code, e.column, e.available));
     return { ok: false, code: "invalid_spec", available: [] };
   }
 }
@@ -2018,7 +2029,8 @@ export function planFromRequest(text: string, dataset: Pick<Dataset, "sheets">, 
   const idx = (c: DatasetColumn | undefined) => (c ? cols.indexOf(c) : -1);
   const name = (ci: number) => cols[ci].name;
   const statOf = (): AnalysisSpec["stat"] => (KW.median.test(t) ? "median" : KW.sum.test(t) ? "sum" : KW.mean.test(t) ? "mean" : undefined);
-  const base = { sheet: sheet.name };
+  const filters = requestedYearFilters(text, sheet);
+  const base = { sheet: sheet.name, ...(filters.length ? { filters } : {}) };
   const specs: AnalysisSpec[] = [];
   const push = (s: AnalysisSpec) => {
     const v = validateSpec(s, dataset, si);
@@ -2138,7 +2150,7 @@ export function planFromRequest(text: string, dataset: Pick<Dataset, "sheets">, 
     }
     // "Compare rainfall between North and South", "rainfall in North vs South": the two groups named.
     // Two years named in a trend request ("trend between 2010 and 2020") are a range, not two groups.
-    const pairIsRange = !!namedPair && cols[namedPair.g].role === "time" && KW.trend.test(t) && !KW.compare.test(t);
+    const pairIsRange = !!namedPair && cols[namedPair.g].role === "time" && (filters.length > 0 || KW.trend.test(t)) && !KW.compare.test(t);
     if (namedPair && !pairIsRange && (KW.compare.test(t) || KW.between.test(t) || KW.versus.test(t) || KW.significance.test(t))) {
       const pair = pairSpec(bestMeasure(), false);
       if (pair && push(pair)) return true;
@@ -2185,7 +2197,7 @@ export function planFromRequest(text: string, dataset: Pick<Dataset, "sheets">, 
       const m = bestMeasure();
       if (m !== -1 && push({ ...base, op: "distribution", column: name(m) })) return true;
     }
-    if (KW.trend.test(t) || (time.length && num.length && !cat.length)) {
+    if (filters.length || KW.trend.test(t) || (time.length && num.length && !cat.length)) {
       const y = bestMeasure();
       const x = time[0] ?? idx(cls.time[0]);
       if (y !== -1 && x !== -1) {

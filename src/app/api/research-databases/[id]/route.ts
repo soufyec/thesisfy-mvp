@@ -11,7 +11,8 @@ async function own(request: NextRequest, id: string) {
   return { user: r.user, d };
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const o = await own(request, params.id);
   if ("response" in o) return o.response;
   if (o.user.role !== "admin") return error("Only administrators can manage research databases", 403);
@@ -22,7 +23,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   return json({ database: db.library.update(o.d.id, parsed.data!) });
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const o = await own(request, params.id);
   if ("response" in o) return o.response;
   if (o.user.role !== "admin") return error("Only administrators can manage research databases", 403);
@@ -31,7 +33,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 }
 
 /** Click-through counter so the library can see which subscriptions students actually use. */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const o = await own(request, params.id);
   if ("response" in o) return o.response;
   db.library.recordOpen(o.d.id);

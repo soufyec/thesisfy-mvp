@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { DOMParser as PMDOMParser, Fragment, type Node as PMNode } from "@tiptap/pm/model";
 import { NodeSelection, Selection } from "@tiptap/pm/state";
+import { closeHistory } from "@tiptap/pm/history";
 import { artifactCaption, artifactCells, artifactTableHtml, artifactWords } from "@/lib/data/artifactHtml";
 import { translate } from "@/lib/i18n/dictionary";
 import { parseLatex } from "@/lib/math/latex";
@@ -36,6 +37,8 @@ export interface ArtifactInsertMeta {
 }
 
 export interface ArtifactInsertOptions {
+  /** A validated top-level drop boundary. */
+  position?: number;
   /** The shell's `programmatic()` wrapper: the typing counters skip what runs inside it. */
   programmatic?: <T>(fn: () => T) => T;
   /** "equation": insert only the fitted equation of a test (regression) artifact. Default "main". */
@@ -148,7 +151,9 @@ export function insertArtifactCommand(editor: Editor, artifact: Artifact, meta: 
     editor
       .chain()
       .command(({ tr, state }) => {
-        const at = afterTopLevelBlock(state);
+        const at = opts.position ?? afterTopLevelBlock(state);
+        if (!Number.isInteger(at) || at < 0 || at > tr.doc.content.size || tr.doc.resolve(at).depth !== 0) return false;
+        closeHistory(tr);
         const atEnd = at >= tr.doc.content.size;
         // At the very end of the document an empty paragraph follows, so the student can keep writing below.
         const content = Fragment.fromArray(atEnd && schema.nodes.paragraph ? [...nodes, schema.nodes.paragraph.create()] : nodes);
@@ -168,6 +173,8 @@ export function insertArtifactCommand(editor: Editor, artifact: Artifact, meta: 
       .run();
   const done = opts.programmatic ? opts.programmatic(run) : run();
   if (!done || !range) return { ok: false, reason: "invalid" };
+  // Typing immediately inside the inserted table must undo independently of the insertion.
+  editor.view.dispatch(closeHistory(editor.state.tr));
   const r = range as { from: number; to: number };
   return { ok: true, from: r.from, to: r.to, ...plan };
 }

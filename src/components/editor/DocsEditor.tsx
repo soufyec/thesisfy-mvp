@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BubbleMenu, EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { closeHistory } from "@tiptap/pm/history";
 import { EditorState, NodeSelection } from "@tiptap/pm/state";
 import { DOMSerializer } from "@tiptap/pm/model";
 import { CellSelection } from "@tiptap/pm/tables";
@@ -26,7 +27,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Typography from "@tiptap/extension-typography";
-import { ArrowLeft, BookMarked, Bot, ChevronDown, CloudOff, File, FileCheck, ListTree, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, BookMarked, ChevronDown, CloudOff, ListTree, MessageSquare, MessageSquarePlus, MoreVertical, Plus, Scale, Search as SearchIcon, ShieldCheck, X } from "lucide-react";
 import { CitationMark, CitedPassage, CommentMark, FontSize, Indent, LineHeight, PageBreak, Provenance, ProvenanceStats, Search } from "./extensions";
 import { Pagination } from "./pagination";
 import { TableExtras } from "./tableExtras";
@@ -50,9 +51,12 @@ import { TypographyRow, TypographyToggle } from "./BubbleTypography";
 import SessionBar from "./SessionBar";
 import ProvenanceGutter from "./ProvenanceGutter";
 import { BriefPanel, CommentsPanel, FindPanel, IntegrityLedger, OutlinePanel, useNoticeLabel, VersionsPanel } from "./Sidebars";
-import { TabOutline } from "./TabOutline";
+import DocumentTabs from "./DocumentTabs";
+import { ARTIFACT_DRAG_TYPE, draggedArtifact, endArtifactDrag } from "../ai/artifactDrag";
+import { artifactInsertWords } from "../ai/artifactText";
 import { AiPasteDialog, ConfirmDialog, ImageDialog, LinkDialog, PageSetupDialog, PasteAttributionDialog, PasteDecision, ShareDialog, ShortcutsDialog, SubmitDialog, TableDialog, TextPromptDialog, VersionPreviewDialog, WordCountDialog, type AiPasteCost, type PasteMatchInfo, type TeacherRole } from "./Dialogs";
-import { CommentItem, FlagItem, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
+import { CommentItem, FlagItem, referenceHtml, formatReference, formatTimeAgo, ieeeOrderKey, inTextCitation, IntegrityBreakdown, IntegrityFix, InteractionLite, Reference, renumberedIeeeChip, renumberIeeeHtml, SidebarKind, statusLabel, ThesisDoc, ThesisTab, VersionItem } from "./types";
+import { LogoMark } from "../Logo";
 import AssistantPanel, { type InsertArtifactHandler, type InsertMeta } from "../ai/AssistantPanel";
 import { LanguageReview } from "./language/languageReview";
 import { LanguageReviewPanel } from "./language/LanguageReviewPanel";
@@ -261,7 +265,9 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | "link" | "image" | "table" | "pageSetup" | "wordCount" | "share" | "rename" | "saveVersion" | "submit" | "shortcuts" | "about" | "consent" | "specialChars" | "bookmark" | "deadline">(null);
   const [anchors, setAnchors] = useState<AnchorItem[]>([]);
+  const [assistantConversationId, setAssistantConversationId] = useState<string | undefined>();
   const [tableMenuAt, setTableMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const artifactDropRef = useRef<(data: DataTransfer, x: number, y: number) => boolean>(() => false);
   const goToAnchorRef = useRef<(href: string) => void>(() => {});
   const onActionRef = useRef<(a: MenuAction) => void>(() => {});
   /** Position of the image being replaced while the image dialog is open (null = inserting a new one). */
@@ -295,8 +301,6 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   // "submission" is the Final submission tab (thesis.content): the only one submitted, reviewed and scored.
   const [tabs, setTabs] = useState<ThesisTab[]>(initial.thesis.tabs || []);
   const [activeTab, setActiveTab] = useState<string>(SUBMISSION);
-  const [tabMenu, setTabMenu] = useState<string | null>(null);
-  const [outlineTab, setOutlineTab] = useState<string | null>(null);
   const getTabHtml = useCallback((id: string) => contentsRef.current[id] ?? "", []);
   const [tabWords, setTabWords] = useState(0);
   const activeTabRef = useRef<string>(SUBMISSION);
@@ -535,7 +539,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       Captions,
       Toc.configure({ labels: { title: t("editor.doc.toc"), empty: t("editor.doc.noHeadings") } }),
       // Figures (copilot charts and diagrams, the student's own diagrams) and equations (docs/papers.md §9).
-      ChartNode.configure({ onLimit: (max: number) => notify(t("figures.chart.limit", { max }), "info") }),
+      ChartNode.configure({ thesisId, onLimit: (max: number) => notify(t("figures.chart.limit", { max }), "info") }),
       MathInline,
       MathBlock,
     ],
@@ -591,6 +595,8 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         },
       },
       handleDrop: (view, event, _slice, moved) => {
+        const transfer = (event as DragEvent).dataTransfer;
+        if (transfer?.types.includes(ARTIFACT_DRAG_TYPE)) { event.preventDefault(); artifactDropRef.current(transfer, event.clientX, event.clientY); return true; }
         // Moving something inside the page is left to ProseMirror (marks and figure origins travel with it).
         if (moved) return false;
         const dt = (event as DragEvent).dataTransfer;
@@ -858,7 +864,6 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       contentsRef.current[activeTabRef.current] = ed.getHTML();
       activeTabRef.current = id;
       setActiveTab(id);
-      setTabMenu(null);
       loadIntoEditor(contentsRef.current[id] ?? "<p></p>");
       if (id === SUBMISSION) scheduleProvenance(ed);
     },
@@ -1165,19 +1170,21 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
   }, [isOwner]);
 
   // ---------- helpers ----------
-  const insertWithProvenance = (html: string, meta: InsertMeta, replace: boolean, opts: { atEnd?: boolean; message?: string } = {}) => {
+  const insertWithProvenance = (html: string, meta: InsertMeta, replace: boolean, opts: { atEnd?: boolean; message?: string; position?: number } = {}) => {
     if (!editor || !canEdit) return notify(t("editor.toast.readOnly"), "error");
     if (opts.atEnd) editor.commands.focus("end");
+    editor.view.dispatch(closeHistory(editor.state.tr));
     programmatic(() => {
       const chain = editor.chain().focus();
       if (replace) chain.deleteSelection();
-      const from = replace ? editor.state.selection.from : editor.state.selection.to;
-      chain.insertContent(html).run();
+      const from = opts.position ?? (replace ? editor.state.selection.from : editor.state.selection.to);
+      if (opts.position !== undefined) chain.insertContentAt(opts.position, html).run();
+      else chain.insertContent(html).run();
       const to = editor.state.selection.to;
       editor.chain().setTextSelection({ from, to }).setProvenance({ source: "ai", provider: meta.provider, label: meta.model, interactionId: meta.interactionId }).setTextSelection(to).setMeta("ai-insert", true).run();
     });
+    editor.view.dispatch(closeHistory(editor.state.tr));
     monitorRef.current?.recordAiInsert(meta.words, meta.provider, meta.mode, meta.interactionId);
-    notify(opts.message || t("editor.toast.aiInserted", { words: meta.words, aiAssisted, provider: meta.provider }), "success");
     // Save right away so the score, the AI share and the AI log reflect the insertion without waiting for the autosave.
     saveNowRef.current().then(refreshLedger);
   };
@@ -1212,22 +1219,13 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       if (!ed) return;
       // In the notes tab the result goes at the end, after what is already there.
       if (toNotes) ed.commands.focus("end");
-      const r = insertArtifactCommand(ed, artifact, { provider: meta.provider, model: meta.model, mode: meta.mode, interactionId: meta.interactionId }, { programmatic });
+      const r = insertArtifactCommand(ed, artifact, { provider: meta.provider, model: meta.model, mode: meta.mode, interactionId: meta.interactionId }, { programmatic, position: opts.position });
       if (!r.ok) {
         // "limit": the figure node has already said that the tab is full.
         if (r.reason !== "limit") notify(t(r.reason === "no_interaction" ? "figures.insert.noInteraction" : r.reason === "read_only" ? "editor.toast.readOnly" : "figures.insert.invalid"), "error");
         return;
       }
       monitorRef.current?.recordAiInsert(r.words, meta.provider, meta.mode, meta.interactionId, { kind: r.kind, figures: r.figures, equations: r.equations, artifactId: meta.artifact.id });
-      const notes = t("editor.notesTab");
-      const message = toNotes
-        ? t("editor.toast.keptAsNotes", { notes, aiAssisted, finalSubmission })
-        : r.figures
-          ? t("editor.toast.figureInserted", { aiAssisted })
-          : r.kind === "equation"
-            ? t("editor.toast.equationInserted", { aiAssisted })
-            : t("editor.toast.aiInserted", { words: fmt.number(r.words), aiAssisted, provider: meta.provider });
-      notify(message, "success");
       // Save right away so the score, the AI share, the ledger lines and the AI log reflect the insertion.
       saveNowRef.current().then(refreshLedger);
     };
@@ -1241,6 +1239,33 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     if (tabsRef.current.length >= 20) return notify(t("editor.toast.tabLimit", { notes: t("editor.notesTab") }), "error");
     addTab(t("editor.notesTab"));
     setTimeout(run, 30);
+  };
+
+  artifactDropRef.current = (data, x, y) => {
+    const record = draggedArtifact(data, thesisId);
+    const ed = editorRef.current;
+    if (!record || !ed || !canEdit || !ed.isEditable) return false;
+    const words = "artifact" in record ? artifactInsertWords(record.artifact) : record.words;
+    const html = activeTabRef.current === SUBMISSION ? ed.getHTML() : contentsRef.current[SUBMISSION];
+    const total = countWords(html);
+    const ai = computeProvenance(html).ai;
+    const next = (ai + words) / (total + words || 1) * 100;
+    if (activeTabRef.current === SUBMISSION && words && next > policy.maxAiUsagePercent) { notify(t("assistant.cost.over", { next: Math.round(next), limit: policy.maxAiUsagePercent }), "error"); return false; }
+    const at = ed.view.posAtCoords({ left: x, top: y });
+    let position = ed.state.doc.content.size;
+    if (at) {
+      const resolved = ed.state.doc.resolve(at.pos);
+      if (resolved.depth > 0) {
+        const before = resolved.before(1), after = resolved.after(1);
+        const dom = ed.view.nodeDOM(before) as HTMLElement | null;
+        const rect = dom?.getBoundingClientRect();
+        position = rect && y < rect.top + rect.height / 2 ? before : after;
+      } else position = at.pos;
+    }
+    if ("artifact" in record) insertArtifact(record.artifact, record.meta, { position });
+    else insertWithProvenance(record.html, record.meta, false, { position });
+    endArtifactDrag();
+    return true;
   };
 
   /** Adds a provenance mark to the text of `from…to` that carries none (the AI-marked text keeps its own mark). */
@@ -1595,7 +1620,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
     // The numbered list and the chips in the text must agree: chips left over from an older order are renumbered first.
     if (thesis.citationStyle === "IEEE") renumberIeee();
     const refs = [...referencesRef.current].sort((a, b) => a.authors.localeCompare(b.authors));
-    const items = refs.map((r, i) => `<p>${thesis.citationStyle === "IEEE" ? `[${i + 1}] ` : ""}${formatReference(r, thesis.citationStyle).full}</p>`).join("");
+    const items = refs.map((r, i) => `<p>${thesis.citationStyle === "IEEE" ? `[${i + 1}] ` : ""}${referenceHtml(r, thesis.citationStyle)}</p>`).join("");
     const title = t("editor.doc.references");
     programmatic(() => {
       // Replace an existing References block (heading plus the paragraphs under it) instead of adding a second one.
@@ -1874,9 +1899,12 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       );
       case "ai": return (
         <AssistantPanel
+          initialConversationId={assistantConversationId}
+          onConversationChange={setAssistantConversationId}
           thesisId={thesisId}
           sessionId={sessionId || undefined}
           selection={selectionText}
+          getDocumentContext={() => ({ tabId: activeTabRef.current, text: editor.getText({ blockSeparator: "\n\n" }) })}
           onInsert={canEdit ? (h, m) => insertWithProvenance(h, m, false) : undefined}
           onReplaceSelection={canEdit ? (h, m) => insertWithProvenance(h, m, true) : undefined}
           onConsentRequired={() => setDialog("consent")}
@@ -1918,75 +1946,22 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
         )}
         <span data-tour="integrity" className="hidden md:inline-flex flex-shrink-0"><IntegrityPill aiPct={aiPct} pastePct={pastePct} limitPct={policy.maxAiUsagePercent} score={integrityScore} onClick={() => setSidebar((x) => (x === "integrity" ? "none" : "integrity"))} /></span>
         {/* The assistant thinks with the author: a reviewer reads the thesis, so the panel is not offered in review. */}
-        {isOwner && <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><Bot className="w-[15px] h-[15px]" />{t("glossary.aiAssistant")}</button>}
+        {isOwner && <button onClick={() => setSidebar((x) => (x === "ai" ? "none" : "ai"))} className={`hidden md:inline-flex items-center gap-1.5 px-3 py-[7px] rounded-full text-[13px] font-semibold flex-shrink-0 ${sidebar === "ai" ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`} aria-pressed={sidebar === "ai"}><LogoMark size={16} />{t("glossary.aiAssistant")}</button>}
         <button onClick={() => setDialog("share")} className="hidden md:inline-flex items-center px-3.5 py-[7px] rounded-full bg-white border border-gray-200 text-[13px] font-semibold text-gray-900 hover:bg-gray-50 flex-shrink-0">{t("editor.share")}</button>
         {!isMobile && <MenuOverflow editor={editor} onAction={onAction} state={{ showProvenance, sidebar, spellcheck, zoom, focus, canEdit, numberHeadings: !!ws.numberHeadings, brief: !!thesis.assignment, settingsLock, teacherRole }} />}
         <button onClick={() => setMobileMenu(true)} className="md:hidden p-2 text-gray-600" aria-label={t("common.more")}><MoreVertical className="w-5 h-5" /></button>
       </header>
 
-      {/* Toolbar */}
-      {!focus && (
-        <Toolbar editor={editor} zoom={zoom} onZoom={setZoom} onLink={openLink} onImage={() => setDialog("image")} onTable={() => setDialog("table")} onComment={startComment} onCite={() => openCite()} onPrint={() => window.print()} spellcheck={spellcheck} onSpellcheck={setSpellcheck} compact={isMobile} provenance={{ on: showProvenance, onToggle: (v) => setShowProvenance(v), locked: reviewMode }} />
-      )}
-
-      {/* Document tabs */}
-      {!focus && (
-        <div className="h-[34px] flex items-end gap-1 px-2 md:px-4 pt-1.5 bg-workspace border-b border-gray-200 overflow-x-auto overflow-y-hidden no-scrollbar flex-shrink-0" role="tablist" aria-label={t("editor.tabs.label")} data-tour="tabs">
-          <div className="relative flex-shrink-0" data-tab-anchor={SUBMISSION}>
-            <button role="tab" aria-selected={activeTab === SUBMISSION} onClick={() => { if (activeTab === SUBMISSION) setOutlineTab(outlineTab === SUBMISSION ? null : SUBMISSION); else { setOutlineTab(null); switchTab(SUBMISSION); } }} className={`doc-tab submission !pr-7${activeTab === SUBMISSION ? "active" : ""}`} title={t("editor.tabs.submissionHint")}>
-              <FileCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
-              <span className="truncate">{finalSubmission}</span>
-              <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-            </button>
-            <TabOutline tabId={SUBMISSION} title={finalSubmission} active={activeTab === SUBMISSION} open={outlineTab === SUBMISSION} onOpenChange={(o) => setOutlineTab(o ? SUBMISSION : null)} editor={editor} getHtml={getTabHtml} switchTab={switchTab} mobile={isMobile} triggerClassName="absolute right-1 top-1/2 -translate-y-1/2" />
-          </div>
-          {tabs.map((tb) => (
-            <div key={tb.id} className="relative flex-shrink-0" data-tab-anchor={tb.id}>
-              <button role="tab" aria-selected={activeTab === tb.id} onClick={() => { if (activeTab === tb.id) setOutlineTab(outlineTab === tb.id ? null : tb.id); else { setOutlineTab(null); switchTab(tb.id); } }} onDoubleClick={() => canEdit && setTabMenu(`rename:${tb.id}`)} className={`doc-tab ${activeTab === tb.id && canEdit ? "!pr-12" : "!pr-7"} ${activeTab === tb.id ? "active" : ""}`}>
-                <File className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                {tabMenu === `rename:${tb.id}` ? (
-                  <input
-                    autoFocus
-                    defaultValue={tb.title}
-                    onClick={(e) => e.stopPropagation()}
-                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== tb.title) renameTab(tb.id, v.slice(0, 80)); setTabMenu(null); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setTabMenu(null); }}
-                    className="text-[13px] bg-white border border-brand-300 rounded px-1 w-36 focus:outline-none"
-                    aria-label={t("editor.tabs.name")}
-                  />
-                ) : (
-                  <span className="truncate">{tb.title}</span>
-                )}
-              </button>
-              {tabMenu !== `rename:${tb.id}` && (
-                <TabOutline tabId={tb.id} title={tb.title} active={activeTab === tb.id} open={outlineTab === tb.id} onOpenChange={(o) => setOutlineTab(o ? tb.id : null)} editor={editor} getHtml={getTabHtml} switchTab={switchTab} mobile={isMobile} triggerClassName={`absolute top-1/2 -translate-y-1/2 ${activeTab === tb.id && canEdit ? "right-6" : "right-1"}`} />
-              )}
-              {activeTab === tb.id && canEdit && tabMenu !== `rename:${tb.id}` && (
-                <button onClick={() => setTabMenu(tabMenu === tb.id ? null : tb.id)} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label={t("editor.tabs.options", { title: tb.title })}>
-                  <MoreHorizontal className="w-3.5 h-3.5" />
-                </button>
-              )}
-              {tabMenu === tb.id && (
-                <div className="docs-menu !top-full !left-auto right-0 !min-w-[230px]" onMouseLeave={() => setTabMenu(null)}>
-                  <button onClick={() => setTabMenu(`rename:${tb.id}`)}>{t("editor.rename")}</button>
-                  <button onClick={() => { setTabMenu(null); duplicateTab(tb.id); }}>{t("editor.tabs.duplicate")}</button>
-                  <button onClick={() => { setTabMenu(null); setConfirmPromote(tb.id); }}>{t("editor.tabs.useAsSubmission", { finalSubmission })}</button>
-                  <div className="sep" />
-                  <button onClick={() => { setTabMenu(null); setConfirmDelete(tb.id); }} className="!text-red-600">{t("editor.tabs.delete")}</button>
-                </div>
-              )}
-            </div>
-          ))}
-          {canEdit && tabs.length < 20 && (
-            <button onClick={() => addTab()} className="flex items-center px-2 py-1.5 mb-0.5 rounded-lg text-gray-500 hover:bg-white/70 flex-shrink-0" aria-label={t("editor.tabs.new")} title={t("editor.tabs.new")}>
-              <Plus className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      )}
-      {/* Body */}
+      {/* Document controls belong to the paper column; the assistant starts directly below the header. */}
       <div className="flex-1 flex min-h-0 print:!block print:!overflow-visible">
-        <main className={`flex-1 overflow-auto print:!overflow-visible ${workspaceClass}`} data-hf-header={ws.headerText || ""} data-hf-footer={ws.footerText || ""} data-hf-num={ws.pageNumbers || "none"} style={{ ["--cap-figure" as string]: `"${t("editor.doc.figure")} "`, ["--cap-table" as string]: `"${t("editor.doc.table")} "`, ["--fn-title" as string]: `"${t("editor.doc.footnotes")}"` }} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 print:!block">
+          {/* Toolbar */}
+          {!focus && (
+            <Toolbar editor={editor} zoom={zoom} onZoom={setZoom} onLink={openLink} onImage={() => setDialog("image")} onTable={() => setDialog("table")} onComment={startComment} onCite={() => openCite()} onPrint={() => window.print()} spellcheck={spellcheck} onSpellcheck={setSpellcheck} compact={isMobile} provenance={{ on: showProvenance, onToggle: (v) => setShowProvenance(v), locked: reviewMode }} />
+          )}
+
+          {!focus && <DocumentTabs tabs={tabs} activeTab={activeTab} canEdit={canEdit} editor={editor} mobile={isMobile} getHtml={getTabHtml} onSwitch={switchTab} onAdd={() => addTab()} onRename={renameTab} onDuplicate={duplicateTab} onPromote={setConfirmPromote} onDelete={setConfirmDelete} />}
+        <main className={`flex-1 overflow-auto print:!overflow-visible ${workspaceClass}`} onDragOver={event => { if (event.dataTransfer.types.includes(ARTIFACT_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = canEdit ? "copy" : "none"; } }} onDrop={event => { if (event.defaultPrevented || !event.dataTransfer.types.includes(ARTIFACT_DRAG_TYPE)) return; event.preventDefault(); artifactDropRef.current(event.dataTransfer, event.clientX, event.clientY); }} data-hf-header={ws.headerText || ""} data-hf-footer={ws.footerText || ""} data-hf-num={ws.pageNumbers || "none"} style={{ ["--cap-figure" as string]: `"${t("editor.doc.figure")} "`, ["--cap-table" as string]: `"${t("editor.doc.table")} "`, ["--fn-title" as string]: `"${t("editor.doc.footnotes")}"` }} onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus("end"); }}>
           <div className="px-0 md:px-4 min-h-full">
             <div className={`docs-page ${ws.numberHeadings ? "num-headings" : ""}`} ref={sheetRef}>
               <FirstPageHeader setup={ws} pages={pageCount} />
@@ -2013,7 +1988,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
                   <button onMouseDown={(e) => e.preventDefault()} onClick={startComment} className="bm-btn !px-[9px]"><MessageSquarePlus className="w-[13px] h-[13px]" />{t("editor.comment")}</button>
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("cite")} className="bm-btn !px-[9px]" title={t("editor.bubble.supportTitle")}><SearchIcon className="w-[13px] h-[13px]" />{t("editor.support")}</button>
                   <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("evidence")} className="bm-btn !px-[9px]" title={t("editor.bubble.evidenceTitle")}><Scale className="w-[13px] h-[13px]" />{t("editor.evidence")}</button>
-                  {isOwner && <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><Bot className="w-[13px] h-[13px]" />{t("editor.askAi")}</button>}
+                  {isOwner && <button onMouseDown={(e) => e.preventDefault()} onClick={() => setSidebar("ai")} className="bm-btn !px-2.5 bg-brand-600 hover:bg-brand-700 font-semibold"><LogoMark size={14} />{t("editor.askAi")}</button>}
                   </div>
                   {canEdit && bubbleTypo && <TypographyRow editor={editor} />}
                 </div>
@@ -2023,6 +1998,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
             </div>
           </div>
         </main>
+        </div>
         {sidebar !== "none" && !focus && !isMobile && (
           <aside className="relative border-l border-gray-200 bg-white flex flex-col flex-shrink-0 min-h-0" style={{ width: panelWidth }}>
             <div
@@ -2079,7 +2055,7 @@ function DocsEditorInner({ initial, thesisId, userId, userRole, reviewMode, onbo
       {/* Mobile bottom action bar */}
       {isMobile && (
         <nav className="relative z-[70] flex justify-around border-t border-gray-200 bg-white flex-shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} aria-label={t("editor.mobile.navLabel")}>
-          {([...(isOwner ? [["ai", <Bot key="a" className="w-5 h-5" />, t("editor.mobile.ai")]] : []), ["comments", <MessageSquare key="c" className="w-5 h-5" />, t("editor.panel.comments")], ["outline", <ListTree key="o" className="w-5 h-5" />, t("editor.panel.outline")], ["integrity", <ShieldCheck key="i" className="w-5 h-5" />, t("glossary.integrity")]] as [SidebarKind, React.ReactNode, string][]).map(([k, icon, label]) => (
+          {([...(isOwner ? [["ai", <LogoMark key="a" size={20} />, t("editor.mobile.ai")]] : []), ["comments", <MessageSquare key="c" className="w-5 h-5" />, t("editor.panel.comments")], ["outline", <ListTree key="o" className="w-5 h-5" />, t("editor.panel.outline")], ["integrity", <ShieldCheck key="i" className="w-5 h-5" />, t("glossary.integrity")]] as [SidebarKind, React.ReactNode, string][]).map(([k, icon, label]) => (
             <button key={k} onClick={() => setSidebar((s) => (s === k ? "none" : k))} aria-pressed={sidebar === k} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] ${sidebar === k ? "text-brand-600" : "text-gray-500"}`}>{icon}{label}</button>
           ))}
           <button onClick={() => setMobileMenu(true)} className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-gray-500"><ChevronDown className="w-5 h-5" />{t("common.more")}</button>

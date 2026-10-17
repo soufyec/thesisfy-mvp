@@ -1,11 +1,18 @@
 "use client";
 
+import ResearchFileCard from "./ResearchFileCard";
+import { stripResearchFiles, type ResearchFile } from "@/lib/ai/files";
+import type { ResearchSearch } from "@/lib/ai/research";
+import AllowanceSummary from "./AllowanceSummary";
+import DataWorkbench from "./DataWorkbench";
+import { beginArtifactDrag, endArtifactDrag } from "./artifactDrag";
+import type { DataSelection } from "@/lib/data/workspace";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LogoSpinner } from "@/components/Logo";
+import { LogoSpinner, LogoMark } from "@/components/Logo";
 import {
   ArrowUp,
   BookMarked,
-  Bot,
   Check,
   ChevronDown,
   CircleAlert,
@@ -30,7 +37,7 @@ import {
 } from "lucide-react";
 import Markdown, { markdownToHtml } from "../Markdown";
 import { api, ApiError, countWordsInText, streamChat } from "@/lib/client";
-import { useFormat, useT } from "@/lib/i18n/client";
+import { useFormat, useT, useLocale } from "@/lib/i18n/client";
 import type { Artifact, Dataset, DatasetCell, DatasetColumn } from "@/lib/db";
 import type { LibraryResponse, LibrarySourceView } from "@/components/editor/types";
 import { artifactBlockState, extractArtifactBlocks, stripPartialArtifactBlocks } from "@/lib/data/blocks";
@@ -51,10 +58,11 @@ interface ModeInfo {
   id: AIMode;
   label: string;
   description: string;
+  descriptions?: Partial<Record<import("@/lib/i18n").Locale, string>>;
   /** lucide-react icon name (see `MODES` in `src/lib/ai/prompts.ts`). */
   icon: string;
   insertable: boolean;
-  /** Research copilot: its tables, charts, tests, diagrams and equations can be inserted (marked as AI), its text cannot. */
+  /** Research copilot: its structured results and research text can be inserted, marked as AI. */
   artifactsInsertable?: boolean;
 }
 
@@ -89,6 +97,8 @@ interface AllowanceInfo {
   exhausted: "none" | "student" | "institution";
   usage?: {
     requests: number;
+    tokensUsed?: number;
+    remainingTokens?: number | null;
     costPerRequest: number;
     remaining: number | null;
     remainingRequests: number | null;
@@ -102,6 +112,9 @@ interface AllowanceInfo {
 }
 
 export interface ChatMsg {
+  files?: ResearchFile[];
+  research?: ResearchSearch;
+  sourceSelections?: Record<string, DataSelection>;
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -153,12 +166,14 @@ export type ArtifactInsertMeta = InsertMeta & { artifact: { id: string; kind: Ar
  * `asNotes` sends it to the Research notes tab. Called only after the cost card was confirmed, and always with
  * `meta.interactionId`: the editor must refuse a call without it.
  */
-export type InsertArtifactHandler = (artifact: Artifact, meta: ArtifactInsertMeta, opts: { asNotes?: boolean }) => void;
+export type InsertArtifactHandler = (artifact: Artifact, meta: ArtifactInsertMeta, opts: { asNotes?: boolean; position?: number }) => void;
 
 export interface AssistantPanelProps {
   thesisId?: string;
   sessionId?: string;
   selection?: string;
+  /** Read at send time, so the active tab and unsaved changes stay current. */
+  getDocumentContext?: () => import("@/lib/ai/document-context").EditorDocumentSnapshot;
   onInsert?: (html: string, meta: InsertMeta) => void;
   onReplaceSelection?: (html: string, meta: InsertMeta) => void;
   onConsentRequired?: () => void;
@@ -167,6 +182,7 @@ export interface AssistantPanelProps {
   /** Starting mode. When omitted, the Research copilot is used if the institution offers it. */
   initialMode?: AIMode;
   initialConversationId?: string;
+  onConversationChange?: (id: string | undefined) => void;
   className?: string;
   onConversationsChanged?: () => void;
   /**
@@ -230,7 +246,7 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 /** Number of quick suggestions per mode; the texts live in `assistant.mode.<id>.suggestion<N>`. */
-const QUICK_COUNT: Record<AIMode, number> = { chat: 3, brainstorm: 3, outline: 3, critique: 3, grammar: 3, summarize: 3, explain: 3, citations: 3, gaps: 3, paraphrase_check: 3, copilot: 4 };
+const QUICK_COUNT = 2;
 
 /** Renders `**bold**` segments of a translated string. */
 function rich(text: string) {
@@ -309,23 +325,29 @@ async function loadChipDataset(thesisId: string, source: AttachedSource): Promis
   return out.length ? { sheets: out } : null;
 }
 
-export default function AssistantPanel({ thesisId, sessionId, selection, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode, initialConversationId, className = "", onConversationsChanged, insertContext, onClearSelection, onAddComment, onKeepAsNotes, onInsertArtifact, attachments: attachmentsAllowed = true }: AssistantPanelProps) {
+export default function AssistantPanel({ thesisId, sessionId, selection, getDocumentContext, onInsert, onReplaceSelection, onConsentRequired, onRejectSuggestion, variant = "panel", initialMode, initialConversationId, onConversationChange, className = "", onConversationsChanged, insertContext, onClearSelection, onAddComment, onKeepAsNotes, onInsertArtifact, attachments: attachmentsAllowed = true }: AssistantPanelProps) {
   const t = useT();
+  const { locale } = useLocale();
   const fmt = useFormat();
+  const [assistantEnabled, setAssistantEnabled] = useState(true);
+  const [researchEnabled, setResearchEnabled] = useState(true);
   const [modes, setModes] = useState<ModeInfo[]>([]);
   /** The mode grid folds into a chip once a conversation is under way, so the messages get the space (phones above all). */
   const [modesOpen, setModesOpen] = useState<boolean | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [institutionModels, setInstitutionModels] = useState<InstitutionModelInfo[]>([]);
   const [allowance, setAllowance] = useState<AllowanceInfo | null>(null);
-  const [mode, setMode] = useState<AIMode>(initialMode || "chat");
+  const [mode, setMode] = useState<AIMode>(initialMode || "copilot");
   const [providerChoice, setProviderChoice] = useState<string>("auto");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [useSelection, setUseSelection] = useState(true);
   const [useSources, setUseSources] = useState(false);
+  const [searchResearch, setSearchResearch] = useState(false);
+  const resumeId = useRef(initialConversationId);
   const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
+  useEffect(() => { onConversationChange?.(conversationId); }, [conversationId, onConversationChange]);
   const [conversations, setConversations] = useState<{ id: string; title: string; updatedAt: string; messageCount: number; mode?: AIMode }[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [providerOpen, setProviderOpen] = useState(false);
@@ -359,6 +381,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   // ----- Attachments (Research copilot, docs/papers.md §4.5) -----
   /** Primary sources attached to this conversation; each send carries their ids. */
   const [attached, setAttached] = useState<AttachedSource[]>([]);
+  const [workbench, setWorkbench] = useState<AttachedSource | null>(null);
+  const [sourceSelections, setSourceSelections] = useState<Record<string, DataSelection>>({});
   /** The paper's primary sources ("From this paper"); null until first needed. */
   const [paperSources, setPaperSources] = useState<AttachedSource[] | null>(null);
   /** The student's library: tells whether this is their own paper (staff get an empty one) and lists "From your library". */
@@ -381,20 +405,22 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const restoreRef = useRef<((msgs: ChatMsg[]) => void) | null>(null);
 
   useEffect(() => {
-    api<{ providers: ProviderInfo[]; modes: ModeInfo[]; defaultProvider: string | null; institutionModels?: InstitutionModelInfo[]; allowance?: AllowanceInfo | null; policy?: { researchCopilot?: boolean } }>("/api/ai/providers")
+    api<{ assistant?: { enabled: boolean; defaultMode: AIMode; searchEnabled: boolean }; providers: ProviderInfo[]; modes: ModeInfo[]; defaultProvider: string | null; institutionModels?: InstitutionModelInfo[]; allowance?: AllowanceInfo | null; policy?: { researchCopilot?: boolean } }>("/api/ai/providers")
       .then((d) => {
         setProviders(d.providers);
         // The copilot leads when the institution offers it.
         const ordered = [...d.modes.filter((m) => m.id === "copilot"), ...d.modes.filter((m) => m.id !== "copilot")];
         setModes(ordered);
-        if (!initialMode && !initialConversationId && d.policy?.researchCopilot) setMode("copilot");
+        setAssistantEnabled(d.assistant?.enabled !== false);
+        setResearchEnabled(d.assistant?.searchEnabled !== false);
+        if (!initialMode && !initialConversationId) setMode(ordered.find(m => m.id === d.assistant?.defaultMode)?.id || ordered[0]?.id || "critique");
         setInstitutionModels(d.institutionModels || []);
         const ready = (d.institutionModels || []).filter((m) => m.ready);
         const preset = ready.find((m) => m.isDefault) || ready[0];
         if (preset && d.allowance?.institutionPays) setProviderChoice((c) => (c === "auto" ? preset.id : c));
         setAllowance(d.allowance || null);
       })
-      .catch(() => {});
+      .catch(() => { setAssistantEnabled(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -413,8 +439,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   }, [loadConversations]);
 
   useEffect(() => {
-    if (!initialConversationId) return;
-    api<{ conversation: { messages: (Omit<ChatMsg, "mode"> & { mode?: AIMode })[] } }>(`/api/ai/conversations/${initialConversationId}`)
+    if (!resumeId.current) return;
+    api<{ conversation: { messages: (Omit<ChatMsg, "mode"> & { mode?: AIMode })[] } }>(`/api/ai/conversations/${resumeId.current}`)
       .then((d) => {
         const msgs: ChatMsg[] = d.conversation.messages.map((m) => ({ ...m }));
         setMessages(msgs);
@@ -423,7 +449,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         restoreRef.current?.(msgs);
       })
       .catch(() => {});
-  }, [initialConversationId]);
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -434,8 +460,9 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     setUseSelection(true);
   }, [selection]);
 
-  const copilotMode = modes.find((m) => m.id === "copilot");
-  const gridModes = (modes.length ? modes : [{ id: "chat", label: "", icon: "MessageSquare", description: "", insertable: false } as ModeInfo]).filter((m) => m.id !== "copilot");
+  const modeAvailable = assistantEnabled && modes.some(m => m.id === mode);
+  const modeDescription = (id: AIMode) => modes.find(m => m.id === id)?.descriptions?.[locale]?.trim() || t(`assistant.mode.${id}.description`);
+  const gridModes = modes.filter(m => ["copilot", "critique", "grammar", "citations", "gaps", "paraphrase_check"].includes(m.id));
   const wordsLabel = (n: number) => (n === 1 ? t("common.word_one") : t("common.words", { n }));
   /** Relative time in the active language; falls back to a formatted date after 30 days. */
   const ago = (iso: string) => {
@@ -456,7 +483,6 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const activeInstitution = institutionModels.find((m) => m.id === providerChoice);
   const readyInstitution = institutionModels.filter((m) => m.ready);
   const defaultInstitution = readyInstitution.find((m) => m.isDefault) || readyInstitution[0];
-  const allowanceUsed = allowance && allowance.perStudentMonthly > 0 ? Math.min(100, Math.round((allowance.spentStudent / allowance.perStudentMonthly) * 100)) : null;
 
   // Provider chip: "Claude · your account" / "Claude Sonnet 5.5 · your university" / "Demo assistant".
   const shortLabel = (s: string) => s.split(" (")[0];
@@ -535,6 +561,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   /** Re-attaches the files of the conversation's last attached message when a conversation is reopened. */
   const restoreAttachments = useCallback(
     async (msgs: ChatMsg[]) => {
+      setSourceSelections([...msgs].reverse().find(m => m.role === "user")?.sourceSelections || {});
       const last = [...msgs].reverse().find((m) => m.role === "user" && m.attachmentIds && m.attachmentIds.length);
       if (!last || !last.attachmentIds || !thesisId) return setAttached([]);
       const ids = last.attachmentIds;
@@ -617,20 +644,20 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const paperItems = (paperSources || []).filter((x) => !attached.some((a) => a.id === x.id));
   const libraryItems = thesisId && library ? library.sources.filter((x) => isPrimary(x) && x.thesisIds.indexOf(thesisId) === -1 && !attached.some((a) => a.id === x.id)) : [];
   const chipSheet = attached.find((a) => a.kind === "sheet" && datasets[a.id]);
-  const dataChips = useMemo(() => (copilotOn && chipSheet ? suggestions(datasets[chipSheet.id], t).slice(0, 4) : []), [copilotOn, chipSheet, datasets, t]);
+  const dataChips = useMemo(() => (copilotOn && chipSheet ? suggestions(datasets[chipSheet.id], t).slice(0, 2) : []), [copilotOn, chipSheet, datasets, t]);
   /** Under a conversation the chips stay while a sheet is attached, without those already asked. */
-  const laterChips = dataChips.filter((c) => !messages.some((m) => m.role === "user" && m.content.trim() === c.prompt));
+
   const computingFile = attached.find((a) => a.kind === "sheet");
 
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
-    if (!content || loading) return;
+    if (!content || loading || !modeAvailable) return;
     setInput("");
     setPending(null);
     setArtifactPending(null);
     setReadAsLine(null);
     const sourceIds = copilotOn && thesisId && attached.length ? attached.map((a) => a.id) : undefined;
-    const userMsg: ChatMsg = { id: `u_${Date.now()}`, role: "user", content, mode, createdAt: new Date().toISOString(), ...(sourceIds ? { attachmentIds: sourceIds } : {}) };
+    const userMsg: ChatMsg = { id: `u_${Date.now()}`, role: "user", content, mode, createdAt: new Date().toISOString(), ...(sourceIds ? { attachmentIds: sourceIds, sourceSelections } : {}) };
     const asstId = `a_${Date.now()}`;
     const asst: ChatMsg = { id: asstId, role: "assistant", content: "", mode, streaming: true, createdAt: new Date().toISOString() };
     const history = messages.filter((m) => !m.error && m.content).map((m) => ({ role: m.role, content: m.content }));
@@ -649,21 +676,26 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           conversationId,
           provider: providerChoice === "auto" ? null : providerChoice.startsWith("platform:") ? providerChoice.slice(9) : providerChoice,
           selection: workingOn ? selection : undefined,
+          document: getDocumentContext?.(),
           useSources: useSources && !!thesisId ? true : undefined,
           sourceIds,
+          sourceSelections,
+          searchResearch: mode === "copilot" && searchResearch,
         },
         {
           onMeta: (meta) => {
             if (meta.conversationId) setConversationId(String(meta.conversationId));
-            update({ provider: String(meta.provider), model: String(meta.model), label: String(meta.label), blocked: !!meta.blocked, demo: !!meta.demo, demoNotice: meta.demoNotice ? String(meta.demoNotice) : undefined, billedTo: meta.billedTo ? String(meta.billedTo) : undefined, notice: meta.notice ? String(meta.notice) : undefined, useSources: !!meta.useSources, groundedPassages: typeof meta.groundedPassages === "number" ? meta.groundedPassages : undefined, groundedFiles: groundedFilesOf(meta) });
+            update({ provider: String(meta.provider), model: String(meta.model), label: String(meta.label), blocked: !!meta.blocked, demo: !!meta.demo, demoNotice: meta.demoNotice ? String(meta.demoNotice) : undefined, billedTo: meta.billedTo ? String(meta.billedTo) : undefined, notice: meta.notice ? String(meta.notice) : undefined, useSources: !!meta.useSources, groundedPassages: typeof meta.groundedPassages === "number" ? meta.groundedPassages : undefined, groundedFiles: groundedFilesOf(meta), research: meta.research as ResearchSearch | undefined });
             if (meta.billedTo === "institution") setAllowance((a) => (a ? { ...a } : a));
           },
           onDelta: (t) => setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: m.content + t } : m))),
+          onResearchFile: file => setMessages(prev => prev.map(m => m.id === asstId ? { ...m, files: [...(m.files || []), file] } : m)),
+          onResearchFileError: message => update({ error: message }),
           onArtifact: (a) => setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, artifacts: [...(m.artifacts || []), a].slice(0, 8) } : m))),
           onArtifactError: (e) => setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, artifactErrors: [...(m.artifactErrors || []), e as ArtifactErrorInfo].slice(0, 8) } : m))),
           onDone: (d) => {
             // The streamed text carried the artifact blocks; the stored answer (and what Copy takes) has none.
-            setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, streaming: false, interactionId: d.interactionId, content: extractArtifactBlocks(m.content).text } : m)));
+            setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, streaming: false, interactionId: d.interactionId, content: stripResearchFiles(extractArtifactBlocks(m.content).text) } : m)));
             if (allowance) api<{ allowance?: AllowanceInfo | null }>("/api/ai/providers").then((x) => setAllowance(x.allowance || null)).catch(() => {});
           },
           onError: (e) => update({ streaming: false, error: providerErrorText(e) }),
@@ -693,6 +725,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     setPending(null);
     setArtifactPending(null);
     setAttached([]);
+    setSourceSelections({});
     setReadAsLine(null);
     setAttachError("");
     setPrivacyFor(null);
@@ -803,6 +836,17 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           <ArtifactCard
             key={a.id}
             artifact={a}
+            drag={insertable && thesisId && ctx ? (() => {
+              const words = artifactInsertWords(a);
+              const next = (ctx.aiWords + words) / (ctx.wordCount + words || 1) * 100;
+              const over = ctx.onFinalSubmission !== false && words > 0 && next > ctx.limitPct;
+              const cls = a.kind === "chart" || a.kind === "diagram" ? "figure" : a.kind === "equation" ? "equation" : "table";
+              const hint = over ? t("assistant.cost.over", { next: Math.round(next), limit: ctx.limitPct }) : t(ctx.onFinalSubmission === false ? "workspace.dragCost.notes" : `workspace.dragCost.${cls}`, { words: fmt.number(words), next: Math.round(next), limit: ctx.limitPct });
+              return { disabled: over, hint, onEnd: endArtifactDrag, onStart: (event: React.DragEvent) => {
+                if (over) return event.preventDefault();
+                beginArtifactDrag(event.dataTransfer, { thesisId, artifact: a, meta: { ...metaFor(m), interactionId: a.interactionId || m.interactionId, words, artifact: { id: a.id, kind: a.kind } } });
+              } };
+            })() : undefined}
             insertable={insertable && !!(a.interactionId || m.interactionId) && !m.streaming}
             onAction={(action) => toggleArtifactAction(m.id, a.id, action)}
             done={artifactDone && artifactDone.artifactId === a.id ? artifactDone.action : null}
@@ -823,8 +867,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   const isPage = variant === "page";
   const column = isPage ? "max-w-3xl w-full mx-auto" : "";
   const modeLabel = (id?: AIMode) => t(`assistant.mode.${id || "chat"}.short`);
-  const modeDescription = t(`assistant.mode.${mode}.description`);
-  const placeholderLabel = modeLabel(mode);
+    const placeholderLabel = modeLabel(mode);
   /** A provider failure in words the student can act on; the raw provider payload stays in the server log. */
   const providerErrorText = (e: { message: string; code?: string }) =>
     e.code === "auth" ? t("assistant.msg.errorAuth") : e.code === "rate_limit" ? t("assistant.msg.errorRateLimit") : e.code === "refusal" ? e.message : e.code === "provider" ? t("assistant.msg.errorProvider") : e.message;
@@ -863,10 +906,11 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   };
 
   const renderActions = (m: ChatMsg) => {
+    if (m.files?.length) return null;
     const mm = m.mode || mode;
-    const guiding = mm === "critique" || mm === "gaps" || mm === "paraphrase_check" || mm === "copilot";
-    const insertable = mm === "outline" || mm === "summarize" || mm === "citations" || mm === "brainstorm" || mm === "explain";
-    const grammar = mm === "grammar";
+    const guiding = mm === "critique" || mm === "gaps";
+    const insertable = mm === "copilot" || mm === "outline" || mm === "summarize" || mm === "citations" || mm === "brainstorm" || mm === "explain";
+    const grammar = mm === "grammar" || mm === "paraphrase_check";
     const canReplace = grammar && !!onReplaceSelection && !!selection;
     const canInsert = !!onInsert && (insertable || (grammar && !canReplace));
     const canNotes = !!onKeepAsNotes && insertable;
@@ -915,7 +959,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
     const names = (m.attachmentIds || []).map((id) => pool.find((x) => x.id === id)).filter((x): x is AttachedSource => !!x).map((x) => ({ id: x.id, name: attachedName(x), kind: x.kind }));
     return (
       <div key={m.id} className="self-end max-w-[85%] flex flex-col items-end gap-1">
-        <div className="text-sm leading-normal px-3 py-[9px] rounded-[12px_12px_2px_12px] bg-brand-600 text-white whitespace-pre-wrap">{m.content}</div>
+        <div className="text-sm leading-normal px-3 py-[9px] rounded-[12px_12px_2px_12px] bg-gray-100 text-gray-900 whitespace-pre-wrap">{m.content}</div>
         {names.length > 0 && (
           <div className="flex flex-wrap justify-end gap-1">
             {names.map((n) => (
@@ -931,16 +975,15 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
   };
 
   const renderAssistant = (m: ChatMsg) => {
-    const shown = m.streaming ? stripPartialArtifactBlocks(m.content) : extractArtifactBlocks(m.content).text;
+    const shown = stripResearchFiles(m.streaming ? stripPartialArtifactBlocks(m.content) : extractArtifactBlocks(m.content).text);
     return (
       <div key={m.id} className="min-w-0">
         <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-400 flex-wrap">
           <span>
             {/* The server's label is an English literal for the demo assistant: shown in the interface language. */}
-            {m.demo || m.provider === "demo" ? t("assistant.chip.demo") : m.label || t("glossary.assistant")} · {modeLabel(m.mode)}
+            {m.model === "data-workspace" ? t("workspace.customResult") : m.demo || m.provider === "demo" ? t("assistant.chip.demo") : m.label || t("glossary.assistant")} · {modeLabel(m.mode)}
           </span>
-          {!m.error && <span className="px-[7px] py-px rounded-full bg-brand-50 text-brand-700 font-semibold">{t("assistant.msg.logged")}</span>}
-          {m.blocked && <span className="badge-danger !text-[10px] !py-0">{t("assistant.msg.blocked")}</span>}
+            {m.blocked && <span className="badge-danger !text-[10px] !py-0">{t("assistant.msg.blocked")}</span>}
           {m.demo && <span className="badge bg-gray-100 text-gray-500 !text-[10px] !py-0">{t("assistant.msg.demo")}</span>}
           {m.useSources && !m.error && (
             <span className={`badge !text-[10px] !py-0 inline-flex items-center gap-1 ${m.groundedPassages ? "bg-accent-50 text-accent-800" : "bg-gray-100 text-gray-500"}`}>
@@ -952,7 +995,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
         {m.notice && !m.error && <div className="mb-1 text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1">{m.notice}</div>}
         {m.demo && !m.error && !m.streaming && <div className="mb-1 text-[11px] text-gray-500">{t("assistant.msg.demoNotice")}</div>}
         {(shown || m.streaming || m.error) && (
-          <div className={`text-sm leading-[1.55] px-3 py-2.5 rounded-[12px_12px_12px_2px] text-gray-900 ${m.blocked ? "bg-amber-50 border border-amber-100" : "bg-gray-100"}`}>
+          <div className={`text-sm leading-[1.55] px-3 py-2.5 rounded-[12px_12px_12px_2px] text-gray-900 ${m.blocked ? "bg-amber-50 border border-amber-100" : "bg-white"}`}>
             {m.streaming && !shown && !m.error ? (
               <div className="flex items-center gap-2.5 py-0.5 text-[13px] text-gray-500">
                 <LogoSpinner size={28} label={t("assistant.msg.thinking")} />
@@ -966,6 +1009,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           </div>
         )}
         <GroundedNote files={m.groundedFiles} />
+        {m.research && <details className="mt-2 text-xs text-gray-500"><summary className="cursor-pointer">{t("copilot.searchResults", { n: m.research.works.length })}</summary><p className="mt-1 text-[11px]">{t(m.research.status === "ok" ? "copilot.metadata" : `copilot.search.${m.research.status}`)}</p><ol className="space-y-2 mt-2">{m.research.works.map((w,i) => <li key={w.id}><a className="text-brand-700 hover:underline" href={`https://doi.org/${w.doi}`} target="_blank" rel="noreferrer">[W{i+1}] {w.title}</a><p className="text-[11px]">{w.authors} · {w.year} · Crossref</p></li>)}</ol></details>}
+        {(m.files || []).map(file => <ResearchFileCard key={file.id} file={file} onDrag={onInsert && thesisId ? (event,html,words) => beginArtifactDrag(event.dataTransfer, { thesisId, html, words, title: file.title, meta: { ...metaFor(m), words, interactionId: file.interactionId } }) : undefined} onDragEnd={endArtifactDrag} conversationId={conversationId} ctx={insertContext} onInsert={onInsert ? (html,words) => onInsert(html, { ...metaFor(m), words, interactionId: file.interactionId }) : undefined} onNotes={onKeepAsNotes ? (html,words) => onKeepAsNotes(html, { ...metaFor(m), words, interactionId: file.interactionId }) : undefined} onUse={ownPaper && !ownPaper.locked ? pickFile : undefined} />)}
         {renderArtifacts(m)}
         {!m.streaming && shown && renderActions(m)}
         {!m.streaming && shown && renderCostCard(m)}
@@ -975,14 +1020,14 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
 
   return (
     <div className={`flex flex-col h-full min-h-0 bg-white ${className}`}>
+      {workbench && thesisId && <DataWorkbench thesisId={thesisId} source={workbench} conversationId={conversationId || undefined} initial={sourceSelections[workbench.id]} onClose={() => setWorkbench(null)} onSelect={value => setSourceSelections(s => ({ ...s, [workbench.id]: value }))} onCreated={(artifact, id) => {
+        setMode("copilot"); setConversationId(id); setMessages(messages => [...messages, { id: artifact.id, role: "assistant", content: "", mode: "copilot", provider: "demo", model: "data-workspace", label: t("workspace.customResult"), interactionId: artifact.interactionId, artifacts: [artifact], createdAt: new Date().toISOString() }]); loadConversations();
+      }} />}
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2.5 flex-shrink-0">
-        <div className="w-[30px] h-[30px] bg-gradient-to-br from-brand-500 to-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Bot className="w-4 h-4 text-white" />
-        </div>
+      <div className="px-3 py-2 border-b border-gray-100 flex items-center gap-2.5 flex-shrink-0">
+        <LogoMark size={25} />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold leading-tight whitespace-nowrap">{t("glossary.assistant")}</div>
-          <div className="text-xs text-gray-400 truncate">{t("glossary.tagline")}</div>
+          <div className="text-[13px] font-semibold leading-tight whitespace-nowrap">{t("glossary.assistant")}</div>
         </div>
         <div ref={headerMenusRef} className="contents">
         <div className="relative flex-shrink-0">
@@ -998,20 +1043,11 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                   {t("assistant.provider.autoAccount")}
                 </button>
               )}
-              {allowance?.institutionPays && institutionModels.length > 0 && (
+              {allowance?.institutionPays && readyInstitution.length > 0 && (
                 <>
                   <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{t("glossary.providedByUniversity")}</div>
-                  {allowance.usage ? (
-                    <AllowanceSummary allowance={allowance} usage={allowance.usage} />
-                  ) : (
-                    allowanceUsed !== null && (
-                      <>
-                        <div className="px-3 pb-1 text-[11px] text-gray-500">{t("assistant.provider.used", { spent: fmt.number(allowance.spentStudent, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), limit: fmt.number(allowance.perStudentMonthly), currency: allowance.currency })}</div>
-                        <div className="mx-3 mb-1 h-1 rounded-full bg-gray-100 overflow-hidden"><div className={`h-full ${allowanceUsed >= 100 ? "bg-red-500" : allowanceUsed >= 80 ? "bg-amber-400" : "bg-brand-500"}`} style={{ width: `${allowanceUsed}%` }} /></div>
-                      </>
-                    )
-                  )}
-                  {institutionModels.map((m) => (
+                  <div className="px-3 pb-2 border-b border-gray-100"><AllowanceSummary allowance={allowance} /></div>
+                  {readyInstitution.map((m) => (
                     <button key={m.id} disabled={!m.ready || allowance.exhausted !== "none"} onClick={() => { setProviderChoice(m.id); setProviderOpen(false); }} title={`${m.backendName} · ${m.region}`} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === m.id ? "text-brand-600 font-medium" : ""}`}>
                       <span className="w-2 h-2 rounded-full" style={{ background: m.color }} />
                       <span className="flex-1 truncate">{m.label}</span>
@@ -1021,7 +1057,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                   <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{t("assistant.provider.ownAccounts")}</div>
                 </>
               )}
-              {providers.filter((p) => !institutionModels.some((m) => m.id === `platform:${p.id}`)).map((p) => (
+              {providers.filter((p) => p.allowedByPolicy && (p.connection?.status === "active" || p.platformKey) && !institutionModels.some((m) => m.id === `platform:${p.id}`)).map((p) => (
                 <button key={p.id} disabled={!p.allowedByPolicy || !(p.connection?.status === "active" || p.platformKey)} onClick={() => { setProviderChoice(p.id); setProviderOpen(false); }} className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-40 ${providerChoice === p.id ? "text-brand-600 font-medium" : ""}`}>
                   <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
                   <span className="flex-1">{p.product}</span>
@@ -1077,7 +1113,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               <button
                 onClick={() => setModesOpen(true)}
                 aria-expanded={false}
-                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-[10px] border text-left text-xs ${mode === "copilot" ? "bg-accent-50 border-accent-200 text-accent-800" : "bg-gray-50 border-gray-200 text-gray-700"}`}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-[10px] border text-left text-xs ${mode === "copilot" ? "bg-white border-gray-200 text-gray-700" : "bg-white border-gray-200 text-gray-700"}`}
               >
                 {mode === "copilot" ? <Compass className="w-4 h-4 flex-shrink-0" /> : <ActiveIcon className="w-4 h-4 flex-shrink-0" />}
                 <span className="font-semibold truncate">{mode === "copilot" ? t("glossary.copilot") : t(`assistant.mode.${mode}.label`)}</span>
@@ -1087,21 +1123,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
           );
         }
         return (
-      <div className={`px-4 pt-3 flex-shrink-0 ${column}`}>
-        {copilotMode && (
-          <button
-            onClick={() => { chooseMode("copilot"); if (messages.length) setModesOpen(false); }}
-            aria-pressed={mode === "copilot"}
-            className={`w-full mb-1.5 flex items-center gap-2.5 px-3 py-2 rounded-[10px] border text-left transition-colors ${mode === "copilot" ? "bg-accent-600 border-accent-600 text-white" : "bg-accent-50 border-accent-200 text-accent-800 hover:border-accent-400"}`}
-          >
-            <Compass className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1 min-w-0">
-              <span className="block text-xs font-semibold leading-tight">{t("glossary.copilot")}</span>
-              <span className={`block text-[11px] leading-tight truncate ${mode === "copilot" ? "text-white/80" : "text-accent-700"}`}>{t("assistant.copilot.tileSub")}</span>
-            </span>
-          </button>
-        )}
-        <div className="grid grid-cols-5 gap-1.5">
+      <div className={`px-3 pt-2 flex-shrink-0 ${column}`}>
+        <div className="grid grid-cols-6 gap-1" role="group" aria-label={t("copilot.modes")}>
           {gridModes.map((m) => {
             const Icon = ICONS[m.icon] || MessageSquare;
             const active = mode === m.id;
@@ -1109,12 +1132,12 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               <button
                 key={m.id}
                 onClick={() => { chooseMode(m.id); if (messages.length) setModesOpen(false); }}
-                title={t(`assistant.mode.${m.id}.description`)}
+                title={modeDescription(m.id)}
                 aria-pressed={active}
-                className={`flex flex-col items-center gap-1 px-0.5 pt-2 pb-1.5 rounded-[10px] border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-brand-600 border-brand-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-brand-300"}`}
+                className={`flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-md border text-[11px] font-medium leading-[1.1] text-center transition-colors ${active ? "bg-gray-100 border-gray-300 text-gray-900" : "bg-white border-transparent text-gray-500 hover:bg-gray-50"}`}
               >
-                <Icon className="w-4 h-4" />
-                <span>{t(`assistant.mode.${m.id}.short`)}</span>
+                <Icon className="w-3 h-3" />
+                <span className="min-w-0 break-words">{t(`assistant.mode.${m.id}.short`)}</span>
               </button>
             );
           })}
@@ -1122,6 +1145,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       </div>
         );
       })()}
+      <p className="px-4 pt-1 pb-1.5 mb-0 text-[11px] leading-snug text-gray-500 flex-shrink-0" aria-live="polite">{modeAvailable ? modeDescription(mode) : t("product.assistantUnavailable")}</p>
 
       {/* Working on */}
       {workingOn && (
@@ -1143,16 +1167,6 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       <div className={`flex-1 overflow-y-auto px-4 py-3.5 flex flex-col gap-3.5 min-h-0 ${column}`}>
         {messages.length === 0 && (
           <div className="text-sm text-gray-500 flex flex-col gap-3 pt-1">
-            {mode === "copilot" ? (
-              <p className="text-xs text-accent-800 bg-accent-50 rounded-lg px-2.5 py-1.5">
-                <strong>{t("glossary.copilot")}</strong>{t("assistant.copilot.noteRest")}
-              </p>
-            ) : (
-              <p>
-                <strong className="text-gray-700">{placeholderLabel}</strong>
-                {` — ${modeDescription.replace(/^([^A-Za-zÀ-ÿ]*)([A-ZÀ-Ý])/, (_m, p, c) => p + c.toLowerCase())}${/[.?!…]$/.test(modeDescription) ? "" : "."}`}
-              </p>
-            )}
             {dataChips.length > 0 && chipSheet ? (
               <div>
                 <div className="flex items-center gap-1.5 mb-1.5 text-[12px] font-medium text-gray-500 min-w-0">
@@ -1161,7 +1175,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {dataChips.map((c) => (
-                    <button key={c.label} onClick={() => send(c.prompt)} className="text-xs px-2.5 py-1.5 bg-brand-50 text-brand-700 rounded-lg hover:bg-brand-100 text-left">
+                    <button key={c.label} onClick={() => send(c.prompt)} className="text-[11px] leading-snug px-2 py-1 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 text-left">
                       {c.label}
                     </button>
                   ))}
@@ -1169,8 +1183,8 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {Array.from({ length: QUICK_COUNT[mode] }, (_, i) => t(`assistant.mode.${mode}.suggestion${i + 1}`)).map((q) => (
-                  <button key={q} onClick={() => send(q)} className="text-xs px-2.5 py-1.5 bg-brand-50 text-brand-700 rounded-lg hover:bg-brand-100 text-left">
+                {Array.from({ length: QUICK_COUNT }, (_, i) => t(`assistant.mode.${mode}.suggestion${i + 1}`)).map((q) => (
+                  <button key={q} onClick={() => send(q)} className="text-[11px] leading-snug px-2 py-1 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 text-left">
                     {q}
                   </button>
                 ))}
@@ -1183,7 +1197,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
       </div>
 
       {/* Composer */}
-      <div className={`px-4 pt-3 pb-3.5 border-t border-gray-100 flex-shrink-0 ${column}`}>
+      <div className={`px-3 pt-2 pb-2 border-t border-gray-100 flex-shrink-0 ${column}`}>
         {privacyFor && <PrivacyNotice fileName={privacyFor.name} sheet={isSheetName(privacyFor.name)} onAttach={() => uploadFile(privacyFor)} onCancel={() => setPrivacyFor(null)} />}
         {attachError && (
           <div role="alert" className="mb-2 flex items-start gap-2 rounded-lg bg-red-50 px-2.5 py-1.5 text-[12px] text-red-700">
@@ -1193,22 +1207,13 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
             </button>
           </div>
         )}
-        {copilotOn && <AttachmentChips attached={attached} uploading={uploading} readAs={readAsLine} onRemove={(id) => setAttached((list) => list.filter((x) => x.id !== id))} disabled={loading} />}
-        {copilotOn && messages.length > 0 && laterChips.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1" aria-label={chipSheet ? t("assistant.attach.chipsFrom", { file: attachedName(chipSheet) }) : undefined} role="group">
-            {laterChips.map((c) => (
-              <button key={c.label} onClick={() => send(c.prompt)} disabled={loading} className="text-[11.5px] px-2 py-0.5 bg-brand-50 text-brand-700 rounded-lg hover:bg-brand-100 text-left disabled:opacity-40">
-                {c.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {copilotOn && <AttachmentChips onConfigure={ownPaper && !ownPaper.locked ? setWorkbench : undefined} selections={sourceSelections} attached={attached} uploading={uploading} readAs={readAsLine} onRemove={(id) => setAttached((list) => list.filter((x) => x.id !== id))} disabled={loading} />}
         {thesisId && (
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 mb-2">
             <button type="button" onClick={() => setUseSources((v) => !v)} aria-pressed={useSources} className={`inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-lg border ${useSources ? "bg-accent-50 border-accent-200 text-accent-800" : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"}`} title={t("assistant.sources.title")}>
               <BookOpen className="w-3.5 h-3.5" />{useSources ? t("assistant.sources.on") : t("assistant.sources.button")}
             </button>
-            {useSources && <span className="text-[11px] text-gray-400">{t("assistant.sources.note")}</span>}
+            {mode === "copilot" && researchEnabled && <button type="button" className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border ${searchResearch ? "border-brand-300 text-brand-700 bg-brand-50" : "border-gray-200 text-gray-500"}`} aria-pressed={searchResearch} onClick={() => setSearchResearch(v => !v)} title={t("copilot.searchTitle")}><Search className="w-3.5 h-3.5" />{t("copilot.search")}</button>}
           </div>
         )}
         <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-[9px] border border-gray-200 focus-within:border-brand-400">
@@ -1252,60 +1257,12 @@ export default function AssistantPanel({ thesisId, sessionId, selection, onInser
               <Square className="w-3.5 h-3.5" />
             </button>
           ) : (
-            <button onClick={() => send()} disabled={!input.trim()} className="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-30" aria-label={t("assistant.composer.send")}>
+            <button onClick={() => send()} disabled={!input.trim() || !modeAvailable} className="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-30" aria-label={t("assistant.composer.send")}>
               <ArrowUp className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-/**
- * The student's allowance in words a student can act on: interactions left this month, share used, when it resets,
- * what the current pace means, and what one interaction costs. The tutor sees the same figures in Admin → AI access.
- */
-function AllowanceSummary({ allowance, usage }: { allowance: AllowanceInfo; usage: NonNullable<AllowanceInfo["usage"]> }) {
-  const t = useT();
-  const fmt = useFormat();
-  const money = (n: number) => fmt.number(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const resetDate = fmt.date(usage.resetsAt, { day: "numeric", month: "long" });
-  const exhausted = allowance.exhausted !== "none";
-  const pct = usage.usedPercent ?? usage.institutionPercent;
-  const barColor = exhausted || (pct ?? 0) >= 100 ? "bg-red-500" : (pct ?? 0) >= 80 ? "bg-amber-400" : "bg-brand-500";
-  const headline = exhausted
-    ? t("assistant.allowance.remainingNone")
-    : usage.remainingRequests === null
-      ? t("assistant.allowance.unlimited")
-      : t(usage.remainingRequests <= 20 ? "assistant.allowance.remainingFew" : "assistant.allowance.remaining", { n: fmt.number(usage.remainingRequests) });
-  const pace =
-    usage.requests === 0 || usage.usedPercent === null
-      ? null
-      : usage.runsOutAt && !exhausted
-        ? { text: t("assistant.allowance.paceRunsOut", { date: fmt.date(usage.runsOutAt, { day: "numeric", month: "long" }) }), warn: true }
-        : usage.projectedPercent !== null && !exhausted
-          ? { text: t("assistant.allowance.pace", { percent: fmt.number(Math.min(usage.projectedPercent, 999)) }), warn: usage.projectedPercent >= 80 }
-          : null;
-  return (
-    <div className="px-3 pb-2 border-b border-gray-100 mb-1" aria-live="polite">
-      <p className={`text-[13px] font-semibold leading-snug ${exhausted ? "text-red-600" : "text-gray-900"}`}>{headline}</p>
-      {pct !== null && (
-        <div className="mt-1.5 mb-1.5 h-1.5 rounded-full bg-gray-100 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, pct)}%` }} />
-        </div>
-      )}
-      <p className="text-[11px] text-gray-600 leading-snug">
-        {usage.usedPercent !== null
-          ? t("assistant.allowance.detail", { percent: fmt.number(usage.usedPercent), spent: money(allowance.spentStudent), limit: fmt.number(allowance.perStudentMonthly), currency: allowance.currency, requests: fmt.number(usage.requests) })
-          : t("assistant.allowance.detailNoCap", { requests: fmt.number(usage.requests), spent: money(allowance.spentStudent), currency: allowance.currency })}
-      </p>
-      {usage.usedPercent === null && usage.institutionPercent !== null && <p className="text-[11px] text-gray-600 leading-snug">{t("assistant.allowance.institution", { percent: fmt.number(usage.institutionPercent) })}</p>}
-      <p className="text-[11px] text-gray-600 leading-snug">{t("assistant.allowance.reset", { date: resetDate, days: fmt.number(usage.daysLeft) })}</p>
-      {pace && <p className={`mt-1 text-[11px] leading-snug ${pace.warn ? "text-amber-700" : "text-gray-500"}`}>{pace.text}</p>}
-      <p className="mt-1 text-[11px] text-gray-400 leading-snug">
-        {t("assistant.allowance.what", { cost: money(usage.costPerRequest), currency: allowance.currency })} {usage.remaining !== null && t(allowance.atLimit === "block" ? "assistant.allowance.thenBlock" : "assistant.allowance.thenOwn")}
-      </p>
     </div>
   );
 }

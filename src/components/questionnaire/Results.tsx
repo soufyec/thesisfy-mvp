@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import { Logo } from "@/components/landing/LandingNav";
 import { Spinner } from "@/components/ui";
-import { useFormat, useT } from "@/lib/i18n/client";
+
+import { useQuestionnaireFormat as useFormat, useQuestionnaireT as useT, useQuestionnaireLanguage, QuestionnaireLanguageSelector } from "./Language";
 import { Indicator, indicators as computeIndicators, Item, itemsAlong, Mode, Profil, Questionnaire, ResponseRow } from "@/lib/questionnaire";
 
 interface Payload {
@@ -29,6 +30,7 @@ function Bar({ label, n, total }: { label: string; n: number; total: number }) {
 }
 
 function Distribution({ item, values }: { item: Item; values: (string | number)[] }) {
+  const lang = useQuestionnaireLanguage();
   const counts = new Map<string, number>();
   for (const v of values) counts.set(String(v), (counts.get(String(v)) || 0) + 1);
   const order: string[] = item.type === "scale" ? Array.from({ length: (item.max ?? 5) - (item.min ?? 1) + 1 }, (_, i) => String((item.min ?? 1) + i)) : [...(item.choices || [])];
@@ -36,7 +38,7 @@ function Distribution({ item, values }: { item: Item; values: (string | number)[
   return (
     <div className="flex flex-col gap-2.5">
       {order.filter((k) => counts.get(k) || item.type === "scale" || (item.choices || []).includes(k)).map((k) => (
-        <Bar key={k} label={k} n={counts.get(k) || 0} total={values.length} />
+        <Bar key={k} label={lang.label(item, k)} n={counts.get(k) || 0} total={values.length} />
       ))}
     </div>
   );
@@ -45,6 +47,7 @@ function Distribution({ item, values }: { item: Item; values: (string | number)[
 /** Team page: counts, decision indicators, one block per question, free answers, CSV. */
 export default function Results() {
   const t = useT();
+  const lang = useQuestionnaireLanguage();
   const f = useFormat();
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState(false);
@@ -94,7 +97,7 @@ export default function Results() {
               {Object.entries(i.detail)
                 .sort((a, b) => b[1] - a[1])
                 .map(([k, n]) => (
-                  <Bar key={k} label={k} n={n} total={i.n} />
+                  <Bar key={k} label={lang.text(k)} n={n} total={i.n} />
                 ))}
             </div>
           </div>
@@ -108,7 +111,7 @@ export default function Results() {
       <header className="bg-white border-b border-gray-100">
         <div className="mx-auto max-w-[1040px] px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           <Logo />
-          <nav className="flex items-center gap-1 text-[13px] font-medium">
+          <nav className="flex flex-wrap items-center gap-1 text-[13px] font-medium"><QuestionnaireLanguageSelector /><Link href="/equipe/produit" className="px-2.5 py-1.5 text-brand-700">{t("product.title")}</Link>
             <Link href="/questionnaire" className="px-2.5 py-1.5 text-gray-600 hover:text-gray-900">
               {t("q.results.openForm")}
             </Link>
@@ -187,14 +190,14 @@ export default function Results() {
                   <section key={section.id} className="mb-10">
                     <h2 className="text-[17px] font-bold mb-4">
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 block">{t("q.results.section")}</span>
-                      {section.title || data.questionnaire.title}
+                      {lang.text(section.title || data.questionnaire.title)}
                     </h2>
                     <div className="grid gap-4 lg:grid-cols-2">
                       {blocks.map(({ item, key }) => {
                         const answered = rows.filter((r) => r.answers[key] !== undefined);
                         return (
                           <article key={key} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 min-w-0">
-                            <h3 className="text-[14px] font-semibold leading-snug mb-1">{item.title}</h3>
+                            <h3 className="text-[14px] font-semibold leading-snug mb-1">{lang.title(item)}</h3>
                             <p className="text-[12px] text-gray-400 mb-4">
                               {t("q.results.n", { n: answered.length })}
                               {item.addedBy && <> · {t("q.team.added")}</>}
@@ -212,7 +215,7 @@ export default function Results() {
                                   const vals = answered.map((r) => (r.answers[key] as Record<string, string>)[row]).filter(Boolean);
                                   return (
                                     <div key={row}>
-                                      <p className="text-[13px] font-medium text-gray-700 mb-1.5">{row}</p>
+                                      <p className="text-[13px] font-medium text-gray-700 mb-1.5">{lang.label(item, row)}</p>
                                       <Distribution item={{ ...item, type: "mc", choices: item.cols }} values={vals} />
                                     </div>
                                   );

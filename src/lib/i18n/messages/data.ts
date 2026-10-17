@@ -66,6 +66,9 @@ const en = {
   "data.value.yes": "Yes",
   "data.value.no": "No",
 
+  "data.error.invalid_filter": "A row filter is invalid. Check the column, operator and values.",
+  "data.error.no_matching_rows": "No rows match these filters. Adjust the conditions; the full dataset has not been used.",
+  "data.note.filtered": "Filtered rows: {kept} of {total}. Conditions: {filters}.",
   "data.note.truncated": "Computed from the first {n} rows: the file was cut at {cells} cells.",
   "data.note.pie": "Shares are shown as bars: a pie chart is drawn for 2 to 12 categories without a natural order.",
   "data.note.other": "“Other” groups {k} less frequent values.",
@@ -295,6 +298,9 @@ export const data: Messages<typeof en> = {
     "data.value.yes": "Sí",
     "data.value.no": "No",
 
+    "data.error.invalid_filter": "Un filtro de filas no es válido. Comprueba la columna, el operador y los valores.",
+    "data.error.no_matching_rows": "Ninguna fila cumple estos filtros. Ajusta las condiciones; no se han usado todos los datos como alternativa.",
+    "data.note.filtered": "Filas filtradas: {kept} de {total}. Condiciones: {filters}.",
     "data.note.truncated": "Calculado con las primeras {n} filas: el archivo se recortó en {cells} celdas.",
     "data.note.pie": "Las proporciones se muestran como barras: el gráfico circular se usa con 2 a 12 categorías sin orden natural.",
     "data.note.other": "«Otros» agrupa {k} valores menos frecuentes.",
@@ -521,6 +527,9 @@ export const data: Messages<typeof en> = {
     "data.value.yes": "Oui",
     "data.value.no": "Non",
 
+    "data.error.invalid_filter": "Un filtre de lignes est invalide. Vérifiez la colonne, l’opérateur et les valeurs.",
+    "data.error.no_matching_rows": "Aucune ligne ne correspond à ces filtres. Ajustez les conditions ; les données complètes n’ont pas été utilisées à la place.",
+    "data.note.filtered": "Lignes filtrées : {kept} sur {total}. Conditions : {filters}.",
     "data.note.truncated": "Calculé sur les {n} premières lignes : le fichier a été coupé à {cells} cellules.",
     "data.note.pie": "Les proportions sont présentées en barres : un camembert est tracé pour 2 à 12 catégories sans ordre naturel.",
     "data.note.other": "« Autres » regroupe {k} valeurs moins fréquentes.",
@@ -747,6 +756,9 @@ export const data: Messages<typeof en> = {
     "data.value.yes": "Ja",
     "data.value.no": "Nein",
 
+    "data.error.invalid_filter": "Ein Zeilenfilter ist ungültig. Prüfen Sie Spalte, Operator und Werte.",
+    "data.error.no_matching_rows": "Keine Zeile entspricht diesen Filtern. Passen Sie die Bedingungen an; es wurden nicht ersatzweise alle Daten verwendet.",
+    "data.note.filtered": "Gefilterte Zeilen: {kept} von {total}. Bedingungen: {filters}.",
     "data.note.truncated": "Berechnet aus den ersten {n} Zeilen: Die Datei wurde bei {cells} Zellen gekürzt.",
     "data.note.pie": "Anteile werden als Balken dargestellt: Ein Kreisdiagramm wird für 2 bis 12 Kategorien ohne natürliche Reihenfolge gezeichnet.",
     "data.note.other": "„Sonstige“ fasst {k} seltenere Werte zusammen.",

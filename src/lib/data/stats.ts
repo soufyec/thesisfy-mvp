@@ -304,7 +304,7 @@ export interface Bins {
 /**
  * Histogram bins: Freedman–Diaconis (2·IQR·n^(−1/3)) bounded to 5–30 bins, Sturges (⌈log2 n⌉ + 1) when the IQR is 0;
  * then the width is rounded to a 1-2-5 × 10^k step (integers stay on whole-number edges) and the start is aligned to it.
- * `requested` (2–50) replaces the rule. Constant data give one bin.
+ * `requested` (2–1000) uses the exact requested number of equal-width bins. Constant data give one bin.
  */
 export function histogramBins(values: number[], requested?: number): Bins {
   const xs = sorted(values);
@@ -316,8 +316,12 @@ export function histogramBins(values: number[], requested?: number): Bins {
   let target: number;
   let rule: Bins["rule"];
   if (requested && Number.isFinite(requested)) {
-    target = Math.max(2, Math.min(50, Math.round(requested)));
-    rule = "requested";
+    target = Math.max(2, Math.min(1000, Math.round(requested)));
+    const width = (hi - lo) / target;
+    const edges = Array.from({ length: target + 1 }, (_, i) => i === target ? hi : lo + i * width);
+    const counts = Array(target).fill(0) as number[];
+    for (const value of xs) counts[Math.min(target - 1, Math.max(0, Math.floor((value - lo) / width)))]++;
+    return { edges, counts, width, rule: "requested" };
   } else {
     const iqr = (quantileSorted(xs, 0.75) as number) - (quantileSorted(xs, 0.25) as number);
     const h = (2 * iqr) / Math.cbrt(n);
@@ -331,8 +335,8 @@ export function histogramBins(values: number[], requested?: number): Bins {
     target = Math.max(5, Math.min(30, target));
   }
   const integers = xs.every((x) => Number.isInteger(x));
-  const minK = rule === "requested" ? 2 : 5;
-  const maxK = rule === "requested" ? 50 : 30;
+  const minK = 5;
+  const maxK = 30;
   let best: { step: number; start: number; k: number; score: number } | null = null;
   for (const step of niceSteps(hi - lo)) {
     if (integers && step < 1) continue;

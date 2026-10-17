@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
  * Same response as `GET /api/theses/[id]/sources/[sourceId]/data`:
  * { sheet: { name, columns, rowCount, headerRow, truncated }, rows, offset, limit, total, sheets }.
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const t = getT();

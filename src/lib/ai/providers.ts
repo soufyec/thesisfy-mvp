@@ -1,3 +1,5 @@
+import { PIIScrubberService, createPresidioAnalyzer } from "../services/pii-scrubber";
+import { privacyEndpoint } from "../services/private-engines";
 import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicFoundry } from "@anthropic-ai/foundry-sdk";
 import { db, InstitutionModel, ModelBackend, Policy, Provider, User } from "../db";
@@ -104,6 +106,10 @@ export interface Allowance {
 }
 
 export interface AllowanceUsage {
+  /** Actual input and output tokens used this month. */
+  tokensUsed: number;
+  /** Estimate at the student's average usage, or the typical exchange before enough history exists. */
+  remainingTokens: number | null;
   /** Interactions billed to the institution this month, this student. */
   requests: number;
   /** Typical cost of one interaction for this student (own average when there is enough data), institution currency. */
@@ -158,6 +164,9 @@ export function allowanceFor(user: User): Allowance {
   if (f.monthlyBudget > 0) caps.push(Math.max(0, f.monthlyBudget - spentInstitution));
   const remaining = caps.length ? Math.min(...caps) : null;
   const remainingRequests = remaining === null ? null : costPerRequest > 0 ? Math.floor(remaining / costPerRequest) : null;
+  const tokensUsed = mine.reduce((sum, row) => sum + row.inputTokens + row.outputTokens, 0);
+  const tokensPerRequest = mine.length >= 3 && tokensUsed > 0 ? tokensUsed / mine.length : TYPICAL_INTERACTION.inputTokens + TYPICAL_INTERACTION.outputTokens;
+  const remainingTokens = remaining === null || costPerRequest <= 0 ? null : Math.floor((remaining / costPerRequest) * tokensPerRequest);
   const usedPercent = f.perStudentMonthly > 0 ? Math.min(100, Math.round((spentStudent / f.perStudentMonthly) * 100)) : null;
   const institutionPercent = f.monthlyBudget > 0 ? Math.min(100, Math.round((spentInstitution / f.monthlyBudget) * 100)) : null;
   const projectedSpend = (spentStudent / daysElapsed) * daysInMonth;
@@ -171,7 +180,7 @@ export function allowanceFor(user: User): Allowance {
 
   return {
     institutionPays: f.institutionPays, currency: f.currency, perStudentMonthly: f.perStudentMonthly, spentStudent, monthlyBudget: f.monthlyBudget, spentInstitution, atLimit: f.atLimit, exhausted,
-    usage: { requests: mine.length, costPerRequest, remaining, remainingRequests, usedPercent, institutionPercent, resetsAt: reset.toISOString(), daysLeft, projectedPercent, runsOutAt },
+    usage: { requests: mine.length, tokensUsed, remainingTokens, costPerRequest, remaining, remainingRequests, usedPercent, institutionPercent, resetsAt: reset.toISOString(), daysLeft, projectedPercent, runsOutAt },
   };
 }
 
@@ -184,7 +193,13 @@ function fromInstitutionModel(m: InstitutionModel): ResolvedProvider {
  * Order: a model the institution pays for (within its allowance) → the student's own connected account →
  * the Thesisfic platform key → demo. `requested` can be a provider id or an institution model id ("im_…").
  */
+const privacyIdentities = new WeakMap<ResolvedProvider, { name: string; email: string }>();
 export function resolveProvider(user: User, policy: Policy, requested?: string | null): ResolvedProvider {
+  const cfg = resolveProviderInternal(user, policy, requested);
+  privacyIdentities.set(cfg, { name: user.name, email: user.email });
+  return cfg;
+}
+function resolveProviderInternal(user: User, policy: Policy, requested?: string | null): ResolvedProvider {
   const funding = db.aiAccess.funding(user.university);
   let notice: string | undefined;
   // Thesisfic's own keys back the assistant unless the university pays and the allowance is used up.
@@ -280,6 +295,26 @@ const MODERN_CLAUDE = /^claude-(opus-5|sonnet-5|fable|mythos)/;
 
 export async function* streamCompletion(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens = 4096): AsyncGenerator<StreamChunk> {
   if (cfg.provider === "demo" || !cfg.apiKey) return;
+  const url = privacyEndpoint();
+  if (!url) { yield { type: "error", code: "privacy_unavailable", message: "privacy_unavailable" }; return; }
+  const identity = privacyIdentities.get(cfg);
+  const shield = new PIIScrubberService({ knownNames: identity ? [identity.name] : [], knownEmails: identity ? [identity.email] : [], analyzer: createPresidioAnalyzer(url, fetch, true) });
+  try {
+    const protectedSystem = (await shield.scrub(system)).text;
+    const protectedMessages: ChatMessage[] = [];
+    for (const message of messages) protectedMessages.push({ ...message, content: (await shield.scrub(message.content)).text });
+    const restore = shield.streamRestorer();
+    for await (const chunk of rawStreamCompletion(cfg, protectedSystem, protectedMessages, maxTokens)) {
+      if (chunk.type === "delta") { const text = restore(chunk.text); if (text) yield { type: "delta", text }; }
+      else yield chunk;
+    }
+    const tail = restore("", true);
+    if (tail) yield { type: "delta", text: tail };
+  } catch { yield { type: "error", code: "privacy_unavailable", message: "privacy_unavailable" }; }
+  finally { shield.dispose(); }
+}
+async function* rawStreamCompletion(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens = 4096): AsyncGenerator<StreamChunk> {
+  if (cfg.provider === "demo" || !cfg.apiKey) return;
   try {
     if (cfg.backend === "foundry_claude") yield* streamAnthropic(cfg, system, messages, maxTokens);
     else if (cfg.backend === "azure_openai") yield* streamOpenAICompatible(cfg, system, messages, maxTokens);
@@ -289,9 +324,9 @@ export async function* streamCompletion(cfg: ResolvedProvider, system: string, m
   } catch (e) {
     const err = e as { status?: number; message?: string };
     const code = err.status === 401 || err.status === 403 ? "auth" : err.status === 429 ? "rate_limit" : "provider";
-    if (code === "auth" && cfg.connectionId) db.connections.update(cfg.connectionId, { status: "invalid", lastError: err.message });
-    if (cfg.institutionModel) db.aiAccess.updateModel(cfg.institutionModel.id, { lastError: `${new Date().toISOString().slice(0, 16)} ${err.message || "request failed"}` });
-    yield { type: "error", message: err.message || "Provider request failed", code };
+    if (code === "auth" && cfg.connectionId) db.connections.update(cfg.connectionId, { status: "invalid", lastError: code });
+    if (cfg.institutionModel) db.aiAccess.updateModel(cfg.institutionModel.id, { lastError: `${new Date().toISOString().slice(0, 16)} ${code}` });
+    yield { type: "error", message: "Provider request failed", code };
   }
 }
 

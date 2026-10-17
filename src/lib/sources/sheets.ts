@@ -187,6 +187,7 @@ export function buildSheet(raw: RawSheet, cellBudget: number, indices: number[] 
   let colsCut = false;
   let width = rowWidth(headerRow);
   const data: DatasetCell[][] = [];
+  const rowNumbers: number[] = [];
   for (const i of indices) {
     if (i < start) continue;
     const row = rows[i];
@@ -195,6 +196,7 @@ export function buildSheet(raw: RawSheet, cellBudget: number, indices: number[] 
     if (w > MAX_COLUMNS || (row && row.length > MAX_COLUMNS && row.slice(MAX_COLUMNS).some((v) => !blank(v)))) colsCut = true;
     width = Math.max(width, Math.min(w, MAX_COLUMNS));
     data.push(row);
+    rowNumbers.push(i + 1);
   }
   if (h !== -1 && (rows[h] || []).slice(MAX_COLUMNS).some((v) => !blank(v))) colsCut = true;
   if (!data.length || !width) return null;
@@ -213,6 +215,7 @@ export function buildSheet(raw: RawSheet, cellBudget: number, indices: number[] 
   }
   const name = headerName(raw.name).slice(0, 100) || "Sheet 1";
   const sheet = summarizeSheet(name, header, columns, { headerRow: h === -1 ? 0 : h + 1, truncated });
+  sheet.rowNumbers = rowNumbers.slice(0, kept.length);
   return { sheet, cells: sheet.columns.length * sheet.rowCount };
 }
 

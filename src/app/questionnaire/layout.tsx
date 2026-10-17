@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { LocaleProvider } from "@/lib/i18n/client";
+import { QuestionnaireLanguageProvider } from "@/components/questionnaire/Language";
 import { BASE } from "@/lib/questionnaire";
 
-/** The questionnaire is French only (the study is run in France): the locale is forced whatever the cookie says. */
+/** Six questionnaire languages, independent of the application locale. */
 export const metadata: Metadata = {
   title: BASE.title,
   description: BASE.description.split("\n")[0],
@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function QuestionnaireLayout({ children }: { children: React.ReactNode }) {
-  return <LocaleProvider locale="fr" lock>{children}</LocaleProvider>;
+  return <QuestionnaireLanguageProvider>{children}</QuestionnaireLanguageProvider>;
 }

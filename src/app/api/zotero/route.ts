@@ -1,0 +1,12 @@
+import {NextRequest,NextResponse} from "next/server";
+import {requireUser} from "@/lib/api";
+import {db} from "@/lib/db";
+import {connectZotero,zoteroItems} from "@/lib/services/zotero";
+import {cslToReference} from "@/lib/services/citation-format";
+import {libraryReferenceView} from "@/lib/sources/library";
+const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"no-store"}});
+async function user(request:NextRequest){const r=await requireUser(request);if("response" in r)return r;if(r.user.role!=="student")return {response:reply({code:"forbidden"},403)};return r;}
+export async function GET(request:NextRequest){const auth=await user(request);if("response" in auth)return auth.response;try{const c=await db.zotero.get(auth.user.id);if(!c)return reply({connected:false,items:[]});const start=Number(request.nextUrl.searchParams.get("start")||0);return reply({connected:true,items:await zoteroItems(auth.user.id,start),start});}catch{return reply({code:"zotero_unavailable"},503);}}
+export async function PUT(request:NextRequest){const auth=await user(request);if("response" in auth)return auth.response;const b=await request.json().catch(()=>null);if(typeof b?.libraryId!=="string"||typeof b?.key!=="string"||b.key.length>64)return reply({code:"invalid_input"},400);try{await connectZotero(auth.user.id,b.libraryId,b.key);return reply({connected:true});}catch{return reply({code:"connection_failed"},422);}}
+export async function DELETE(request:NextRequest){const auth=await user(request);if("response" in auth)return auth.response;try{await db.zotero.remove(auth.user.id);return reply({connected:false});}catch{return reply({code:"zotero_unavailable"},503);}}
+export async function POST(request:NextRequest){const auth=await user(request);if("response" in auth)return auth.response;const b=await request.json().catch(()=>null);if(!Array.isArray(b?.keys)||b.keys.length>50||!b.keys.length||b.keys.some((k:unknown)=>typeof k!=="string"||!/^[A-Z0-9]{8}$/.test(k)))return reply({code:"invalid_input"},400);try{const items=await zoteroItems(auth.user.id,b.start||0);const selected=items.filter(i=>b.keys.includes(i.key));if(selected.length!==new Set(b.keys).size)return reply({code:"not_found"},404);const refs=selected.map(i=>{const r=cslToReference(i.csl,String(i.csl.id));return (r.doi?db.libraryReferences.findByDoi(auth.user.id,r.doi):undefined)||db.libraryReferences.upsert(auth.user.id,r);});await db.flush();return reply({references:refs.map(libraryReferenceView)});}catch{return reply({code:"import_failed"},503);}}

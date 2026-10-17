@@ -1,0 +1,6 @@
+fastapi==0.143.3
+uvicorn==0.54.0
+presidio-analyzer==2.2.364
+spacy==3.8.16
+langdetect==1.0.9
+sentence-transformers==5.1.2

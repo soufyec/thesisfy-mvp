@@ -18,7 +18,8 @@ function fail(code: string, key: string, status: number) {
   return json({ error: getT()(key), code }, status);
 }
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
@@ -61,7 +62,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   });
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
@@ -167,7 +169,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   return json({ thesis: { ...updated, content: undefined, sessions: undefined, tabs: undefined, integrityScore: metrics?.integrityScore ?? updated.integrityScore, aiUsagePercent: metrics?.aiUsagePercent ?? updated.aiUsagePercent, kind: paperKind(updated), teacherLabel: teacherLabel(updated), late: isPaperLate(updated) }, integrityBreakdown: metrics?.integrityBreakdown, flags: newFlags, resolvedFlagIds: openBefore.filter((id) => db.flags.listByThesis(thesis.id).some((f) => f.id === id && f.resolved)) });
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);

@@ -117,3 +117,131 @@ Mobile nativo (Capacitor), migración a Postgres, SSO/LMS. De la fase 11: OCR, c
 - Rutas `/privacy` y `/contact` no existen: el pie de la landing enlaza a `#model` y `#pilot`.
 - `MenuBar` (barra horizontal antigua) sigue exportado aunque ya no se renderiza; eliminar cuando nada lo use.
 - ESLint no está instalado en el proyecto; `npm run lint` pide instalarlo.
+
+
+## Ajuste solicitado · 15 octubre 2026
+
+- [x] Conexiones de IA y selector del asistente: uso en interacciones y tokens, sin importes; restantes estimados según el consumo y el límite individual/compartido.
+- [x] Ocultar modelos institucionales sin configurar; conservar los modelos disponibles y las conexiones personales activas en el selector.
+- [x] Selector compacto de pestañas sobre el documento; herramientas y selector dejan libre la columna del asistente desde la cabecera.
+- [x] Modos compactos, una línea de capacidades del Research copilot y retirada de su explicación redundante.
+- [x] Traducciones EN/ES/FR/DE; comprobación TypeScript, build y capturas antes/después.
+
+
+### Cambios solicitados — 15 octubre 2026
+
+- [x] Asistente compacto, selector de pestañas y consumo mostrado en tokens e interacciones estimadas.
+- [x] Modelos institucionales configurados; sin asignación monetaria en la vista del estudiante.
+- [x] Espacio de datos con hoja, rango A1, columnas, siete gráficos, tabla, análisis y vista previa.
+- [x] Arrastre de artefactos del asistente al documento con coste y procedencia.
+- [x] Edición de datos y presentación de gráficos, recalcular rango y conservar datos originales.
+
+Los datos y artefactos siguen calculándose en servidor. Las tablas, ecuaciones y diagramas mantienen sus editores nativos. No se publica en producción en esta sesión; los cambios se preparan en la PR de revisión.
+
+
+### Research copilot y chat — 16 octubre 2026
+
+Archivos: `AssistantPanel`, `ResearchFileCard`, `ArtifactCard`, `ai/{prompts,policy,files,research}`, rutas de chat, proveedores y descarga de archivos, contrato SSE, mensajes i18n y esquema de conversaciones.
+
+- [x] Logo de Thesisfic; sin subtítulo, tarjeta verde ni introducciones redundantes.
+- [x] Cinco modos compactos y dos sugerencias breves, sin sugerencias repetidas sobre el compositor.
+- [x] Copilot crea informes y archivos ligados al objetivo; los modos antiguos siguen disponibles en conversaciones guardadas.
+- [x] Archivos descargables, vista previa, Word para informes e inserción con coste y procedencia; CSV se puede adjuntar como datos.
+- [x] Búsqueda académica con Crossref, metadatos y resúmenes disponibles, enlaces DOI y estados de error explícitos.
+- [x] Verificación integrada: TypeScript, build, regresiones, Chrome en escritorio y móvil, descargas y revisión de archivos. Propuesta de revisión actualizada.
+
+
+### Paráfrasis y arrastre — 16 octubre 2026
+
+- [x] Paráfrasis como sexto acceso: reformular texto suministrado, conservar significado y citas, insertar o sustituir con procedencia. Se conserva el identificador `paraphrase_check` para historial y permisos existentes.
+- [x] «Lagunas» pasa a «Carencias» / «Detectar carencias» en español, con nombres equivalentes claros en los otros idiomas.
+- [x] Vista de arrastre formada solo por el SVG del gráfico o diagrama, tanto desde el asistente como dentro del documento.
+- [x] Inserción de IA sin aviso verde de éxito; permanecen el coste previo, las marcas moradas, el guardado y los errores.
+
+
+### Acceso del asistente al documento — 16 octubre 2026
+
+Archivos: `AssistantPanel`, `DocsEditor`, ruta de chat, `ai/{prompts,document-context}`, prueba de contexto y QA.
+
+- [x] Todos los modos reciben el texto de la pestaña abierta al enviar, incluidos cambios sin guardar.
+- [x] Sin editor abierto, se usa el documento guardado autorizado en servidor; no depende de la biblioteca.
+- [x] Selección prioritaria, instantánea solo del propietario y contexto largo acotado con fragmentos señalados.
+- [x] Chrome sobre producción local: texto sin guardar → solicitud → proveedor, cambio de pestaña, lectura guardada alternativa, biblioteca vacía, permisos y build correctos.
+
+
+### Conexiones disponibles — 16 octubre 2026
+
+- [x] `dashboard/connections`: ocultar el acceso OAuth «próximamente» cuando el proveedor no ofrece OAuth. Mantener conexiones disponibles y acceso mediante clave.
+- [x] Compilación con comprobación de tipos y Chrome en francés: sin enlaces «bientôt», conexión por clave conservada. Captura posterior inspeccionada.
+
+
+### Edición del cuestionario e idiomas — 16 octubre 2026
+
+Archivos: componentes de cuestionario, definición/ediciones y datos, rutas del equipo, diccionarios, catálogos de traducción y pruebas.
+
+- [x] Editar texto y ayuda de preguntas existentes; eliminar con opción de deshacer y conservar respuestas anteriores.
+- [x] Ordenar dentro de una etapa mediante arrastre o botones de teclado/móvil.
+- [x] Navegación libre entre etapas en edición; respuestas de prueba separadas y envío desactivado.
+- [x] Seis idiomas confirmados: FR/EN/ES/DE/PT/AR, preguntas y opciones, editor y resultados. Claves de respuestas estables y árabe RTL.
+- [x] Verificar permisos, conservación de resultados, validación pública, traducciones y recorrido de navegador.
+
+### Reserva de demos — 16 octubre 2026
+
+- [x] Sustituir lista de espera por «Reservar una demo», enlace de Cal.com a evento de 30 minutos con Google Meet.
+- [x] Evento configurado en el plan gratuito, Google Calendar conectado y página pública verificada: `https://cal.com/soufyan-ess-dnaecp/demo-thesisfic`. Horario inicial L–V 9–17, Europe/Paris, con conflictos del calendario excluidos.
+
+- [x] Build final y Chrome: CTA en cuatro idiomas, sin lista de espera, redirección real a Cal.com, escritorio y móvil. Clic desde la web verificado también en el navegador integrado.
+
+### Descripción del software en el cuestionario — 16 octubre 2026
+
+Archivos: definición del cuestionario y seis catálogos, documentación QA.
+
+- [x] Sustituir la descripción en `p_solution` y `e_solution` por el texto francés proporcionado en el DOCX.
+- [x] Actualizar EN/ES/DE/PT/AR y conservar la indicación de entrevista y las claves/respuestas originales.
+- [x] Regresión de cuestionario y comparación estructural: solo cambia la descripción solicitada.
+- [x] Compilación, comprobación visual en seis idiomas y cambio preparado para el PR existente.
+
+### Impacto por público en el hero — 16 octubre 2026
+
+Archivos: `Hero.tsx`, diccionario de landing, documentación QA.
+
+- [x] Sustituir los tres puntos bajo los CTA por dos encabezados y párrafos breves, sin tarjetas, iconos ni títulos secundarios.
+- [x] Destacar menos cambios entre herramientas para el estudiante; registro automático del uso de IA en Thesisfic, menos declaraciones manuales y feedback en el documento para la institución.
+- [x] Adaptar EN/ES/FR/DE sin inventar ahorros económicos o de tiempo cuantificados ni garantizar autoría o esfuerzo.
+- [x] Compilación, tipos y HTML de los cuatro idiomas: encabezados traducidos, tarjetas y títulos secundarios ausentes, CTA conservados.
+- [ ] Revisión visual automática pendiente: el inventario del navegador integrado sigue vacío. Vista previa local ofrecida para revisión humana.
+
+### Filtros de datos y panel del producto — 16 octubre 2026
+
+Archivos: motor/especificación de análisis, instrucciones del asistente, rutas de chat/artefactos/proveedores, acceso y panel del equipo, diccionarios y pruebas.
+
+- [x] Filtrar filas por años, fechas, categorías y valores antes de calcular; conservar condiciones, coordenadas y fuente original; rechazar filtros inválidos o sin coincidencias.
+- [x] Petición «desde 2012 hasta 2014»: aplicar intervalo inclusivo también cuando el modelo omite el filtro y la columna temporal es inequívoca; planificador demo en EN/ES/FR/DE.
+- [x] Panel global del equipo en `/equipe/produit`, accesible desde resultados, con activación, modos, instrucciones, descripciones por idioma, búsqueda, archivos y límites de contexto/respuesta/artefactos.
+- [x] Protección por sesión de equipo, tipos/límites de servidor y revisión de configuración; instrucciones privadas ausentes de la respuesta para estudiantes.
+- [x] Explicación breve del modo activo, sin panel adicional; valores predeterminados revisados en EN/ES/FR/DE.
+- [x] Pruebas puras y recorrido HTTP con CSV de 132 filas, proveedor local conocido, JSON/SSE, instrucciones/tokens efectivos y bloqueo real de modos.
+- [x] Compilación final, TypeScript, regresiones y recorrido HTTP sobre la compilación de producción; cambio preparado para el PR existente.
+- [ ] Capturas posteriores y revisión visual completa pendientes: el panel se comprobó en navegador y guardó una descripción en ES; sus cuatro idiomas se revisaron en el árbol de accesibilidad. El navegador se desconectó durante la revisión de escritorio. No se afirma que se haya revisado visualmente el chat ni la gráfica.
+
+### Arquitectura de motores especializados — 17 octubre 2026
+
+- [x] Auditar y reutilizar clientes académicos, LanguageTool, pegado/declaraciones, biblioteca y recuperación BM25 existentes.
+- [x] Contratos TypeScript comunes para seis motores, eventos y lectura del ledger sin duplicar persistencia.
+- [x] AcademicSearchService sobre adaptadores existentes y PII Shield reversible por petición con Presidio privado, offsets Unicode y bloqueo sin NER.
+- [x] Endpoint académico autenticado con límites de entrada, configuración global, protección PII y respuestas sin caché.
+- [x] Documentar estructura, rutas implementadas/propuestas, permisos, flujo, límites RGPD y fases pendientes sin afirmar servicios externos conectados.
+- [x] Verificación final: build de producción, TypeScript sin errores, pruebas de servicios/ruta, regresión de contexto y HTTP 401 sin sesión.
+- [ ] Integración posterior: protección de todas las llamadas LLM y búsquedas del chat, CSL/Zotero, corpus oficial vectorial y proveedor externo de coincidencias; requiere configuración y pruebas específicas.
+
+### Configuración y despliegue de motores — 17 octubre 2026
+
+Archivos: servicios privados (`services/privacy`, `services/language`, `vercel.json`), proveedores/búsqueda, rutas y almacenamiento de lecturas/Zotero/citas, controles de tarea/biblioteca, migración Next 15 y pruebas.
+
+- [x] Actualización autorizada a Next 15.5.28 y rutas dinámicas asíncronas; PostCSS corregido mediante override compatible.
+- [x] Pseudonimización previa a proveedores y búsquedas; restauración de streaming y bloqueo si falta el analizador privado.
+- [x] Servicios privados Presidio + embeddings multilingües y LanguageTool; configuración Docker preparada, primera compilación remota de Java corregida.
+- [x] Código de lecturas oficiales en Neon/pgvector, carga PDF atómica, separación por universidad/tarea, política oficial y coincidencias exactas en pegados.
+- [x] CSL real en editor y API, importación BibTeX/RIS, conexión personal cifrada y lectura/importación de Zotero.
+- [ ] Verificación final de permisos, rutas, servicios remotos, persistencia y regresiones; actualizar documentación.
+- [ ] Despliegue de producción y verificación del dominio. No se considera publicado hasta comprobar los motores reales.

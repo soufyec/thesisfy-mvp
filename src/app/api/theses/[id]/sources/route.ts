@@ -10,7 +10,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** GET → the sources linked to this thesis (from its owner's library), without the extracted text. */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const thesis = canAccessThesis(r.user, params.id);
@@ -30,7 +31,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  * - Refusals { error, code }: 409 locked | thesis_cap | library_cap; 413 too_large; 415 legacy_format |
  *   unsupported_type; 422 encrypted | empty | no_text | unreadable.
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params: routeParams }: { params: Promise<{ id: string }> }) {
+  const params = await routeParams;
   const r = await requireUser(request);
   if ("response" in r) return r.response;
   const t = getT();

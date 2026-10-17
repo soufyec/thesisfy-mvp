@@ -8,11 +8,7 @@ import HeroEditorPreview from "./HeroEditorPreview";
 import FilmButton from "./FilmButton";
 import { useT } from "@/lib/i18n/client";
 
-const BULLETS = [
-  { dot: "bg-accent-500", text: "landing.hero.bullet1" },
-  { dot: "bg-prov-ai", text: "landing.hero.bullet2" },
-  { dot: "bg-brand-500", text: "landing.hero.bullet4" },
-];
+const IMPACTS = ["student", "institution"] as const;
 
 const HI_WORDS = ["landing.hero.titleHi2", "landing.hero.titleHi3", "landing.hero.titleHi4"] as const;
 const FIRST_SWAP_MS = 2600;
@@ -129,7 +125,7 @@ export default function Hero() {
             {t("landing.hero.body")}
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <a href="#trial" className="btn-primary gap-2 !px-[26px] !py-[15px] !text-[16px] !shadow-[0_10px_20px_-8px] !shadow-brand-600/50">
+            <a href="/demo" className="btn-primary gap-2 !px-[26px] !py-[15px] !text-[16px] !shadow-[0_10px_20px_-8px] !shadow-brand-600/50">
               {t("landing.hero.cta")}
               <ArrowRight className="w-[18px] h-[18px]" strokeWidth={2.2} aria-hidden="true" />
             </a>
@@ -138,14 +134,18 @@ export default function Hero() {
             </a>
             <FilmButton which="teaser" label={t("landing.film.watch")} title={t("landing.film.teaserTitle")} />
           </div>
-          <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-gray-500 list-none p-0 m-0">
-            {BULLETS.map((b) => (
-              <li key={b.text} className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${b.dot}`} aria-hidden="true" />
-                {t(b.text)}
-              </li>
+          <section aria-label={t("landing.hero.impact.label")} className="mt-6 max-w-[640px] space-y-4">
+            {IMPACTS.map((id) => (
+              <div key={id}>
+                <h2 className="text-[14px] font-semibold leading-5 text-brand-800">
+                  {t(`landing.hero.impact.${id}.audience`)}
+                </h2>
+                <p className="mt-1 mb-0 text-[13px] leading-[1.6] text-gray-600 [text-wrap:pretty]">
+                  {t(`landing.hero.impact.${id}.body`)}
+                </p>
+              </div>
             ))}
-          </ul>
+          </section>
         </div>
       </div>
 
