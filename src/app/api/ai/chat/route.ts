@@ -14,6 +14,7 @@ import { buildSystemPrompt, MODES, sanitizeContextText } from "@/lib/ai/prompts"
 import { checkPolicy, detectLang } from "@/lib/ai/policy";
 import { demoAttachmentsResponse, demoDataResponse, demoGroundedResponse, demoNeedsModel, demoNotice, demoResponse, demoLang } from "@/lib/ai/demo";
 import { ChatMessage, costOf, resolveProvider, streamCompletion } from "@/lib/ai/providers";
+import { defaultEffort, EFFORTS, supportedEfforts, type Effort } from "@/lib/ai/effort";
 import { GROUNDING_RULE, passageLabel, retrieve } from "@/lib/sources/retrieve";
 import { splitSentences } from "@/lib/sources/chunk";
 import { isUnsupportedRequest } from "@/lib/data/analysis";
@@ -27,6 +28,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface Body {
+  effort?: Effort;
   messages: ChatMessage[];
   mode?: AIMode;
   thesisId?: string;
@@ -68,6 +70,16 @@ export async function POST(request: NextRequest) {
   const mode: AIMode = MODES.some((m) => m.id === body.mode) ? (body.mode as AIMode) : product.defaultMode;
   if (!modeEnabled(product, mode)) return NextResponse.json({ error: translator(user.preferences.language)("product.assistantUnavailable"), code: "assistant_disabled" }, { status: 403 });
   const policy = db.policies.get(user.university);
+  const requestT = translator(user.preferences.language);
+  if (body.effort !== undefined && !EFFORTS.includes(body.effort)) return error(requestT("effort.invalid"), 400);
+  if (typeof body.provider === "string" && body.provider.startsWith("im_")) {
+    const offered = db.aiAccess.models(user.university).find(m => m.id === body.provider && m.enabled && policy.allowedProviders.includes(m.provider));
+    if (!offered) return error(requestT("effort.notOffered"), 403);
+  }
+  const cfg = resolveProvider(user, policy, typeof body.provider === "string" ? body.provider : null);
+  if (typeof body.provider === "string" && body.provider.startsWith("im_") && cfg.institutionModel?.id !== body.provider) return error(requestT("effort.unavailable"), 409);
+  const effort = body.effort ?? defaultEffort(cfg.provider, cfg.model, cfg.backend);
+  if (!supportedEfforts(cfg.provider, cfg.model, cfg.backend).includes(effort) && cfg.provider !== "demo") return error(requestT("effort.invalid"), 400);
   const consent = db.consents.latest(user.id);
   if (user.role === "student" && policy.requireConsent && !consent?.scopes.aiInteractions) {
     return NextResponse.json({ error: "Please review and accept the monitoring consent before using the assistant.", code: "consent_required" }, { status: 428 });
@@ -123,7 +135,6 @@ export async function POST(request: NextRequest) {
   // Results Thesisfic computed earlier in this conversation: a proposed equation may reuse their numbers (D11).
   runOpts.priorArtifacts = conversation.messages.flatMap((m) => (m.role === "assistant" && Array.isArray(m.artifacts) ? m.artifacts : []));
 
-  const cfg = resolveProvider(user, policy, typeof body.provider === "string" ? body.provider : null);
   // "Use my sources" searches the paper's literature: spreadsheets, primary sources and this message's attachments are left out.
   let grounding: ReturnType<typeof retrieve> | null = null;
   if (body.useSources && thesis) {
@@ -133,6 +144,7 @@ export async function POST(request: NextRequest) {
   const demo = cfg.provider === "demo";
   // `demoNotice` is metadata: the panel shows it next to the answer, so it is never inserted as AI text.
   const meta = {
+    effort,
     provider: cfg.provider,
     model: cfg.model,
     source: cfg.source,
@@ -172,6 +184,7 @@ export async function POST(request: NextRequest) {
       sessionId: body.sessionId,
       provider: cfg.provider,
       model: cfg.model,
+      effort,
       mode,
       source: "thesisfic",
       connectionId: cfg.connectionId,
@@ -293,7 +306,7 @@ export async function POST(request: NextRequest) {
     let text = "";
     let usage = NO_USAGE;
     let err: string | undefined;
-    for await (const chunk of streamCompletion(cfg, system, messages, Math.min(product.maxOutputTokens, mode === "copilot" ? 8192 : 4096))) {
+    for await (const chunk of streamCompletion(cfg, system, messages, Math.min(product.maxOutputTokens, mode === "copilot" ? 8192 : 4096), effort)) {
       if (chunk.type === "delta") text += chunk.text;
       else if (chunk.type === "usage") usage = { inputTokens: chunk.inputTokens, outputTokens: chunk.outputTokens };
       else if (chunk.type === "error") err = chunk.message;
@@ -308,7 +321,7 @@ export async function POST(request: NextRequest) {
     send("meta", answerMeta);
     let text = "";
     let usage = NO_USAGE;
-    for await (const chunk of streamCompletion(cfg, system, messages, Math.min(product.maxOutputTokens, mode === "copilot" ? 8192 : 4096))) {
+    for await (const chunk of streamCompletion(cfg, system, messages, Math.min(product.maxOutputTokens, mode === "copilot" ? 8192 : 4096), effort)) {
       if (chunk.type === "delta") {
         text += chunk.text;
         send("delta", { text: chunk.text });

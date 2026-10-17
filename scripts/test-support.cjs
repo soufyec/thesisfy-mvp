@@ -1,0 +1,34 @@
+const fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),assert=require('node:assert/strict');
+const root=path.join(__dirname,'..'),ts=require('typescript'),resolve=Module._resolveFilename;
+Module._resolveFilename=function(n,...a){return resolve.call(this,n.startsWith('@/')?path.join(root,'src',n.slice(2)):n,...a);};
+require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,f);
+const {NextRequest,NextResponse}=require('next/server');
+const stub=(p,exports)=>{const id=require.resolve(p);require.cache[id]={id,filename:id,loaded:true,exports};};
+stub('../src/lib/store.ts',{storeConfigured:false});
+const {supportStore}=require('../src/lib/support-store.ts');
+stub('../src/lib/db.ts',{db:{support:supportStore,ready:async()=>{},users:{findById:()=>({id:'student-a',preferences:{language:'es'}})},notifications:{create:()=>{}}}});
+let authenticated=true,team=false,userId='student-a';
+stub('../src/lib/api.ts',{requireUser:async()=>authenticated?{user:{id:userId,university:'uni-a',preferences:{language:'es'}}}:{response:NextResponse.json({}, {status:401})},error:(error,status=400)=>NextResponse.json({error},{status}),json:(value,status=200)=>NextResponse.json(value,{status})});
+stub('../src/lib/team.ts',{isTeamRequest:()=>team});
+delete process.env.RESEND_API_KEY;delete process.env.SUPPORT_FROM_EMAIL;process.env.SUPPORT_NOTIFY_TO='owner@example.org';
+const student=require('../src/app/api/support/route.ts'),staff=require('../src/app/api/equipe/support/route.ts');
+const req=(body,origin)=>new NextRequest('http://localhost/api/support',{method:'POST',headers:{'content-type':'application/json',...(origin?{origin}:{})},body:JSON.stringify(body)});
+(async()=>{
+ authenticated=false;assert.equal((await student.GET(req({}))).status,401);authenticated=true;
+ assert.equal((await student.POST(req({text:'help'},'https://other.example'))).status,403);
+ assert.equal((await student.POST(req({text:'x'.repeat(21000)}))).status,400);
+ const guide=await (await student.POST(req({text:'El chat de Gemini falla'}))).json();assert.equal(guide.category,'ai');assert(guide.canRefresh);assert.equal((await supportStore.list()).length,0);
+ const created=await student.POST(req({text:'No puedo guardar mi texto',createTicket:true}));assert.equal(created.status,201);
+ const {ticket}=await created.json();assert.equal(ticket.priority,'high');assert.equal(ticket.emailStatus,'not_configured');assert.equal(Date.parse(ticket.responseDueAt)-Date.parse(ticket.createdAt),7200000);assert(!ticket.firstResponseAt);
+ assert(!JSON.stringify(ticket).includes('owner@example.org'));
+ assert.equal((await student.POST(req({text:'again',createTicket:true}))).status,429);
+ userId='student-b';assert.equal((await student.GET(req({}))).status,200);assert.equal((await (await student.GET(req({}))).json()).tickets.length,0);assert.equal((await student.POST(req({text:'another user',ticketId:ticket.id}))).status,404);
+ assert.equal((await staff.GET(req({}))).status,401);team=true;
+ assert.equal((await staff.PATCH(req({id:ticket.id,status:'resolved'}))).status,400);
+ const response=await staff.PATCH(req({id:ticket.id,reply:'Revisamos tu problema.',status:'in_progress'}));assert.equal(response.status,200);const updated=(await response.json()).ticket;assert(updated.firstResponseAt);assert.equal(updated.messages.at(-1).role,'team');
+ const {priorityFor,ticketOverdue}=require('../src/lib/support/types.ts');assert.equal(priorityFor('privacy','una consulta'),'urgent');assert(ticketOverdue({...ticket,responseDueAt:new Date(0).toISOString()}));assert(!ticketOverdue({...updated,responseDueAt:new Date(0).toISOString()}));
+ const {notifySupport}=require('../src/lib/support/mail.ts');process.env.RESEND_API_KEY='test-key';process.env.SUPPORT_FROM_EMAIL='Support <support@example.org>';
+ const oldFetch=global.fetch;let sent;
+ try {global.fetch=async(url,init)=>{sent=JSON.parse(init.body);assert.equal(url,'https://api.resend.com/emails');return new Response('{}',{status:200});};assert.equal(await notifySupport(ticket),'sent');assert.deepEqual(sent.to,['owner@example.org']);assert(!sent.text.includes(ticket.subject));global.fetch=async()=>new Response('{}',{status:500});assert.equal(await notifySupport(ticket),'failed');}finally{global.fetch=oldFetch;delete process.env.RESEND_API_KEY;delete process.env.SUPPORT_FROM_EMAIL;process.env.SUPPORT_NOTIFY_TO='owner@example.org';}
+ console.log('Support passed: ownership, team auth, cross-origin rejection, bounded inputs, triage, durable-adapter lifecycle, 2-hour first-human-response SLA, rate limit, Resend transport and private destination.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicFoundry } from "@anthropic-ai/foundry-sdk";
 import { db, InstitutionModel, ModelBackend, Policy, Provider, User } from "../db";
 import { decrypt } from "../crypto";
+import { defaultEffort, geminiThinking, type Effort } from "./effort";
 
 export const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: process.env.CLAUDE_MODEL || "claude-opus-5-5",
@@ -208,6 +209,8 @@ function resolveProviderInternal(user: User, policy: Policy, requested?: string 
   const requestedProvider = requested && !requested.startsWith("im_") ? (requested as Provider) : requestedModel?.provider || null;
 
   if (funding.institutionPays) {
+    // Once an institution configures its catalogue, platform keys do not add unoffered models.
+    allowPlatform = db.aiAccess.models(user.university).length === 0;
     const allowance = allowanceFor(user);
     if (allowance.exhausted !== "none") {
       const what = allowance.exhausted === "student" ? `your monthly allowance (${allowance.perStudentMonthly.toFixed(2)} ${allowance.currency})` : "your university's monthly AI budget";
@@ -244,14 +247,14 @@ function resolveProviderInternal(user: User, policy: Policy, requested?: string 
     }
     if (requestedP && requestedP !== provider) continue;
     if (allowPlatform && PLATFORM_KEYS[provider]) {
-      return { provider, model: DEFAULT_MODELS[provider], apiKey: PLATFORM_KEYS[provider], authType: "api_key", source: "platform", label: `${PROVIDER_META[provider].product} (Thesisfic)`, billedTo: "none", notice };
+      return { provider, model: DEFAULT_MODELS[provider], apiKey: PLATFORM_KEYS[provider], authType: "api_key", source: "platform", label: `${PROVIDER_META[provider].product} (Thesisfic)`, billedTo: funding.institutionPays ? "institution" : "none", notice };
     }
   }
   // Second pass: platform keys regardless of requested provider
   if (allowPlatform) {
     for (const provider of order) {
       if (policy.allowedProviders.includes(provider) && PLATFORM_KEYS[provider]) {
-        return { provider, model: DEFAULT_MODELS[provider], apiKey: PLATFORM_KEYS[provider], authType: "api_key", source: "platform", label: `${PROVIDER_META[provider].product} (Thesisfic)`, billedTo: "none", notice };
+        return { provider, model: DEFAULT_MODELS[provider], apiKey: PLATFORM_KEYS[provider], authType: "api_key", source: "platform", label: `${PROVIDER_META[provider].product} (Thesisfic)`, billedTo: funding.institutionPays ? "institution" : "none", notice };
       }
     }
   }
@@ -293,7 +296,7 @@ export interface ChatMessage {
 
 const MODERN_CLAUDE = /^claude-(opus-5|sonnet-5|fable|mythos)/;
 
-export async function* streamCompletion(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens = 4096): AsyncGenerator<StreamChunk> {
+export async function* streamCompletion(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens = 4096, effort: Effort = defaultEffort(cfg.provider, cfg.model, cfg.backend)): AsyncGenerator<StreamChunk> {
   if (cfg.provider === "demo" || !cfg.apiKey) return;
   const url = privacyEndpoint();
   const identity = privacyIdentities.get(cfg);
@@ -305,7 +308,7 @@ export async function* streamCompletion(cfg: ResolvedProvider, system: string, m
     const protectedMessages: ChatMessage[] = [];
     for (const message of messages) protectedMessages.push({ ...message, content: (await shield.scrub(message.content)).text });
     const restore = shield.streamRestorer();
-    for await (const chunk of rawStreamCompletion(cfg, protectedSystem, protectedMessages, maxTokens)) {
+    for await (const chunk of rawStreamCompletion(cfg, protectedSystem, protectedMessages, maxTokens, effort)) {
       if (chunk.type === "delta") { const text = restore(chunk.text); if (text) yield { type: "delta", text }; }
       else yield chunk;
     }
@@ -317,13 +320,13 @@ export async function* streamCompletion(cfg: ResolvedProvider, system: string, m
   }
   finally { shield?.dispose(); }
 }
-async function* rawStreamCompletion(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens = 4096): AsyncGenerator<StreamChunk> {
+async function* rawStreamCompletion(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens = 4096, effort: Effort = "medium"): AsyncGenerator<StreamChunk> {
   if (cfg.provider === "demo" || !cfg.apiKey) return;
   try {
-    if (cfg.backend === "foundry_claude") yield* streamAnthropic(cfg, system, messages, maxTokens);
+    if (cfg.backend === "foundry_claude") yield* streamAnthropic(cfg, system, messages, maxTokens, effort);
     else if (cfg.backend === "azure_openai") yield* streamOpenAICompatible(cfg, system, messages, maxTokens);
-    else if (cfg.provider === "anthropic") yield* streamAnthropic(cfg, system, messages, maxTokens);
-    else if (cfg.provider === "google") yield* streamGemini(cfg, system, messages, maxTokens);
+    else if (cfg.provider === "anthropic") yield* streamAnthropic(cfg, system, messages, maxTokens, effort);
+    else if (cfg.provider === "google") yield* streamGemini(cfg, system, messages, maxTokens, effort);
     else yield* streamOpenAICompatible(cfg, system, messages, maxTokens);
   } catch (e) {
     const err = e as { status?: number; message?: string };
@@ -357,9 +360,9 @@ function foundryResource(endpoint?: string) {
   return e.includes(".") ? e : `${e}.services.ai.azure.com`;
 }
 
-async function* streamAnthropic(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens: number): AsyncGenerator<StreamChunk> {
+async function* streamAnthropic(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens: number, effort: Effort): AsyncGenerator<StreamChunk> {
   const client = anthropicClient(cfg);
-  // Foundry does not take the server-side fallback beta; keep the request plain there.
+  // Only expose effort on integrations whose effort contract is supported.
   const modern = MODERN_CLAUDE.test(cfg.model) && cfg.backend !== "foundry_claude";
   const stream = client.beta.messages.stream({
     model: cfg.model,
@@ -367,7 +370,7 @@ async function* streamAnthropic(cfg: ResolvedProvider, system: string, messages:
     system,
     messages: messages.map((m) => ({ role: m.role, content: m.content })),
     ...(modern
-      ? { betas: ["server-side-fallback-2026-07-01" as Anthropic.Beta.AnthropicBeta], fallbacks: "default" as const, output_config: { effort: "medium" as const } }
+      ? { output_config: { effort } }
       : {}),
   });
   for await (const event of stream) {
@@ -421,12 +424,11 @@ async function* streamOpenAICompatible(cfg: ResolvedProvider, system: string, me
   yield { type: "usage", ...usage };
 }
 
-/** Gemini returns 503 "high demand" and 429 bursts on the free tier; retried with backoff, then on a fallback model. */
+/** Retry transient Gemini failures with backoff while preserving the selected model. */
 const GEMINI_RETRIES = 3;
-const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function geminiRequest(apiKey: string, model: string, system: string, messages: ChatMessage[], maxTokens: number): Promise<Response> {
+async function geminiRequest(apiKey: string, model: string, system: string, messages: ChatMessage[], maxTokens: number, effort: Effort): Promise<Response> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
   return fetch(url, {
     method: "POST",
@@ -434,18 +436,19 @@ async function geminiRequest(apiKey: string, model: string, system: string, mess
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-      generationConfig: { maxOutputTokens: maxTokens },
+      generationConfig: { maxOutputTokens: maxTokens, ...(geminiThinking(model, effort, maxTokens) ? { thinkingConfig: geminiThinking(model, effort, maxTokens) } : {}) },
     }),
   });
 }
 
-async function* streamGemini(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens: number): AsyncGenerator<StreamChunk> {
-  const models = cfg.model === GEMINI_FALLBACK_MODEL || cfg.institutionModel ? [cfg.model] : [cfg.model, GEMINI_FALLBACK_MODEL];
+async function* streamGemini(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens: number, effort: Effort): AsyncGenerator<StreamChunk> {
+  // The student's selected model is exact; retries must never silently replace it.
+  const models = [cfg.model];
   let res: Response | null = null;
   let lastErr: { message: string; status: number } | null = null;
   for (const model of models) {
     for (let attempt = 0; attempt < GEMINI_RETRIES; attempt++) {
-      const r = await geminiRequest(cfg.apiKey!, model, system, messages, maxTokens);
+      const r = await geminiRequest(cfg.apiKey!, model, system, messages, maxTokens, effort);
       if (r.ok && r.body) {
         res = r;
         break;
@@ -464,8 +467,8 @@ async function* streamGemini(cfg: ResolvedProvider, system: string, messages: Ch
     try {
       const json = JSON.parse(data);
       const parts = json.candidates?.[0]?.content?.parts || [];
-      for (const p of parts) if (p.text) yield { type: "delta", text: p.text };
-      if (json.usageMetadata) usage = { inputTokens: json.usageMetadata.promptTokenCount || 0, outputTokens: json.usageMetadata.candidatesTokenCount || 0 };
+      for (const p of parts) if (p.text && !p.thought) yield { type: "delta", text: p.text };
+      if (json.usageMetadata) usage = { inputTokens: json.usageMetadata.promptTokenCount || 0, outputTokens: (json.usageMetadata.candidatesTokenCount || 0) + (json.usageMetadata.thoughtsTokenCount || 0) };
     } catch {
       /* ignore */
     }

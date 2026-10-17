@@ -47,7 +47,7 @@ export default function ProductPanel() {
     <div className="mx-auto max-w-4xl space-y-6">
       <header className="flex flex-wrap justify-between items-center gap-3">
         <div><h1 className="text-2xl font-bold">{t("product.title")}</h1><p className="text-sm text-gray-500 mt-1">{t("product.scope")}</p></div>
-        <div className="flex items-center gap-3"><Link className="text-sm text-brand-700 underline" href="/equipe/resultats">{t("product.questionnaire")}</Link><select aria-label={t("product.language")} className="input-field !w-auto !py-1.5" value={locale} onChange={e => setLocale(e.target.value as Locale)}>{LOCALES.map(l => <option key={l} value={l}>{LOCALE_NAMES[l]}</option>)}</select></div>
+        <div className="flex items-center gap-3"><Link className="text-sm text-brand-700 underline" href="/equipe/support">{t("support.inbox")}</Link><Link className="text-sm text-brand-700 underline" href="/equipe/resultats">{t("product.questionnaire")}</Link><select aria-label={t("product.language")} className="input-field !w-auto !py-1.5" value={locale} onChange={e => setLocale(e.target.value as Locale)}>{LOCALES.map(l => <option key={l} value={l}>{LOCALE_NAMES[l]}</option>)}</select></div>
       </header>
       {!persistent && <p role="status" className="text-sm text-amber-800">{t("product.volatile")}</p>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
