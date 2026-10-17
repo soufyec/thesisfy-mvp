@@ -48,5 +48,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
+  runtime: "nodejs",
   matcher: ["/", "/dashboard/:path*", "/admin/:path*", "/login", "/register", "/(en|es|fr|de)", "/(en|es|fr|de)/:path*"],
 };
