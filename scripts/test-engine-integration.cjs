@@ -42,5 +42,32 @@ require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f
   nerFails=true;const chunks=[];for await(const chunk of streamCompletion(cfg,'Private text',[{role:'user',content:'alice@example.org'}]))chunks.push(chunk);
   assert.equal(llmCalls,1);assert.equal(chunks[0].code,'privacy_unavailable');
   console.log('Egress: system/history pseudonymized, split SSE restored, NER outage blocks provider; course retrieval scoped by university and assignment.');
+  const oldError=console.error, diagnostics=[];
+  console.error=(...args)=>diagnostics.push(args);
+  try {
+   const failures=[
+    {url:undefined,reason:'missing_endpoint'},
+    {url:'not-a-url',reason:'invalid_endpoint'},
+    {url:'http://private',reason:'http',status:403},
+    {url:'http://private',reason:'http',status:503},
+    {url:'http://private',reason:'network'},
+    {url:'http://private',reason:'invalid_response'},
+   ];
+   for(const failure of failures){
+    if(failure.url===undefined)delete process.env.PRIVACY_INTERNAL_URL;else process.env.PRIVACY_INTERNAL_URL=failure.url;
+    const savedFallback=process.env.PRESIDIO_ANALYZER_URL;delete process.env.PRESIDIO_ANALYZER_URL;
+    global.fetch=async()=>{
+     if(failure.reason==='network')throw new Error('sensitive URL and alice@example.org');
+     return new Response(failure.status?'private upstream details':'not json',{status:failure.status||200});
+    };
+    try {
+     const errors=[];for await(const chunk of streamCompletion(cfg,'Private text',[{role:'user',content:'alice@example.org'}]))errors.push(chunk);
+     assert.equal(errors.length,1);assert.equal(errors[0].code,'privacy_unavailable');
+     const detail=diagnostics.at(-1)[1];assert.equal(detail.reason,failure.reason);assert.equal(detail.status,failure.status);
+    }finally{if(savedFallback!==undefined)process.env.PRESIDIO_ANALYZER_URL=savedFallback;}
+   }
+   assert.equal(llmCalls,1);assert(!JSON.stringify(diagnostics).includes('alice@example.org'));assert(!JSON.stringify(diagnostics).includes('private upstream'));
+   console.log('Privacy diagnostics: missing/invalid URL, 403/503, network and malformed responses stay fail-closed; logs contain only categories and status.');
+  }finally{console.error=oldError;}
  }finally{global.fetch=oldFetch;if(oldPrivacy===undefined)delete process.env.PRIVACY_INTERNAL_URL;else process.env.PRIVACY_INTERNAL_URL=oldPrivacy;}
 })().catch(e=>{console.error(e);process.exitCode=1;});

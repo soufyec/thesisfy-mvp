@@ -3,7 +3,15 @@ import { engineHeaders } from "./private-engines";
 import type { EngineLanguage, PIIEntity, PIISpan, ScrubbedText } from "../../types/engines";
 
 export class PrivacyUnavailableError extends Error {
-  constructor() { super("privacy_unavailable"); this.name = "PrivacyUnavailableError"; }
+  constructor(public readonly reason: "missing_endpoint" | "invalid_endpoint" | "network" | "http" | "invalid_response" | "analysis" = "analysis", public readonly status?: number) {
+    super("privacy_unavailable"); this.name = "PrivacyUnavailableError";
+  }
+}
+/** Fixed categories only: never log messages, identities, endpoint URLs or response bodies. */
+export function privacyFailureDetails(error: unknown) {
+  return error instanceof PrivacyUnavailableError
+    ? { reason: error.reason, ...(error.status !== undefined ? { status: error.status } : {}) }
+    : { reason: "analysis" as const };
 }
 export type PIIAnalyzer = (text: string, language: EngineLanguage) => Promise<PIISpan[]>;
 interface ScrubberOptions {
@@ -45,7 +53,7 @@ export class PIIScrubberService {
           !Number.isInteger(s.start) || !Number.isInteger(s.end) || s.start < 0 || s.end <= s.start || s.end > text.length ||
           !["STUDENT_NAME", "EMAIL", "PHONE", "PERSON", "LOCATION", "IDENTIFIER"].includes(s.entity))) throw new Error();
         spans.push(...detected);
-      } catch { throw new PrivacyUnavailableError(); }
+      } catch (error) { throw error instanceof PrivacyUnavailableError ? error : new PrivacyUnavailableError(); }
     }
     // Union overlapping spans, so a shorter recognizer cannot leak the remainder of a larger entity.
     spans.sort((a, b) => a.start - b.start || b.end - a.end);
@@ -101,25 +109,30 @@ export class PIIScrubberService {
  * Python analyzer offsets are Unicode code points; convert them to JS UTF-16 offsets.
  */
 export function createPresidioAnalyzer(baseUrl: string, fetcher: typeof fetch = fetch, autoLanguage = false): PIIAnalyzer {
-  const endpoint = new URL("analyze", baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
-  if (!["https:", "http:"].includes(endpoint.protocol) || endpoint.username || endpoint.password) throw new Error("invalid_presidio_url");
+  let endpoint: URL;
+  try {
+    endpoint = new URL("analyze", baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
+    if (!["https:", "http:"].includes(endpoint.protocol) || endpoint.username || endpoint.password) throw new Error();
+  } catch { throw new PrivacyUnavailableError("invalid_endpoint"); }
   return async (text, language) => {
-    const response = await fetcher(endpoint, {
+    let response: Response;
+    try { response = await fetcher(endpoint, {
       method: "POST", headers: { "Content-Type": "application/json", ...engineHeaders() },
       body: JSON.stringify({ text, language: autoLanguage ? "auto" : language, entities: ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "LOCATION", "IBAN_CODE", "CREDIT_CARD", "IP_ADDRESS"] }),
       signal: AbortSignal.timeout(30000), cache: "no-store", redirect: "error",
-    });
-    if (!response.ok) throw new PrivacyUnavailableError();
-    const body: unknown = await response.json();
-    if (!Array.isArray(body) || body.length > 10000) throw new PrivacyUnavailableError();
+    }); } catch { throw new PrivacyUnavailableError("network"); }
+    if (!response.ok) throw new PrivacyUnavailableError("http", response.status);
+    let body: unknown;
+    try { body = await response.json(); } catch { throw new PrivacyUnavailableError("invalid_response"); }
+    if (!Array.isArray(body) || body.length > 10000) throw new PrivacyUnavailableError("invalid_response");
     const offsets = [0];
     for (const point of Array.from(text)) offsets.push(offsets[offsets.length - 1] + point.length);
     const entities: Record<string, PIIEntity> = { PERSON: "PERSON", EMAIL_ADDRESS: "EMAIL", PHONE_NUMBER: "PHONE", LOCATION: "LOCATION", IBAN_CODE: "IDENTIFIER", CREDIT_CARD: "IDENTIFIER", IP_ADDRESS: "IDENTIFIER" };
     return body.map(row => {
-      if (!row || typeof row !== "object") throw new PrivacyUnavailableError();
+      if (!row || typeof row !== "object") throw new PrivacyUnavailableError("invalid_response");
       const r = row as Record<string, unknown>;
       if (!Number.isInteger(r.start) || !Number.isInteger(r.end) || typeof r.entity_type !== "string" || !Object.prototype.hasOwnProperty.call(entities, r.entity_type) ||
-          (r.start as number) < 0 || (r.end as number) <= (r.start as number) || (r.end as number) >= offsets.length) throw new PrivacyUnavailableError();
+          (r.start as number) < 0 || (r.end as number) <= (r.start as number) || (r.end as number) >= offsets.length) throw new PrivacyUnavailableError("invalid_response");
       return { start: offsets[r.start as number], end: offsets[r.end as number], entity: entities[r.entity_type] };
     });
   };

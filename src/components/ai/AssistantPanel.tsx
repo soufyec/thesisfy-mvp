@@ -870,7 +870,7 @@ export default function AssistantPanel({ thesisId, sessionId, selection, getDocu
     const placeholderLabel = modeLabel(mode);
   /** A provider failure in words the student can act on; the raw provider payload stays in the server log. */
   const providerErrorText = (e: { message: string; code?: string }) =>
-    e.code === "auth" ? t("assistant.msg.errorAuth") : e.code === "rate_limit" ? t("assistant.msg.errorRateLimit") : e.code === "refusal" ? e.message : e.code === "provider" ? t("assistant.msg.errorProvider") : e.message;
+    e.code === "privacy_unavailable" ? t("assistant.msg.errorPrivacy") : e.code === "auth" ? t("assistant.msg.errorAuth") : e.code === "rate_limit" ? t("assistant.msg.errorRateLimit") : e.code === "refusal" ? e.message : e.code === "provider" ? t("assistant.msg.errorProvider") : e.message;
 
   const renderCostCard = (m: ChatMsg) => {
     if (!pending || pending.id !== m.id) return null;

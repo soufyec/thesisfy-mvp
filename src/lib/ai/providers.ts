@@ -1,4 +1,4 @@
-import { PIIScrubberService, createPresidioAnalyzer } from "../services/pii-scrubber";
+import { PIIScrubberService, createPresidioAnalyzer, PrivacyUnavailableError, privacyFailureDetails } from "../services/pii-scrubber";
 import { privacyEndpoint } from "../services/private-engines";
 import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicFoundry } from "@anthropic-ai/foundry-sdk";
@@ -296,10 +296,11 @@ const MODERN_CLAUDE = /^claude-(opus-5|sonnet-5|fable|mythos)/;
 export async function* streamCompletion(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens = 4096): AsyncGenerator<StreamChunk> {
   if (cfg.provider === "demo" || !cfg.apiKey) return;
   const url = privacyEndpoint();
-  if (!url) { yield { type: "error", code: "privacy_unavailable", message: "privacy_unavailable" }; return; }
   const identity = privacyIdentities.get(cfg);
-  const shield = new PIIScrubberService({ knownNames: identity ? [identity.name] : [], knownEmails: identity ? [identity.email] : [], analyzer: createPresidioAnalyzer(url, fetch, true) });
+  let shield: PIIScrubberService | undefined;
   try {
+    if (!url) throw new PrivacyUnavailableError("missing_endpoint");
+    shield = new PIIScrubberService({ knownNames: identity ? [identity.name] : [], knownEmails: identity ? [identity.email] : [], analyzer: createPresidioAnalyzer(url, fetch, true) });
     const protectedSystem = (await shield.scrub(system)).text;
     const protectedMessages: ChatMessage[] = [];
     for (const message of messages) protectedMessages.push({ ...message, content: (await shield.scrub(message.content)).text });
@@ -310,8 +311,11 @@ export async function* streamCompletion(cfg: ResolvedProvider, system: string, m
     }
     const tail = restore("", true);
     if (tail) yield { type: "delta", text: tail };
-  } catch { yield { type: "error", code: "privacy_unavailable", message: "privacy_unavailable" }; }
-  finally { shield.dispose(); }
+  } catch (error) {
+    console.error("[privacy] Chat blocked", privacyFailureDetails(error));
+    yield { type: "error", code: "privacy_unavailable", message: "privacy_unavailable" };
+  }
+  finally { shield?.dispose(); }
 }
 async function* rawStreamCompletion(cfg: ResolvedProvider, system: string, messages: ChatMessage[], maxTokens = 4096): AsyncGenerator<StreamChunk> {
   if (cfg.provider === "demo" || !cfg.apiKey) return;
