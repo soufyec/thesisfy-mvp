@@ -1,3 +1,4 @@
+import { engineHeaders } from "../services/private-engines";
 /**
  * LanguageTool v2 client (server side).
  *
@@ -125,7 +126,7 @@ export function intersectsProtected(from: number, to: number, ranges: { from: nu
 }
 
 function baseUrl() {
-  return (process.env.LANGUAGETOOL_URL || LT_DEFAULT_URL).replace(/\/+$/, "");
+  return (process.env.LANGUAGETOOL_INTERNAL_URL ? `${process.env.LANGUAGETOOL_INTERNAL_URL.replace(/\/+$/, "")}/v2` : process.env.LANGUAGETOOL_URL || (process.env.NODE_ENV === "production" ? "" : LT_DEFAULT_URL)).replace(/\/+$/, "");
 }
 
 interface RawMatch {
@@ -138,6 +139,7 @@ interface RawMatch {
 }
 
 async function postCheck(items: AnnotationItem[], opts: CheckOptions): Promise<CheckResult> {
+  if (!baseUrl()) return { matches: [], error: "Private language service unavailable", status: 503 };
   const params = new URLSearchParams();
   params.set("language", opts.language || "auto");
   params.set("data", JSON.stringify({ annotation: items }));
@@ -155,7 +157,8 @@ async function postCheck(items: AnnotationItem[], opts: CheckOptions): Promise<C
   try {
     const res = await fetch(`${baseUrl()}/check`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json", ...(process.env.LANGUAGETOOL_INTERNAL_URL ? engineHeaders() : {}) },
+      cache: "no-store", redirect: "error",
       body: params.toString(),
       signal: controller.signal,
     });

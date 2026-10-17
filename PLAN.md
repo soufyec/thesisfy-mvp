@@ -223,3 +223,13 @@ Archivos: motor/especificación de análisis, instrucciones del asistente, rutas
 - [x] Pruebas puras y recorrido HTTP con CSV de 132 filas, proveedor local conocido, JSON/SSE, instrucciones/tokens efectivos y bloqueo real de modos.
 - [x] Compilación final, TypeScript, regresiones y recorrido HTTP sobre la compilación de producción; cambio preparado para el PR existente.
 - [ ] Capturas posteriores y revisión visual completa pendientes: el panel se comprobó en navegador y guardó una descripción en ES; sus cuatro idiomas se revisaron en el árbol de accesibilidad. El navegador se desconectó durante la revisión de escritorio. No se afirma que se haya revisado visualmente el chat ni la gráfica.
+
+### Arquitectura de motores especializados — 17 octubre 2026
+
+- [x] Auditar y reutilizar clientes académicos, LanguageTool, pegado/declaraciones, biblioteca y recuperación BM25 existentes.
+- [x] Contratos TypeScript comunes para seis motores, eventos y lectura del ledger sin duplicar persistencia.
+- [x] AcademicSearchService sobre adaptadores existentes y PII Shield reversible por petición con Presidio privado, offsets Unicode y bloqueo sin NER.
+- [x] Endpoint académico autenticado con límites de entrada, configuración global, protección PII y respuestas sin caché.
+- [x] Documentar estructura, rutas implementadas/propuestas, permisos, flujo, límites RGPD y fases pendientes sin afirmar servicios externos conectados.
+- [x] Verificación final: build de producción, TypeScript sin errores, pruebas de servicios/ruta, regresión de contexto y HTTP 401 sin sesión.
+- [ ] Integración posterior: protección de todas las llamadas LLM y búsquedas del chat, CSL/Zotero, corpus oficial vectorial y proveedor externo de coincidencias; requiere configuración y pruebas específicas.

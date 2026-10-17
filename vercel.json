@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "web": {
+      "root": ".",
+      "framework": "nextjs",
+      "bindings": [
+        { "type": "service", "service": "privacy", "format": "url", "env": "PRIVACY_INTERNAL_URL" },
+        { "type": "service", "service": "language", "format": "url", "env": "LANGUAGETOOL_INTERNAL_URL" }
+      ]
+    },
+    "privacy": { "root": "services/privacy", "runtime": "container", "entrypoint": "Dockerfile.vercel" },
+    "language": { "root": "services/language", "runtime": "container", "entrypoint": "Dockerfile.vercel" }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": { "service": "web" } }]
+}

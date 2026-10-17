@@ -12,6 +12,10 @@
   "dependencies": {
     "@anthropic-ai/foundry-sdk": "^0.5.2",
     "@anthropic-ai/sdk": "^0.130.0",
+    "@citation-js/core": "0.9.0",
+    "@citation-js/plugin-bibtex": "0.9.0",
+    "@citation-js/plugin-csl": "0.9.0",
+    "@citation-js/plugin-ris": "0.9.0",
     "@tiptap/extension-character-count": "^2.27.3",
     "@tiptap/extension-color": "^2.27.3",
     "@tiptap/extension-font-family": "^2.27.3",
